@@ -1,49 +1,50 @@
-# ADR-001: TypeScript on Node.js with PostgreSQL
+# ADR-001: TypeScript full stack (React + Node.js) with PostgreSQL
 
 ## Status
-Proposed
+Proposed (awaiting owner approval)
 
 ## Date
-2026-10-29
+2026-10-29 (revised the same day: full rebuild and redesign)
 
 ## Context
 Nashr's prototype is one 1 MB `index.html` of plain JavaScript. All rules (statuses, timers, fees, refunds, permissions) run in the browser and data lives in `localStorage`. The brief requires every rule to run on the server, money to reconcile with Stripe, timers to be reliable, and two simultaneous bids to never both win.
 
+**The developer has decided to rebuild everything from scratch with a full redesign** (buyer, seller, admin, founder). The prototype is kept only as the reference for behaviour. So reuse of prototype code is no longer a factor in the language choice.
+
 Requirements that drive the choice:
-- Port a large body of existing JavaScript business logic (`sweepDeals`, `acceptDeal`, `refundDeal`, `marketStamp`, …) without rewriting it from scratch.
+- A rich, interactive UI: a live calendar heat map, bid desk, programme schedules, campaign planner, plus about 15 admin pages and 13 founder reports.
 - Strong typing for money and role-specific response shapes, so a buyer response *cannot* contain the reserve price.
-- First-class Stripe Connect SDK.
-- Transactions and row locks for bidding and the state machine.
+- A large admin surface: tables with search, filters, CSV export and edit forms.
+- First-class Stripe Connect SDK; transactions and row locks for bidding and the state machine.
 - Small team, small ops budget: as few moving parts as possible.
 
 ## Decision
-**TypeScript (strict) on Node.js 22 LTS**, with **PostgreSQL 16** as the only stateful service.
-Fastify + zod for the API, Kysely for typed SQL and migrations, a Postgres-backed sweeper for timers, the official `stripe` SDK, Vite for the front end built from the prototype's screens.
+**TypeScript everywhere**, with **PostgreSQL 16** as the only stateful service.
+- Server: Node.js 22 LTS, Fastify + zod, Kysely (typed SQL and migrations), a Postgres-backed sweeper for timers, the official `stripe` SDK.
+- Front end: a new React + TypeScript app (Vite) for buyer, seller, admin and founder, sharing the server's zod types.
+- Admin tables: Refine inside the same React app; money actions and reports are custom screens.
 
 ## Alternatives considered
 
-### Python + Django
-- Pros: Django admin gives searchable/filterable admin tables almost for free; mature ORM, migrations; excellent Stripe SDK.
-- Cons: the prototype's rules and screens are JavaScript and would be rewritten in a second language; two languages for one small team; role-typed responses are weaker without a type checker.
-- Rejected, narrowly. This is the strongest alternative. Choose it instead if the team is Python-first.
+### Python + Django (with a React front end)
+- Pros: Django admin gives searchable, filterable admin tables almost for free; mature auth, ORM and migrations; strong for future data work (Athena, reports).
+- Cons: a redesigned interactive UI still needs React, so the project has two languages and the API types are duplicated by hand; timers and live updates usually add Celery, Redis and Channels; Django admin's look won't match a full redesign without extra work.
+- Rejected, narrowly. This is the strongest alternative. Choose it if the team is Python-first.
 
-### PHP + Laravel (the stack of the DADO site)
-- Pros: cheap hosting, team familiarity from DADO.
-- Cons: same rewrite cost as Django; shared hosting can't run a reliable minute-level sweeper or SSE; weaker typing for money and permissions.
-- Rejected.
+### PHP + Laravel (Filament admin, Inertia + React front end)
+- Pros: scheduler, queues and mail built in; Filament gives a polished admin quickly; large regional talent pool.
+- Cons: still two languages with React; weaker typing for money and permissions; needs a proper server (not shared hosting) for reliable timers.
+- Rejected. Viable if the maintaining team is PHP-based.
 
 ### Go / Java / C#
-- Pros: performance, strong typing.
-- Cons: the performance is not needed (pilot scale is hundreds of slots, not millions); full rewrite of all logic and screens; slower to build.
-- Rejected.
+- Rejected: the performance is not needed at pilot scale, and they are slower to build a large UI-heavy product in.
 
 ### Firebase / Supabase-style backend-as-a-service
-- Pros: fast start, auth included.
-- Cons: complex money transactions, row locks and an append-only ledger fight the model; rules risk drifting back into the client, which is the exact problem the brief names.
-- Rejected.
+- Rejected: complex money transactions, row locks and an append-only ledger fight the model, and rules risk drifting back into the client, which is the problem the brief names.
 
 ## Consequences
-- One language end to end; prototype logic moves to the server and becomes tested functions rather than being re-specified.
-- Admin tables are not free (unlike Django); they come from the prototype's existing admin screens wired to the API.
+- One language for server, buyer/seller app, admin and founder reports; request and response types are defined once and shared, so the client and server cannot drift apart.
+- The full redesign needs a design phase (Figma) and owner sign-off before build, which adds time up front compared with reusing the prototype's screens.
+- Admin tables are not free like Django admin; Refine covers most list, filter, search, export and edit pages, and the rest are custom.
 - Postgres carries jobs, locks, real-time notifications and the ledger, so there is no Redis or queue service to run. Upgrade path if load grows: a dedicated queue.
-- Team must be comfortable with TypeScript and SQL; both are common skills.
+- The prototype's rule functions (`sweepDeals`, `acceptDeal`, `refundDeal`, `marketStamp`, …) are used as a specification to write tests against, not copied.

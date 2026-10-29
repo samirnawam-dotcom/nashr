@@ -30,6 +30,7 @@ High-risk modules (`marketplace`, `payments`) come early on purpose: fail fast.
 ## 1. Objective
 
 Replace the browser-only prototype (`index.html`, all rules in client JavaScript, data in `localStorage`) with a server where **every business rule, timer, permission and money movement runs on the server**. The screens only display what the server returns.
+Everything is **rebuilt from scratch with a full redesign** (buyer, seller, admin, founder). The prototype stays as the reference for how each rule and flow behaves.
 Done when the 26 test scenarios in brief section 23 pass as automated tests against the server, plus the gap scenarios added in section 7 below.
 
 ## 2. Tech stack
@@ -46,7 +47,9 @@ Decision record: [`docs/decisions/ADR-001-language-and-stack.md`](docs/decisions
 | Background jobs | One Postgres-backed sweeper (section 5.3); pg-boss only for fan-out (email sends) |
 | Payments | `stripe` Node SDK, Connect, separate charges and transfers |
 | Real-time | Postgres `LISTEN/NOTIFY` → Server-Sent Events |
-| Front end | The prototype's screens, split into ES modules with Vite; `localStorage` calls replaced by API calls |
+| Front end | **Full redesign, built new**: React + TypeScript (Vite), TanStack Query for server data; the prototype is the reference for behaviour and rules only, not code to copy |
+| Admin | Same React app, admin area built with Refine (tables, filters, search, CSV export, forms); money actions and reports are custom screens |
+| Design | Designs in Figma first (buyer, seller, admin, founder), with a small component library, Arabic-ready (RTL later) |
 | PDFs | HTML → PDF via headless Chromium (handles Arabic shaping) |
 | Email | Postmark or Amazon SES (decision: developer, brief section 24) |
 | Files | S3-compatible storage, private, signed URLs that expire, virus scan on upload |
@@ -69,7 +72,7 @@ npm run lint && npm run typecheck
 ```
 server/<module-id>/        one folder per capability-map module (routes, service, sql, tests side by side)
 server/core/               db, clock, money, auth guard, errors
-web/                       prototype screens split into modules
+web/                       new React app: buyer, seller, admin and founder areas
 migrations/
 docs/decisions/            ADRs
 tasks/                     plan.md, todo.md (after approval)
@@ -230,5 +233,5 @@ Across all admin pages: **no CSV export, no search box, no founder role, no 2FA,
 2. **G2:** accountant to confirm who invoices the media sale and its VAT.
 3. **G3:** OK to defer the KSA payment provider decision until KSA opens?
 4. **G8:** runner-up goes to the seller (proposed) or straight to the runner-up buyer (prototype)?
-5. Front end: keep the prototype's vanilla JS screens (proposed: fastest), or rebuild in React?
+5. ~~Front end: keep the prototype's screens or rebuild?~~ **Decided by the developer: full rebuild and redesign.** Needs: who designs it, and the owner's sign-off on the designs before build.
 6. Hosting and code ownership (brief section 24): whose AWS/Stripe accounts?
