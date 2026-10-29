@@ -175,6 +175,30 @@ Found by searching `index.html` (V30):
 | 2FA for admin/founder | **No** | Build (identity module) |
 | Reserve price, auto-accept, insertion order, audit, Ramadan schedules, make-good | Yes | Port the rule to the server, keep the screen |
 
+**Admin pages (brief section 17) in the prototype.** The prototype has one admin screen (`#owner`: overview plus six tabs) and a separate outlet-profile editor (`#admin`). There is no separate founder role.
+
+| Brief page | Prototype | What is missing |
+|---|---|---|
+| Overview | **Yes**: commission, GMV, take rate, net take after processing, listings, activated buyers, chart, per publisher, per market, "Needs your decision" queue | Not every figure opens the records behind it |
+| Access requests | **Yes**: approve (invite link), reject with reason, request more info | Real invite email |
+| Publishers | **Yes**: fee rate change with history and audit, acceptance rate, response time, cancellations | Stripe payout status; rates fixed to 10/12/15% |
+| Funds | **Yes**: five buckets per publisher, reconciliation check, drill-down to deals | Stripe references |
+| Accounts | Partial: list with status and lapses; only action is "Restore bidding" | Verify, suspend, ban, resend invite, reset access, view activity |
+| Outlet profiles | Partial: create, edit, delete custom outlets; built-in ones read-only | Confirmed/estimated price ranges, change history; **delete conflicts with "history must be kept"** |
+| All deals | Partial: stage funnel, filter by publisher and funds bucket, insertion order link, dispute buttons | Filters (status, market, channel, buyer, dates), search, export, release/refund/cancel, full timeline view |
+| Disputes | Partial: inside the queue and deals table (release, full refund, partial refund, make-good) | Own page with both sides' evidence |
+| Audit log | Partial: list, newest first | Filter, export, tamper-proof storage |
+| Calendar oversight | **No** | Whole page |
+| Payouts | **No** | Whole page |
+| Messages and notifications | **No** | Whole page (templates, send log, resend) |
+| Settings | **No**: timers and rates are constants in code | Whole page, with history |
+| Reports | **No** (only the overview charts) | Whole page |
+| Refund costs | **No** | Whole page |
+
+Across all admin pages: **no CSV export, no search box, no founder role, no 2FA, no log-in-as-user.**
+
+**Founder reports (brief section 18).** Partly covered by the overview, Funds and Publishers tabs: revenue, GMV and take rate, money position, quality and trust, and a booking funnel (counts only, no drop-off reasons). **Missing:** buyer activation, supply, demand, prices, top lists, retention, cross-border, failures, disputes and refund losses, the date/market/channel/publisher/buyer filters, CSV export and the weekly email.
+
 ---
 
 ## 7. Testing strategy
