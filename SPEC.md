@@ -18,11 +18,11 @@ Workflow: `.claude/skills/spec-driven-development` → `planning-and-task-breakd
 | `payments` | Stripe Connect, ledger, webhooks, release, refunds, payouts, reconciliation | marketplace, audit |
 | `fulfilment` | Booking brief, creative, proof checklists, pre-run check, report-an-issue, disputes | marketplace, payments |
 | `messaging` | Buyer↔seller threads with contact-detail blocking, notifications (in-app + email) | identity, marketplace |
-| `documents` | Insertion order, receipt, tax invoice, payout statement, client report (PDF/CSV) | payments, fulfilment |
+| `invoicing` | Disclosed-agent invoicing (section 11.2): insertion order, receipt, media tax invoice on the publisher's behalf, fee tax invoice, credit notes, payout statement, client report; structured invoice data ready for UAE e-invoicing | payments, fulfilment |
 | `directory` | Outlet directory, three-level price ranges, campaign plans, request-a-quote | catalog, payments |
 | `reporting` | Admin pages and founder reports (section 18) | all of the above |
 
-Build order: `identity → settings, audit → catalog → marketplace → payments → fulfilment → messaging, documents → directory → reporting`.
+Build order: `identity → settings, audit → catalog → marketplace → payments → fulfilment → messaging, invoicing → directory → reporting`.
 High-risk modules (`marketplace`, `payments`) come early on purpose: fail fast.
 
 ---
@@ -83,7 +83,10 @@ tasks/                     plan.md, todo.md (after approval)
 ### 5.1 Money
 - All amounts are **integer minor units** (fils, halalas) in `bigint`. Never floats. Brief example: 76,000.00 AED = `7_600_000`.
 - Fee, VAT, FX rate and commission rate are **frozen onto the deal at acceptance** (the prototype already does this in `marketStamp()`). Later changes never touch a live deal.
-- Rounding: fee and VAT rounded half-up to the minor unit, once each. Payout = price − fee − VAT on fee. A unit test pins the section 3 worked example exactly (9,120 / 456 / 66,424).
+- Prices are shown **excluding VAT** (owner decision, section 11.2). If the publisher is VAT-registered, 5% media VAT is added at payment and shown to the buyer before they confirm. Nashr's fee is worked out on the price excluding VAT.
+- Rounding: fee and each VAT amount rounded half-up to the minor unit, once each.
+- Payout = price + media VAT − fee − VAT on fee. The publisher, as seller, remits the media VAT.
+- Worked example, VAT-registered UAE publisher, 12% rate: price 76,000 · media VAT 3,800 · **buyer pays 79,800** · fee 9,120 · VAT on fee 456 · **payout 70,224**. For a publisher that is not VAT-registered: buyer pays 76,000, payout 66,424 (the brief's section 3 example). Both pinned by unit tests.
 
 ### 5.2 Booking state machine
 One table of allowed transitions, `(from_status, event) → to_status`, and one function `transition(dealId, event, actor)` that:
@@ -227,11 +230,52 @@ Across all admin pages: **no CSV export, no search box, no founder role, no 2FA,
 4. No business rule runs only in the browser (checked by review against section 6 list).
 5. Pilot: one real UAE publisher and one buyer complete a booking end to end in staging with Stripe test mode.
 
-## 10. Open questions (need an answer before planning)
+## 10. Open questions
 
-1. **G1:** bank transfer for large bookings in the pilot, or card only?
-2. **G2:** accountant to confirm who invoices the media sale and its VAT.
-3. **G3:** OK to defer the KSA payment provider decision until KSA opens?
-4. **G8:** runner-up goes to the seller (proposed) or straight to the runner-up buyer (prototype)?
-5. ~~Front end: keep the prototype's screens or rebuild?~~ **Decided by the developer: full rebuild and redesign.** Needs: who designs it, and the owner's sign-off on the designs before build.
-6. Hosting and code ownership (brief section 24): whose AWS/Stripe accounts?
+1. **G1 risk accepted:** card only. Large bookings may hit corporate card limits or 3-D Secure failures; watch the payment-failure report in the pilot.
+2. **Accountant:** confirm the conditions for Nashr issuing tax invoices on publishers' behalf (disclosed agent), and the VAT treatment of cancellation fees (kept as a setting).
+3. **E-invoicing timing:** confirm the UAE timeline against the launch date and the size of the pilot publishers (section 11.2).
+4. **Designer:** who produces the Figma designs (the developer or a separate designer)?
+5. **Developer day rate**, to turn the effort estimates in `tasks/plan.md` into cost.
+
+## 11. Owner decisions (Omar Siyam, 29 October 2026)
+
+Source: *Nashr direction response*. These override the matching gap proposals in section 6.
+
+### 11.1 Answers
+| # | Topic | Decision | Changes |
+|---|---|---|---|
+| 1 | Redesign | **Yes.** More user friendly, calendar at the centre, keep the prototype's rules and flows. Figma designs approved **section by section** before build. Price the design phase in, and price a **full rebuild and a partial rebuild separately**. | Sections 1, 2; `tasks/plan.md` |
+| 2 | Language | **TypeScript.** | ADR-001 accepted |
+| 3 | Brand | Owner sends logo and brand files. | Design phase starts from them |
+| 4 | Payments | **Card only, through Stripe. No bank transfers.** | G1 closed as an accepted risk |
+| 5 | VAT and invoices | Nashr is the publisher's **disclosed agent**; Nashr invoices only its own fee; the publisher is the seller of the advertising. See 11.2. | G2, G6, G14 replaced by 11.2; money maths in 5.1 |
+| 6 | Saudi | **Not in the first release.** Simple "KSA coming soon" page with a waiting list; system stays multi-country. | G3 deferred |
+| 7 | Next bid | On a decline or non-payment the **seller is told and chooses any remaining bid, or relists**. Other bids stay valid during the seller's 24 hours. Skipped bidders are told "not selected". **Max two rounds, then relist.** | G8 replaced |
+| 8 | Accounts | Owner creates Stripe once the licence is done, a **test account sooner** if Stripe allows. **AWS in Nashr's name, fixed monthly budget.** | Payments built against Stripe test mode; hosting kept to the minimum services |
+| 9 | Creative rounds | The two-round limit counts **only changes the seller asks for**. Technical resubmissions (damaged file, wrong type or size, failed upload) don't count. After two rounds the seller approves or rejects with a reason, unless the seller or admin allows more rounds. | G17 replaced |
+| 10 | Scope | Build what is needed to launch; everything else can wait. **Mark every item "needed for launch" or "can wait".** | `tasks/plan.md` |
+
+### 11.2 Invoice plan (disclosed agent)
+Nashr acts openly as the publisher's agent. The buyer terms, the publisher agreement and every invoice must say so.
+
+| # | Document | From | To | When and what |
+|---|---|---|---|---|
+| 1 | Insertion order | Nashr | Buyer and publisher | When the publisher accepts. Not a tax invoice. |
+| 2 | Payment receipt | Nashr | Buyer | When the buyer pays, received on the publisher's behalf. Not a tax invoice. |
+| 3 | Tax invoice for the media | Publisher (issued by Nashr on its behalf) | Buyer | When the buyer pays (timing is a **setting**, can move to the run date). Publisher's name and TRN, buyer's name and TRN, price, 5% VAT, "issued by Nashr on behalf of [publisher]". Non-VAT-registered publisher: normal invoice, no VAT. |
+| 4 | Tax invoice for Nashr's fee | Nashr | Publisher | At release. Fee + 5% VAT, Nashr's TRN, paid by deduction from the payout. |
+| 5 | Credit notes | Issuer of the original | Same recipient | On full or partial cancellation or refund; one per original invoice, matching the refund. |
+| 6 | Payout statement | Nashr | Publisher | Monthly. Releases, fees and deductions. Not a tax document. |
+
+Rules:
+- **TRN at onboarding:** buyers (to receive tax invoices) and publishers (to be named). A publisher can declare "not VAT-registered": no VAT on its sales.
+- **Prices excluding VAT**; VAT added at payment only for VAT-registered publishers; buyer sees the total before confirming; fee calculated on the price excluding VAT.
+- **Numbering:** sequential, separate per document type. Invoices in AED. Records kept at least 5 years.
+- **Cancellation fees** kept by the publisher are part of its sale: credit note plus new invoice. VAT treatment is a setting.
+- **UAE e-invoicing:** every invoice is stored as **structured data** from day one; the PDF is a rendering, not the tax invoice. Owner's understanding of the timeline: voluntary from 1 July 2026, compulsory from 1 January 2027 for businesses above AED 50 million revenue, from 1 July 2027 for others. Invoices issued on a publisher's behalf leave the VAT responsibility with the publisher (publisher agreement must cover this). Connection to an accredited provider is planned and priced separately (see plan).
+
+Engineering consequences:
+- Invoice data model: `invoices` + `invoice_lines` + `credit_notes`, immutable once issued, each with issuer, recipient, both TRNs, tax category, currency, amounts; generated from the ledger, never typed by hand.
+- VAT rate, timing, and which documents are tax documents are all settings with history (tax rules can change).
+- Stripe charge amount = price + media VAT; card processing cost now applies to the VAT-inclusive total.

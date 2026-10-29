@@ -1,7 +1,7 @@
 # ADR-001: TypeScript full stack (React + Node.js) with PostgreSQL
 
 ## Status
-Proposed (awaiting owner approval)
+Accepted (owner approved TypeScript, 29 October 2026)
 
 ## Date
 2026-10-29 (revised the same day: full rebuild and redesign)
