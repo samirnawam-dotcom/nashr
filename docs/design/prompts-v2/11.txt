@@ -1,0 +1,11 @@
+Admin operations overview in Nashr. Premium, calm, spacious.
+
+Admin shell: left sidebar 240px with logo "Nashr" and small "Admin" tag, items Overview (active), Accounts, Access requests (3), Publishers, All deals, Disputes (1), Funds, Payouts, Audit log, Settings; bottom: admin name "Zainab A." with "2FA on". Slim top bar with search, bell, help.
+
+Header: "Overview", subtitle "UAE · November 2026", right: date range "Last 30 days ▾" and secondary "Export CSV".
+
+KPI row as six calm figures with small trend text, no heavy boxes: Commission earned AED 412,000 (+14%), GMV AED 3.4M (+18%), Take rate 12.1%, Net take after card fees 9.4%, Active listings 1,240, Buyers active in 30 days 38.
+
+Two columns: left a clean bar chart "GMV and commission by month" Jun–Nov 2026; right "Needs your decision (4)" as a simple list: Dispute · Skyline FM · ran on wrong date · due in 3 days; Proof overdue · Khaleej Times · 18h; Resolve-by date in 5 days · Dubai One TV; Access requests waiting · 3. Each with a quiet "Open" link.
+
+Full-width table "Recent deals" with roomy 52px rows and wide columns (no cramped wrapping): Reference (NSH-2026-000187), Outlet · placement (Gulf News · Full page), Buyer (Northwind Fintech), Amount (AED 79,800), Status (dot + label: Proof in review, Dispute open, Payment secured, Paid out, Proof overdue), Next step, and a text action. Filters above: search, Status, Channel, Publisher, Dates, "Export CSV".

@@ -1,0 +1,17 @@
+Seller inbox in Nashr for the publisher Gulf News. Premium, calm, spacious.
+
+Seller top bar (nothing wraps): logo "Nashr" + "Seller" tag; outlet switcher "Gulf News ▾"; nav Calendar, Inbox (3) active, Deals, Earnings, Rate card; bell; avatar.
+
+Two-pane layout. Left list (380px) with tabs "Needs action (3) · All · Done". Items, each with a dot status line, title, slot and time left:
+1. "● Buy-now request · AED 32,000" — Gulf News · Weekend double spread — "reply within 22h"
+2. "● Auction closed · AED 24,000 · Below your reserve" — Full page · Week of 9 Nov — "19h 40m" (selected)
+3. "● Creative to approve" — Half page · Week of 16 Nov
+4. "Proof due tomorrow" — Full page · Week of 2 Nov
+5. "Buyer question" — Front page strip
+
+Right detail for item 2: title "Full page · Week of 9 Nov 2026", line "Decide within 19h 40m". Primary "Accept AED 24,000", secondary "Decline", text button "Ask the buyer a question (+12h)".
+Below, in calm sections with small headers:
+- Buyer: "Northwind Fintech · Verified business" (no contact details), advertiser, industry Banking, language English, landing page link, ad message in a quote block.
+- Money: Winning bid AED 24,000 · Nashr fee 12% −AED 2,880 · VAT on fee −AED 144 · You receive AED 20,976 (bold), small note "+ media VAT collected for you if VAT-registered".
+- Automatic checks as a short list with icons: Category allowed ✓, No competitor in the same issue ✓, Creative to follow ⚠.
+- Other bids: "Bidder B · Al Futtaim Capital · AED 23,200 · Choose this bid", "Bidder C · Dubai Holdings · AED 22,000 · Choose this bid".

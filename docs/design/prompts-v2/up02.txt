@@ -1,0 +1,15 @@
+Main buyer screen of Nashr: the slot calendar, with a slim right panel. Premium, calm and spacious.
+
+Top bar: logo "Nashr", nav Calendar (active), Directory, Campaigns, Bookings; search; bell with a small count; avatar.
+
+Page header row: title "Calendar", subtitle "November 2026 · UAE", on the right a week/day toggle and month arrows.
+One clean filter row below: channel segmented control (All, Print, Digital, Radio, TV, Podcast), then quiet dropdowns (Language, Price, Outlet) and a "Closing soon" toggle. No boxes around the filters.
+
+Calendar grid (left, about 70% width): rows are placements, columns are four weeks (Week of 9 Nov, 16 Nov, 23 Nov, 30 Nov).
+Row header: outlet monogram, outlet name, placement name in slate ("Gulf News · Full page"), time window for radio/TV ("06:30–09:00").
+Rows: Gulf News · Full page; Khaleej Times · Half page; Skyline FM · Morning Markets 06:30–09:00; Dubai One TV · Market Open 10:00–10:30; The Majlis Podcast · Mid-roll; Al Bayan · Front page strip.
+Each cell is calm: the price large ("AED 22,500"), one quiet line under it ("8 bids" or "Starting price"), and at most one status line with a dot ("● You lead", "● Outbid", "● Closes in 18h", "Buy now · request"). Bid activity shown as a subtle teal tint that deepens with more bids (heat map), no coloured cell backgrounds other than this tint. Selected cells: teal outline. Not listed: light grey with "Not listed".
+
+Right panel "Your bids" (about 30%): budget line "AED 108,000 left of AED 180,000" with a thin progress bar; then three short sections with small headers and lists: "Leading (2)", "Outbid (1)" with a "Raise to AED 49,440" button, "Closing soon (3)". Each list item: outlet · placement, week, amount right-aligned.
+
+Bottom selection bar appears floating and slim: "3 slots selected · AED 47,500" with "Clear" and primary "Bid on all 3".

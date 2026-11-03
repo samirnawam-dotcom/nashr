@@ -1,0 +1,14 @@
+Buyer bid drawer in Nashr. Premium, calm, spacious. Design it as a full-height right drawer (560px wide) that scrolls, over the buyer Calendar page dimmed behind it (buyer top bar: logo "Nashr", Calendar active, Directory, Campaigns, Bookings).
+
+Drawer header: outlet monogram "GN", "Gulf News · Full page", "Week of 9 Nov 2026 · Print · English", close icon. One quiet line: "● Closes in 2 days 6 hours (Dubai time)".
+
+Section 1, price summary as a calm 2×2 grid without heavy boxes: Starting price AED 20,000 · Current top bid AED 24,000 (5 bids, bidders anonymous) · Minimum next bid AED 24,720 (+3%) · Buy now AED 32,000 ("Request to book, the publisher must accept").
+A small sparkline "Recent winning prices for similar slots: AED 23,500 · 25,000 · 24,500" and a quiet hint "Suggested bid AED 25,500".
+
+Section 2 "Your bid": large amount input "AED 24,720" with "excl. VAT".
+
+Section 3 "Booking brief" (fully visible, all fields): Advertiser or brand; Industry (dropdown: Banking); What the ad will say (textarea with "0/280"); Creative language (segmented: Arabic, English, Bilingual); Landing page link; Creative: upload draft or checkbox "Creative to follow"; Notes for the publisher with helper text "Emails and phone numbers are not allowed".
+
+Section 4 payment: one line "Visa •••• 4242 · verified" and "Nothing is charged now. You pay only if the publisher accepts."
+
+Sticky footer: primary "Place bid AED 24,720", secondary "Request at AED 32,000". Small text: "Prices exclude VAT."

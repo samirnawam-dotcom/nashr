@@ -1,0 +1,11 @@
+Seller calendar for the radio station "Skyline FM" in Nashr. Premium, calm, spacious.
+
+Seller top bar (64px, nothing wraps): logo "Nashr" with a small "Seller" tag; compact outlet switcher "Skyline FM ▾"; nav Calendar (active), Inbox (2), Deals, Earnings, Rate card; bell; avatar. No search or buttons in the top bar.
+
+Page header: title "Calendar", subtitle "Week of 16–22 Nov 2026", right side: segmented "Week grid | Programme view" (Programme view active), week arrows, primary button "Add placement".
+
+Four quiet KPI figures in one row without boxes, separated by hairlines: Net earnings this month AED 84,200 (+14%), Deals completed 12, Average sale price AED 7,050, Stripe payouts ● Verified.
+
+Programme view: a time-of-day schedule. Left column hours 06:00–22:00. Columns Sun 16 to Sat 22 Nov (Fri and Sat labelled "Weekend"). Programme blocks placed by time: "Morning Markets 06:30–09:00" Sun–Thu, "Midday Business 11:00–13:00" Sun–Thu, "Drive Home 16:00–19:00" Sun–Thu, "Weekend Brunch 09:00–12:00" Fri–Sat.
+Each block is roomy enough to show the full programme name, the price large ("AED 16,000"), and one status line with a dot: "● Awaiting your decision" (amber, with a small "Review" text button), "● 3 bids", "● Secured · Northwind Fintech", "● Open", "Blocked" in grey. Use real icons, never icon names as text.
+Two blocks are selected (teal outline) and a slim floating bar shows "2 airings selected · Change price · Block · Copy to next weeks · Set as quick sale · Clear".

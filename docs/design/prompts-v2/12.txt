@@ -1,0 +1,11 @@
+Admin Funds page in Nashr. Same admin shell as the overview (left sidebar with Funds active, slim top bar). Premium, calm, spacious.
+
+Header: "Funds", subtitle "Where every dirham paid by buyers is right now · UAE", right: "Export CSV".
+
+Five calm KPI figures in a row: Secured AED 1,420,000 · In buyer review AED 684,200 · Released, awaiting payout AED 540,600 · Paid out AED 712,000 · Refunded AED 56,000.
+
+Reconciliation line under the figures, green dot: "Secured + In review + Released + Paid out + Refunded = AED 3,412,800 · Total paid in AED 3,412,800 · Matches Stripe · checked 14 min ago".
+
+Main table by publisher with roomy rows: Publisher (Gulf News, Khaleej Times, Dubai One TV, Skyline FM, Arabian Business, The National), then Secured, In review, Released, Paid out, Refunded, each amount clickable, right-aligned, tabular. Total row at the bottom.
+
+Right side card "Refund costs · November 2026": Refunds 4 (AED 56,000), Card fees lost AED 2,140, Recovered from publishers AED 1,600, Net loss AED 540, link "View refund costs".

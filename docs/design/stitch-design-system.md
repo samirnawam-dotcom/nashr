@@ -17,7 +17,8 @@ Nashr is a B2B marketplace in the UAE where media buyers bid on and book adverti
 
 ## Typography
 - Headings Geist, body IBM Plex Sans (pairs with IBM Plex Sans Arabic for Arabic text).
-- Scale: page title 28/36 semibold, section 18/26 semibold, body 14/22, table and labels 13/20, captions 12/16. Uppercase micro-labels 11px with 0.06em letter spacing.
+- Scale: page title 32/40 semibold, section 20/28 semibold, body 15/24, table and labels 14/20, captions 12/16. Uppercase micro-labels 11px with 0.06em letter spacing, used sparingly.
+- At most three type sizes inside any card.
 - Numbers use tabular figures.
 
 ## Layout
@@ -33,6 +34,17 @@ Nashr is a B2B marketplace in the UAE where media buyers bid on and book adverti
 - Countdown shown as "Closes in 18h 20m" with a clock icon, in the outlet's local time.
 - Money breakdowns in a right-aligned two-column list with a bold total line.
 - Empty, loading and error states are designed, not blank.
+
+## Premium finish (quality bar: Stripe Dashboard, Linear, Airbnb)
+- Quiet by default: whitespace and alignment create structure, not boxes. Prefer one hairline divider over a bordered card; nest cards never more than one level.
+- Status is a small coloured dot + plain text label ("● Closing in 18h"). Filled pills only for things that need the user's action now ("Action needed", "Outbid"). Never more than one badge per item.
+- Colour budget per screen: neutrals + teal + at most the status colours actually in use. No amber or red backgrounds on whole cells or cards; colour sits in the dot, the text or a 3px left edge.
+- Generous rhythm: 24px between related groups, 40-48px between sections. Tables 52px rows. Cards 24px padding.
+- Icons: one consistent 1.5px line icon set (Lucide style), 18-20px, neutral colour unless active.
+- One clear focal point per screen; secondary information in slate, tertiary in lighter slate.
+- Consistent app shell on every screen: 64px top bar, logo left, nav centre-left, search, bell, avatar right; never wraps. Seller outlet switcher is a single compact line ("Skyline FM ▾").
+- Microcopy short and human. Numbers large and calm, labels small and quiet.
+- Hover and selected states visible: selected = teal 2px outline + light teal fill; hover = light grey fill.
 
 ## Product rules every screen must respect
 - Today is early November 2026. Dates are in 2026.
