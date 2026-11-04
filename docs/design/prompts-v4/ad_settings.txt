@@ -1,0 +1,7 @@
+Admin Settings in Nashr, section "Commission and tax". Premium, calm, spacious.
+Admin shell (identical on all admin screens): left sidebar with logo "Nashr" + "Admin" tag: Overview, Accounts, Access requests (3), Publishers, All deals, Disputes (1), Funds, Payouts, Audit log, Settings; admin name with "2FA on" at the bottom; slim top bar with search, bell, help. (Settings active)
+Settings sub-navigation on the left of the content: Commission and tax (active), Timers, Cancellations and refunds, Working days and holidays, Categories and sectors, Notifications.
+Card "Nashr VAT": toggle "Nashr is VAT-registered" (off), rate field 5%, helper "When on, 5% VAT is added to Nashr's commission on every fee invoice to publishers." History link.
+Card "Default commission": 12%.
+Table "Commission per publisher" with roomy rows: Publisher (logo + name), Market UAE, Rate (editable: Gulf News 10% founding, Khaleej Times 12%, Skyline FM 12% founding, Dubai One TV 15%, Arabian Business 12%), Applies to "New deals only", Last changed (date · by), action "History". Note: "A deal keeps the rate that applied when it was accepted."
+Bottom: "Save changes" primary; every change is recorded in the audit log.

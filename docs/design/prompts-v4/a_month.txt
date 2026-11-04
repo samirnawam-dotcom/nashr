@@ -1,0 +1,5 @@
+Buyer calendar in Nashr, MONTH view, like Google Calendar's month view showing the four weeks of November 2026. Premium, calm, spacious.
+Buyer top bar (identical on all buyer screens): logo "Nashr", nav Calendar, Directory, Campaigns, Bookings, then search, bell with count, avatar.
+Header: "Calendar", "November 2026", Today, arrows, segmented Day | Week | Month (active). Left column: mini calendar and filters.
+Month grid: columns Mon to Sun (Sat, Sun lightly shaded as weekend), rows for the weeks of 2, 9, 16, 23 and 30 Nov. Each day cell shows the date and up to three compact event chips with icon and price, then "+5 more": e.g. "⚡ Khaleej Times · Takeover · AED 9,000", "🔨 Skyline FM · 3 breaks from AED 3,800", "🔨 Dubai One TV · Market Open". Week-long print items as a bar across the week: "Gulf News · Full page · Auction · AED 22,500".
+Small legend at the bottom: gavel icon Auction, lightning icon Quick sale, dot colours for You lead / Outbid / Closes soon.

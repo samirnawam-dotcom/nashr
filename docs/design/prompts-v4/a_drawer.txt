@@ -1,0 +1,8 @@
+Buyer bid drawer in Nashr for a single radio ad break. Full-height right drawer (560px) over the buyer Week calendar dimmed behind it. Premium, calm, spacious.
+Buyer top bar (identical on all buyer screens): logo "Nashr", nav Calendar, Directory, Campaigns, Bookings, then search, bell with count, avatar.
+Drawer header: outlet logo "SFM", "Skyline FM · Morning Markets", "Break 2 · Mon 9 Nov 2026 · 07:15 · 30 seconds", tag with gavel icon "Auction", close icon. Line: "● Bidding closes Wed 4 Nov, 18:00 (Dubai time)".
+Price grid (calm, no heavy boxes): Starting price AED 3,500 · Current top bid AED 4,200 (3 bids, bidders anonymous) · Minimum next bid AED 4,326 (+3%) · Buy now AED 5,500 ("Request to book, the station must accept").
+"Your bid": amount input "AED 4,326". Below it an "Auto-bid" toggle (on) with a "Maximum bid" input "AED 5,000" and helper "We'll raise your bid in 3% steps when you're outbid, up to your maximum. You're only committed if the station accepts."
+"Booking brief" with all fields: Advertiser or brand, Industry, What the ad will say (0/280), Creative language (Arabic, English, Bilingual), Landing page link, Creative upload or "Creative to follow", Notes for the station ("Emails and phone numbers are not allowed").
+Payment line: "Visa •••• 4242 · verified · You'll be asked to pay once the station accepts."
+Sticky footer: primary "Place bid AED 4,326", secondary "Request at AED 5,500". No suggested bid and no recent winning prices.

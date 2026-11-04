@@ -1,0 +1,6 @@
+Directory in Nashr, LIST view (with a list/grid toggle), for planning media in the UAE. Premium, calm, spacious.
+Buyer top bar (identical on all buyer screens): logo "Nashr", nav Calendar, Directory, Campaigns, Bookings, then search, bell with count, avatar.
+Header: "Directory", "UAE media outlets", right: list/grid toggle (list active), "Add to plan" counter "Plan: 4 outlets · AED 182,000 of AED 300,000".
+Left filters: Channel (Print, Digital, Radio, TV, Podcast — no DOOH), Sector, Language, Tier, Sale type (Auction, Quick sale). Country is UAE only (no Saudi Arabia).
+List rows (roomy, 72px), each with: outlet logo or initials fallback (e.g. a real-looking logo for Gulf News, initials "KT" for Khaleej Times), name with Arabic name, channels, audience estimate, price range for the main placement with a label "Publisher's rate" or "Estimate, unconfirmed", sale type tags with icons (gavel Auction / lightning Quick sale), and an action: "Book slots" for bookable outlets, "Request quote" for others. No "On Nashr" badges, no ratings, no response times.
+Rows: Gulf News, Khaleej Times, Skyline FM, Dubai One TV, Arabian Business, The Majlis Podcast, Al Bayan, The National.

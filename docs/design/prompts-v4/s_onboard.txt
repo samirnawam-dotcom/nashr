@@ -1,0 +1,5 @@
+Publisher onboarding in Nashr, a calm step-by-step setup after the access call. Premium, calm, spacious.
+Simple top bar: logo "Nashr", "Set up your outlet", "Step 3 of 5", Help.
+Left: vertical steps with checkmarks: 1 Company details ✓ (legal name, trade licence, TRN, "VAT-registered: Yes/No"), 2 Logo and profile ✓, 3 Rate card (current), 4 Payouts with Stripe, 5 Review and go live.
+Main (step 3, Rate card): "Upload your rate card" with a drag-and-drop area for CSV/XLSX and a "Download template" link. Below, a preview table of the uploaded file: Placement, Channel, Days, Time / break, Length, Starting price, Sale type; 12 rows parsed, 2 rows flagged with plain errors ("Row 7: end time must be after start time", "Row 11: price missing"). Buttons "Fix in table" and "Continue".
+Side card: "Sectors you accept": chips Banking, Real estate, Retail, Technology, Hospitality; field "Can't find your sector? Request a new one" (note: Nashr reviews new sectors). Logo preview with initials fallback "SFM".

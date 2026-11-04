@@ -1,0 +1,6 @@
+Buyer payment confirmation in Nashr after the publisher accepted. Premium, calm, spacious.
+Buyer top bar (identical on all buyer screens): logo "Nashr", nav Calendar, Directory, Campaigns, Bookings, then search, bell with count, avatar.
+Breadcrumb Bookings › Order NSH-2026-000187. Title "Confirm payment". Green line: "● Gulf News accepted your bid. Please pay by Thu 5 Nov, 14:00."
+Left: order summary: outlet logo "GN", Gulf News · Full page · Week of 9 Nov 2026, tag with gavel icon "Auction". Rows: Order NSH-2026-000187 · Material deadline 5 Nov, 18:00 · Run date Mon 9 Nov · Specs 380 × 260 mm, PDF/X-1a. No circulation audit claims.
+Right: payment card: Price AED 76,000.00 · VAT 5% (charged by Gulf News) AED 3,800.00 · Total AED 79,800.00. Note: "You get a payment receipt from Nashr and a tax invoice from Gulf News." Saved cards (Visa •••• 4821 default, Mastercard •••• 9104), "Add card". Primary "Pay AED 79,800". Helper: "Your bank may ask you to confirm. The money is held securely and released to Gulf News only after you approve proof that the ad ran."
+Three quiet notes at the bottom: "You pay only after acceptance", "Tax invoice from the publisher", "Released after you approve proof". Links: Cancellation policy, Terms.

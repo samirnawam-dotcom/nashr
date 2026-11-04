@@ -58,6 +58,16 @@ Nashr is a B2B marketplace in the UAE where media buyers bid on and book adverti
 - Plain business English; no jargon such as "guardrails", "headroom", "broker".
 
 ## Never
+- UAE weekend is SATURDAY and SUNDAY. UAE working week Monday to Friday. Never mark Friday as weekend in the UAE.
+- Sale type label + icon, identical everywhere: "Auction" with a gavel icon; "Quick sale" with a lightning icon. Show it on every slot, card and placement.
+- Outlet logos: show the publisher's logo; when missing, show initials in a neutral square. Never stock photos.
+- Do not show data Nashr doesn't have yet: no suggested bid, no recent winning prices, no response time, no on-time %, no "Trusted publisher" badge, no star ratings.
+- Only say "On Nashr" for outlets that signed; otherwise say nothing or "Request quote". No Saudi Arabia and no DOOH anywhere in the UAE launch screens.
+- Name the booking document "Order" (e.g. "Order NSH-2026-000187"), never "insertion order" or "IO".
+- Payment copy: "You'll be asked to pay once the publisher accepts." Never imply an automatic charge.
+- Invoices: buyers get a payment receipt from Nashr and a tax invoice from the publisher (uploaded by the publisher or generated in the publisher's name and TRN). Never claim audits such as "BPA audited".
+- Calendar behaves like Google Calendar: Day, Week and Month views with a segmented switch; time labels down the side; whole-day or whole-week items (print editions, digital days) in an all-day lane at the top of each day.
+- Radio and TV ad breaks are individual slots with exact time and length ("Break 2 · 09:30 · 30s"); podcasts show the position (Pre-roll, Mid-roll, Post-roll) and episode date.
 - Never invent legal, regulatory or certification claims: no "regulated", "licensed", "Central Bank", "UAE Media Council/NMC", "DDA", "certified", "guarantee", "100% protection". No invented company legal names, licence numbers or tax numbers (use "TRN on file" instead). No testimonials or quotes from named people. No launch dates for KSA.
 - Do not use the word "escrow". Say "payment secured" and "held securely until you approve the proof". Payments are by card only (Stripe); never show bank transfer or wire options.
 - Payment, fee and VAT wording: buyers see price, 5% VAT (when the publisher is VAT-registered) and total; never a Nashr fee line.

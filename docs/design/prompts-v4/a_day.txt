@@ -1,0 +1,6 @@
+Buyer calendar in Nashr, DAY view, like Google Calendar's day view with several calendars side by side. Premium, calm, spacious.
+Buyer top bar (identical on all buyer screens): logo "Nashr", nav Calendar, Directory, Campaigns, Bookings, then search, bell with count, avatar.
+Header: "Calendar", "Monday 9 Nov 2026", Today, arrows, segmented Day (active) | Week | Month. Left column: mini month calendar and the same channel / sale type / outlet filters.
+Main area: time labels every half hour from 06:00 to 12:00 down the left; one column per outlet (Skyline FM, Dubai One TV, Gulf News Radio 92, The Majlis Podcast). All-day lane at the top for print/digital: "Gulf News · Full page · Mon 9 Nov edition · Auction · AED 22,500".
+Each ad break is its own slot block at its exact time: Skyline FM "Break 1 · 06:45 · 30s · AED 3,800", "Break 2 · 07:15 · 30s · AED 4,200 ● 3 bids", "Break 3 · 07:45 · 30s", "Break 4 · 08:15 · 30s"; plus a long faint background band for the programme "Morning Markets 06:30–09:00" with options "Any break · AED 3,500" and "All 4 breaks · package · AED 15,000". Dubai One TV "Break 1 · 10:10 · 30s · Quick sale · AED 12,000". The Majlis Podcast "Episode 42 · Pre-roll / Mid-roll / Post-roll".
+Gavel icon = Auction, lightning icon = Quick sale on every block. Clicking a block opens the bid drawer (not shown).

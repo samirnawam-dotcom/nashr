@@ -1,0 +1,6 @@
+Seller dashboard in Nashr for Skyline FM. Premium, calm, spacious.
+Seller top bar (identical on all seller screens): logo "Nashr" with small "Seller" tag, compact outlet switcher with logo "Skyline FM ▾", nav Dashboard, Calendar, Inbox (2), Deals, Earnings, Rate card, bell, avatar. (Dashboard active)
+Header: "Good morning, Skyline FM", "November 2026".
+KPI row, calm figures: Net earnings this month AED 84,200 (+14%), Gross sales AED 112,500, Deals completed 12, Average sale price AED 4,350 per break.
+Two columns: left "Earnings" line chart Jun–Nov 2026 and a "Payouts" list: Next payout Mon 9 Nov · AED 18,400 · Stripe ● Verified; recent payouts with dates and amounts; link "Monthly statement (CSV)". Right "Needs your action (4)": Buy-now request · Break 2 Mon 07:15 · reply within 22h; Auction closed below your reserve · decide in 19h; Creative to approve · Drive Home Tue; Proof due tomorrow · Morning Markets Fri. Each with a quiet "Open".
+Below: "Upcoming this week": list of booked breaks with time, buyer company, amount and status (Payment secured, Creative approved, Proof due).

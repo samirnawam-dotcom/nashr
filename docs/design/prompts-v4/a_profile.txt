@@ -1,0 +1,7 @@
+Outlet profile in Nashr for the radio station Skyline FM. Premium, calm, spacious, no photos.
+Buyer top bar (identical on all buyer screens): logo "Nashr", nav Calendar, Directory, Campaigns, Bookings, then search, bell with count, avatar.
+Header: large logo (initials "SFM" fallback), "Skyline FM", tags Radio · English · Dubai, short description, audience "About 450,000 weekly listeners (publisher estimate)". Buttons Share, Save. No ratings, no response time, no on-time %.
+Section "Programmes and breaks": cards for "Morning Markets · Mon–Fri 06:30–09:00" listing its breaks as bookable slots: Break 1 06:45 30s from AED 3,800, Break 2 07:15 30s from AED 4,200, Break 3 07:45 30s, Break 4 08:15 30s; plus "Any break in this programme · AED 3,500" and "Package · all 4 breaks · AED 15,000". Each with gavel Auction or lightning Quick sale icon tag. Second card "Drive Home · Mon–Fri 16:00–19:00".
+Section "Upcoming airings": a compact week strip Mon 9 – Sun 15 Nov (Sat/Sun weekend, off-air), with available breaks per day.
+Section "Specs and deadlines": ad length 30s, audio WAV/MP3, creative due 2 days before air, bidding closes 5 days before air.
+Right sticky card: "From AED 3,500 per break", primary "See slots in calendar", note "You'll be asked to pay once the station accepts. Money is held until proof."

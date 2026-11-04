@@ -1,0 +1,4 @@
+"Request access" page in Nashr, simple and premium. Minimal top bar: logo "Nashr", "Sign in".
+Centered card (520px): title "Request access", subtitle "Nashr is invite-only. Tell us who you are and we'll call you to set up your account."
+Fields only: Full name, Work email (helper: "Business email only"), Phone number with +971 prefix, Your role (dropdown: Media buyer, Planner, Marketing manager, Publisher sales, Other), Company. Company type as three choices: Brand, Agency, Media outlet.
+Primary "Request access". Small text: "We reply within 2 business days." No other fields.

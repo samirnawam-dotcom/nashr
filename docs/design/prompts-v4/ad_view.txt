@@ -1,0 +1,5 @@
+Admin viewing a publisher account in Nashr, view-only. Premium, calm, spacious.
+Admin shell (identical on all admin screens): left sidebar with logo "Nashr" + "Admin" tag: Overview, Accounts, Access requests (3), Publishers, All deals, Disputes (1), Funds, Payouts, Audit log, Settings; admin name with "2FA on" at the bottom; slim top bar with search, bell, help. (Accounts active)
+A clear amber banner across the top of the content: "Viewing Skyline FM as admin · view only · this session is recorded in the audit log" with a button "Exit view".
+Inside, show the publisher's own Dashboard as they see it (earnings figures, needs your action list, upcoming bookings) but with all action buttons disabled and a small lock icon.
+Right side panel "Account": logo initials "SFM", status Active, commission rate 12% (founding rate) with "Change in Settings", Stripe ● Verified, onboarding complete, VAT-registered Yes, contacts hidden for buyers, "Recent activity" timeline (Accepted bid · 2h ago, Uploaded proof · yesterday), link "Open audit log for this account".

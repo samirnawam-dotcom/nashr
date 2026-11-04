@@ -1,0 +1,5 @@
+Seller calendar in Nashr for Skyline FM, regular WEEK view like Google Calendar. Premium, calm, spacious.
+Seller top bar (identical on all seller screens): logo "Nashr" with small "Seller" tag, compact outlet switcher with logo "Skyline FM ▾", nav Dashboard, Calendar, Inbox (2), Deals, Earnings, Rate card, bell, avatar.
+Header: "Calendar", "Week of 9–15 Nov 2026", segmented "Calendar | Programme view" (Calendar active), and a second segmented Day | Week (active) | Month, Today, arrows, primary "Add placement".
+Grid: columns Mon 9 to Sun 15 (Sat, Sun shaded as weekend), time labels 06:00–20:00 down the left side. Each ad break is its own event at its real time: "Morning Markets · Break 1 · 06:45 · AED 3,800 ● 2 bids", "Break 2 · 07:15 · ● Awaiting your decision", "Break 3 · 07:45 · ● Secured · Northwind Fintech", "Break 4 · 08:15 · Open"; "Drive Home · Break 1 · 16:20 · Quick sale ● Interest received"; Fri "Break 2 · Blocked". Gavel icon for Auction, lightning icon for Quick sale on every event.
+Selecting events shows a slim floating bar: "3 breaks selected · Change price · Block · Copy to next weeks · Set as quick sale · Clear".
