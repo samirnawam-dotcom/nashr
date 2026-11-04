@@ -43,7 +43,11 @@ Brief scenarios now covered: 1–13, 21–26. Decisions made while building:
 - PDF rendering of documents comes with the screens (E); the stored row is the record.
 
 ## Phase D: API, auth, permissions
-- [ ] D1 Invite-only access request, login, sessions, 2FA admin. D2 Role scoping on every route + permission matrix test. D3 Admin view-only account access (audited).
+- [x] D1 Invite-only access request, login, sessions, 2FA admin. D2 Role scoping on every route + permission matrix test. D3 Admin view-only account access (audited).
+
+### Checkpoint D: API ✅ (80 tests)
+`npm start` runs the API plus the sweeper and money-ops jobs every minute; it refuses to start in production with the fake provider.
+Still open from D: sending emails (invite links, notifications) needs the email service chosen (SPEC 10); the rate limiter is per process.
 
 ## Phase E: Screens (after Figma approval)
 - [ ] E1 Buyer: calendar day/week/month, bid drawer, payment, bookings, directory, outlet profile.

@@ -2,6 +2,7 @@ import { type Db, one } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { setting } from '../core/settings.js'
 import { atLocal, type Market } from '../core/market.js'
+import { MarketError } from '../marketplace/market.js'
 
 export type Break = { label: string; at?: string; seconds?: number }
 export type PlacementInput = {
@@ -18,7 +19,7 @@ export type PlacementInput = {
 export async function checkDeadlines(db: Db, p: Pick<PlacementInput, 'creativeLeadHours' | 'closeLeadHours'>, at: Date) {
   const need = p.creativeLeadHours + await setting<number>(db, 'seller_window_hours', at) + await setting<number>(db, 'payment_window_hours', at)
   if (p.closeLeadHours < need)
-    throw new Error(`Bidding must close at least ${need / 24} days before air so there is time to accept, pay and deliver the creative.`)
+    throw new MarketError(`Bidding must close at least ${need / 24} days before air so there is time to accept, pay and deliver the creative.`)
 }
 
 export async function createPlacement(db: Db, p: PlacementInput, actor: string, at: Date): Promise<string> {
@@ -43,7 +44,7 @@ const hours = (t: Date, h: number) => new Date(t.getTime() - h * 3_600_000)
 export async function generateSlots(db: Db, placementId: string, fromDate: string, days: number, at: Date): Promise<number> {
   const p = await one(db, `select p.*, o.market, c.payouts_enabled from placements p join outlets o on o.id = p.outlet_id
                            join companies c on c.id = o.company_id where p.id = $1`, [placementId])
-  if (!p.payouts_enabled) throw new Error('Slots can go live once your payout account is verified.') // brief section 11
+  if (!p.payouts_enabled) throw new MarketError('Slots can go live once your payout account is verified.') // brief section 11
   const m = p.market as Market
   const breaks: Break[] = p.breaks
   let made = 0

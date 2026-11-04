@@ -5,9 +5,11 @@
   "scripts": {
     "db:migrate": "tsx server/core/migrate.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start": "tsx server/main.ts"
   },
   "dependencies": {
+    "fastify": "^5.12.8",
     "pg": "^8.23.1"
   },
   "devDependencies": {
