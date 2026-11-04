@@ -279,3 +279,43 @@ Engineering consequences:
 - Invoice data model: `invoices` + `invoice_lines` + `credit_notes`, immutable once issued, each with issuer, recipient, both TRNs, tax category, currency, amounts; generated from the ledger, never typed by hand.
 - VAT rate, timing, and which documents are tax documents are all settings with history (tax rules can change).
 - Stripe charge amount = price + media VAT; card processing cost now applies to the VAT-inclusive total.
+
+## 12. Owner design feedback (Omar Siyam, 3 November 2026)
+
+Source: *Nashr Design Direction: Feedback*. These override earlier sections where they conflict.
+
+### 12.1 Rule and scope changes
+| Topic | Decision | Replaces / changes |
+|---|---|---|
+| **UAE weekend** | **Saturday–Sunday** (KSA stays Friday–Saturday). Working-day timers use it. | Design drafts that showed Fri–Sat for the UAE |
+| **Invoicing** | Nashr invoices **only the publisher**, for its commission. **VAT on Nashr's fee is switchable** (off until Nashr is VAT-registered). The **publisher invoices the buyer** for the media: the publisher **uploads its own invoice**, or Nashr **generates it in the publisher's name and TRN**. Buyers get a **payment receipt** from Nashr; publishers get a **payout statement**. | SPEC 11.2 rows 3–4: Nashr no longer issues the media invoice "on behalf" by default; it is upload-or-generate per publisher |
+| **Ad breaks are slots** | Each ad break in a programme is its own bookable slot with its exact time and length (e.g. "Break 2 · 09:30 · 30s"). Sellers can also offer **"any break in this programme"** and a **package of every break**. | One slot per programme airing (brief section 5) |
+| **Podcasts** | Same idea: slot = episode date + position (**pre-roll, mid-roll, post-roll**). | One slot per episode |
+| **Deadlines must fit** | Bidding must close early enough for the seller's 24h decision, the buyer's payment window and the creative deadline. Rule: **closing time ≤ creative deadline − seller window − payment window** (with defaults: creative due 2 days before air, so bidding closes at least **5 days** before air for radio/TV). The placement form computes and enforces it. | Brief defaults of 2 days for radio/TV |
+| **Auto-bid** | **Needed for launch** (max bid; system raises in 3% steps). | Plan item 12a "can wait" |
+| **View publisher and buyer accounts** | Admin **view-only** access to any account, every view logged in the audit log. | Plan item 36a "can wait" |
+| **Commission per publisher** | Editable in **Settings** (founding rates differ per publisher), with history. | Publishers tab only |
+| **Hide data we don't have** | No suggested bid, recent winning prices, response time, on-time %, or "Trusted publisher" badge until real data exists. | Design drafts; candidate ideas |
+| **"On Nashr"** | Only for outlets that have **signed**. Real outlet names and stats are placeholders. | Directory labels |
+| **Directory** | Keep it (list and grid). **Remove Saudi Arabia and DOOH** for now. | — |
+| **Logos** | Publishers upload a logo at onboarding; shown on profile, directory, inbox, bookings and admin; **initials as fallback**. | — |
+| **Sectors** | A publisher can **add a sector** if it isn't in the list (proposed: request, admin approves, to keep the list clean). | — |
+| **Request access** | Fewer fields: **name, work email, phone number, role, company**. Onboarding happens on a call. | Brief section 2 form (trade licence, spend band etc. move to onboarding) |
+| **Naming** | "Insertion order" shown to users as **"Order"** (e.g. "Order NSH-2026-000187"). Payment copy: **"You'll be asked to pay once the publisher accepts."** Remove audit-body claims such as "BPA worldwide audited". | — |
+| **Calendar** | Works **like Google Calendar for buyers and sellers**: **Day** view by hour / half-hour, **Week** view with days and time slots, **Month** view with the 4 weeks. Print and digital items that cover a whole day or week sit in an all-day lane at the top, as Google does. | Week-only grid |
+| **Auction vs quick sale** | One label + icon used everywhere (calendar, directory, outlet profile, seller calendar): **Auction** (gavel icon) and **Quick sale** (lightning icon). | — |
+| **Seller calendar** | Keep the programme view **and** add the regular calendar view. | — |
+| **Missing screens** | **Publisher onboarding** (incl. rate card upload) and **seller dashboard** (earnings). | — |
+| **Landing page** | Finalise after branding; leave KSA off the landing page for now. | — |
+| **App shell** | Identical top nav and shell on every screen. | — |
+
+### 12.2 Money maths after the change
+- Buyer pays: price + media VAT (5% if the publisher is VAT-registered).
+- Nashr fee: commission % of the price excluding VAT; **VAT on the fee only when "Nashr VAT-registered" is on** (setting, with history).
+- Payout = price + media VAT − fee − (VAT on fee if on).
+- Example, 12%, VAT-registered publisher, Nashr not yet registered: buyer pays 79,800; fee 9,120; payout **70,680**. Once Nashr registers: payout 70,224.
+
+### 12.3 Questions back to the owner
+1. Calendar week view: "time slots on the right-hand side". We read this as Google's layout (time labels down the side, days across). Confirm, or does he mean right-to-left?
+2. "Any break" and "package of every break": priced by the seller per option, sold as one booking with one proof per break?
+3. Directory hosting cost: the directory is a few thousand text rows, which costs almost nothing to store. Recommendation: keep it.

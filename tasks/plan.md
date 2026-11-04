@@ -179,3 +179,28 @@ Can wait, if wanted later: about 6 developer-weeks (items marked W), plus e-invo
 - Accountant: conditions for invoicing on publishers' behalf; VAT on cancellation fees.
 
 Detailed per-task acceptance criteria go into `tasks/todo.md` once the owner picks an option.
+
+
+---
+
+## Changes after the owner's design feedback (3 November 2026)
+
+See SPEC section 12. Effect on the launch estimate (developer-weeks):
+
+| Change | Status | Weeks |
+|---|---|---|
+| Calendar like Google Calendar (day / week / month) for buyers and sellers, with an all-day lane | L | +2.5 |
+| Ad breaks as individual slots, "any break" option, package of every break; podcast pre/mid/post-roll | L | +2.0 |
+| Auto-bid (was 12a, can wait) | L | +1.0 |
+| Admin view-only access to accounts, audited (was 36a, can wait) | L | +0.5 |
+| Invoicing: publisher uploads its own invoice or Nashr generates it in the publisher's name; VAT on Nashr fee switchable | L | +0.5 |
+| Publisher onboarding flow (company, TRN, VAT status, logo, Stripe, rate card upload, sectors) | L | +0.5 |
+| Logos with initials fallback; sector requests | L | +0.5 |
+| Deadline rule computed and enforced in the placement form | L | +0.25 |
+| Hide data-dependent features (suggested bid, winning prices, response stats) | L | −0.25 |
+| **Net change** | | **+7.5** |
+| Design phase (more screens: calendar views, onboarding, dashboard, breaks) | | **+1.0** design-week |
+
+**Revised totals (needed for launch):** Full rebuild **about 65 developer-weeks + 7 design-weeks**; partial rebuild **about 60.5 + 3.5**. One developer: about 15 months (full) / 14 months (partial). Two developers: about 8–9 months / 7.5–8.5 months. Still ±20%.
+
+"Can wait" list now: watchlist, flights, competitive separation, client report, remaining founder reports, directory bulk import, Trusted publisher badge and price suggestions (need data).
