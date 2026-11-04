@@ -299,7 +299,7 @@ Source: *Nashr Design Direction: Feedback*. These override earlier sections wher
 | **"On Nashr"** | Only for outlets that have **signed**. Real outlet names and stats are placeholders. | Directory labels |
 | **Directory** | Keep it (list and grid). **Remove Saudi Arabia and DOOH** for now. | — |
 | **Logos** | Publishers upload a logo at onboarding; shown on profile, directory, inbox, bookings and admin; **initials as fallback**. | — |
-| **Sectors** | A publisher can **add a sector** if it isn't in the list (proposed: request, admin approves, to keep the list clean). | — |
+| **Sectors** | A publisher can **add its own sector** freely; it goes **live straight away**, no admin approval (owner answer, 4 Nov). | — |
 | **Request access** | Fewer fields: **name, work email, phone number, role, company**. Onboarding happens on a call. | Brief section 2 form (trade licence, spend band etc. move to onboarding) |
 | **Naming** | "Insertion order" shown to users as **"Order"** (e.g. "Order NSH-2026-000187"). Payment copy: **"You'll be asked to pay once the publisher accepts."** Remove audit-body claims such as "BPA worldwide audited". | — |
 | **Calendar** | Works **like Google Calendar for buyers and sellers**: **Day** view by hour / half-hour, **Week** view with days and time slots, **Month** view with the 4 weeks. Print and digital items that cover a whole day or week sit in an all-day lane at the top, as Google does. | Week-only grid |
@@ -315,7 +315,12 @@ Source: *Nashr Design Direction: Feedback*. These override earlier sections wher
 - Payout = price + media VAT − fee − (VAT on fee if on).
 - Example, 12%, VAT-registered publisher, Nashr not yet registered: buyer pays 79,800; fee 9,120; payout **70,680**. Once Nashr registers: payout 70,224.
 
-### 12.3 Questions back to the owner
+### 12.3 Questions back to the owner (answered 4 November 2026)
 1. Calendar week view: "time slots on the right-hand side". We read this as Google's layout (time labels down the side, days across). Confirm, or does he mean right-to-left?
 2. "Any break" and "package of every break": priced by the seller per option, sold as one booking with one proof per break?
 3. Directory hosting cost: the directory is a few thousand text rows, which costs almost nothing to store. Recommendation: keep it.
+
+**Answers (4 November 2026):**
+1. Calendar layout is fine as designed (Google-style).
+2. Yes: the seller sets a separate price for "any break" and for the "all breaks" package.
+3. New sectors go live straight away; publishers choose their own sectors freely.
