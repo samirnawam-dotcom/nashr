@@ -6,8 +6,8 @@ Every task ships with its tests. Verify: `npm test` (needs Postgres, see README)
 
 ## Phase A: Core engine (server, no UI)
 - [x] A1 Project scaffold: TypeScript, Fastify, Kysely, Vitest, migrations, test database. Verify: `npm test` runs.
-- [ ] A2 Money: minor units, fee/VAT maths (SPEC 12.2, Nashr VAT switch), FX stamp. Verify: worked examples pinned.
-- [ ] A3 Settings with history + append-only audit log. Verify: history kept, audit rows not updatable.
+- [x] A2 Money: minor units, fee/VAT maths (SPEC 12.2, Nashr VAT switch), FX stamp. Verify: worked examples pinned.
+- [x] A3 Settings with history + append-only audit log. Verify: history kept, audit rows not updatable.
 - [ ] A4 Catalog core: companies, outlets, placements, breaks, slot generation (breaks as slots, any-break and package options, podcast positions). Verify: generation tests, UAE weekend.
 - [ ] A5 Deadline rule: bidding close must leave room for seller decision, payment and creative. Verify: rejects too-late closing.
 - [ ] A6 Bidding: floor, 3% step, slot lock, auto-bid (proxy), buy-now request, quick-sale interest. Verify: 50 parallel bids give one top bid.
