@@ -3,10 +3,20 @@ import { audit } from '../core/audit.js'
 import { setting, ratesFor } from '../core/settings.js'
 import { minNextBid } from '../core/money.js'
 import { openDeal, transition } from './deals.js'
+import { briefProblems } from '../fulfilment/brief.js'
 
 export class MarketError extends Error {}
 
 const lockSlot = (db: Db, id: string) => one(db, `select * from slots where id = $1 for update`, [id])
+
+/** A brief is required with a buyer's first bid, request or interest on a slot (brief section 10). */
+async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown) {
+  const has = await db.query(`select 1 from bids where slot_id = $1 and buyer_id = $2 and brief is not null limit 1`, [slot.id, buyerId])
+  if (has.rowCount && brief == null) return
+  const { channel } = await one(db, `select o.channel from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  const problems = briefProblems(brief as any, channel)
+  if (problems.length) throw new MarketError(problems.join(' '))
+}
 
 async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; amount: number; max?: number | null; status?: string; brief?: unknown }, at: Date) {
   const { bid_seq } = await one(db, `update slots set bid_seq = bid_seq + 1 where id = $1 returning bid_seq`, [slot.id])
@@ -23,6 +33,7 @@ async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; 
 export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amount: number; maxAmount?: number; brief?: unknown }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || slot.sale_type !== 'auction' || at >= slot.closes_at) throw new MarketError('Bidding is closed for this slot.')
+  await requireBrief(db, slot, a.buyerId, a.brief)
   const step = await setting<number>(db, 'min_step_bp', at)
   const max = Math.max(a.maxAmount ?? a.amount, a.amount)
 
@@ -63,6 +74,7 @@ export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string
   if (slot.status !== 'open' || !slot.buy_now_price || at >= slot.closes_at) throw new MarketError('Buy now is not available for this slot.')
   const open = await db.query(`select 1 from deals where slot_id = $1 and buyer_id = $2 and kind = 'buy_now' and status = 'awaiting_seller'`, [slot.id, a.buyerId])
   if (open.rowCount) throw new MarketError('You already have a buy-now request on this slot.')
+  await requireBrief(db, slot, a.buyerId, a.brief)
   const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'buy_now', amount: slot.buy_now_price, brief: a.brief }, at)
   return openDeal(db, slot, bid, 'buy_now', `buyer:${a.buyerId}`, at)
 }
@@ -71,6 +83,7 @@ export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string
 export async function showInterest(db: Db, a: { slotId: string; buyerId: string; amount?: number; brief?: unknown }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || slot.sale_type !== 'quick_sale') throw new MarketError('This slot is not a quick sale.')
+  await requireBrief(db, slot, a.buyerId, a.brief)
   const amount = a.amount ?? slot.starting_price
   if (amount < slot.starting_price) throw new MarketError(`Offers cannot be below ${slot.starting_price / 100}.`)
   return insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief }, at)

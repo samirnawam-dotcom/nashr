@@ -106,6 +106,33 @@ async function refund(db: Db, deal: any, amount: number, cost: 'buyer' | 'seller
   await audit(db, 'system', 'refund.initiated', 'deal', deal.id, { toBuyer, cost }, at)
 }
 
+/** Partial refund the buyer accepted on a reported issue (seller's offer): the seller bears the card cost. */
+export async function partialRefund(db: Db, deal: any, amount: number, at: Date) {
+  const held = await heldFor(db, deal.id, deal.currency)
+  if (!amount || amount <= 0 || amount >= held) throw new MarketError('Enter a partial refund between zero and the amount paid.')
+  await refund(db, deal, amount, 'seller', at)
+}
+
+/**
+ * The buyer never sent the creative (brief section 12). The seller chooses: run a placeholder and be paid in full,
+ * or release the slot, refunding the buyer minus the cancellation fee.
+ */
+export async function creativeMissed(db: Db, dealId: string, sellerId: string, choice: 'placeholder' | 'release', at: Date) {
+  const deal = await one(db, `select d.*, s.creative_due_at from deals d join slots s on s.id = d.slot_id where d.id = $1 for update of d`, [dealId])
+  if (deal.seller_id !== sellerId) throw new MarketError('This booking is not yours.')
+  if (deal.status !== 'secured' || at < deal.creative_due_at) throw new MarketError('This choice is available once the material deadline has passed.')
+  const approved = await db.query(`select 1 from creatives where deal_id = $1 and status = 'approved'`, [dealId])
+  if (approved.rowCount) throw new MarketError('The creative was approved.')
+  if (choice === 'placeholder') {
+    await db.query(`update deals set placeholder = true where id = $1`, [dealId])
+    return audit(db, `seller:${sellerId}`, 'creative.missed_placeholder', 'deal', dealId, null, at)
+  }
+  const held = await heldFor(db, deal.id, deal.currency)
+  const keepPrice = pct(deal.amount, await setting(db, 'cancel_fee_bp', at))
+  await transition(db, dealId, 'creative_missed', `seller:${sellerId}`, at, 'The buyer did not supply the creative')
+  await refund(db, deal, held - keepPrice - pct(keepPrice, deal.media_vat_bp), 'buyer', at)
+}
+
 /** Buyer approves the proof, or the review window passes (auto_release). */
 export async function approve(db: Db, dealId: string, actor: string, at: Date) {
   const deal = await transition(db, dealId, 'approve', actor, at)

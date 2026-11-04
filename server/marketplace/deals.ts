@@ -7,9 +7,9 @@ import { addWorkingDays, type Market } from '../core/market.js'
 export const TRANSITIONS: Record<string, Record<string, string>> = {
   awaiting_seller: { accept: 'awaiting_payment', decline: 'declined', expire: 'declined', supersede: 'declined' },
   awaiting_payment: { pay: 'secured', lapse: 'lapsed' },
-  secured: { submit_proof: 'in_review', cancel_by_buyer: 'cancelled', cancel_by_seller: 'cancelled', proof_missed: 'refunded' },
+  secured: { submit_proof: 'in_review', cancel_by_buyer: 'cancelled', cancel_by_seller: 'cancelled', creative_missed: 'cancelled', proof_missed: 'refunded' },
   in_review: { approve: 'released', auto_release: 'released', report_issue: 'issue_open' },
-  issue_open: { resolve: 'in_review', escalate: 'disputed' },
+  issue_open: { resolve: 'in_review', make_good: 'secured', partial_refund: 'released', escalate: 'disputed' },
   disputed: { release: 'released', refund: 'refunded', partial_refund: 'released', make_good: 'secured' },
   released: { paid_out: 'paid_out' },
 }
@@ -34,9 +34,9 @@ async function deadlineFor(db: Db, deal: any, status: string, at: Date): Promise
     case 'awaiting_payment': // ends at the creative deadline at the latest; buyers may upload creative from acceptance (SPEC 12.1)
       return earliest(hours(at, await setting(db, 'payment_window_hours', at)), slot.creative_due_at)
     case 'secured': // proof due N working days after the run (SPEC G10)
-      return addWorkingDays(db, slot.ends_at ?? slot.starts_at, await setting(db, 'proof_due_working_days', at), slot.market as Market)
+      return addWorkingDays(db, deal.make_good_at ?? slot.ends_at ?? slot.starts_at, await setting(db, 'proof_due_working_days', at), slot.market as Market)
     case 'in_review': return addWorkingDays(db, at, await setting(db, 'review_working_days', at), slot.market as Market)
-    case 'issue_open': return hours(at, 48)
+    case 'issue_open': return hours(at, await setting(db, 'issue_response_hours', at))
     default: return null
   }
 }

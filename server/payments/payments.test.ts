@@ -7,7 +7,7 @@ import { sweep } from '../marketplace/sweeper.js'
 import { FakeProvider } from './provider.js'
 import { approve, cancelByBuyer, cancelBySeller, confirmPayment, decideDispute, handleProviderEvent, reconcile, runMoneyOps } from './payments.js'
 import { balance, heldFor } from './ledger.js'
-import { AED, T, company, radio, reset, slot } from '../test/helpers.js'
+import { AED, BRIEF, T, company, radio, reset, slot } from '../test/helpers.js'
 
 const now = T('2026-11-01T08:00:00Z')
 const h = (t: Date, n: number) => new Date(t.getTime() + n * 3_600_000)
@@ -27,7 +27,7 @@ beforeEach(async () => {
 /** Buy-now request accepted by the seller: the buyer now owes AED 79,800 (76,000 + 5% VAT). */
 async function accepted(label = 'Break 2') {
   const s = await slot(p.placement, '2026-11-09', label)
-  const d = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer }, now))
+  const d = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: BRIEF }, now))
   await tx(c => accept(c, d.id, 'seller', now))
   return d.id as string
 }

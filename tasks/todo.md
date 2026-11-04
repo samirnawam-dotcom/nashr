@@ -33,7 +33,7 @@ Notes for B5 (real Stripe): record Stripe's own fees from balance transactions b
 without a working payout account must fail loudly to the admin (Payouts page) rather than stay pending.
 
 ## Phase C: Fulfilment and documents
-- [ ] C1 Booking brief + automatic checks. C2 Creative + change rounds (technical resubmits free). C3 Proof checklist per channel. C4 Report an issue → dispute → admin outcomes. C5 Pre-run check.
+- [x] C1 Booking brief + automatic checks. C2 Creative + change rounds (technical resubmits free). C3 Proof checklist per channel. C4 Report an issue → dispute → admin outcomes. C5 Pre-run check.
 - [ ] C6 Invoicing per SPEC 12.1: receipt, publisher invoice upload or generate, Nashr commission invoice, credit notes, payout statement, structured data.
 
 ## Phase D: API, auth, permissions

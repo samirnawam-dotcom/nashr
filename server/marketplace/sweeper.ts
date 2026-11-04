@@ -3,6 +3,8 @@ import { audit } from '../core/audit.js'
 import { ON_DEADLINE, transition } from './deals.js'
 import { afterNoGo, closeAuction, relist } from './market.js'
 import { onTimerEvent } from '../payments/payments.js'
+import { escalateIssue } from '../fulfilment/issues.js'
+import { requestPreRunChecks } from '../fulfilment/prerun.js'
 
 /**
  * One sweeper for every timer (SPEC 5.3). Each item is handled in its own transaction and claimed with
@@ -22,6 +24,7 @@ export async function sweep(at: Date, batch = 100) {
       if (!deal) return 0
       const event = ON_DEADLINE[deal.status]
       if (!event) { await c.query(`update deals set next_deadline_at = null where id = $1`, [deal.id]); return 1 }
+      if (event === 'escalate') { await escalateIssue(c, deal, 'system:timer', at); return 1 } // seller did not answer the issue in time
       const updated = await transition(c, deal.id, event, 'system:timer', at)
       if (event === 'expire' || event === 'lapse') await afterNoGo(c, updated, at)
       await onTimerEvent(c, updated, event, at)
@@ -29,6 +32,7 @@ export async function sweep(at: Date, batch = 100) {
     })
     if (!n || (handled += n) >= batch) break
   }
+  handled += await tx(c => requestPreRunChecks(c, at))
   await audit(pool, 'system:sweeper', 'sweeper.heartbeat', null, null, { handled }, at)
   return handled
 }
