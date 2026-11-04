@@ -10,16 +10,20 @@ Every task ships with its tests. Verify: `npm test` (needs Postgres, see README)
 - [x] A3 Settings with history + append-only audit log. Verify: history kept, audit rows not updatable.
 - [x] A4 Catalog core: companies, outlets, placements, breaks, slot generation (breaks as slots, any-break and package options, podcast positions). Verify: generation tests, UAE weekend.
 - [x] A5 Deadline rule: bidding close must leave room for seller decision, payment and creative. Verify: rejects too-late closing.
-- [ ] A6 Bidding: floor, 3% step, slot lock, auto-bid (proxy), buy-now request, quick-sale interest. Verify: 50 parallel bids give one top bid.
-- [ ] A7 Booking state machine + transition() + timeline + audit. Verify: allowed/blocked transitions table test.
-- [ ] A8 Sweeper: auction close, seller 24h, payment window, next-bid choice (2 rounds then relist), auto-release. Verify: clock-driven scenario tests (brief 2, 3, 4, 11).
+- [x] A6 Bidding: floor, 3% step, slot lock, auto-bid (proxy), buy-now request, quick-sale interest. Verify: 50 parallel bids give one top bid.
+- [x] A7 Booking state machine + transition() + timeline + audit. Verify: allowed/blocked transitions table test.
+- [x] A8 Sweeper: auction close, seller 24h, payment window, next-bid choice (2 rounds then relist), auto-release. Verify: clock-driven scenario tests (brief 2, 3, 4, 11).
 
-### Checkpoint A: core engine green, reviewed
+### Checkpoint A: core engine green, reviewed ✅ (33 tests)
+Decisions made while building (flag to owner if they disagree):
+- Relisting reopens the slot as a quick sale at its starting price.
+- An accepted "any break" holds only the package; the seller assigns the actual break during fulfilment (C1).
+- After an auction, the other bids stay valid until payment is secured; an accepted buy-now or quick sale that isn't paid is relisted.
 
 ## Phase B: Payments and money flow
 - [ ] B1 PaymentProvider interface + fake provider (Stripe test account not available yet).
 - [ ] B2 Ledger (double-entry) + reconciliation query.
-- [ ] B3 Charge on "Confirm payment", release + transfer, refunds (full/partial), cancellation rules.
+- [ ] B3 Charge on "Confirm payment", release + transfer, refunds (full/partial), cancellation rules. On payment secured: mark the slot's remaining bids not_selected.
 - [ ] B4 Webhook intake, idempotent.
 - [ ] B5 Stripe implementation (when the owner has a test account).
 

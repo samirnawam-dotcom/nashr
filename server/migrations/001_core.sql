@@ -103,7 +103,7 @@ create table slots (
   closes_at timestamptz not null,
   creative_due_at timestamptz not null,
   status text not null default 'open'
-    check (status in ('open', 'awaiting_seller', 'awaiting_choice', 'booked', 'blocked', 'unsold')),
+    check (status in ('open', 'awaiting_seller', 'awaiting_choice', 'booked', 'blocked', 'held', 'unsold')), -- held = taken by a booked package/break on the same airing
   round int not null default 0,
   choice_deadline_at timestamptz,
   bid_seq bigint not null default 0,
