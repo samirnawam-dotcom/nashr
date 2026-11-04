@@ -21,5 +21,7 @@ server/core/          db, money, settings (with history), audit log, market cale
 server/catalog/       placements and slot generation
 server/marketplace/   bidding, buy-now, quick sale, booking state machine, sweeper (all timers)
 server/payments/      provider interface (+ fake), ledger, charge, release, refunds, cancellations, disputes, webhooks
+server/fulfilment/    booking brief, creative, proof checklist, report an issue, pre-run check
+server/documents/     receipts, publisher invoices (generated or uploaded), commission invoices, credit notes, payout statement
 server/migrations/    SQL migrations
 ```

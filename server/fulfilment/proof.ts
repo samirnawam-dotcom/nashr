@@ -2,6 +2,8 @@ import { type Db, one } from '../core/db.js'
 import { notify } from '../core/notify.js'
 import { transition } from '../marketplace/deals.js'
 import { MarketError } from '../marketplace/market.js'
+import { setting } from '../core/settings.js'
+import { issueMediaInvoice } from '../documents/documents.js'
 
 // Proof required per channel (brief 12A-B). The seller cannot send proof until every item is there.
 export const PROOF_CHECKLIST: Record<string, { key: string; label: string }[]> = {
@@ -30,6 +32,8 @@ export async function submitProof(db: Db, a: { dealId: string; sellerId: string;
   await checkProof(db, d.id, a.items)
   await db.query(`insert into proofs (deal_id, items, note, submitted_at) values ($1, $2, $3, $4)`, [d.id, JSON.stringify(a.items), a.note ?? null, at])
   const deal = await transition(db, d.id, 'submit_proof', `seller:${a.sellerId}`, at)
+  const invoiced = await db.query(`select 1 from documents where deal_id = $1 and type = 'media_invoice'`, [d.id])
+  if (!invoiced.rowCount && await setting(db, 'media_invoice_timing', at) === 'run') await issueMediaInvoice(db, d.id, at)
   await notify(db, d.buyer_id, 'proof.ready', d.id, null, at)
   return deal
 }

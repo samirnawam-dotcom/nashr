@@ -34,7 +34,13 @@ without a working payout account must fail loudly to the admin (Payouts page) ra
 
 ## Phase C: Fulfilment and documents
 - [x] C1 Booking brief + automatic checks. C2 Creative + change rounds (technical resubmits free). C3 Proof checklist per channel. C4 Report an issue → dispute → admin outcomes. C5 Pre-run check.
-- [ ] C6 Invoicing per SPEC 12.1: receipt, publisher invoice upload or generate, Nashr commission invoice, credit notes, payout statement, structured data.
+- [x] C6 Invoicing per SPEC 12.1: receipt, publisher invoice upload or generate, Nashr commission invoice, credit notes, payout statement, structured data.
+
+### Checkpoint C: fulfilment and documents ✅ (73 tests)
+Brief scenarios now covered: 1–13, 21–26. Decisions made while building:
+- An uploaded publisher invoice is the publisher's to credit; Nashr notifies them with the amount instead of issuing it.
+- If the media invoice is due at the run and a refund happens first, only the part the publisher keeps is invoiced.
+- PDF rendering of documents comes with the screens (E); the stored row is the record.
 
 ## Phase D: API, auth, permissions
 - [ ] D1 Invite-only access request, login, sessions, 2FA admin. D2 Role scoping on every route + permission matrix test. D3 Admin view-only account access (audited).

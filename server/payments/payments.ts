@@ -6,6 +6,7 @@ import { transition } from '../marketplace/deals.js'
 import { MarketError } from '../marketplace/market.js'
 import { balance, heldFor, post } from './ledger.js'
 import type { ChargeResult, PaymentProvider } from './provider.js'
+import { issueCommissionInvoice, issueMediaInvoice, issueReceipt, reissueAfterRefund } from '../documents/documents.js'
 
 const ratesOf = (d: any) => ({ commissionBp: d.commission_bp, mediaVatBp: d.media_vat_bp, feeVatBp: d.fee_vat_bp })
 const lockDeal = (db: Db, id: string) => one(db, `select * from deals where id = $1 for update`, [id])
@@ -61,6 +62,8 @@ async function secure(db: Db, op: any, at: Date) {
     return audit(db, 'system', 'payment.late_refunded', 'deal', deal.id, { ref: op.ref }, at)
   }
   await transition(db, deal.id, 'pay', 'buyer', at, op.ref)
+  await issueReceipt(db, deal.id, op.amount, op.ref, at)
+  if (await setting(db, 'media_invoice_timing', at) === 'payment') await issueMediaInvoice(db, deal.id, at)
   // Payment secured: the other bids on this slot are no longer needed (SPEC 11.1 #7).
   await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid')`, [deal.slot_id])
 }
@@ -86,6 +89,7 @@ async function settle(db: Db, deal: any, kept: number, at: Date) {
   const owed = await balance(db, `seller_receivable:${deal.seller_id}`, deal.currency)
   const deduct = Math.min(Math.max(owed, 0), payout)
   await post(db, [{ debit: seller, credit: `seller_receivable:${deal.seller_id}`, amount: deduct, dealId: deal.id, ref: 'deducted from payout' }], deal.currency, at)
+  if (s.fee > 0) await issueCommissionInvoice(db, deal.id, s.fee, s.feeVat, at)
   if (payout - deduct > 0)
     await newOp(db, { dealId: deal.id, companyId: deal.seller_id, kind: 'transfer', amount: payout - deduct, currency: deal.currency, key: `transfer:${deal.id}` }, at)
 }
@@ -102,6 +106,7 @@ async function refund(db: Db, deal: any, amount: number, cost: 'buyer' | 'seller
   if (cost === 'buyer') await post(db, [{ debit: 'held', credit: 'refund_costs', amount: amount - toBuyer, dealId: deal.id, ref: 'card cost kept from refund' }], deal.currency, at)
   if (cost === 'seller') await post(db, [{ debit: `seller_receivable:${deal.seller_id}`, credit: 'refund_costs', amount: fee, dealId: deal.id, ref: 'card cost recoverable from seller' }], deal.currency, at)
   if (toBuyer > 0) await newOp(db, { dealId: deal.id, kind: 'refund', amount: toBuyer, currency: deal.currency, key: `refund:${deal.id}:${at.getTime()}` }, at)
+  await reissueAfterRefund(db, deal.id, Math.round((held - amount) * 10_000 / (10_000 + deal.media_vat_bp)), at)
   await settle(db, deal, held - amount, at)
   await audit(db, 'system', 'refund.initiated', 'deal', deal.id, { toBuyer, cost }, at)
 }
