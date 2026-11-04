@@ -48,3 +48,6 @@ Requirements that drive the choice:
 - Admin tables are not free like Django admin; Refine covers most list, filter, search, export and edit pages, and the rest are custom.
 - Postgres carries jobs, locks, real-time notifications and the ledger, so there is no Redis or queue service to run. Upgrade path if load grows: a dedicated queue.
 - The prototype's rule functions (`sweepDeals`, `acceptDeal`, `refundDeal`, `marketStamp`, …) are used as a specification to write tests against, not copied.
+
+## Amendment (4 November 2026)
+Database access uses plain SQL through `pg` instead of Kysely. The hard parts (row locks, `FOR UPDATE SKIP LOCKED`, append-only tables) read more clearly as SQL, and it is one dependency fewer. Revisit if typed query building becomes worth it.
