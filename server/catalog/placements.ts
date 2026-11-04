@@ -41,7 +41,9 @@ const hours = (t: Date, h: number) => new Date(t.getTime() - h * 3_600_000)
 
 /** Create the bookable slots for `days` days from `fromDate` (local). Idempotent; skips airings already too late to sell. */
 export async function generateSlots(db: Db, placementId: string, fromDate: string, days: number, at: Date): Promise<number> {
-  const p = await one(db, `select p.*, o.market from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [placementId])
+  const p = await one(db, `select p.*, o.market, c.payouts_enabled from placements p join outlets o on o.id = p.outlet_id
+                           join companies c on c.id = o.company_id where p.id = $1`, [placementId])
+  if (!p.payouts_enabled) throw new Error('Slots can go live once your payout account is verified.') // brief section 11
   const m = p.market as Market
   const breaks: Break[] = p.breaks
   let made = 0

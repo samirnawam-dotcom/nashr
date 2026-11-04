@@ -2,6 +2,7 @@ import { pool, tx } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { ON_DEADLINE, transition } from './deals.js'
 import { afterNoGo, closeAuction, relist } from './market.js'
+import { onTimerEvent } from '../payments/payments.js'
 
 /**
  * One sweeper for every timer (SPEC 5.3). Each item is handled in its own transaction and claimed with
@@ -23,6 +24,7 @@ export async function sweep(at: Date, batch = 100) {
       if (!event) { await c.query(`update deals set next_deadline_at = null where id = $1`, [deal.id]); return 1 }
       const updated = await transition(c, deal.id, event, 'system:timer', at)
       if (event === 'expire' || event === 'lapse') await afterNoGo(c, updated, at)
+      await onTimerEvent(c, updated, event, at)
       return 1
     })
     if (!n || (handled += n) >= batch) break

@@ -5,7 +5,7 @@ export const AED = (n: number) => n * 100
 export const T = (iso: string) => new Date(iso)
 
 export async function reset() {
-  await pool.query(`truncate ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
+  await pool.query(`truncate money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
   await pool.query(`delete from settings where valid_from > '2000-01-01'`)
 }
 
@@ -16,6 +16,7 @@ export async function company(name: string, type: 'buyer' | 'publisher', vatRegi
 /** Skyline FM, Morning Markets Mon-Fri 06:30-09:00, four 30s breaks, any-break and package options. */
 export async function radio(at: Date, over: Partial<PlacementInput> = {}) {
   const seller = await company('Skyline FM', 'publisher', true)
+  await pool.query(`update companies set provider_account = 'acct_skyline', payouts_enabled = true where id = $1`, [seller])
   const outlet = (await pool.query(`insert into outlets (company_id, name, channel) values ($1, 'Skyline FM', 'radio') returning id`, [seller])).rows[0].id
   const placement = await createPlacement(pool, {
     outletId: outlet, name: 'Morning Markets', saleType: 'auction', days: [1, 2, 3, 4, 5], startsAt: '06:30', endsAt: '09:00',

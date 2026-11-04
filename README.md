@@ -20,5 +20,6 @@ Set `TEST_DATABASE_URL` to use another test database. `npm run db:migrate` appli
 server/core/          db, money, settings (with history), audit log, market calendar
 server/catalog/       placements and slot generation
 server/marketplace/   bidding, buy-now, quick sale, booking state machine, sweeper (all timers)
+server/payments/      provider interface (+ fake), ledger, charge, release, refunds, cancellations, disputes, webhooks
 server/migrations/    SQL migrations
 ```

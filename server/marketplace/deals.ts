@@ -16,7 +16,7 @@ export const TRANSITIONS: Record<string, Record<string, string>> = {
 
 // The event the sweeper fires when a deal's deadline passes.
 export const ON_DEADLINE: Record<string, string> = {
-  awaiting_seller: 'expire', awaiting_payment: 'lapse', in_review: 'auto_release', issue_open: 'escalate',
+  awaiting_seller: 'expire', awaiting_payment: 'lapse', secured: 'proof_missed', in_review: 'auto_release', issue_open: 'escalate',
 }
 
 const hours = (t: Date, h: number) => new Date(t.getTime() + h * 3_600_000)
@@ -24,7 +24,7 @@ const earliest = (...ts: Date[]) => new Date(Math.min(...ts.map(t => t.getTime()
 
 /** When the deal's next timer runs out, for the status it is entering. */
 async function deadlineFor(db: Db, deal: any, status: string, at: Date): Promise<Date | null> {
-  const slot = await one(db, `select s.closes_at, s.creative_due_at, o.market from slots s join placements p on p.id = s.placement_id
+  const slot = await one(db, `select s.closes_at, s.creative_due_at, s.starts_at, s.ends_at, o.market from slots s join placements p on p.id = s.placement_id
                               join outlets o on o.id = p.outlet_id where s.id = $1`, [deal.slot_id])
   switch (status) {
     case 'awaiting_seller': {
@@ -33,6 +33,8 @@ async function deadlineFor(db: Db, deal: any, status: string, at: Date): Promise
     }
     case 'awaiting_payment': // ends at the creative deadline at the latest; buyers may upload creative from acceptance (SPEC 12.1)
       return earliest(hours(at, await setting(db, 'payment_window_hours', at)), slot.creative_due_at)
+    case 'secured': // proof due N working days after the run (SPEC G10)
+      return addWorkingDays(db, slot.ends_at ?? slot.starts_at, await setting(db, 'proof_due_working_days', at), slot.market as Market)
     case 'in_review': return addWorkingDays(db, at, await setting(db, 'review_working_days', at), slot.market as Market)
     case 'issue_open': return hours(at, 48)
     default: return null

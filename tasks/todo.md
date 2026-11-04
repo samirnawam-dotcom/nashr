@@ -21,13 +21,16 @@ Decisions made while building (flag to owner if they disagree):
 - After an auction, the other bids stay valid until payment is secured; an accepted buy-now or quick sale that isn't paid is relisted.
 
 ## Phase B: Payments and money flow
-- [ ] B1 PaymentProvider interface + fake provider (Stripe test account not available yet).
-- [ ] B2 Ledger (double-entry) + reconciliation query.
-- [ ] B3 Charge on "Confirm payment", release + transfer, refunds (full/partial), cancellation rules. On payment secured: mark the slot's remaining bids not_selected.
-- [ ] B4 Webhook intake, idempotent.
+- [x] B1 PaymentProvider interface + fake provider (Stripe test account not available yet).
+- [x] B2 Ledger (double-entry) + reconciliation query.
+- [x] B3 Charge on "Confirm payment", release + transfer, refunds (full/partial), cancellation rules. On payment secured: mark the slot's remaining bids not_selected.
+- [x] B4 Webhook intake, idempotent.
 - [ ] B5 Stripe implementation (when the owner has a test account).
 
-### Checkpoint B: full booking scenario (brief 1) reconciles to the fils
+### Checkpoint B: full booking scenario (brief 1) reconciles to the fils ✅ (48 tests)
+Brief scenarios covered so far: 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 (partial refund, make-good), 13, 21, 22, 25.
+Notes for B5 (real Stripe): record Stripe's own fees from balance transactions before reconciling; a transfer to a seller
+without a working payout account must fail loudly to the admin (Payouts page) rather than stay pending.
 
 ## Phase C: Fulfilment and documents
 - [ ] C1 Booking brief + automatic checks. C2 Creative + change rounds (technical resubmits free). C3 Proof checklist per channel. C4 Report an issue → dispute → admin outcomes. C5 Pre-run check.
