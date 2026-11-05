@@ -50,6 +50,12 @@ DOMAIN=nashr.restbits.online bash /root/deploy-nashr.sh
 
 It uses the fake payment provider (no real money) until Stripe is connected. On first run it loads the demo data and replaces the published demo password and staff key with new ones, printed once and kept in `/var/lib/nashr/demo-credentials.txt`.
 
+To give the four demo accounts one password you choose (staff still need their authenticator code; real accounts are not touched):
+
+```bash
+read -rsp "Demo password (12+ characters): " P; echo; cd /opt/nashr && runuser -u nashr -- env $(xargs < /etc/nashr.env) DEMO_PASSWORD="$P" node_modules/.bin/tsx scripts/demo-credentials.ts; unset P
+```
+
 To give someone their own staff account (for example the owner, as founder), run on the server:
 
 ```bash
