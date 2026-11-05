@@ -120,7 +120,7 @@ export function App() {
 
   if (me === null) {
     const path = hash.replace(/^#/, '') || '/'
-    if (path === '/') return <GuestContext.Provider value={true}><Landing /><GuestTabs path={path} /></GuestContext.Provider>
+    if (path === '/') return <GuestContext.Provider value={true}><GuestHeader path={path} menu={menu} setMenu={setMenu} /><Landing /><GuestTabs path={path} /></GuestContext.Provider>
     if (path === '/sign-in') return <Login onIn={signedIn} />
     if (path === '/request-access') return <RequestAccess />
     const hit = GUEST.map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
@@ -128,18 +128,7 @@ export function App() {
     if (!hit) { rememberPlace(); return <Login onIn={signedIn} note="Sign in to see this page. You'll come straight back to it." /> }
     return (
       <GuestContext.Provider value={true}>
-        <header className={`topbar ${menu ? 'open' : ''}`}>
-          <button className="btn menu-btn" aria-label="Menu" aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
-          <Wordmark href="#/" />
-          <nav className="nav" id="main-nav">{NAV.guest.slice(0, 3).map(([p, l]) => <a key={p} href={`#${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
-            <a href="#/sign-in" className="nav-signout" onClick={rememberPlace}>Sign in</a></nav>
-          <div className="spacer" />
-          <div className="guest-actions">
-            <a className="signin" href="#/sign-in" onClick={rememberPlace}>Sign in</a>
-            <a className="btn signal" href="#/request-access">Request access</a>
-          </div>
-        </header>
+        <GuestHeader path={path} menu={menu} setMenu={setMenu} />
         {hit[1](hit[0]![1])}
         <GuestTabs path={path} />
       </GuestContext.Provider>
@@ -174,6 +163,24 @@ export function App() {
       {!staff && <nav className="tabbar" aria-label="Main">{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`#${p}`} className={isActive(path, p) ? 'active' : ''}
         aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>}
     </>
+  )
+}
+
+/** One header for every page a visitor sees, the landing page included, so the menu never changes under them. */
+function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; setMenu: (v: boolean) => void }) {
+  return (
+    <header className={`topbar ${menu ? 'open' : ''}`}>
+      <button className="btn menu-btn" aria-label="Menu" aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
+      <Wordmark href="#/" />
+      <nav className="nav" id="main-nav">{NAV.guest.slice(0, 3).map(([p, l]) => <a key={p} href={`#${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
+        <a href="#/sign-in" className="nav-signout" onClick={rememberPlace}>Sign in</a></nav>
+      <div className="spacer" />
+      <div className="guest-actions">
+        <a className="signin" href="#/sign-in" onClick={rememberPlace}>Sign in</a>
+        <a className="btn signal" href="#/request-access">Request access</a>
+      </div>
+    </header>
   )
 }
 

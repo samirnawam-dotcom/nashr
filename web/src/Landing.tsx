@@ -47,15 +47,6 @@ export function Landing() {
     <div className="lp">
       <header className="hero">
         <div className="wrap">
-          <nav className="top" aria-label="Main">
-            <a className="mark" href="#/" aria-label="Nashr home"><b>Nashr</b><i lang="ar">نشر</i></a>
-            <div className="links">
-              <a href="#/calendar">Calendar</a><a href="#/directory">Directory</a>
-              <button type="button" onClick={() => go('how')}>How it works</button>
-              <a href="#/sign-in">Sign in</a>
-              <a className="btn ghost" href="#/request-access">Request access</a>
-            </div>
-          </nav>
           <div className="hero-grid">
             <div>
               <span className="kicker">Live in the UAE. Saudi Arabia coming soon.</span>
@@ -63,7 +54,7 @@ export function Landing() {
               <span className="ar" lang="ar">احجز الإعلانات في الإذاعة والتلفزيون والصحف والمنصات الرقمية من مكان واحد</span>
               <p className="lede">Bid on radio breaks, TV spots, print pages, homepage takeovers and podcast reads, from the publishers themselves. Your payment is held until the publisher proves the ad ran.</p>
               <div className="cta-row"><a className="btn signal" href="#/calendar">Browse the calendar</a><a className="btn ghost" href="#/request-access">Request access</a></div>
-              <p className="fine">Browse every slot and price freely. Sign in when you're ready to bid or book.</p>
+              <p className="fine">Browse every slot and price freely. Sign in when you're ready to bid or book. <button type="button" className="text-link" onClick={() => go('how')}>See how it works ↓</button></p>
             </div>
 
             <a className="board" href="#/calendar" aria-label="Example programme board. Open the live calendar">

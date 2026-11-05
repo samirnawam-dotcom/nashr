@@ -193,3 +193,6 @@
 .lp .btn:hover { background: rgba(231, 242, 241, .08); }
 .lp .btn.signal, .lp .btn.signal:hover { background: var(--signal); }
 .lp .btn.teal, .lp .btn.teal:hover { background: var(--teal); }
+.lp .text-link { background: none; border: 0; padding: 0; font: inherit; color: #fff; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lp .hero-grid { padding-block: 56px 72px; }
+@media (max-width: 560px) { .lp .hero-grid { padding-block: 24px 48px; } }
