@@ -41,6 +41,30 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   const status = await p.locator('main p.muted').first().textContent()
   if (!/Payment secured/.test(status)) { console.error('Expected Payment secured, got', status); process.exitCode = 1 }
   console.log('status now:', status)
+
+  // Creative: the buyer uploads, the publisher approves
+  await p.setInputFiles('#file', { name: 'spot.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3 demo audio') })
+  await p.waitForSelector('text=Version 1 sent')
+  const dealId = p.url().split('/').pop()
+  console.log('creative review:', (await sp.request.post(`${BASE}/api/seller/deals/${dealId}/creative-review`, { data: { decision: 'approve' } })).status())
+  // Time travel: the ad has run (dev database only), then the publisher sends proof with a file
+  const { Client } = require('pg'); const db = new Client({ connectionString: process.env.DATABASE_URL ?? 'postgres://nashr:nashr@localhost:5432/nashr' })
+  await db.connect(); await db.query(`update slots set starts_at = now() - interval '2 hours', ends_at = now() - interval '2 hours' + interval '30 seconds' where id = (select slot_id from deals where id = $1)`, [dealId]); await db.end()
+  const clip = await (await sp.request.post(BASE + '/api/files', { data: Buffer.from('ID3 as aired'), headers: { 'content-type': 'audio/mpeg', 'x-file-name': 'aired.mp3' } })).json()
+  console.log('proof:', (await sp.request.post(`${BASE}/api/seller/deals/${dealId}/proof`, { data: { items: { as_run_log: `files/${clip.id}`, audio_clip: `files/${clip.id}` } } })).status())
+  await p.reload(); await p.waitForSelector('text=Proof the ad ran')
+  out && await p.screenshot({ path: out + '/11-proof.png', fullPage: true })
+  const dl = await p.request.get(BASE + `/api/files/${clip.id}`)
+  if (dl.status() !== 200) { console.error('Buyer cannot download proof'); process.exitCode = 1 }
+  // Report an issue; the publisher offers a partial refund; the buyer accepts
+  await p.click('button:has-text("Report an issue")'); await p.selectOption('#ir', 'wrong_time'); await p.fill('#in', 'Aired at 07:20, not 06:45.')
+  await p.click('button:has-text("Report issue")'); await p.waitForSelector('text=Waiting for the publisher')
+  console.log('offer:', (await sp.request.post(`${BASE}/api/seller/deals/${dealId}/issues/offer`, { data: { type: 'partial_refund', amount: 100000 } })).status())
+  await p.reload(); await p.click('button:has-text("Accept offer")'); await p.waitForSelector('text=Offer accepted')
+  out && await p.screenshot({ path: out + '/12-issue-settled.png', fullPage: true })
+  const final = await p.locator('main p.muted').first().textContent()
+  if (!/Released/.test(final)) { console.error('Expected Released after partial refund, got', final); process.exitCode = 1 }
+  console.log('after offer:', final)
   if (errors.length) { console.error('Browser errors:', errors); process.exitCode = 1 }
   await b.close()
 })()

@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { pool, tx } from '../core/db.js'
-import { buildApp } from './app.js'
+import { buildApp, resetRateLimits } from './app.js'
 import { FakeProvider } from '../payments/provider.js'
 import { acceptInvite, approveAccess, inviteStaff, requestAccess } from '../auth/access.js'
 import { totp } from '../auth/crypto.js'
 import { createPlacement, generateSlots } from '../catalog/placements.js'
 import { AED, BRIEF, T, reset } from '../test/helpers.js'
+import { DiskStorage } from '../files/storage.js'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 let now = T('2026-11-01T08:00:00Z')
-const app = buildApp({ provider: new FakeProvider(), clock: () => now })
+const app = buildApp({ provider: new FakeProvider(), clock: () => now, storage: new DiskStorage(mkdtempSync(join(tmpdir(), 'nashr-files-'))) })
 const PASS = 'correct horse battery staple'
 
 type Who = { cookie: string; companyId: string }
@@ -49,6 +53,7 @@ const call = (who: Who | null, method: any, url: string, payload?: unknown) =>
 beforeEach(async () => {
   now = T('2026-11-01T08:00:00Z')
   await reset()
+  resetRateLimits()
   founder = await staff('omar@nashr.ae', 'founder')
   admin = await staff('ops@nashr.ae', 'admin')
   buyerA = await member('Northwind Fintech', 'sara@northwind.ae', 'brand')
@@ -154,4 +159,68 @@ test('a booking end to end through the API: request, accept, pay; fees frozen fr
   expect((await call(buyerA, 'GET', `/api/deals/${deal}`)).json().status).toBe('payment_secured')
   const docs = (await pool.query(`select type from documents where deal_id = $1 order by ctid`, [deal])).rows.map(r => r.type)
   expect(docs).toEqual(['receipt', 'media_invoice'])
+})
+
+describe('buyer screens', () => {
+  const upload = (who: Who, bytes: string, type: string, name = 'spot.mp3') =>
+    app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from(bytes), headers: { cookie: who.cookie, 'content-type': type, 'x-file-name': name } })
+
+  test('directory: three price levels, each labelled; off-platform outlets ask for a quote', async () => {
+    const off = (await pool.query(`insert into outlets (name, channel, est_low, est_high) values ('Arabian Business', 'print', $1, $2) returning id`, [AED(8_000), AED(12_000)])).rows[0].id
+    const outletX = (await pool.query(`select o.id from outlets o where company_id = $1`, [sellerX.companyId])).rows[0].id
+    // three completed sales on Nashr make a typical price
+    const bid = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    const bidId = (await pool.query(`select bid_id from deals where id = $1`, [bid.id])).rows[0].bid_id
+    for (const amount of [AED(4_000), AED(5_000), AED(6_000)])
+      await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'auction', 'paid_out', $5, 'AED', now())`,
+        [slotX, bidId, buyerA.companyId, sellerX.companyId, amount])
+    const dir = (await call(buyerA, 'GET', '/api/directory')).json()
+    expect(dir.find((o: any) => o.id === off)).toMatchObject({ onNashr: false, price: { level: 'estimate', label: 'Estimate, unconfirmed', from: AED(8_000) } })
+    expect(dir.find((o: any) => o.id === outletX)).toMatchObject({ onNashr: true, price: { level: 'typical', label: 'Typical on Nashr', from: AED(4_000), to: AED(6_000) } })
+    expect(dir.find((o: any) => o.name === 'Gulf Radio')).toMatchObject({ price: { level: 'rate', label: "Publisher's rate", from: AED(3_500) } })
+    expect((await call(buyerA, 'GET', `/api/outlets/${outletX}`)).json()).toMatchObject({ completedSales: 3, placements: [{ name: 'Morning Markets', openSlots: 1 }] })
+    expect((await call(sellerX, 'GET', `/api/outlets/${outletX}`)).statusCode).toBe(403)
+
+    expect((await call(buyerA, 'POST', `/api/outlets/${off}/quote`, { message: 'Call me on 050 123 4567' })).json().error).toMatch('not allowed')
+    expect((await call(buyerA, 'POST', `/api/outlets/${off}/quote`, { message: 'Full page in December?' })).statusCode).toBe(200)
+    expect((await call(admin, 'GET', '/api/notifications')).json().items[0]).toMatchObject({ kind: 'quote.requested', data: { outlet: 'Arabian Business' } })
+  })
+
+  test('campaigns: bookings tagged to a campaign count against its budget; nobody else\'s campaign can be used', async () => {
+    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'Q4 launch', budget: AED(50_000), launchDate: '2026-11-15' })).json().id
+    const other = (await call(buyerB, 'POST', '/api/campaigns', { name: 'Theirs', budget: AED(10_000) })).json().id
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: BRIEF, campaignId: other })).json().error).toMatch('your active campaigns')
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF, campaignId: c })).json().id
+    const outletX = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    expect((await call(buyerA, 'PUT', `/api/campaigns/${c}/items`, { items: [{ outletId: outletX, planned: AED(20_000) }] })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()).toMatchObject({ committed: 0, pending: AED(5_500), planned: AED(20_000) })
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()).toMatchObject({ committed: AED(5_500), remaining: AED(44_500),
+      items: [{ outlet: 'Skyline FM', planned: AED(20_000), committed: AED(5_500) }], bookings: [{ id: deal }] })
+    expect((await call(buyerB, 'GET', `/api/campaigns/${c}`)).statusCode).toBe(404)
+    expect((await call(buyerB, 'PUT', `/api/campaigns/${c}`, { budget: 1 })).statusCode).toBe(404)
+  })
+
+  test('creative upload: private file, seen by the publisher on the deal, nobody else; booking page and documents', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    const f = (await upload(buyerA, 'ID3 fake audio', 'audio/mpeg')).json()
+    expect((await call(buyerB, 'POST', `/api/deals/${deal}/creative`, { fileId: f.id })).statusCode).toBe(404)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/creative`, { fileId: f.id })).json()).toMatchObject({ version: 1, status: 'pending' })
+    expect((await call(sellerX, 'GET', `/api/files/${f.id}`)).body).toBe('ID3 fake audio')
+    for (const who of [sellerY, buyerB]) expect((await call(who, 'GET', `/api/files/${f.id}`)).statusCode).toBe(404)
+    expect((await call(sellerX, 'GET', '/api/notifications')).json()).toMatchObject({ unread: expect.any(Number), items: expect.arrayContaining([expect.objectContaining({ kind: 'creative.sent' })]) })
+    await call(sellerX, 'POST', '/api/notifications/read')
+    expect((await call(sellerX, 'GET', '/api/notifications')).json().unread).toBe(0)
+
+    await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    const page = (await call(buyerA, 'GET', `/api/deals/${deal}`)).json()
+    expect(page).toMatchObject({ status: 'payment_secured', channel: 'radio', creatives: [{ version: 1, status: 'pending', fileId: f.id }],
+      timeline: [{ event: 'opened' }, { event: 'accept' }, { event: 'pay' }], proof: null })
+    expect(JSON.stringify(page.timeline)).not.toMatch(/seller:|buyer:/)
+    expect(page.documents.map((d: any) => d.type)).toEqual(['receipt', 'media_invoice'])
+    const inv = (await call(buyerA, 'GET', `/api/documents/${page.documents[1].id}`)).json()
+    expect(inv).toMatchObject({ type: 'media_invoice', onBehalf: true, taxDocument: true, issuer: { name: 'Skyline FM' }, total: AED(5_775) })
+    expect((await call(buyerB, 'GET', `/api/documents/${inv.id}`)).statusCode).toBe(404)
+  })
 })

@@ -50,13 +50,24 @@ Brief scenarios now covered: 1–13, 21–26. Decisions made while building:
 Still open from D: sending emails (invite links, notifications) needs the email service chosen (SPEC 10); the rate limiter is per process.
 
 ## Phase E: Screens (after Figma approval)
-- [~] E1 Buyer: calendar day/week/month, bid drawer, payment, bookings, directory, outlet profile.
+- [x] E1 Buyer: calendar day/week/month, bid drawer, payment, bookings, directory, outlet profile.
   - [x] Sign in (with authenticator code for staff), app shell
   - [x] Calendar: Day / Week / Month like Google Calendar, all-day lane, auction/quick-sale icons, channel and sale-type filters, Dubai time
   - [x] Bid drawer: server minimum next bid, auto-bid maximum, buy-now request, quick-sale interest/offer, booking brief (last one pre-filled)
   - [x] Bookings list and booking page with payment (test cards), approve proof, cancel
-  - [ ] Directory, outlet profile, campaigns, creative upload, proof review with report an issue, receipts and invoices
-  - e2e: `npm run e2e` (needs seed + API + web running) walks bid → buy-now → seller accepts → declined card → paid
+  - [x] Directory (grid/list, filters, three labelled price levels), outlet profile, quote request for outlets not on Nashr
+  - [x] Campaigns: budget, plan per outlet, committed/pending/remaining; bids and requests tagged from the bid drawer
+  - [x] Booking page: creative upload (private files), proof review, report an issue, respond to an offer, pre-run confirm, timeline, documents
+  - [x] Receipts and invoices list + printable document view; notifications bell; request access and invite pages
+  - e2e: `npm run e2e` (needs seed + API + web running) walks bid → buy-now → seller accepts → declined card → paid →
+    creative → proof → report issue → partial refund accepted → released (with credit note and reissued invoice)
+
+### Checkpoint E1: buyer screens ✅ (87 tests + e2e)
+Decisions made while building (flag to owner if they disagree):
+- "Typical on Nashr" = middle half (25th–75th percentile) of completed sales, shown once an outlet has 3 or more.
+- Quote requests for outlets not on Nashr go to Nashr's team (bell), not to the outlet.
+- Files: local disk in development behind a storage interface; S3 with presigned uploads before launch (TV masters are too big to pass through the API).
+- The bell is in-app only until the email service is chosen.
 - [ ] E2 Seller: dashboard, calendar (calendar + programme view), inbox, deals, earnings, add placement, onboarding.
 - [ ] E3 Admin: overview, accounts, publishers, deals, disputes, funds, payouts, audit, settings, reports.
 

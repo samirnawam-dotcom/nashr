@@ -3,7 +3,7 @@ import { pool, tx } from './core/db.js'
 import { migrate } from './core/migrate.js'
 import { hashPassword } from './auth/crypto.js'
 import { createPlacement, generateSlots } from './catalog/placements.js'
-import { placeBid, showInterest } from './marketplace/market.js'
+import { accept, placeBid, requestBuyNow, showInterest } from './marketplace/market.js'
 import { localDay } from './core/market.js'
 
 if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed demo data in production.')
@@ -13,7 +13,7 @@ const PASSWORD = 'nashr-demo-2026'
 const BRIEF = { advertiser: 'Demo brand', industry: 'Banking', message: 'Demo campaign', language: 'english', landingUrl: 'https://example.com', creativeToFollow: true }
 
 await migrate()
-await pool.query(`truncate sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
+await pool.query(`truncate files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
   prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
 await pool.query(`delete from settings where valid_from > '2000-01-01'`)
 
@@ -83,6 +83,24 @@ for (const [i, s] of slots.entries()) {
     if (i % 4 === 0) await placeBid(c, { slotId: s.id, buyerId: rivals[(i + 1) % 3], amount: Math.ceil(s.starting_price * 1.07 / 100) * 100, brief: BRIEF }, now)
   })
 }
+
+// Directory profiles, and outlets not on Nashr yet with Nashr's estimated range (brief section 7, level 3).
+await pool.query(`update outlets set tier = 'Tier 1', audience = 'Business commuters, 25-45', description = 'Dubai''s business radio. Markets, money and the morning drive.', website = 'https://example.com/skyline' where name = 'Skyline FM'`)
+await pool.query(`update outlets set tier = 'Tier 1', audience = 'Decision makers, UAE nationals and expats', description = 'English-language daily with a strong business section.' where name = 'Gulf News'`)
+for (const [name, channel, sectors, low, high] of [['Arabian Business', 'print', ['Banking', 'Real estate'], 18_000, 26_000], ['Dubai Eye 103.8', 'radio', ['Retail', 'Hospitality'], 2_500, 4_000],
+  ['The National', 'digital', ['Technology', 'Banking'], 7_000, 12_000]] as const)
+  await pool.query(`insert into outlets (name, channel, sectors, est_low, est_high) values ($1, $2, $3, $4, $5)`, [name, channel, sectors, AED(low), AED(high)])
+
+// A campaign with a plan, and one buy-now the publisher has accepted (pay it from Bookings).
+const campaign = (await pool.query(`insert into campaigns (buyer_id, name, budget, launch_date, objective, created_at) values ($1, 'Q4 business cards launch', $2, $3, 'Awareness', now()) returning id`,
+  [buyer, AED(150_000), from])).rows[0].id
+await pool.query(`insert into campaign_items (campaign_id, outlet_id, planned_amount) select $1, id, $2 from outlets where name in ('Skyline FM', 'Gulf News', 'Arabian Business')`, [campaign, AED(40_000)])
+const buyNow = (await pool.query(`select s.id from slots s where s.status = 'open' and s.buy_now_price is not null and s.kind = 'single'
+  and not exists (select 1 from bids b where b.slot_id = s.id) order by s.starts_at limit 1`)).rows[0]
+if (buyNow) await tx(async c => {
+  const deal = await requestBuyNow(c, { slotId: buyNow.id, buyerId: buyer, brief: BRIEF, campaignId: campaign }, now)
+  await accept(c, deal.id, 'seller:seed', now)
+})
 
 const n = (await pool.query(`select count(*)::int n from slots`)).rows[0].n
 console.log(`Seeded ${n} slots from ${from}. Sign in as demo@northwind.ae (buyer) or sales@skyline.ae (seller), password ${PASSWORD}`)

@@ -7,16 +7,20 @@ import { setting } from '../core/settings.js'
 import { approve, cancelByBuyer, confirmPayment } from '../payments/payments.js'
 import { reportIssue, respondToOffer } from '../fulfilment/issues.js'
 import { uploadCreative } from '../fulfilment/creative.js'
+import { confirmPreRun } from '../fulfilment/prerun.js'
+import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
+import { MarketError } from '../marketplace/market.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const money = { type: 'integer', minimum: 1 }
+const campaignId = { type: 'string', format: 'uuid' }
 const brief = { type: 'object', additionalProperties: false, properties: {
   advertiser: { type: 'string', maxLength: 200 }, industry: { type: 'string', maxLength: 100 }, message: { type: 'string', maxLength: 2000 },
   language: { enum: ['arabic', 'english', 'bilingual'] }, landingUrl: { type: 'string', maxLength: 500 }, draftFileKey: { type: 'string', maxLength: 300 },
   creativeToFollow: { type: 'boolean' }, notes: { type: 'string', maxLength: 2000 } } }
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.
-const DEAL_SQL = `select d.*, s.label, s.starts_at, o.name outlet, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
+const DEAL_SQL = `select d.*, s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
                   join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies sc on sc.id = d.seller_id`
 
 /** The buyer's own deal, or not found. */
@@ -52,22 +56,50 @@ export function buyerRoutes(route: RouteFn) {
   })
 
   route('POST', '/api/slots/:id/bids', BUYER, async ({ db, at, me }, req) =>
-    placeBid(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body.amount, maxAmount: req.body.maxAmount, brief: req.body.brief }, at),
-    { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: money, maxAmount: money, brief } })
+    placeBid(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body.amount, maxAmount: req.body.maxAmount, brief: req.body.brief, campaignId: req.body.campaignId }, at),
+    { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: money, maxAmount: money, brief, campaignId } })
 
   route('POST', '/api/slots/:id/buy-now', BUYER, async ({ db, at, me }, req) =>
-    buyerDeal(await requestBuyNow(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief }, at)),
-    { type: 'object', additionalProperties: false, properties: { brief } })
+    buyerDeal(await requestBuyNow(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)),
+    { type: 'object', additionalProperties: false, properties: { brief, campaignId } })
 
   route('POST', '/api/slots/:id/interest', BUYER, async ({ db, at, me }, req) => {
-    const b = await showInterest(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body?.amount, brief: req.body?.brief }, at)
+    const b = await showInterest(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body?.amount, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)
     return { id: b.id, amount: b.amount }
-  }, { type: 'object', additionalProperties: false, properties: { amount: money, brief } })
+  }, { type: 'object', additionalProperties: false, properties: { amount: money, brief, campaignId } })
 
   route('GET', '/api/deals', BUYER, async ({ db, me }) =>
     (await db.query(`${DEAL_SQL} where d.buyer_id = $1 order by d.created_at desc`, [me.actAs.companyId])).rows.map(buyerDeal))
 
-  route('GET', '/api/deals/:id', BUYER, async ({ db, me }, req) => buyerDeal(await ownDeal(db, req.params.id, me.actAs.companyId)))
+  // The booking page: everything the buyer may see about one booking. The timeline never shows who at the publisher did what.
+  route('GET', '/api/deals/:id', BUYER, async ({ db, me }, req) => {
+    const d = await ownDeal(db, req.params.id, me.actAs.companyId)
+    const q = async (sql: string) => (await db.query(sql, [d.id])).rows
+    const [events, creatives, proofs, issues, prerun, docs] = await Promise.all([
+      q(`select at, event, to_status from deal_events where deal_id = $1 order by id`),
+      q(`select version, status, reason, file_key, file_type, uploaded_at, reviewed_at from creatives where deal_id = $1 order by version`),
+      q(`select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at desc limit 1`),
+      q(`select reason, note, offer, status, opened_at, closed_at from issues where deal_id = $1 order by opened_at desc limit 1`),
+      q(`select requested_at, buyer_confirmed_at from prerun_checks where deal_id = $1`),
+      q(`select id, type, number, total, currency, issued_at from documents where deal_id = $1 and recipient_id = (select buyer_id from deals where id = $1) order by issued_at`),
+    ])
+    const proof = proofs[0]
+    return { ...buyerDeal(d), channel: d.channel, placement: d.placement, kind: d.kind, creativeDueAt: d.creative_due_at, campaignId: d.campaign_id,
+      timeline: events.map(e => ({ at: e.at, event: e.event, status: e.to_status })),
+      creatives: creatives.map(c => ({ version: c.version, status: c.status, reason: c.reason, fileId: c.file_key.replace(/^files\//, ''),
+        fileType: c.file_type, uploadedAt: c.uploaded_at, reviewedAt: c.reviewed_at })),
+      proof: proof ? { submittedAt: proof.submitted_at, note: proof.note,
+        items: PROOF_CHECKLIST[d.channel].map(i => ({ key: i.key, label: i.label, value: proof.items[i.key] ?? null })) } : null,
+      issue: issues[0] ? { reason: issues[0].reason, note: issues[0].note, offer: issues[0].offer, status: issues[0].status, openedAt: issues[0].opened_at } : null,
+      prerun: prerun[0] ? { requestedAt: prerun[0].requested_at, confirmedAt: prerun[0].buyer_confirmed_at } : null,
+      documents: docs.map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at })) }
+  })
+
+  route('POST', '/api/deals/:id/prerun', BUYER, async ({ db, at, me }, req) => {
+    await ownDeal(db, req.params.id, me.actAs.companyId)
+    await confirmPreRun(db, req.params.id, me.actAs.companyId, at)
+    return { ok: true }
+  })
 
   route('POST', '/api/deals/:id/pay', BUYER, async ({ db, at, me, provider }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)
@@ -76,10 +108,12 @@ export function buyerRoutes(route: RouteFn) {
 
   route('POST', '/api/deals/:id/creative', BUYER, async ({ db, at, me }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)
-    const c = await uploadCreative(db, { dealId: req.params.id, buyerId: me.actAs.companyId, ...req.body }, at)
+    // Type and size come from the stored upload, not from what the screen claims.
+    const f = (await db.query(`select * from files where id = $1 and company_id = $2`, [req.body.fileId, me.actAs.companyId])).rows[0]
+    if (!f) throw new MarketError('Upload the file first.')
+    const c = await uploadCreative(db, { dealId: req.params.id, buyerId: me.actAs.companyId, fileKey: `files/${f.id}`, fileType: f.type, fileSize: f.size }, at)
     return { version: c.version, status: c.status, reason: c.reason }
-  }, { type: 'object', required: ['fileKey', 'fileType', 'fileSize'], properties: {
-    fileKey: { type: 'string', maxLength: 300 }, fileType: { type: 'string', maxLength: 100 }, fileSize: { type: 'integer', minimum: 1 } } })
+  }, { type: 'object', required: ['fileId'], properties: { fileId: { type: 'string', format: 'uuid' } } })
 
   route('POST', '/api/deals/:id/approve', BUYER, async ({ db, at, me }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)
@@ -105,13 +139,4 @@ export function buyerRoutes(route: RouteFn) {
     return { ok: true }
   }, { type: 'object', required: ['accept'], properties: { accept: { type: 'boolean' } } })
 
-  // The directory is for buyers and Nashr only; sellers cannot see it (brief section 6).
-  route('GET', '/api/directory', [...BUYER, 'admin'], async ({ db }) => {
-    const { rows } = await db.query(
-      `select o.id, o.name, o.name_ar, o.channel, o.sectors, o.logo_url, min(p.starting_price) from_price, max(p.starting_price) to_price, min(p.currency) currency
-       from outlets o join companies c on c.id = o.company_id left join placements p on p.outlet_id = o.id and not p.archived
-       where o.market = 'AE' and c.payouts_enabled group by o.id order by o.name`)
-    return rows.map(r => ({ id: r.id, name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url,
-      priceRange: r.from_price == null ? null : { from: r.from_price, to: r.to_price, currency: r.currency, label: "Publisher's rate" } }))
-  })
 }

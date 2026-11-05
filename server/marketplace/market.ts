@@ -4,6 +4,7 @@ import { setting, ratesFor } from '../core/settings.js'
 import { minNextBid } from '../core/money.js'
 import { openDeal, transition } from './deals.js'
 import { briefProblems } from '../fulfilment/brief.js'
+import { notify } from '../core/notify.js'
 
 export class MarketError extends Error {}
 
@@ -18,11 +19,18 @@ async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown) 
   if (problems.length) throw new MarketError(problems.join(' '))
 }
 
-async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; amount: number; max?: number | null; status?: string; brief?: unknown }, at: Date) {
+/** A bid may be tagged to one of the buyer's own campaigns. */
+async function checkCampaign(db: Db, campaignId: string | undefined, buyerId: string) {
+  if (!campaignId) return
+  const c = await db.query(`select 1 from campaigns where id = $1 and buyer_id = $2 and status = 'active'`, [campaignId, buyerId])
+  if (!c.rowCount) throw new MarketError('Choose one of your active campaigns.')
+}
+
+async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; amount: number; max?: number | null; status?: string; brief?: unknown; campaignId?: string }, at: Date) {
   const { bid_seq } = await one(db, `update slots set bid_seq = bid_seq + 1 where id = $1 returning bid_seq`, [slot.id])
   return one(db,
-    `insert into bids (slot_id, buyer_id, kind, amount, max_amount, seq, status, brief, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning *`,
-    [slot.id, b.buyerId, b.kind, b.amount, b.max ?? null, bid_seq, b.status ?? 'active', b.brief == null ? null : JSON.stringify(b.brief), at])
+    `insert into bids (slot_id, buyer_id, kind, amount, max_amount, seq, status, brief, created_at, campaign_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning *`,
+    [slot.id, b.buyerId, b.kind, b.amount, b.max ?? null, bid_seq, b.status ?? 'active', b.brief == null ? null : JSON.stringify(b.brief), at, b.campaignId ?? null])
 }
 
 /**
@@ -30,10 +38,11 @@ async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; 
  * serialises bids, so two bids in the same second can never both win (brief scenario 13).
  * Auto-bid is standard proxy bidding: the higher maximum leads at one step above the other, ties go to the earlier bid.
  */
-export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amount: number; maxAmount?: number; brief?: unknown }, at: Date) {
+export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amount: number; maxAmount?: number; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || slot.sale_type !== 'auction' || at >= slot.closes_at) throw new MarketError('Bidding is closed for this slot.')
   await requireBrief(db, slot, a.buyerId, a.brief)
+  await checkCampaign(db, a.campaignId, a.buyerId)
   const step = await setting<number>(db, 'min_step_bp', at)
   const max = Math.max(a.maxAmount ?? a.amount, a.amount)
 
@@ -43,20 +52,22 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
     if (a.amount > slot.top_amount && a.amount < minNextBid(slot.top_amount, step))
       throw new MarketError(`Your bid must be at least ${minNextBid(slot.top_amount, step) / 100}.`)
     const amount = Math.max(a.amount, slot.top_amount)
-    const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount, max: Math.max(max, slot.top_max), brief: a.brief }, at)
+    const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount, max: Math.max(max, slot.top_max), brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount, buyerId: a.buyerId, max: Math.max(max, slot.top_max) }
   } else if (a.amount < (slot.top_amount ? minNextBid(slot.top_amount, step) : slot.starting_price)) {
     throw new MarketError(`Your bid must be at least ${(slot.top_amount ? minNextBid(slot.top_amount, step) : slot.starting_price) / 100}.`)
   } else if (!slot.top_amount) {
-    const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, brief: a.brief }, at)
+    const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount: a.amount, buyerId: a.buyerId, max }
   } else if (max > slot.top_max) { // challenger takes the lead
     const price = Math.max(a.amount, Math.min(max, minNextBid(slot.top_max, step)))
     await db.query(`update bids set status = 'outbid' where slot_id = $1 and buyer_id = $2 and status = 'active'`, [slot.id, slot.top_buyer_id])
-    const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: price, max, brief: a.brief }, at)
+    const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+    await notify(db, slot.top_buyer_id, 'bid.outbid', null, { slotId: slot.id, outlet, label: slot.label }, at)
+    const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: price, max, brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount: price, buyerId: a.buyerId, max }
   } else { // leader's maximum holds: the system raises the leader just above the challenger
-    await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, status: 'outbid', brief: a.brief }, at)
+    await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, status: 'outbid', brief: a.brief, campaignId: a.campaignId }, at)
     const price = Math.min(slot.top_max, Math.max(slot.top_amount, minNextBid(max, step)))
     const bid = price > slot.top_amount
       ? await insertBid(db, slot, { buyerId: slot.top_buyer_id, kind: 'auto', amount: price, max: slot.top_max }, at)
@@ -69,24 +80,26 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
 }
 
 /** Buy-now is a request: nothing is charged, the seller must accept (brief section 9). */
-export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string; brief?: unknown }, at: Date) {
+export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || !slot.buy_now_price || at >= slot.closes_at) throw new MarketError('Buy now is not available for this slot.')
   const open = await db.query(`select 1 from deals where slot_id = $1 and buyer_id = $2 and kind = 'buy_now' and status = 'awaiting_seller'`, [slot.id, a.buyerId])
   if (open.rowCount) throw new MarketError('You already have a buy-now request on this slot.')
   await requireBrief(db, slot, a.buyerId, a.brief)
-  const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'buy_now', amount: slot.buy_now_price, brief: a.brief }, at)
+  await checkCampaign(db, a.campaignId, a.buyerId)
+  const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'buy_now', amount: slot.buy_now_price, brief: a.brief, campaignId: a.campaignId }, at)
   return openDeal(db, slot, bid, 'buy_now', `buyer:${a.buyerId}`, at)
 }
 
 /** Quick sale: a buyer shows interest (optionally an offer, never below the floor). */
-export async function showInterest(db: Db, a: { slotId: string; buyerId: string; amount?: number; brief?: unknown }, at: Date) {
+export async function showInterest(db: Db, a: { slotId: string; buyerId: string; amount?: number; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || slot.sale_type !== 'quick_sale') throw new MarketError('This slot is not a quick sale.')
   await requireBrief(db, slot, a.buyerId, a.brief)
+  await checkCampaign(db, a.campaignId, a.buyerId)
   const amount = a.amount ?? slot.starting_price
   if (amount < slot.starting_price) throw new MarketError(`Offers cannot be below ${slot.starting_price / 100}.`)
-  return insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief }, at)
+  return insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief, campaignId: a.campaignId }, at)
 }
 
 /** The seller accepts one quick-sale interest; everyone else is told the slot has gone. */

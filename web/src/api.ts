@@ -17,3 +17,18 @@ export type Slot = {
   saleType: 'auction' | 'quick_sale'; startsAt: string; endsAt: string | null; closesAt: string; currency: string
   startingPrice: number; buyNowPrice: number | null; topBid: number | null; bids: number; available: boolean; youLead: boolean; youBid: boolean
 }
+
+/** Upload a file's bytes; the server records who owns it and returns its id. */
+export async function upload(file: File): Promise<{ id: string; name: string; size: number }> {
+  const r = await fetch('/api/files', { method: 'POST', credentials: 'same-origin', body: file,
+    headers: { 'content-type': file.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(file.name) } })
+  const data = await r.json().catch(() => ({}))
+  if (!r.ok) throw new ApiError(data.error ?? 'Upload failed.', r.status)
+  return data
+}
+
+export type Price = { level: 'typical' | 'rate' | 'estimate'; label: string; from: number; to: number; currency: string } | null
+export type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; logoUrl: string | null
+  tier: string | null; audience: string | null; onNashr: boolean; price: Price }
+export type Campaign = { id: string; name: string; budget: number; launchDate: string | null; objective: string | null; audience: string | null
+  message: string | null; status: 'active' | 'completed'; committed: number; pending: number; planned: number; remaining: number }

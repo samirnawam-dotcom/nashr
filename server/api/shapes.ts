@@ -6,7 +6,7 @@ import { briefChecks } from '../fulfilment/brief.js'
  * so a buyer response cannot carry a reserve price, Nashr's commission, other bidders or contact details.
  */
 
-const buyerStatus: Record<string, string> = {
+export const buyerStatus: Record<string, string> = {
   awaiting_seller: 'awaiting_publisher', awaiting_payment: 'accepted_pay_now', secured: 'payment_secured', in_review: 'proof_ready',
   issue_open: 'issue_open', disputed: 'disputed', released: 'released', paid_out: 'complete', declined: 'not_selected', lapsed: 'lapsed',
   cancelled: 'cancelled', refunded: 'refunded',

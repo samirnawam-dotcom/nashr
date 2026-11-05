@@ -9,6 +9,9 @@ import { authRoutes } from './routes-auth.js'
 import { buyerRoutes } from './routes-buyer.js'
 import { sellerRoutes } from './routes-seller.js'
 import { adminRoutes } from './routes-admin.js'
+import { planRoutes } from './routes-plan.js'
+import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
+import { DiskStorage, type Storage } from '../files/storage.js'
 
 export type Ctx = { db: pg.PoolClient; at: Date; me: Session & { actAs: { companyId: string; role: string } }; provider: PaymentProvider }
 type Role = 'buyer' | 'seller' | 'admin' | 'founder'
@@ -25,19 +28,23 @@ export class NotFound extends Error {}
 
 // ponytail: in-memory, per process. Move to Postgres or a shared store when running more than one instance.
 const hits = new Map<string, { n: number; reset: number }>()
+export const resetRateLimits = () => hits.clear() // tests run many sign-ins inside one fake minute
 export function rateLimit(key: string, max: number, now: number) {
   const h = hits.get(key)
   if (!h || h.reset < now) { hits.set(key, { n: 1, reset: now + 60_000 }); return true }
   return ++h.n <= max
 }
 
-export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date }) {
+export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage }) {
   const clock = deps.clock ?? (() => new Date())
   const app = Fastify({ logger: false })
+  // Uploads arrive as raw bytes with their own content type; JSON keeps Fastify's own parser.
+  app.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: MAX_UPLOAD }, (_req, body, done) => done(null, body))
 
   app.setErrorHandler((err: any, _req, reply) => {
     if (err instanceof NotFound || /not yours|expected 1 row, got 0|invalid input syntax for type uuid/.test(err.message)) return reply.code(404).send({ error: 'Not found.' })
     if (err instanceof MarketError) return reply.code(400).send({ error: err.message })
+    if (err.statusCode === 413) return reply.code(413).send({ error: 'The file is too large.' })
     if (err.validation) return reply.code(400).send({ error: 'Some fields are missing or not valid.', details: err.validation.map((v: any) => v.instancePath || v.params?.missingProperty) })
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })
@@ -67,6 +74,8 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date }
   buyerRoutes(route)
   sellerRoutes(route)
   adminRoutes(route)
+  planRoutes(route)
+  sharedRoutes(route, deps.storage ?? new DiskStorage())
   return app
 }
 
