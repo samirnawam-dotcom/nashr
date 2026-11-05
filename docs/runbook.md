@@ -87,7 +87,22 @@ The script fails loudly if anything differs. It has been checked against a delib
 - **A leaked secret** (database password, Stripe key, session signing): rotate it in AWS Secrets Manager and redeploy. Sessions are stored hashed, so a database leak does not expose live sessions.
 - **The founder's authenticator is lost:** another founder or an admin with database access resets `totp_enabled` and sends a new invite. This is audited.
 
-## 6. Secrets and access
+## 6. Production settings
+
+| Variable | Value | Why |
+|---|---|---|
+| `NODE_ENV` | `production` | Real payment provider required, request logs on, HSTS |
+| `TRUST_PROXY` | `1` behind the load balancer | Real client IPs for rate limits and logs |
+| `APP_ORIGIN` | e.g. `https://app.nashr.ae`, only if the web app and API are on different hosts | Writes from any other origin are refused |
+| `LOG_REQUESTS` | `1` (default in production) | One JSON line per request |
+
+Edge (CloudFront or the load balancer) headers for the web app:
+- `Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'`
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains`
+
+See `docs/security-review.md` for the review and what is still open.
+
+## 7. Secrets and access
 
 - Production secrets live only in AWS Secrets Manager: never in the repository, never in chat.
 - Staff use an authenticator app.

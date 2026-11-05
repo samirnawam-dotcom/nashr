@@ -33,6 +33,7 @@ export class NotFound extends Error {}
 const hits = new Map<string, { n: number; reset: number }>()
 export const resetRateLimits = () => hits.clear() // tests run many sign-ins inside one fake minute
 export function rateLimit(key: string, max: number, now: number) {
+  if (hits.size > 10_000) for (const [k, v] of hits) if (v.reset < now) hits.delete(k) // keep memory bounded
   const h = hits.get(key)
   if (!h || h.reset < now) { hits.set(key, { n: 1, reset: now + 60_000 }); return true }
   return ++h.n <= max
@@ -40,19 +41,50 @@ export function rateLimit(key: string, max: number, now: number) {
 
 export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage; log?: boolean }) {
   const clock = deps.clock ?? (() => new Date())
-  const app = Fastify({ logger: false })
+  // Bodies are checked strictly: unknown fields are an error, never silently passed to the handler (security review F2).
+  const app = Fastify({ logger: false, trustProxy: process.env.TRUST_PROXY === '1', // behind the load balancer: real client IPs for rate limits and logs
+    ajv: { customOptions: { removeAdditional: 'all', coerceTypes: false } } })
   // Uploads arrive as raw bytes with their own content type; JSON keeps Fastify's own parser.
   // One JSON line per request for the log pipeline: no query strings, bodies or cookies (they can carry personal data or tokens).
   if (deps.log ?? process.env.NODE_ENV === 'production')
     app.addHook('onResponse', async (req, reply) => console.log(JSON.stringify({ t: new Date().toISOString(), method: req.method,
       path: req.url.split('?')[0], status: reply.statusCode, ms: Math.round(reply.elapsedTime), ip: req.ip })))
-  app.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: MAX_UPLOAD }, (_req, body, done) => done(null, body))
+  const fail = (statusCode: number, message: string) => Object.assign(new Error(message), { statusCode })
+  // Raw bytes only for file uploads, only from a signed-in user, checked before a single byte is read (security review F2).
+  app.addContentTypeParser('*', { bodyLimit: MAX_UPLOAD }, async (req: any, payload: any) => {
+    if (req.method !== 'POST' || req.url.split('?')[0] !== '/api/files') throw fail(415, 'Send JSON.')
+    if (!(await session(pool, cookie(req), clock()))) throw fail(401, 'Please sign in.')
+    const chunks: Buffer[] = []; let size = 0
+    for await (const c of payload) { if ((size += c.length) > MAX_UPLOAD) throw fail(413, 'The file is too large.'); chunks.push(c) }
+    return Buffer.concat(chunks)
+  })
+
+  // CSRF (security review F2): every write must come from our own pages. Browsers send Origin on cross-site and same-site
+  // writes; HTML forms cannot send JSON. So: a foreign Origin is refused, and every write except an upload must be JSON (or empty).
+  app.addHook('onRequest', async (req, reply) => {
+    if (req.method === 'GET' || req.method === 'HEAD') return
+    const origin = req.headers.origin
+    const allowed = process.env.APP_ORIGIN?.split(',').map(o => o.trim()) // set it when the web app is served from another host
+    if (origin && (allowed ? !allowed.includes(origin) : (() => { try { return new URL(origin).host !== req.headers.host } catch { return true } })()))
+      return reply.code(403).send({ error: 'Requests must come from Nashr.' })
+    const type = String(req.headers['content-type'] ?? '')
+    const hasBody = Number(req.headers['content-length'] ?? 0) > 0 || req.headers['transfer-encoding'] !== undefined
+    if (hasBody && req.url.split('?')[0] !== '/api/files' && !type.startsWith('application/json')) return reply.code(415).send({ error: 'Send JSON.' })
+  })
+
+  // Security headers on every API response; the web app's own headers (CSP for scripts and fonts) are set at the edge (docs/runbook.md).
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('x-content-type-options', 'nosniff').header('x-frame-options', 'DENY').header('referrer-policy', 'same-origin')
+      .header('content-security-policy', "default-src 'none'; frame-ancestors 'none'").header('cross-origin-resource-policy', 'same-origin')
+    if (process.env.NODE_ENV === 'production') reply.header('strict-transport-security', 'max-age=63072000; includeSubDomains')
+  })
 
   app.setErrorHandler((err: any, req, reply) => {
     if (err instanceof NotFound || /not yours|expected 1 row, got 0|invalid input syntax for type uuid/.test(err.message)) return reply.code(404).send({ error: 'Not found.' })
     if (err instanceof MarketError) return reply.code(400).send({ error: err.message })
     if (err.statusCode === 413) return reply.code(413).send({ error: 'The file is too large.' })
     if (err.validation) return reply.code(400).send({ error: 'Some fields are missing or not valid.', details: err.validation.map((v: any) => v.instancePath || v.params?.missingProperty) })
+    if (err.statusCode >= 400 && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.statusCode === 415 ? 'Send JSON.' : err.message })
     console.error(new Date().toISOString(), req.method, req.url, err) // unexpected: keep the cause in the server log, never in the response
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })

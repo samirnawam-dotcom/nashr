@@ -136,9 +136,9 @@ export function buyerRoutes(route: RouteFn) {
 
   route('POST', '/api/deals/:id/issues', BUYER, async ({ db, at, me }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)
-    await reportIssue(db, { dealId: req.params.id, buyerId: me.actAs.companyId, ...req.body }, at)
+    await reportIssue(db, { reason: req.body.reason, note: req.body.note, evidence: req.body.evidence, dealId: req.params.id, buyerId: me.actAs.companyId }, at)
     return { ok: true }
-  }, { type: 'object', required: ['reason', 'note'], properties: { reason: { type: 'string' }, note: { type: 'string', maxLength: 2000 }, evidence: {} } })
+  }, { type: 'object', required: ['reason', 'note'], additionalProperties: false, properties: { reason: { type: 'string', maxLength: 40 }, note: { type: 'string', maxLength: 2000 }, evidence: { type: 'object' } } })
 
   route('POST', '/api/deals/:id/issues/respond', BUYER, async ({ db, at, me }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)

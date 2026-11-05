@@ -1,7 +1,7 @@
 import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
 import { MarketError } from '../marketplace/market.js'
-import type { Storage } from '../files/storage.js'
+import { sniffType, type Storage } from '../files/storage.js'
 
 export const MAX_UPLOAD = 100 * 1024 * 1024 // ponytail: in-memory upload cap; TV masters go straight to S3 with presigned uploads later
 
@@ -15,7 +15,7 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
     if (!Buffer.isBuffer(bytes) || !bytes.length) throw new MarketError('Choose a file to upload.')
     const name = decodeURIComponent(String(req.headers['x-file-name'] ?? 'file')).slice(0, 200)
     const f = (await db.query(`insert into files (company_id, name, type, size, created_at) values ($1, $2, $3, $4, $5) returning id`,
-      [me.actAs.companyId, name, String(req.headers['content-type']).split(';')[0], bytes.length, at])).rows[0]
+      [me.actAs.companyId, name, sniffType(bytes), bytes.length, at])).rows[0]
     await storage.put(f.id, bytes)
     return { id: f.id, key: `files/${f.id}`, name, size: bytes.length }
   })

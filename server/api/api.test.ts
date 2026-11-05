@@ -480,3 +480,68 @@ test('health: green when the sweeper ran and money flows; red, without details, 
   expect(r.json().checks.noFailedPayouts).toBe(false)
   expect(r.body).not.toMatch(/AED|100|h1/)
 })
+
+describe('security review fixes', () => {
+  test('a body cannot redirect an action to someone else\'s deal (IDOR)', async () => {
+    const victim = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: BRIEF })).json().id
+    const mine = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerY, 'POST', `/api/seller/deals/${victim}/accept`); await call(sellerX, 'POST', `/api/seller/deals/${mine}/accept`)
+    const f = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('ID3 x'), headers: { cookie: buyerB.cookie, 'content-type': 'audio/mpeg' } })).json()
+    await call(buyerB, 'POST', `/api/deals/${victim}/creative`, { fileId: f.id })
+    // seller X reviews "their own" deal but names seller Y's deal and company in the body
+    await call(sellerX, 'POST', `/api/seller/deals/${mine}/creative-review`, { decision: 'reject', reason: 'other', dealId: victim, sellerId: sellerY.companyId })
+    expect((await pool.query(`select status from creatives where deal_id = $1`, [victim])).rows[0].status).toBe('pending')
+    await call(buyerA, 'POST', `/api/deals/${mine}/issues`, { reason: 'other', note: 'x', dealId: victim, buyerId: buyerB.companyId })
+    expect((await pool.query(`select count(*)::int n from issues where deal_id = $1`, [victim])).rows[0].n).toBe(0)
+  })
+
+  test('CSRF: forms and foreign origins cannot write; raw bytes only reach uploads, only when signed in', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const form = await app.inject({ method: 'POST', url: `/api/seller/deals/${deal}/accept`, payload: 'x=1', headers: { cookie: sellerX.cookie, 'content-type': 'text/plain' } })
+    expect(form.statusCode).toBe(415)
+    const foreign = await app.inject({ method: 'POST', url: `/api/seller/deals/${deal}/accept`, headers: { cookie: sellerX.cookie, origin: 'https://evil.example', host: 'nashr.ae' } })
+    expect(foreign.statusCode).toBe(403)
+    expect((await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).json().status).toBe('awaiting_seller') // nothing happened
+    const own = await app.inject({ method: 'POST', url: `/api/seller/deals/${deal}/accept`, headers: { cookie: sellerX.cookie, origin: 'https://nashr.ae', host: 'nashr.ae' } })
+    expect(own.statusCode).toBe(200)
+    const anon = await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.alloc(1024), headers: { 'content-type': 'application/octet-stream' } })
+    expect(anon.statusCode).toBe(401)
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: Buffer.alloc(1024), headers: { 'content-type': 'application/octet-stream' } })).statusCode).toBe(415)
+    expect(own.headers).toMatchObject({ 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY' })
+  })
+
+  test('uploads are typed by their bytes; a renamed file is not a creative', async () => {
+    const up = (bytes: Buffer, type: string) => app.inject({ method: 'POST', url: '/api/files', payload: bytes, headers: { cookie: buyerA.cookie, 'content-type': type } })
+    const fake = (await up(Buffer.from('<script>alert(1)</script>'), 'audio/mpeg')).json()
+    expect((await pool.query(`select type from files where id = $1`, [fake.id])).rows[0].type).toBe('application/octet-stream')
+    const pdf = (await up(Buffer.from('%PDF-1.7 ...'), 'application/octet-stream')).json()
+    expect((await pool.query(`select type from files where id = $1`, [pdf.id])).rows[0].type).toBe('application/pdf')
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/creative`, { fileId: fake.id })).json()).toMatchObject({ status: 'technical_issue' })
+  })
+
+  test('placements: prices must be positive whole amounts; settings keep their type; more of them are the founder\'s', async () => {
+    const outletId = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    const base = { outletId, name: 'X', saleType: 'auction', days: [1], startingPrice: AED(1_000), creativeLeadHours: 48, closeLeadHours: 120 }
+    expect((await call(sellerX, 'POST', '/api/seller/placements', { ...base, buyNowPrice: -500 })).statusCode).toBe(400)
+    expect((await call(sellerX, 'POST', '/api/seller/placements', { ...base, packagePrice: 12.5 })).statusCode).toBe(400)
+    await expect(pool.query(`update slots set buy_now_price = -1 where id = $1`, [slotX])).rejects.toThrow('slots_prices_positive')
+    expect((await call(admin, 'PUT', '/api/admin/settings/free_cancel_hours', { value: 9999 })).statusCode).toBe(403)
+    expect((await call(admin, 'PUT', '/api/admin/settings/nashr_trn', { value: '100000000000003' })).statusCode).toBe(403)
+    expect((await call(admin, 'PUT', '/api/admin/settings/seller_window_hours', { value: 'soon' })).json().error).toMatch('takes a number')
+    expect((await call(founder, 'PUT', '/api/admin/settings/nashr_trn', { value: '100000000000003' })).statusCode).toBe(200)
+  })
+
+  test('a payment waiting for the bank cannot be started again; an authenticator code signs in once', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_3155' })).json().status).toBe('requires_action')
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().error).toMatch('waiting for you to confirm')
+    expect((await pool.query(`select count(*)::int n from money_ops where deal_id = $1 and kind = 'charge'`, [deal])).rows[0].n).toBe(1)
+    now = T('2026-11-01T09:00:00Z')
+    const code = totp((admin as any).secret, now)
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'ops@nashr.ae', password: PASS, totpCode: code } })).statusCode).toBe(200)
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'ops@nashr.ae', password: PASS, totpCode: code } })).json().error).toMatch('authenticator')
+  })
+})

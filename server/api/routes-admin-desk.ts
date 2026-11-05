@@ -66,8 +66,11 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
 
   // Suspending signs the user out everywhere; their company's bookings carry on.
   route('POST', '/api/admin/users/:id/status', STAFF, async ({ db, at, me }, req) => {
-    const u = (await db.query(`update users set status = $2 where id = $1 and role in ('buyer', 'seller') and status <> 'invited' returning id`, [req.params.id, req.body.status])).rows[0]
-    if (!u) throw new MarketError('Only active buyer or seller users can be suspended or restored.')
+    // admins manage buyer and seller users; the founder can also suspend an admin (never themselves)
+    const roles = me.role === 'founder' ? ['buyer', 'seller', 'admin'] : ['buyer', 'seller']
+    const u = (await db.query(`update users set status = $2 where id = $1 and role = any($3) and status <> 'invited' and id <> $4 returning id`,
+      [req.params.id, req.body.status, roles, me.userId])).rows[0]
+    if (!u) throw new MarketError(me.role === 'founder' ? 'This user cannot be suspended or restored.' : 'Only active buyer or seller users can be suspended or restored.')
     if (req.body.status === 'suspended') await db.query(`delete from sessions where user_id = $1`, [u.id])
     await audit(db, `admin:${me.userId}`, `user.${req.body.status}`, 'user', u.id, { reason: req.body.reason ?? null }, at)
     return { ok: true }

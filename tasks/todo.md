@@ -100,4 +100,13 @@ Decisions made while building (flag to owner if they disagree):
 - Settings are edited as raw values with a plain-language label; a friendlier form per setting can come with the brand pass.
 
 ## Phase F: Launch readiness
-- [ ] F1 All 26 brief scenarios end to end. F2 Security review, monitoring, restore drill. F3 Pilot.
+- [x] F1 All 26 brief scenarios end to end: `docs/scenarios.md` maps each to its test (scenario 16 waits for KSA to open; its building blocks are tested)
+  - Built to close gaps: deadline reminders; reasons on timer events shown to buyers; overnight programmes and overlap warnings;
+    KSA and Athena "coming soon" with waiting lists; "payment pending" and "Below your reserve" for sellers; cancellation preview;
+    refund-losses report; dispute decisions notify both sides; money-check test
+- [x] F2 Security review (`docs/security-review.md`: 1 high, 3 medium, 5 low found and fixed; Stripe webhook signature open for B5),
+  monitoring (`/api/health`, JSON logs, graceful shutdown), restore drill (`scripts/restore-drill.sh`, passed, tamper test caught), `docs/runbook.md`
+- [ ] F3 Pilot: plan written (`docs/pilot-plan.md`); running it needs Stripe live (B5), AWS, email service, brand files, legal sign-off and the pilot companies
+
+### Checkpoint F: launch readiness (software side) ✅ (104 tests + 3 e2e journeys)
+Waiting on the owner: Stripe test then live account (B5), AWS account and budget, email service, brand files, accountant and legal sign-off, pilot companies.

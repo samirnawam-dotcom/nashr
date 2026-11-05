@@ -36,7 +36,8 @@ export async function confirmPayment(provider: PaymentProvider, a: { dealId: str
     if (deal.status !== 'awaiting_payment') throw new MarketError('This booking is not waiting for payment.')
     // An attempt whose outcome is unknown (the provider call failed mid-way) is retried with the same key,
     // so the provider returns the original result instead of charging twice.
-    const unknown = (await c.query(`select * from money_ops where deal_id = $1 and kind = 'charge' and status = 'pending'`, [deal.id])).rows[0]
+    const unknown = (await c.query(`select * from money_ops where deal_id = $1 and kind = 'charge' and status in ('pending', 'requires_action')`, [deal.id])).rows[0]
+    if (unknown?.status === 'requires_action') throw new MarketError('Your bank is still waiting for you to confirm the last payment.')
     if (unknown) return unknown
     const { n } = await one(c, `select count(*)::int n from money_ops where deal_id = $1 and kind = 'charge'`, [deal.id])
     return newOp(c, { dealId: deal.id, kind: 'charge', amount: split(deal.amount, ratesOf(deal)).buyerPays, currency: deal.currency, key: `charge:${deal.id}:${n + 1}` }, at)

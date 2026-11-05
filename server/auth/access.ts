@@ -2,7 +2,7 @@ import { type Db, one } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
 import { MarketError } from '../marketplace/market.js'
-import { checkTotp, hashPassword, newTotpSecret, randomToken, sha256, verifyPassword } from './crypto.js'
+import { checkTotp, totpStep, hashPassword, newTotpSecret, randomToken, sha256, verifyPassword } from './crypto.js'
 
 // Business emails only (brief section 2).
 const FREE_EMAIL = new Set(['gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com', 'msn.com', 'yahoo.com', 'ymail.com',
@@ -82,13 +82,20 @@ export async function acceptInvite(db: Db, a: { token: string; password: string;
   return { needsTotp: false as const }
 }
 
+const DUMMY_HASH = hashPassword('not a real password, only spends the same time')
+
 /** Login. Staff need their authenticator code. Returns a session token for the cookie. */
 export async function login(db: Db, a: { email: string; password: string; totpCode?: string }, at: Date) {
   const u = (await db.query(`select * from users where lower(email) = lower($1)`, [a.email])).rows[0]
   const fail = () => new MarketError('Email or password is not right.') // same message either way: no account probing
-  if (!u || u.status !== 'active' || !verifyPassword(a.password ?? '', u.password_hash)) throw fail()
-  if (STAFF.includes(u.role) && !(u.totp_enabled && a.totpCode && checkTotp(u.totp_secret, a.totpCode, at)))
-    throw new MarketError('Enter the code from your authenticator app.')
+  // unknown emails still pay for one password hash, so the response time does not reveal who has an account
+  const ok = verifyPassword(a.password ?? '', u?.password_hash ?? DUMMY_HASH)
+  if (!u || u.status !== 'active' || !ok) throw fail()
+  if (STAFF.includes(u.role)) {
+    const step = u.totp_enabled && a.totpCode ? totpStep(u.totp_secret, a.totpCode, at) : null
+    if (step === null || (u.totp_last_step != null && step <= Number(u.totp_last_step))) throw new MarketError('Enter the code from your authenticator app.')
+    await db.query(`update users set totp_last_step = $2 where id = $1`, [u.id, step]) // each code signs in once
+  }
   const token = randomToken()
   await db.query(`insert into sessions (token_hash, user_id, created_at, expires_at) values ($1, $2, $3, $4)`,
     [sha256(token), u.id, at, new Date(at.getTime() + SESSION_HOURS * 3_600_000)])

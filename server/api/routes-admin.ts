@@ -7,7 +7,7 @@ import { decideDispute } from '../payments/payments.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 // Financial settings are the founder's (brief section 2).
-export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|media_vat_bp|processing_fee|cancel_fee_bp)/
+export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|nashr_trn|nashr_legal_name|media_vat_bp|processing_fee|cancel_fee_bp|free_cancel_hours|review_working_days|proof_due_working_days|media_invoice_timing|open_markets)/
 
 export function adminRoutes(route: RouteFn) {
   route('GET', '/api/admin/access-requests', STAFF, async ({ db }) =>
@@ -37,8 +37,13 @@ export function adminRoutes(route: RouteFn) {
 
   route('PUT', '/api/admin/settings/:key', STAFF, async ({ db, at, me }, req, reply) => {
     if (FOUNDER_ONLY.test(req.params.key) && me.role !== 'founder') return reply.code(403).send({ error: 'Only the founder can change financial settings.' })
-    const known = await db.query(`select 1 from settings where key = $1 limit 1`, [req.params.key])
-    if (!known.rowCount && !req.params.key.startsWith('commission:')) throw new MarketError('Unknown setting.')
+    const known = (await db.query(`select value from settings where key = $1 order by valid_from desc limit 1`, [req.params.key])).rows[0]
+    if (!known && !req.params.key.startsWith('commission:')) throw new MarketError('Unknown setting.')
+    // The new value keeps the old one's type (a number stays a number, a list stays a list); commission is basis points.
+    const kind = (v: unknown) => Array.isArray(v) ? 'list' : v === null ? 'null' : typeof v
+    const expected = known ? kind(known.value) : 'number'
+    if (expected !== 'null' && kind(req.body.value) !== expected) throw new MarketError(`This setting takes a ${expected}.`)
+    if (typeof req.body.value === 'number' && (!Number.isInteger(req.body.value) || req.body.value < 0)) throw new MarketError('Use a whole number, zero or more.')
     await changeSetting(db, req.params.key, req.body.value, `${me.role}:${me.userId}`, at)
     return { ok: true }
   }, { type: 'object', required: ['value'], properties: { value: {} } })

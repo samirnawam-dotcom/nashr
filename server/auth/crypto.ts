@@ -31,4 +31,10 @@ export function totp(secret: string, at: Date, step = 0) {
   return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, '0')
 }
 /** Accepts the current code and one step either side for clock drift. */
-export const checkTotp = (secret: string, code: string, at: Date) => [-1, 0, 1].some(s => totp(secret, at, s) === code)
+export const checkTotp = (secret: string, code: string, at: Date) => totpStep(secret, code, at) !== null
+/** The time step a code belongs to (±1 step of clock drift), or null; login refuses a step already used. */
+export function totpStep(secret: string, code: string, at: Date) {
+  const base = Math.floor(at.getTime() / 30_000)
+  for (const s of [-1, 0, 1]) if (totp(secret, at, s) === code) return base + s
+  return null
+}
