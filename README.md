@@ -41,10 +41,11 @@ e2e/                  browser checks of whole journeys
 
 ## Demo server
 
-`scripts/deploy-vps.sh` sets up the demo on one Ubuntu or Debian VPS: PostgreSQL 16, Node 22, the API under systemd, nginx and a Let's Encrypt certificate. Run it as root; run it again to update.
+`scripts/deploy-vps.sh` sets up the demo on one Ubuntu or Debian VPS: PostgreSQL 16, Node 22 and the API under systemd. On a Plesk server it adds the site, the /api proxy and the Let's Encrypt certificate through Plesk; otherwise it installs nginx and certbot. Run it as root; run it again to update.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/samirnawam-dotcom/nashr/claude/zealous-wright-qlxrhi/scripts/deploy-vps.sh | DOMAIN=nashr.restbits.online bash
+curl -fsSL https://raw.githubusercontent.com/samirnawam-dotcom/nashr/claude/zealous-wright-qlxrhi/scripts/deploy-vps.sh -o /root/deploy-nashr.sh
+DOMAIN=nashr.restbits.online bash /root/deploy-nashr.sh
 ```
 
 It uses the fake payment provider (no real money) until Stripe is connected. On first run it loads the demo data and replaces the published demo password and staff key with new ones, printed once and kept in `/var/lib/nashr/demo-credentials.txt`.
