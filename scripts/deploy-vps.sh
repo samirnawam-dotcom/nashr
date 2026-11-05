@@ -187,7 +187,12 @@ plesk_site() {
   systemctl reload nginx
   echo "nginx: /api is proxied to the API"
 
-  if [ ! -f "$DATA/.cert-plesk" ]; then
+  # Skip Let's Encrypt when the site already serves a certificate for this name (for example a Cloudflare Origin one).
+  local IP CRT; IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  CRT="$(echo | openssl s_client -connect "${IP:-127.0.0.1}:443" -servername "$DOMAIN" 2>/dev/null | openssl x509 2>/dev/null || true)"
+  if [ -n "$CRT" ] && echo "$CRT" | openssl x509 -noout -checkhost "$DOMAIN" | grep -q 'does match' && echo "$CRT" | openssl x509 -noout -checkend 2592000 >/dev/null; then
+    echo "HTTPS: the site already has a valid certificate for $DOMAIN"
+  elif [ ! -f "$DATA/.cert-plesk" ]; then
     say "HTTPS certificate (Plesk Let's Encrypt)"
     local M=(); [ -n "$EMAIL" ] && M=(-m "$EMAIL")
     plesk bin extension --exec letsencrypt cli.php -d "$DOMAIN" "${M[@]}" < /dev/null && touch "$DATA/.cert-plesk" \
