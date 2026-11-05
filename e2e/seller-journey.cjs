@@ -16,7 +16,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errors = []
   p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
   const shot = async n => out && (await p.waitForTimeout(300), await p.screenshot({ path: `${out}/${n}.png`, fullPage: true }))
-  await p.goto(BASE + '/'); await p.fill('#email', 'sales@skyline.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
+  await p.goto(BASE + '/#/sign-in'); await p.fill('#email', 'sales@skyline.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.kpis'); await shot('s1-dashboard')
   await p.click('.nav >> text=Inbox'); await p.waitForSelector('.tasks'); await shot('s2-inbox')
   await p.click(`.tasks a[href="#/deals/${dealId}"]`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')

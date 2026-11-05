@@ -5,7 +5,7 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
 ;(async () => {
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } })
   const errors = []; p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
-  await p.goto(BASE + '/')
+  await p.goto(BASE + '/#/sign-in')
   await p.fill('#email', 'demo@northwind.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.cal-head')
   await p.click('[aria-label="Next"]'); await p.click('[aria-label="Next"]'); await p.waitForTimeout(700) // week of 16 Nov: everything open

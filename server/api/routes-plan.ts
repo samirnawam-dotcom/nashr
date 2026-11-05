@@ -40,11 +40,11 @@ const outletCard = (r: any) => ({ id: r.id, name: r.name, nameAr: r.name_ar, cha
   tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r) })
 
 export function planRoutes(route: RouteFn) {
-  // The directory is for buyers and Nashr only; sellers cannot see it (brief section 6).
-  route('GET', '/api/directory', [...BUYER, 'admin'], async ({ db }) =>
+  // The directory is for buyers, visitors browsing before they sign in, and Nashr; signed-in sellers cannot see it (brief section 6).
+  route('GET', '/api/directory', [...BUYER, 'admin', 'guest'], async ({ db }) =>
     (await db.query(`${OUTLET_SQL} order by c.payouts_enabled is not true, o.name`)).rows.map(outletCard))
 
-  route('GET', '/api/outlets/:id', [...BUYER, 'admin'], async ({ db, at }, req) => {
+  route('GET', '/api/outlets/:id', [...BUYER, 'admin', 'guest'], async ({ db, at }, req) => {
     const r = (await db.query(`${OUTLET_SQL} and o.id = $1`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const placements = r.bookable ? (await db.query(

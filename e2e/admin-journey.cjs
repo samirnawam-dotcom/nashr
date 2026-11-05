@@ -33,7 +33,7 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   p.on('pageerror', e => errors.push(e.message)); p.on('response', r => r.status() >= 400 && !/\/api\/(me|auth\/login)$/.test(new URL(r.url()).pathname) && errors.push(`${r.status()} ${r.url()}`)) // sign-in asks for the code with a 400 first
   const shot = async n => out && (await p.waitForTimeout(300), await p.screenshot({ path: `${out}/${n}.png`, fullPage: true }))
   p.on('dialog', d => d.accept())
-  await p.goto(BASE + '/'); await p.fill('#email', 'ops@nashr.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
+  await p.goto(BASE + '/#/sign-in'); await p.fill('#email', 'ops@nashr.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('#code'); await p.fill('#code', totp('JBSWY3DPEHPK3PXP')); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.attn-list'); await shot('a1-overview')
   // Decide the dispute

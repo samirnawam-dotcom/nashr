@@ -17,7 +17,7 @@ import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 
 export type Ctx = { db: pg.PoolClient; at: Date; me: Session & { actAs: { companyId: string; role: string } }; provider: PaymentProvider }
-type Role = 'buyer' | 'seller' | 'admin' | 'founder'
+type Role = 'buyer' | 'seller' | 'admin' | 'founder' | 'guest' // 'guest': also readable without signing in (me is null)
 // Bodies are validated by each route's JSON schema before the handler runs.
 export type Req = FastifyRequest & { body: any; params: any; query: any }
 type Handler = (ctx: Ctx, req: Req, reply: FastifyReply) => Promise<unknown>
@@ -95,7 +95,10 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
       const at = clock()
       if (roles === 'public') return tx(db => handler({ db, at, me: null as any, provider: deps.provider }, req as Req, reply))
       const s = await session(pool, cookie(req), at)
-      if (!s) return reply.code(401).send({ error: 'Please sign in.' })
+      if (!s) {
+        if (roles.includes('guest') && method === 'GET') return tx(db => handler({ db, at, me: null as any, provider: deps.provider }, req as Req, reply))
+        return reply.code(401).send({ error: 'Please sign in.' })
+      }
       const viewing = s.viewAs && ['admin', 'founder'].includes(s.role)
       const actAs = viewing ? s.viewAs! : { companyId: s.companyId, role: s.role }
       if (viewing && method !== 'GET' && url !== '/api/admin/view-as' && url !== '/api/auth/logout')

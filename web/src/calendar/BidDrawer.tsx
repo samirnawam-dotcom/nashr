@@ -3,6 +3,7 @@ import { api, type Campaign, type Slot } from '../api'
 import { dayLabel, money, time } from '../format'
 import { dubai, isAllDay } from './layout'
 import { SaleType, status } from './CalendarPage'
+import { SignInPrompt, useGuest } from '../guest'
 
 type Detail = Slot & { minNextBid: number; yourMax: number | null; briefOnFile: boolean; creativeDueAt: string }
 const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other']
@@ -11,6 +12,7 @@ const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Dat
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
 
 export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose: () => void; onDone: () => void }) {
+  const guest = useGuest()
   const [s, setS] = useState<Detail | null>(null)
   const [amount, setAmount] = useState(''), [auto, setAuto] = useState(false), [max, setMax] = useState('')
   // The brief goes with every first bid on a slot; the last one is offered again so buyers type it once per campaign.
@@ -22,7 +24,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   // Tag the booking to a campaign so it counts against that budget; the last choice is offered again.
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [campaignId, setCampaignId] = useState(() => { try { return localStorage.getItem(LAST_CAMPAIGN) ?? '' } catch { return '' } })
-  useEffect(() => { api<Campaign[]>('/campaigns').then(c => { const active = c.filter(x => x.status === 'active'); setCampaigns(active)
+  useEffect(() => { if (!guest) api<Campaign[]>('/campaigns').then(c => { const active = c.filter(x => x.status === 'active'); setCampaigns(active)
     if (!active.some(x => x.id === campaignId)) setCampaignId('') }, () => {}) }, [])
 
   const load = () => api<Detail>(`/slots/${slotId}`).then(d => { setS(d); setAmount(String(d.minNextBid / 100)) }, e => setError(e.message))
@@ -55,7 +57,8 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         {s.buyNowPrice && <div><dt>Buy now</dt><dd className="num">{money(s.buyNowPrice)}<small>Request to book: the publisher must accept</small></dd></div>}
       </dl>
 
-      {s.available && <>
+      {s.available && guest && <SignInPrompt to={s.saleType === 'auction' ? 'bid on this slot' : 'book this slot'} />}
+      {s.available && !guest && <>
         {s.saleType === 'auction' ? <section className="form">
           <div className="field"><label htmlFor="amt">Your bid (excl. VAT)</label>
             <div className="money-input"><span aria-hidden>AED</span><input id="amt" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>

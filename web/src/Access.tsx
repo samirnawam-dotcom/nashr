@@ -27,7 +27,7 @@ export function RequestAccess() {
           {error && <p className="error" role="alert">{error}</p>}
           <button className="btn primary" disabled={busy}>Send request</button>
         </>}
-        <p className="small muted"><a href="#/">Back to sign in</a></p>
+        <p className="small muted"><a href="#/sign-in">Sign in</a> · <a href="#/">Back to Nashr</a></p>
       </form>
     </AuthShell>
   )

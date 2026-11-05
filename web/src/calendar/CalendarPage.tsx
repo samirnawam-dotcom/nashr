@@ -3,6 +3,7 @@ import { api, type Slot } from '../api'
 import { closesIn, dayLabel, money, time } from '../format'
 import { addDays, DAY_END, DAY_START, dubai, isAllDay, layoutDay, monthGrid, todayInDubai, weekOf } from './layout'
 import { BidDrawer } from './BidDrawer'
+import { SignInPrompt, useGuest } from '../guest'
 
 type View = 'day' | 'week' | 'month'
 const HOUR = 60, DAY_HOUR = 96 // px per hour in week and day views
@@ -66,6 +67,7 @@ function AgendaView({ days, slots, onPick, onNext }: { days: string[]; slots: Sl
 }
 
 export function CalendarPage() {
+  const guest = useGuest()
   const narrow = useNarrow()
   const [view, setView] = useState<View>('week')
   const [anchor, setAnchor] = useState(todayInDubai())
@@ -79,6 +81,13 @@ export function CalendarPage() {
   const days = view === 'day' ? [anchor] : view === 'week' ? weekOf(anchor) : monthGrid(anchor).flat()
   const load = () => api<Slot[]>(`/slots?from=${days[0]}T00:00:00%2B04:00&to=${addDays(days.at(-1)!, 1)}T00:00:00%2B04:00`).then(setSlots, e => setError(e.message))
   useEffect(() => { load() }, [view, anchor])
+  // First visit: if nothing is on sale this week, open on the first week that has something (bidding closes days before air).
+  useEffect(() => {
+    api<Slot[]>('/slots').then(all => {
+      const first = all.find(s => s.available), week = weekOf(todayInDubai())
+      if (first && dubai(first.startsAt).date > week[6]) setAnchor(dubai(first.startsAt).date)
+    }, () => {})
+  }, [])
 
   const shown = useMemo(() => slots.filter(s => channels.has(s.channel) && saleTypes.has(s.saleType)), [slots, channels, saleTypes])
   const step = (n: number) => setAnchor(addDays(anchor, view === 'day' ? n : view === 'week' ? 7 * n : 0) as string)
@@ -98,7 +107,8 @@ export function CalendarPage() {
         <label className="check"><input type="checkbox" checked={saleTypes.has('auction')} onChange={() => toggle(saleTypes, 'auction', setSaleTypes)} /><Gavel /> Auction</label>
         <label className="check"><input type="checkbox" checked={saleTypes.has('quick_sale')} onChange={() => toggle(saleTypes, 'quick_sale', setSaleTypes)} /><Bolt /> Quick sale</label>
         <h3 className="side-h">Key</h3>
-        <ul className="cal-key"><li><span className="dot lead">You lead</span></li><li><span className="on-air">Closes soon</span></li><li><span className="dot outbid">Outbid</span></li></ul>
+        <ul className="cal-key">{!guest && <li><span className="dot lead">You lead</span></li>}<li><span className="on-air">Closes soon</span></li>{!guest && <li><span className="dot outbid">Outbid</span></li>}</ul>
+        {guest && <SignInPrompt to="bid or book" compact />}
         <p className="small muted" style={{ marginTop: 24 }}>All times are Dubai time. Prices exclude VAT.</p>
       </details>
 

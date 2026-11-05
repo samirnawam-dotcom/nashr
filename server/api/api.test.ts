@@ -98,7 +98,12 @@ describe('who can see what (SPEC 5.5, scenario 15)', () => {
   test('every route refuses the wrong role, and other companies\' records look like they do not exist', async () => {
     const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
     const cases: [Who | null, string, string, number][] = [
-      [null, 'GET', '/api/slots', 401],
+      [null, 'GET', '/api/slots', 200],                          // visitors can browse before they sign in
+      [null, 'POST', `/api/slots/${slotX}/bids`, 401],           // but must sign in to act
+      [null, 'POST', `/api/slots/${slotX}/buy-now`, 401],
+      [null, 'GET', '/api/deals', 401],
+      [null, 'GET', '/api/campaigns', 401],
+      [null, 'GET', '/api/waitlist', 401],
       [sellerX, 'GET', '/api/slots', 403],                       // sellers see only their own calendar
       [sellerX, 'GET', '/api/directory', 403],                   // and not the directory
       [buyerA, 'GET', '/api/seller/deals', 403],
@@ -113,10 +118,25 @@ describe('who can see what (SPEC 5.5, scenario 15)', () => {
       [buyerA, 'GET', '/api/deals/not-a-uuid', 404],
     ]
     for (const [who, method, url, code] of cases) {
-      const payload = method === 'GET' ? undefined : url.endsWith('pay') ? { paymentMethod: 'pm_card_4242' } : url.endsWith('choose') ? { bidId: deal } : url.includes('settings') ? { value: 1 } : {}
+      const payload = method === 'GET' ? undefined : url.endsWith('pay') ? { paymentMethod: 'pm_card_4242' } : url.endsWith('choose') ? { bidId: deal } : url.includes('settings') ? { value: 1 } : url.endsWith('bids') ? { amount: AED(4_000) } : {}
       expect((await call(who, method, url, payload)).statusCode, `${method} ${url}`).toBe(code)
     }
     expect((await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).statusCode).toBe(200)
+  })
+
+  test('visitors browse the calendar, a slot, the directory and an outlet with no per-buyer fields', async () => {
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(4_200), brief: BRIEF })
+    const slots = (await call(null, 'GET', '/api/slots?from=2026-11-01&to=2026-12-01')).json()
+    expect(slots.length).toBeGreaterThan(0)
+    for (const s of slots) expect(s).toMatchObject({ youLead: false, youBid: false })   // an unbid slot must not read as "you lead"
+    const one = (await call(null, 'GET', `/api/slots/${slotX}`)).json()
+    expect(one).toMatchObject({ topBid: AED(3_600), youLead: false, yourMax: null, briefOnFile: false })
+    expect(JSON.stringify(slots) + JSON.stringify(one)).not.toMatch(/reserve|4200|420000|alfuttaim|Al Futtaim/i)
+    const dir = (await call(null, 'GET', '/api/directory')).json()
+    const outlet = dir.find((o: any) => o.name === 'Skyline FM')
+    expect((await call(null, 'GET', `/api/outlets/${outlet.id}`)).json().placements.length).toBe(1)
+    expect((await call(null, 'POST', `/api/outlets/${outlet.id}/quote`, { message: 'Hi' })).statusCode).toBe(401)
+    expect((await call(sellerX, 'GET', `/api/outlets/${outlet.id}`)).statusCode).toBe(403)        // signed-in sellers still cannot
   })
 
   test('buyers never see reserve prices, commission, other bidders or contact details; sellers see the company, never contacts', async () => {

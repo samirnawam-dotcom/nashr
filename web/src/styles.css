@@ -119,3 +119,16 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
   .tabbar a.active { color: var(--teal); border-top-color: var(--signal); font-weight: 500; }
   body { padding-bottom: 72px; }
 }
+
+/* Visitors (not signed in): the sign-in prompt sits where an action would be. */
+.signin-prompt { border: 1px solid var(--line); border-left: 3px solid var(--signal); background: var(--surface); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 10px; }
+.signin-prompt p { margin: 0; font-size: 14px; color: var(--slate); }
+.signin-prompt p b { color: var(--ink); }
+.signin-prompt.compact { padding: 10px 12px; }
+.guest-actions { display: flex; gap: 10px; align-items: center; }
+.guest-actions a.signin { color: var(--on-studio); text-decoration: none; font-weight: 500; }
+.guest-actions .btn.signal { background: var(--signal); border-color: var(--signal); color: var(--studio); font-weight: 600; }
+.guest-actions .btn.signal:hover { background: #f0b53a; }
+@media (max-width: 900px) { .guest-actions a.signin { display: none; } .guest-actions .btn.signal { padding: 7px 12px; } }
+.signin-prompt .btn { white-space: nowrap; }
+.signin-prompt.compact .row-flex { gap: 8px; flex-wrap: wrap; }

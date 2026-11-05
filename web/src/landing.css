@@ -1,0 +1,195 @@
+/* The landing page (the first page visitors see), scoped under .lp so it cannot clash with the app's own styles. */
+.lp {--studio: #0a4545;      
+  --studio-2: #0d5858;
+  --teal: #0f6b6b;        
+  --signal: #e5a21b;      
+  --ink: #17212b;
+  --slate: #56616e;
+  --line: #e1e5e4;
+  --page: #f6f7f6;
+  --surface: #ffffff;
+  --on-studio: #e7f2f1;
+  --on-studio-dim: #a8c9c6;
+  --green: #1d7a46; --green-1: #e7f4ec;
+  --display: "Geist", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "IBM Plex Sans Arabic", "Helvetica Neue", Arial, sans-serif;
+  --kufi: "Reem Kufi", "IBM Plex Sans Arabic", "Geeza Pro", serif;
+  color-scheme: light;}
+.lp, .lp * {box-sizing: border-box;}
+.lp {}
+.lp {margin: 0; background: var(--page); color: var(--ink); font: 400 17px/1.6 var(--body);}
+.lp a {color: inherit;}
+.lp .wrap {max-width: 1200px; margin: 0 auto; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));}
+.lp h1, .lp h2, .lp h3 {font-family: var(--display); letter-spacing: -.02em; line-height: 1.08; margin: 0; text-wrap: balance;}
+.lp .num {font-variant-numeric: tabular-nums;}
+.lp :focus-visible {outline: 3px solid var(--signal); outline-offset: 3px; border-radius: 6px;}
+.lp .btn {display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; padding: 13px 20px; font: 600 16px var(--display); text-decoration: none; border: 1px solid transparent; cursor: pointer; transition: transform .15s, background-color .15s;}
+.lp .btn:hover {transform: translateY(-1px);}
+.lp .btn.signal {background: var(--signal); color: var(--studio);}
+.lp .btn.ghost {border-color: rgba(231, 242, 241, .35); color: var(--on-studio);}
+.lp .btn.teal {background: var(--teal); color: #fff;}
+.lp .hero {background: var(--studio); color: var(--on-studio); position: relative; overflow: hidden;}
+.lp .hero::after {content: ""; position: absolute; inset: auto 0 0; height: 1px; background: rgba(231, 242, 241, .12);}
+.lp nav.top {display: flex; align-items: center; gap: 28px; padding-block: 22px;}
+.lp .mark {display: inline-flex; align-items: baseline; gap: 10px; text-decoration: none;}
+.lp .mark b {font: 700 22px var(--display); color: #fff;}
+.lp .mark i {font: normal 700 26px var(--kufi); color: var(--signal);}
+.lp nav.top .links {display: flex; gap: 24px; margin-left: auto; font-size: 15px;}
+.lp nav.top .links a {text-decoration: none; color: var(--on-studio-dim);}
+.lp nav.top .links a:hover {color: #fff;}
+.lp .hero-grid {display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; align-items: center; padding-block: 48px 72px;}
+.lp .kicker {display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--on-studio-dim); margin-bottom: 22px;}
+.lp .kicker::before {content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 4px rgba(229, 162, 27, .22); animation: lp-pulse 2.4s ease-in-out infinite;}
+.lp .hero h1 {font-size: clamp(40px, 5.4vw, 68px); font-weight: 700; color: #fff; max-width: 13ch;}
+.lp .hero .ar {display: block; font: 500 clamp(20px, 2vw, 26px)/1.5 var(--body); color: var(--on-studio-dim); margin-top: 18px; direction: rtl; text-align: left; letter-spacing: 0;}
+.lp .hero p.lede {font-size: 19px; color: var(--on-studio-dim); max-width: 46ch; margin: 22px 0 32px;}
+.lp .cta-row {display: flex; flex-wrap: wrap; gap: 12px;}
+.lp .fine {font-size: 14px; color: var(--on-studio-dim); margin-top: 18px;}
+.lp .board {background: #08393a; border: 1px solid rgba(231, 242, 241, .14); border-radius: 18px; padding: 18px; position: relative; box-shadow: 0 30px 60px rgba(0, 0, 0, .25);}
+.lp .board-h {display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--on-studio-dim); margin-bottom: 14px;}
+.lp .board-h b {font: 600 15px var(--display); color: #fff;}
+.lp .live {display: inline-flex; align-items: center; gap: 6px; color: var(--signal); font-weight: 600;}
+.lp .live::before {content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); animation: lp-pulse 1.6s ease-in-out infinite;}
+.lp .axis {display: grid; grid-template-columns: 92px 1fr; font-size: 11px; color: var(--on-studio-dim); margin-bottom: 6px;}
+.lp .ticks {display: flex; justify-content: space-between; padding-right: 2px;}
+.lp .lanes {position: relative; display: grid; gap: 8px;}
+.lp .lane {display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 0;}
+.lp .lane .who {font: 600 13px var(--display); color: #fff; line-height: 1.2;}
+.lp .lane .who small {display: block; font: 400 11px var(--body); color: var(--on-studio-dim);}
+.lp .track {position: relative; height: 46px; border-radius: 8px; background: rgba(231, 242, 241, .05);}
+.lp .slot {position: absolute; top: 5px; bottom: 5px; border-radius: 6px; background: rgba(15, 107, 107, .55); border: 1px solid rgba(95, 169, 164, .6); border-left: 3px solid #5fa9a4; padding: 4px 8px; font-size: 11px; color: var(--on-studio); overflow: hidden; white-space: nowrap;}
+.lp .slot b {display: block; font: 600 12px var(--display); color: #fff;}
+.lp .slot.hot {border-left-color: var(--signal); background: rgba(229, 162, 27, .16); border-color: rgba(229, 162, 27, .5);}
+.lp .slot.booked {background: rgba(29, 122, 70, .35); border-color: rgba(62, 170, 110, .55); border-left-color: #3eaa6e;}
+.lp .playhead {position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--signal); box-shadow: 0 0 12px rgba(229, 162, 27, .8); left: calc(92px + 30%); pointer-events: none;}
+.lp .playhead::before {content: "Now"; position: absolute; top: -20px; left: -14px; font: 600 10px var(--display); color: var(--signal);}
+.lp .bidcard {margin-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: center; background: var(--surface); color: var(--ink); border-radius: 12px; padding: 14px 16px;}
+.lp .bidcard .t {font-size: 13px; color: var(--slate);}
+.lp .bidcard .amt {font: 700 28px var(--display); letter-spacing: -.02em;}
+.lp .bidcard .state {grid-row: span 2; display: grid; justify-items: end; gap: 6px;}
+.lp .pill {display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600;}
+.lp .pill::before {content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor;}
+.lp .pill.lead {background: var(--green-1); color: var(--green);}
+.lp .pill.soon {background: #fdf3dc; color: #6b4500;}
+.lp .flash {animation: lp-flash .6s ease-out;}
+@keyframes lp-pulse { 50% { opacity: .35; } }
+@keyframes lp-flash { from { background: #fdf3dc; } to { background: var(--surface); } }
+.lp .channels {background: var(--studio-2); color: var(--on-studio);}
+.lp .channels ul {list-style: none; margin: 0 auto; padding-block: 22px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px;}
+.lp .channels li {display: grid; gap: 2px;}
+.lp .channels b {font: 600 17px var(--display); color: #fff;}
+.lp .channels span {font-size: 14px; color: var(--on-studio-dim);}
+.lp section.block {padding-block: 96px;}
+.lp .eyeline {font: 600 15px var(--display); color: var(--teal); margin-bottom: 12px;}
+.lp section h2 {font-size: clamp(32px, 3.6vw, 46px); max-width: 20ch;}
+.lp .intro {color: var(--slate); max-width: 58ch; margin: 18px 0 48px;}
+.lp .steps {list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; counter-reset: s; position: relative;}
+.lp .steps li {counter-increment: s; position: relative; padding: 64px 20px 0 0;}
+.lp .steps li::before {content: counter(s); position: absolute; top: 0; left: 0; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 700 16px var(--display); background: var(--surface); border: 2px solid var(--teal); color: var(--teal); z-index: 1;}
+.lp .steps li::after {content: ""; position: absolute; top: 19px; left: 40px; right: 0; height: 2px; background: linear-gradient(90deg, var(--teal) var(--fill, 0%), var(--line) var(--fill, 0%));}
+.lp .steps li:last-child::after {display: none;}
+.lp .steps li.on::before {background: var(--teal); color: #fff;}
+.lp .steps li.pay::before {border-color: var(--signal);}
+.lp .steps h3 {font-size: 19px; margin-bottom: 8px;}
+.lp .steps p {font-size: 15px; color: var(--slate); margin: 0;}
+.lp .split {display: grid; grid-template-columns: 1fr 1fr; gap: 24px;}
+.lp .aud {background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 36px; display: grid; gap: 18px; align-content: start;}
+.lp .aud h3 {font-size: 28px;}
+.lp .aud ul {list-style: none; margin: 0; padding: 0; display: grid; gap: 14px;}
+.lp .aud li {display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 16px;}
+.lp .aud li::before {content: ""; width: 10px; height: 10px; margin-top: 8px; border-radius: 3px; background: var(--teal);}
+.lp .aud.pub li::before {background: var(--signal);}
+.lp .aud .who {font-size: 14px; color: var(--slate);}
+.lp .held-section {display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; align-items: center;}
+.lp .flow {background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: grid; gap: 18px;}
+.lp .flow-row {display: grid; grid-template-columns: 1fr 1.2fr 1fr; align-items: center; gap: 12px; text-align: center;}
+.lp .node {border-radius: 12px; padding: 14px 10px; background: var(--page); font-size: 14px;}
+.lp .node b {display: block; font: 600 16px var(--display);}
+.lp .node.held {background: var(--studio); color: var(--on-studio);}
+.lp .node.held b {color: var(--signal);}
+.lp .pipe {position: relative; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden;}
+.lp .pipe i {position: absolute; top: 0; left: -30%; width: 30%; height: 100%; background: var(--signal); border-radius: 2px; animation: lp-travel 2.8s linear infinite;}
+@keyframes lp-travel { to { left: 100%; } }
+.lp .ledger {width: 100%; border-collapse: collapse; font-size: 15px;}
+.lp .ledger td {padding: 9px 0; border-bottom: 1px solid var(--line);}
+.lp .ledger td:last-child {text-align: right; font-variant-numeric: tabular-nums;}
+.lp .ledger tr.total td {font: 600 17px var(--display); border-bottom: 0;}
+.lp .note {font-size: 14px; color: var(--slate);}
+.lp .lp-facts {display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line);}
+.lp .lp-facts div {padding: 28px 24px 0 0; display: grid; gap: 6px; align-content: start;}
+.lp .lp-facts b {font: 700 34px var(--display); letter-spacing: -.02em; color: var(--teal);}
+.lp .lp-facts span {font-size: 15px; color: var(--slate);}
+.lp .access {background: var(--studio); color: var(--on-studio);}
+.lp .access .wrap {padding-block: 88px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: start;}
+.lp .access h2 {color: #fff;}
+.lp .access .big-ar {font: 700 clamp(96px, 12vw, 170px)/1 var(--kufi); color: var(--signal); margin-top: 28px; padding-bottom: .2em;}
+.lp form.req {background: var(--surface); color: var(--ink); border-radius: 16px; padding: 28px; display: grid; gap: 14px;}
+.lp form.req label {display: grid; gap: 6px; font-size: 14px; color: var(--slate);}
+.lp form.req input, .lp form.req select {font: inherit; font-size: 16px; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; background: var(--surface); width: 100%;}
+.lp form.req .two {display: grid; grid-template-columns: 1fr 1fr; gap: 12px;}
+.lp form.req .msg {font-size: 14px; border-radius: 10px; padding: 10px 12px;}
+.lp form.req .msg.ok {background: var(--green-1); color: var(--green);}
+.lp form.req .msg.err {background: #fbebe9; color: #a8291f;}
+.lp .lp-foot {background: #083737; color: var(--on-studio-dim); font-size: 14px;}
+.lp .lp-foot .wrap {padding-block: 26px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between;}
+@media (max-width: 960px) {
+.lp .hero-grid, .lp .held-section, .lp .access .wrap {grid-template-columns: 1fr; gap: 40px;}
+.lp .steps {grid-template-columns: 1fr; gap: 28px;}
+.lp .steps li {padding: 0 0 0 60px;}
+.lp .steps li::after {top: 40px; left: 19px; right: auto; bottom: -28px; width: 2px; height: auto; background: var(--line);}
+.lp .split {grid-template-columns: 1fr;}
+.lp .lp-facts {grid-template-columns: 1fr 1fr;}
+.lp .channels ul {grid-template-columns: repeat(3, minmax(0, 1fr));}
+.lp nav.top .links a:not(.btn) {display: none;}
+
+}
+@media (max-width: 560px) {
+.lp {font-size: 16px;}
+.lp section.block {padding-block: 64px;}
+.lp .channels ul {grid-template-columns: 1fr 1fr;}
+.lp .lane, .lp .axis {grid-template-columns: 64px 1fr;}
+.lp .playhead {left: calc(64px + 30%);}
+.lp .slot {font-size: 10px; padding: 3px 5px;}
+.lp .slot b {font-size: 11px;}
+.lp .aud {padding: 24px;}
+.lp form.req .two {grid-template-columns: 1fr;}
+.lp .flow-row {grid-template-columns: 1fr;}
+.lp .pipe {height: 24px; width: 4px; justify-self: center;}
+.lp .pipe i {left: 0; top: -30%; width: 100%; height: 30%; animation-name: lp-travel-v;}
+
+}
+@keyframes lp-travel-v { to { top: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+.lp, .lp *, .lp *::before, .lp *::after {animation: none !important; transition: none !important;}
+.lp {scroll-behavior: auto;}
+
+}
+
+/* In the app: the landing nav also offers the calendar and sign-in; the access band links to the real request form. */
+.lp nav.top .links { align-items: center; }
+.lp nav.top .links button { background: none; border: 0; padding: 0; font: inherit; color: var(--on-studio-dim); cursor: pointer; }
+.lp nav.top .links button:hover { color: #fff; }
+.lp .access-cta { background: var(--surface); color: var(--ink); border-radius: 16px; padding: 28px; display: grid; gap: 14px; }
+.lp .access-cta p { margin: 0; color: var(--slate); }
+.lp .access-cta .cta-links { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.lp .access-cta a.link { color: var(--teal); font-weight: 600; }
+.lp .board { cursor: pointer; }
+@media (max-width: 960px) {
+  .lp nav.top { gap: 12px; }
+  .lp nav.top .links { gap: 10px; }
+  .lp nav.top .links .btn { padding: 9px 14px; font-size: 14px; }
+}
+@media (max-width: 560px) {
+  .lp .hero h1 { font-size: 38px; }
+  .lp .cta-row .btn { flex: 1 1 100%; justify-content: center; }
+  .lp .bidcard .amt { font-size: 22px; }
+  .lp .lp-facts b { font-size: 28px; }
+  .lp .access .big-ar { font-size: 88px; }
+}
+.lp a.board { display: block; text-decoration: none; color: inherit; }
+@media (max-width: 960px) { .lp nav.top .links button { display: none; } }
+/* The app's own .btn background must not show through on the landing page. */
+.lp .btn { background: transparent; padding: 13px 20px; border-radius: 10px; }
+.lp .btn:hover { background: rgba(231, 242, 241, .08); }
+.lp .btn.signal, .lp .btn.signal:hover { background: var(--signal); }
+.lp .btn.teal, .lp .btn.teal:hover { background: var(--teal); }

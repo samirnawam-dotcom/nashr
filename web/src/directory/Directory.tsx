@@ -3,6 +3,7 @@ import { api, type Campaign, type Outlet, type Price } from '../api'
 import { dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
 import './directory.css'
+import { SignInPrompt, rememberPlace, useGuest } from '../guest'
 
 const CHANNELS = ['tv', 'radio', 'print', 'digital', 'podcast']
 const CHANNEL: Record<string, string> = { tv: 'TV', radio: 'Radio', print: 'Print', digital: 'Digital', podcast: 'Podcast' }
@@ -19,9 +20,11 @@ export const PriceTag = ({ p }: { p: Price }) => !p ? <span className="small mut
 
 /** "Tell me when it opens" for KSA and Athena (brief sections 14, 21). */
 export function Waitlist({ topic, label }: { topic: 'KSA' | 'Athena'; label: string }) {
+  const guest = useGuest()
   const [on, setOn] = useState<boolean | null>(null)
-  useEffect(() => { api<string[]>('/waitlist').then(t => setOn(t.includes(topic)), () => setOn(false)) }, [topic])
+  useEffect(() => { if (guest) return void setOn(false); api<string[]>('/waitlist').then(t => setOn(t.includes(topic)), () => setOn(false)) }, [topic])
   if (on === null) return null
+  if (guest) return <a className="btn" href="#/sign-in" onClick={rememberPlace}>{label}</a>
   return on ? <span className="small ok">You're on the list. We'll tell you when it opens.</span>
     : <button className="btn" onClick={() => api('/waitlist', { method: 'POST', body: { topic } }).then(() => setOn(true))}>{label}</button>
 }
@@ -76,10 +79,11 @@ type Profile = Outlet & { website: string | null; description: string | null; co
   startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null; buyNowPrice: number | null; openSlots: number; nextSlotAt: string | null }[] }
 
 export function OutletPage({ id }: { id: string }) {
+  const guest = useGuest()
   const [o, setO] = useState<Profile | null>(null), [error, setError] = useState('')
   const [message, setMessage] = useState(''), [sent, setSent] = useState(''), [busy, setBusy] = useState(false)
   const [campaigns, setCampaigns] = useState<Campaign[]>([]), [added, setAdded] = useState('')
-  useEffect(() => { api<Profile>(`/outlets/${id}`).then(setO, e => setError(e.message)); api<Campaign[]>('/campaigns').then(c => setCampaigns(c.filter(x => x.status === 'active')), () => {}) }, [id])
+  useEffect(() => { api<Profile>(`/outlets/${id}`).then(setO, e => setError(e.message)); if (!guest) api<Campaign[]>('/campaigns').then(c => setCampaigns(c.filter(x => x.status === 'active')), () => {}) }, [id])
 
   async function quote() {
     setBusy(true); setError('')
@@ -120,11 +124,12 @@ export function OutletPage({ id }: { id: string }) {
         {!o.onNashr && !o.comingSoon && <section className="card pad form">
           <h3>Request a quote</h3>
           <p className="small muted">This outlet isn't on Nashr yet. Tell us what you need and Nashr's team will get you a price.</p>
+          {guest ? <SignInPrompt to="request a quote" compact /> : <>
           <div className="field"><label htmlFor="q">What you'd like to book</label><textarea id="q" rows={4} maxLength={2000} value={message} onChange={e => setMessage(e.target.value)} placeholder="Dates, formats, budget" /></div>
           <span className="small muted">Emails and phone numbers are not allowed.</span>
           {error && <p className="error" role="alert">{error}</p>}
           {sent && <p className="ok" role="status">{sent}</p>}
-          <button className="btn primary" disabled={busy || !message.trim()} onClick={quote}>Send request</button>
+          <button className="btn primary" disabled={busy || !message.trim()} onClick={quote}>Send request</button></>}
         </section>}
       </div>
       {o.placements.length > 0 && <>
