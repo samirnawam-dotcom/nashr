@@ -61,7 +61,7 @@ async function secure(db: Db, op: any, at: Date) {
     await newOp(db, { dealId: deal.id, kind: 'refund', amount: op.amount, currency: op.currency, key: `refund:${deal.id}:late` }, at)
     return audit(db, 'system', 'payment.late_refunded', 'deal', deal.id, { ref: op.ref }, at)
   }
-  await transition(db, deal.id, 'pay', 'buyer', at, op.ref)
+  await transition(db, deal.id, 'pay', `buyer:${deal.buyer_id}`, at, op.ref)
   await issueReceipt(db, deal.id, op.amount, op.ref, at)
   if (await setting(db, 'media_invoice_timing', at) === 'payment') await issueMediaInvoice(db, deal.id, at)
   // Payment secured: the other bids on this slot are no longer needed (SPEC 11.1 #7).

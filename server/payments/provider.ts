@@ -21,6 +21,8 @@ export class FakeProvider implements PaymentProvider {
     if (!this.seen.has(key)) this.seen.set(key, fn())
     return this.seen.get(key)
   }
+  /** Tests share one provider across a fresh database per test. */
+  reset() { this.bal.clear(); this.seen.clear(); this.charges.clear() }
   private add(currency: string, delta: number) { this.bal.set(currency, (this.bal.get(currency) ?? 0) + delta) }
 
   async charge(a: { amount: number; currency: string; paymentMethod: string; idempotencyKey: string }) {

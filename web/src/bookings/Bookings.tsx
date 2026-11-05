@@ -142,7 +142,7 @@ export function BookingPage({ id }: { id: string }) {
             <button className="btn" disabled={busy} onClick={() => act(`/deals/${d.id}/issues/respond`, { accept: false }, 'Sent to Nashr to decide.')}>Decline, ask Nashr to decide</button></div>
         </>}
         {!d.issue.offer && d.issue.status === 'open' && <p className="muted">Waiting for the publisher's response.</p>}
-        {d.issue.status === 'resolved' && d.issue.offer && <p className="ok">Settled: {d.issue.offer.type === 'partial_refund' ? `${money(d.issue.offer.amount, d.currency)} refunded to your card (plus its VAT)`
+        {d.issue.status === 'resolved' && d.issue.offer && <p className="ok">Settled: {d.issue.offer.type === 'partial_refund' ? `${money(d.issue.offer.amount, d.currency)} refunded to your card, VAT included`
           : d.issue.offer.type === 'make_good' ? `the ad runs again on ${full(d.issue.offer.runAt)}` : 'corrected proof accepted'}.</p>}
       </section>}
 

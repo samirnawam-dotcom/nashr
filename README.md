@@ -13,9 +13,10 @@ npm run typecheck
 npm start          # API on :3000 + background jobs (fake payment provider outside production)
 npm run seed       # demo data (refuses to run in production); buyer demo@northwind.ae / seller sales@skyline.ae, password nashr-demo-2026
 npm run dev:web    # web app on :5173, proxies /api to :3000
-npm run e2e        # buyer and seller journeys in a real browser against the running app
+npm run e2e        # buyer, seller and admin journeys in a real browser (re-seed and restart the API first)
 ```
 
+Staff accounts (ops@nashr.ae, omar@nashr.ae) need an authenticator code; the seed prints the development key to add to an authenticator app.
 Set `DATABASE_URL` for `start`, `seed` and `e2e` (e.g. `postgres://nashr:nashr@localhost:5432/nashr`). Uploaded files go to `FILES_DIR` (default `.files/`, git-ignored).
 Set `TEST_DATABASE_URL` to use another test database. `npm run db:migrate` applies migrations to `DATABASE_URL`.
 
@@ -33,6 +34,7 @@ server/api/           HTTP routes per role, response shapes, permission checks
 server/documents/     receipts, publisher invoices (generated or uploaded), commission invoices, credit notes, payout statement
 server/migrations/    SQL migrations
 web/src/              React app. Buyer: calendar, bid drawer, directory, campaigns, bookings, documents. Seller (web/src/seller): dashboard,
-                      calendar, inbox, deals, earnings, listings, profile. Shared: bell, sign in, request access, invite
+                      calendar, inbox, deals, earnings, listings, profile. Admin (web/src/admin): overview, access, accounts, deals,
+                      disputes, funds, payouts, directory, reports, audit, settings. Shared: bell, sign in, request access, invite
 e2e/                  browser checks of whole journeys
 ```

@@ -82,7 +82,22 @@ Decisions made while building (flag to owner if they disagree):
 - A slot can be taken off sale only while nobody has bid on it.
 - Payout onboarding is a placeholder button with the test provider; the real flow is Stripe's hosted onboarding (B5).
 - A publisher can switch VAT status and invoice mode themselves (audited). Changes apply to deals accepted afterwards.
-- [ ] E3 Admin: overview, accounts, publishers, deals, disputes, funds, payouts, audit, settings, reports.
+- [x] E3 Admin: overview, accounts, publishers, deals, disputes, funds, payouts, audit, settings, reports.
+  - [x] Overview: month's bookings and value, held, commission earned, what needs attention, deals by status, reconcile warning
+  - [x] Access requests (approve → invite link, ask for info, reject); Accounts with users (suspend signs out at once), balances, founding commission (founder), view as read-only with banner
+  - [x] Deals search and full deal file (events with actor, ledger, payments/refunds/transfers, creative, proof, issues, documents); extra change round; dispute decisions
+  - [x] Disputes queue; Funds (every ledger account + reconciliation); Payouts and refunds with retry (same idempotency key)
+  - [x] Reports by month, channel, sale type and outlet with take rate and CSV; Audit log with record filter and CSV
+  - [x] Settings with history, founder-only financial keys locked for admins; Nashr team list and staff invites (founder adds founders)
+  - [x] Directory: quote requests, outlets not on Nashr with Nashr's estimate
+  - e2e: `npm run e2e` runs buyer, seller and admin journeys (admin signs in with the demo authenticator key printed by the seed)
+
+### Checkpoint E3: admin screens ✅ (92 tests + 3 e2e journeys)
+Fixed while building: the payment step logged the actor as "buyer" without the company; refund amounts were labelled excl. VAT but are VAT-inclusive.
+Decisions made while building (flag to owner if they disagree):
+- Suspending a user signs them out; their company's bookings carry on. There is no company-wide suspension yet.
+- An admin can invite admins; only the founder can invite another founder.
+- Settings are edited as raw values with a plain-language label; a friendlier form per setting can come with the brand pass.
 
 ## Phase F: Launch readiness
 - [ ] F1 All 26 brief scenarios end to end. F2 Security review, monitoring, restore drill. F3 Pilot.

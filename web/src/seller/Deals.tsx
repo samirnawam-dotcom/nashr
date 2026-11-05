@@ -152,7 +152,7 @@ export function SellerDealPage({ id }: { id: string }) {
           : <div className="form">
             <div className="field"><label htmlFor="ot">Offer</label><select id="ot" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
               <option value="partial_refund">Partial refund</option><option value="make_good">Make-good (run it again)</option></select></div>
-            {form.type === 'partial_refund' ? <div className="field"><label htmlFor="oa">Refund (AED, excl. VAT)</label><input id="oa" inputMode="decimal" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
+            {form.type === 'partial_refund' ? <div className="field"><label htmlFor="oa">Refund to the buyer (AED, incl. VAT)</label><input id="oa" inputMode="decimal" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
               : <div className="field"><label htmlFor="om">New air date and time (Dubai)</label><input id="om" type="datetime-local" value={form.runAt} onChange={e => setForm({ ...form, runAt: e.target.value })} /></div>}
             <div className="row-flex"><button className="btn primary" disabled={busy} onClick={() => act(`/seller/deals/${d.id}/issues/offer`, form.type === 'partial_refund'
               ? { type: 'partial_refund', amount: Math.round(Number(form.amount) * 100) } : { type: 'make_good', runAt: new Date(form.runAt + ':00+04:00').toISOString() }, 'Offer sent to the buyer.')}>Send offer</button>

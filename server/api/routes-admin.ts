@@ -7,7 +7,7 @@ import { decideDispute } from '../payments/payments.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 // Financial settings are the founder's (brief section 2).
-const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|media_vat_bp|processing_fee|cancel_fee_bp)/
+export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|media_vat_bp|processing_fee|cancel_fee_bp)/
 
 export function adminRoutes(route: RouteFn) {
   route('GET', '/api/admin/access-requests', STAFF, async ({ db }) =>
@@ -23,9 +23,12 @@ export function adminRoutes(route: RouteFn) {
     return { ok: true }
   }, { type: 'object', required: ['decision', 'reason'], properties: { decision: { enum: ['rejected', 'info'] }, reason: { type: 'string', maxLength: 1000 } } })
 
-  route('GET', '/api/admin/deals', STAFF, async ({ db }) => (await db.query(
-    `select d.id, d.ref, d.status, d.amount, d.currency, d.commission_bp, d.next_deadline_at, bc.name buyer, sc.name seller
-     from deals d join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id order by d.created_at desc limit 500`)).rows)
+  route('GET', '/api/admin/deals', STAFF, async ({ db }, req) => (await db.query(
+    `select d.id, d.ref, d.status, d.kind, d.amount, d.currency, d.commission_bp, d.next_deadline_at, d.created_at, bc.name buyer, sc.name seller, o.name outlet, s.label, s.starts_at
+     from deals d join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join slots s on s.id = d.slot_id
+     join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+     where ($1::text is null or d.status = $1) and ($2::text is null or d.ref ilike '%' || $2 || '%' or bc.name ilike '%' || $2 || '%' or sc.name ilike '%' || $2 || '%')
+     order by d.created_at desc limit 500`, [req.query.status || null, req.query.q || null])).rows)
 
   route('POST', '/api/admin/deals/:id/dispute', STAFF, async ({ db, at, me }, req) => {
     const d = await decideDispute(db, req.params.id, req.body.outcome, `admin:${me.userId}`, at, req.body.amount)

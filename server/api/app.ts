@@ -11,6 +11,7 @@ import { sellerRoutes } from './routes-seller.js'
 import { adminRoutes } from './routes-admin.js'
 import { planRoutes } from './routes-plan.js'
 import { sellerDeskRoutes } from './routes-seller-desk.js'
+import { adminDeskRoutes } from './routes-admin-desk.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 
@@ -42,11 +43,12 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   // Uploads arrive as raw bytes with their own content type; JSON keeps Fastify's own parser.
   app.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: MAX_UPLOAD }, (_req, body, done) => done(null, body))
 
-  app.setErrorHandler((err: any, _req, reply) => {
+  app.setErrorHandler((err: any, req, reply) => {
     if (err instanceof NotFound || /not yours|expected 1 row, got 0|invalid input syntax for type uuid/.test(err.message)) return reply.code(404).send({ error: 'Not found.' })
     if (err instanceof MarketError) return reply.code(400).send({ error: err.message })
     if (err.statusCode === 413) return reply.code(413).send({ error: 'The file is too large.' })
     if (err.validation) return reply.code(400).send({ error: 'Some fields are missing or not valid.', details: err.validation.map((v: any) => v.instancePath || v.params?.missingProperty) })
+    console.error(new Date().toISOString(), req.method, req.url, err) // unexpected: keep the cause in the server log, never in the response
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })
 
@@ -77,6 +79,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   adminRoutes(route)
   planRoutes(route)
   sellerDeskRoutes(route, deps)
+  adminDeskRoutes(route, deps)
   sharedRoutes(route, deps.storage ?? new DiskStorage())
   return app
 }

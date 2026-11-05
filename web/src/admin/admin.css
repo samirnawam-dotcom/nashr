@@ -1,0 +1,12 @@
+.attn { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.attn a { padding: 16px; color: inherit; text-decoration: none; display: grid; gap: 4px; }
+.attn a:hover { border-color: var(--teal-3); }
+.attn b { font: 600 24px var(--display); } .attn .hot b { color: var(--red); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.viewbar { background: var(--amber); color: #fff; padding: 8px 32px; display: flex; gap: 16px; align-items: center; font-size: 14px; }
+.viewbar .btn { padding: 4px 10px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 16px 0; }
+.tabs button { border: 0; background: none; padding: 10px 14px; color: var(--slate); border-bottom: 2px solid transparent; }
+.tabs button.on { color: var(--ink); border-color: var(--teal); font-weight: 500; }
+.kv { display: grid; grid-template-columns: 220px 1fr; gap: 8px 16px; margin: 0; } .kv dt { color: var(--slate); font-size: 13px; } .kv dd { margin: 0; }
+pre.json { background: var(--bg); padding: 10px; border-radius: var(--radius); font-size: 12px; overflow: auto; margin: 0; }

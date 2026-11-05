@@ -12,7 +12,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 let now = T('2026-11-01T08:00:00Z')
-const app = buildApp({ provider: new FakeProvider(), clock: () => now, storage: new DiskStorage(mkdtempSync(join(tmpdir(), 'nashr-files-'))) })
+const provider = new FakeProvider()
+const app = buildApp({ provider, clock: () => now, storage: new DiskStorage(mkdtempSync(join(tmpdir(), 'nashr-files-'))) })
 const PASS = 'correct horse battery staple'
 
 type Who = { cookie: string; companyId: string }
@@ -54,6 +55,7 @@ beforeEach(async () => {
   now = T('2026-11-01T08:00:00Z')
   await reset()
   resetRateLimits()
+  provider.reset()
   founder = await staff('omar@nashr.ae', 'founder')
   admin = await staff('ops@nashr.ae', 'admin')
   buyerA = await member('Northwind Fintech', 'sara@northwind.ae', 'brand')
@@ -278,5 +280,71 @@ describe('seller screens', () => {
     const csv = await call(sellerX, 'GET', '/api/seller/statement/2026-11')
     expect(csv.headers['content-type']).toMatch('text/csv')
     expect(csv.body).toMatch('Released to you')
+  })
+})
+
+describe('admin screens', () => {
+  async function paidDeal() {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    return deal
+  }
+
+  test('overview, funds and reports agree with the ledger; buyers and sellers are kept out', async () => {
+    const deal = await paidDeal()
+    for (const who of [buyerA, sellerX]) expect((await call(who, 'GET', '/api/admin/overview')).statusCode).toBe(403)
+    const o = (await call(admin, 'GET', '/api/admin/overview')).json()
+    expect(o).toMatchObject({ bookings_month: 1, gmv_month: AED(5_500), held: AED(5_775), revenue: 0, reconcile: { ok: true }, byStatus: { secured: 1 } })
+    const f = (await call(admin, 'GET', '/api/admin/funds')).json()
+    expect(f.accounts).toMatchObject({ cash: AED(5_775), held: AED(5_775), sellerPayable: 0 })
+    const file = (await call(admin, 'GET', `/api/admin/deals/${deal}`)).json()
+    expect(file).toMatchObject({ buyer: { name: 'Northwind Fintech' }, seller: { name: 'Skyline FM' }, ratesFrozen: true, money: { buyerPays: AED(5_775), held: AED(5_775) } })
+    expect(file.events.map((e: any) => e.actor)).toEqual([`buyer:${buyerA.companyId}`, `seller:${sellerX.companyId}`, `buyer:${buyerA.companyId}`])
+    const r = (await call(admin, 'GET', '/api/admin/reports?from=2026-11-01&to=2026-11-30')).json()
+    expect(r.byChannel).toEqual([{ channel: 'radio', bookings: 1, gmv: AED(5_500), commission: AED(660) }])
+    expect((await call(admin, 'GET', '/api/admin/deals?q=northwind')).json()).toHaveLength(1)
+  })
+
+  test('disputes: the buyer declines the fix, Nashr decides a partial refund', async () => {
+    const deal = await paidDeal()
+    now = T('2026-11-09T04:00:00Z')
+    for (const w of [buyerA, sellerX, admin]) w.cookie = await signIn(w === buyerA ? 'sara@northwind.ae' : w === sellerX ? 'sales@skyline.ae' : 'ops@nashr.ae', w === admin ? totp((admin as any).secret, now) : undefined)
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items: { as_run_log: 'log', audio_clip: 'clip' } })
+    await call(buyerA, 'POST', `/api/deals/${deal}/issues`, { reason: 'wrong_time', note: 'Aired at 08:30' })
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/issues/offer`, { type: 'partial_refund', amount: AED(500) })
+    await call(buyerA, 'POST', `/api/deals/${deal}/issues/respond`, { accept: false })
+    expect((await call(admin, 'GET', '/api/admin/disputes')).json()).toEqual([expect.objectContaining({ id: deal, status: 'disputed', reason: 'wrong_time', offer: { type: 'partial_refund', amount: AED(500) } })])
+    expect((await call(admin, 'POST', `/api/admin/deals/${deal}/dispute`, { outcome: 'partial_refund', amount: AED(1_000) })).json().status).toBe('released')
+    expect((await call(admin, 'GET', '/api/admin/disputes')).json()).toEqual([])
+  })
+
+  test('accounts: suspend signs the user out; staff invites; payouts retry; settings history; directory outlets', async () => {
+    const c = (await call(admin, 'GET', `/api/admin/companies/${buyerB.companyId}`)).json()
+    expect(c).toMatchObject({ type: 'buyer', users: [{ email: 'ali@alfuttaim.ae', status: 'active' }] })
+    expect((await call(admin, 'POST', `/api/admin/users/${c.users[0].id}/status`, { status: 'suspended', reason: 'Card fraud check' })).statusCode).toBe(200)
+    expect((await call(buyerB, 'GET', '/api/me')).statusCode).toBe(401)
+    expect((await call(admin, 'POST', `/api/admin/users/${c.users[0].id}/status`, { status: 'active' })).statusCode).toBe(200)
+
+    expect((await call(admin, 'POST', '/api/admin/staff', { email: 'cfo@nashr.ae', name: 'CFO', role: 'founder' })).statusCode).toBe(403)
+    expect((await call(founder, 'POST', '/api/admin/staff', { email: 'cfo@nashr.ae', name: 'CFO', role: 'founder' })).json().inviteLink).toMatch('/invite#')
+    expect((await call(admin, 'GET', '/api/admin/staff')).json().map((s: any) => s.role)).toEqual(['founder', 'admin', 'founder'])
+
+    const deal = await paidDeal()
+    const op = (await pool.query(`insert into money_ops (deal_id, company_id, kind, amount, currency, status, failure, idempotency_key, created_at, updated_at)
+      values ($1, $2, 'transfer', 100, 'AED', 'failed', 'No payout account', 'test-op', now(), now()) returning id`, [deal, sellerX.companyId])).rows[0].id
+    expect((await call(admin, 'GET', '/api/admin/money-ops?status=failed')).json()[0]).toMatchObject({ id: op, company: 'Skyline FM', failure: 'No payout account' })
+    expect((await call(admin, 'POST', `/api/admin/money-ops/${op}/retry`)).statusCode).toBe(200)
+    expect((await call(admin, 'POST', `/api/admin/money-ops/${op}/retry`)).statusCode).toBe(400)
+
+    await call(admin, 'PUT', '/api/admin/settings/seller_window_hours', { value: 36 })
+    const s = (await call(admin, 'GET', '/api/admin/settings')).json().find((x: any) => x.key === 'seller_window_hours')
+    expect(s.value).toBe(36); expect(s.history.map((h: any) => h.value)).toEqual([36, 24])
+
+    const off = (await call(admin, 'POST', '/api/admin/outlets', { name: 'Time Out Dubai', channel: 'digital', estLow: AED(5_000), estHigh: AED(8_000) })).json().id
+    expect((await call(admin, 'PUT', `/api/admin/outlets/${off}`, { estHigh: AED(9_000), tier: 'Tier 1' })).statusCode).toBe(200)
+    const onNashr = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    expect((await call(admin, 'PUT', `/api/admin/outlets/${onNashr}`, { name: 'Hacked' })).json().error).toMatch('not on Nashr')
+    expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === off).price).toMatchObject({ level: 'estimate', to: AED(9_000) })
   })
 })

@@ -10,7 +10,7 @@
     "seed": "tsx server/seed.ts",
     "dev:web": "vite --config web/vite.config.ts",
     "build:web": "vite build --config web/vite.config.ts",
-    "e2e": "node e2e/buyer-journey.cjs && node e2e/seller-journey.cjs"
+    "e2e": "node e2e/buyer-journey.cjs && node e2e/seller-journey.cjs && node e2e/admin-journey.cjs"
   },
   "dependencies": {
     "fastify": "^5.12.8",

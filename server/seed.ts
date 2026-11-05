@@ -102,6 +102,17 @@ if (buyNow) await tx(async c => {
   await accept(c, deal.id, 'seller:seed', now)
 })
 
+// Nashr staff. Staff sign in with an authenticator code; this fixed key is for development only.
+const DEMO_TOTP = 'JBSWY3DPEHPK3PXP'
+const nashr = (await pool.query(`insert into companies (name, type) values ('Nashr', 'nashr') returning id`)).rows[0].id
+for (const [email, name, role] of [['omar@nashr.ae', 'Omar', 'founder'], ['ops@nashr.ae', 'Nashr Operations', 'admin']])
+  await pool.query(`insert into users (company_id, email, name, role, status, password_hash, totp_secret, totp_enabled, created_at) values ($1, $2, $3, $4, 'active', $5, $6, true, now())`,
+    [nashr, email, name, role, hashPassword(PASSWORD), DEMO_TOTP])
+await pool.query(`insert into access_requests (name, email, phone, role, company, company_type, created_at) values
+  ('Huda Al Suwaidi', 'huda@brightagency.ae', '+971501234567', 'Media director', 'Bright Agency', 'agency', now()),
+  ('Karim Haddad', 'karim@city1016.ae', '+971559876543', 'Sales manager', 'City 101.6', 'media_outlet', now())`)
+await pool.query(`insert into quote_requests (outlet_id, buyer_id, message, created_at) select id, $1, 'Full page in the first week of December, banking section.', now() from outlets where name = 'Arabian Business'`, [buyer])
+
 const n = (await pool.query(`select count(*)::int n from slots`)).rows[0].n
-console.log(`Seeded ${n} slots from ${from}. Sign in as demo@northwind.ae (buyer) or sales@skyline.ae (seller), password ${PASSWORD}`)
+console.log(`Seeded ${n} slots from ${from}. Sign in as demo@northwind.ae (buyer), sales@skyline.ae (seller) or ops@nashr.ae / omar@nashr.ae (staff), password ${PASSWORD}.\nStaff authenticator key (development only): ${DEMO_TOTP}`)
 await pool.end()
