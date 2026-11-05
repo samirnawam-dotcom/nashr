@@ -24,6 +24,9 @@ const DEAL_SQL = `select d.*, (select e.note from deal_events e where e.deal_id 
   s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
                   join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies sc on sc.id = d.seller_id`
 
+// Only markets that are open can be browsed or booked; KSA is "coming soon" (brief section 14).
+const OPEN_MARKET = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1) ? o.market`
+
 /** The buyer's own deal, or not found. */
 export async function ownDeal(db: pg.PoolClient, id: string, buyerId: string) {
   const d = (await db.query(`${DEAL_SQL} where d.id = $1 and d.buyer_id = $2`, [id, buyerId])).rows[0]
@@ -39,7 +42,7 @@ export function buyerRoutes(route: RouteFn) {
       `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids,
          exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = $3) mine
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
-       where s.starts_at >= $1 and s.starts_at < $2 and s.status <> 'blocked' and o.market = 'AE' order by s.starts_at`, [from, to, me.actAs.companyId])
+       where s.starts_at >= $1 and s.starts_at < $2 and s.status <> 'blocked' and ${OPEN_MARKET} order by s.starts_at`, [from, to, me.actAs.companyId])
     return rows.map(r => buyerSlot(r, me.actAs.companyId))
   })
 
@@ -47,7 +50,7 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/:id', [...BUYER, 'admin'], async ({ db, me, at }, req) => {
     const r = (await db.query(
       `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids
-       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked'`, [req.params.id])).rows[0]
+       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, bool_or(brief is not null) has_brief from bids where slot_id = $1 and buyer_id = $2`,
       [r.id, me.actAs.companyId])).rows[0]

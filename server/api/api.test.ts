@@ -510,6 +510,33 @@ describe('security review fixes', () => {
     expect(own.headers).toMatchObject({ 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY' })
   })
 
+  test('a party cannot attach the other side\'s file to proof or an issue and then read it', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    const up = async (who: Who, text: string) => (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from(text), headers: { cookie: who.cookie, 'content-type': 'audio/mpeg' } })).json().id
+    const sellersPrivate = await up(sellerX, 'ID3 seller private'), buyersPrivate = await up(buyerA, 'ID3 buyer private')
+    now = T('2026-11-09T04:00:00Z'); sellerX.cookie = await signIn('sales@skyline.ae'); buyerA.cookie = await signIn('sara@northwind.ae')
+    // the seller tries to smuggle the buyer's file into proof; the buyer tries the same with the seller's file in issue evidence
+    expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items: { as_run_log: `files/${buyersPrivate}`, audio_clip: 'clip' } })).json().error).toMatch('your own')
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items: { as_run_log: 'log', audio_clip: 'clip' } })
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/issues`, { reason: 'other', note: 'x', evidence: { shot: `files/${sellersPrivate}` } })).json().error).toMatch('your own')
+    // and even if such a reference were in the database, the download check ties each kind of attachment to the side that sends it
+    await pool.query(`update proofs set items = items || jsonb_build_object('extra', 'files/' || $2::text) where deal_id = $1`, [deal, buyersPrivate])
+    expect((await call(sellerX, 'GET', `/api/files/${buyersPrivate}`)).statusCode).toBe(404)
+    expect((await call(buyerA, 'GET', `/api/files/${sellersPrivate}`)).statusCode).toBe(404)
+  })
+
+  test('a slot in a market that is not open cannot be opened by id', async () => {
+    const ksa = (await pool.query(`insert into companies (name, type, payouts_enabled) values ('Rotana Media', 'publisher', true) returning id`)).rows[0].id
+    const outlet = (await pool.query(`insert into outlets (company_id, name, channel, market) values ($1, 'Rotana FM', 'radio', 'SA') returning id`, [ksa])).rows[0].id
+    const placement = await tx(c => createPlacement(c, { outletId: outlet, name: 'Drive', saleType: 'auction', days: [1], startsAt: '07:00', endsAt: '09:00',
+      startingPrice: AED(3_000), creativeLeadHours: 48, closeLeadHours: 120 }, 'seller', now))
+    await tx(c => generateSlots(c, placement, '2026-11-16', 1, now))
+    const id = (await pool.query(`select id from slots where placement_id = $1`, [placement])).rows[0].id
+    expect((await call(buyerA, 'GET', `/api/slots/${id}`)).statusCode).toBe(404)
+  })
+
   test('uploads are typed by their bytes; a renamed file is not a creative', async () => {
     const up = (bytes: Buffer, type: string) => app.inject({ method: 'POST', url: '/api/files', payload: bytes, headers: { cookie: buyerA.cookie, 'content-type': type } })
     const fake = (await up(Buffer.from('<script>alert(1)</script>'), 'audio/mpeg')).json()

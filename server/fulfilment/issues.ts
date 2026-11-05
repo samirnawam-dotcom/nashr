@@ -1,4 +1,5 @@
 import { type Db, one } from '../core/db.js'
+import { assertOwnFiles } from '../files/attachments.js'
 import { notify } from '../core/notify.js'
 import { transition } from '../marketplace/deals.js'
 import { MarketError } from '../marketplace/market.js'
@@ -17,6 +18,7 @@ export async function reportIssue(db: Db, a: { dealId: string; buyerId: string; 
   // "changed my mind", "results were below expectations" and the buyer's own late creative are not reasons (brief 12A-C)
   if (!ISSUE_REASONS.includes(a.reason as any)) throw new MarketError('Choose what went wrong.')
   if (!a.note?.trim()) throw new MarketError('Add a short note.')
+  await assertOwnFiles(db, a.evidence, a.buyerId)
   await transition(db, d.id, 'report_issue', `buyer:${a.buyerId}`, at, a.reason)
   await db.query(`insert into issues (deal_id, reason, note, evidence, opened_at) values ($1, $2, $3, $4, $5)`,
     [d.id, a.reason, a.note, a.evidence == null ? null : JSON.stringify(a.evidence), at])
@@ -28,7 +30,7 @@ export async function offerFix(db: Db, a: { dealId: string; sellerId: string; of
   const d = await one(db, `select * from deals where id = $1`, [a.dealId])
   if (d.seller_id !== a.sellerId) throw new MarketError('This booking is not yours.')
   const issue = await openIssue(db, d.id)
-  if (a.offer.type === 'corrected_proof') await checkProof(db, d.id, a.offer.items)
+  if (a.offer.type === 'corrected_proof') { await checkProof(db, d.id, a.offer.items); await assertOwnFiles(db, a.offer.items, a.sellerId) }
   if (a.offer.type === 'make_good' && !(a.offer.runAt > at)) throw new MarketError('Choose a future date for the rerun.')
   await db.query(`update issues set offer = $2 where id = $1`, [issue.id, JSON.stringify(a.offer)])
   await notify(db, d.buyer_id, 'issue.offer', d.id, a.offer, at)

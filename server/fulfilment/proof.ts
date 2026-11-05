@@ -4,6 +4,7 @@ import { transition } from '../marketplace/deals.js'
 import { MarketError } from '../marketplace/market.js'
 import { setting } from '../core/settings.js'
 import { issueMediaInvoice } from '../documents/documents.js'
+import { assertOwnFiles } from '../files/attachments.js'
 
 // Proof required per channel (brief 12A-B). The seller cannot send proof until every item is there.
 export const PROOF_CHECKLIST: Record<string, { key: string; label: string }[]> = {
@@ -30,6 +31,7 @@ export async function submitProof(db: Db, a: { dealId: string; sellerId: string;
   if (d.seller_id !== a.sellerId) throw new MarketError('This booking is not yours.')
   if (at < (d.make_good_at ?? d.starts_at)) throw new MarketError('Proof can be sent once the ad has run.')
   await checkProof(db, d.id, a.items)
+  await assertOwnFiles(db, a.items, a.sellerId)
   await db.query(`insert into proofs (deal_id, items, note, submitted_at) values ($1, $2, $3, $4)`, [d.id, JSON.stringify(a.items), a.note ?? null, at])
   const deal = await transition(db, d.id, 'submit_proof', `seller:${a.sellerId}`, at)
   const invoiced = await db.query(`select 1 from documents where deal_id = $1 and type = 'media_invoice'`, [d.id])

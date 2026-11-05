@@ -24,11 +24,13 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
     const staff = ['admin', 'founder'].includes(me.actAs.role)
     const f = (await db.query(
       `select f.* from files f where f.id = $1 and ($3 or f.company_id = $2 or exists (
-         select 1 from deals d where $2 in (d.buyer_id, d.seller_id) and f.company_id in (d.buyer_id, d.seller_id) and (
-           exists (select 1 from creatives c where c.deal_id = d.id and c.file_key = 'files/' || f.id)
-           or exists (select 1 from proofs p where p.deal_id = d.id and p.items::text like '%files/' || f.id || '%')
-           or exists (select 1 from issues i where i.deal_id = d.id and i.evidence::text like '%files/' || f.id || '%')
-           or exists (select 1 from documents x where x.deal_id = d.id and x.file_key = 'files/' || f.id))))`,
+         select 1 from deals d where $2 in (d.buyer_id, d.seller_id) and (
+           -- the buyer sends creative and issue evidence; the publisher sends proof, corrected proof and its own invoice
+           (f.company_id = d.buyer_id and (exists (select 1 from creatives c where c.deal_id = d.id and c.file_key = 'files/' || f.id)
+              or exists (select 1 from issues i where i.deal_id = d.id and i.evidence::text like '%files/' || f.id || '%')))
+           or (f.company_id = d.seller_id and (exists (select 1 from proofs p where p.deal_id = d.id and p.items::text like '%files/' || f.id || '%')
+              or exists (select 1 from issues i where i.deal_id = d.id and i.offer::text like '%files/' || f.id || '%')
+              or exists (select 1 from documents x where x.deal_id = d.id and x.file_key = 'files/' || f.id))))))`,
       [req.params.id, me.actAs.companyId, staff])).rows[0]
     if (!f) throw new NotFound()
     return reply.type(f.type).header('content-disposition', `attachment; filename="${encodeURIComponent(f.name)}"`)

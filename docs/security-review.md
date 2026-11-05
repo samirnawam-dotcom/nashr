@@ -1,5 +1,7 @@
 # Security review (F2), 5 Nov 2026
 
+A second independent review of the whole branch then found no high-confidence vulnerabilities. Its two below-threshold items are fixed as 11 and 12 below.
+
 An independent read-only review of the API, auth, files, payments and front end. I then reproduced each finding against the code and fixed it. Every fix has a test in `server/api/api.test.ts` under "security review fixes"; the three browser journeys pass with the protections on.
 
 | # | Severity | Finding | Status |
@@ -13,6 +15,8 @@ An independent read-only review of the API, auth, files, payments and front end.
 | 7 | Low | Sign-in: timing showed which emails exist; codes could be replayed within 90 s; rate limit behind a proxy and its memory; staff could not be suspended | **Fixed.** Constant-time check for unknown emails. Each authenticator code signs in once. `TRUST_PROXY=1` behind the load balancer. The limiter cleans up after itself. The founder can suspend admins |
 | 8 | Low | Uploaded file type was whatever the uploader claimed | **Fixed.** The type is read from the file's bytes. Unknown files are `application/octet-stream`, which no channel accepts as creative |
 | 9 | Low | No security headers | **Fixed for the API:** nosniff, frame-deny, CSP `default-src 'none'`, same-origin policies, HSTS in production. The web app's CSP is set at the edge (runbook) |
+| 11 | Low | One side of a deal could put the other side's file id into proof or issue evidence, then download it (needs the file's random id) | **Fixed.** Only your own uploads can be attached, and downloads tie each kind of attachment to the side that sends it |
+| 12 | Low | A single slot in a market that is not open could be opened by id | **Fixed.** Slot list and slot detail show open markets only |
 | 10 | Note | The provider webhook handler trusts event contents | **Open, for B5.** When Stripe is wired, verify the signature on the raw body and check the amount against the operation before marking a charge paid |
 
 **Checked and found sound:**
