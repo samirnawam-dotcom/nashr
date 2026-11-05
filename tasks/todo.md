@@ -68,7 +68,20 @@ Decisions made while building (flag to owner if they disagree):
 - Quote requests for outlets not on Nashr go to Nashr's team (bell), not to the outlet.
 - Files: local disk in development behind a storage interface; S3 with presigned uploads before launch (TV masters are too big to pass through the API).
 - The bell is in-app only until the email service is chosen.
-- [ ] E2 Seller: dashboard, calendar (calendar + programme view), inbox, deals, earnings, add placement, onboarding.
+- [x] E2 Seller: dashboard, calendar (calendar + programme view), inbox, deals, earnings, add placement, onboarding.
+  - [x] Dashboard with onboarding checklist (outlet, payout account, TRN and invoice choice, first placement, live), money held/released/owed, to-do, coming up
+  - [x] Calendar as a programme grid (placement × day), slot panel with bids by company, reserve, choose the next bid, take off sale / back on sale
+  - [x] Inbox: decide, choose next bid, review creative, creative not received, send proof, respond to issue, pre-run check, upload invoice
+  - [x] Deal page: money preview, brief + automatic checks, accept/decline with reason, creative review, proof checklist with uploads, issue offers, own-invoice upload, cancel, documents, timeline
+  - [x] Earnings with monthly statement CSV; Listings (list 4 more weeks, archive) and Add placement; Profile (payout account, tax, outlets with free sectors)
+  - e2e: `npm run e2e` now also runs `e2e/seller-journey.cjs`
+
+### Checkpoint E2: seller screens ✅ (89 tests + 2 e2e journeys)
+Decisions made while building (flag to owner if they disagree):
+- The seller calendar is the programme view only (placement rows × days); the buyer-style hour grid was not repeated for sellers.
+- A slot can be taken off sale only while nobody has bid on it.
+- Payout onboarding is a placeholder button with the test provider; the real flow is Stripe's hosted onboarding (B5).
+- A publisher can switch VAT status and invoice mode themselves (audited). Changes apply to deals accepted afterwards.
 - [ ] E3 Admin: overview, accounts, publishers, deals, disputes, funds, payouts, audit, settings, reports.
 
 ## Phase F: Launch readiness

@@ -33,10 +33,11 @@ const otherBids = async (db: pg.PoolClient, d: any) => (await db.query(
    where b.slot_id = $1 and b.id <> $2 and b.status in ('active', 'outbid') and b.kind in ('bid', 'auto') order by b.amount desc`, [d.slot_id, d.bid_id])).rows
 
 export function sellerRoutes(route: RouteFn) {
-  route('GET', '/api/seller/slots', SELLER, async ({ db, me }) => (await db.query(
-    `select s.*, p.name placement, (select count(*)::int from bids b where b.slot_id = s.id) bids from slots s
-     join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where o.company_id = $1 order by s.starts_at`,
-    [me.actAs.companyId])).rows.map(sellerSlot))
+  route('GET', '/api/seller/slots', SELLER, async ({ db, me }, req) => (await db.query(
+    `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids from slots s
+     join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+     where o.company_id = $1 and ($2::timestamptz is null or s.starts_at >= $2) and ($3::timestamptz is null or s.starts_at < $3) order by s.starts_at`,
+    [me.actAs.companyId, req.query.from ?? null, req.query.to ?? null])).rows.map(sellerSlot))
 
   route('GET', '/api/seller/deals', SELLER, async ({ db, me }) =>
     (await db.query(`${DEAL_SQL} where d.seller_id = $1 order by d.created_at desc`, [me.actAs.companyId])).rows.map(d => sellerDeal(d)))

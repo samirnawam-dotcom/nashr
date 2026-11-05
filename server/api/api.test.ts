@@ -224,3 +224,59 @@ describe('buyer screens', () => {
     expect((await call(buyerB, 'GET', `/api/documents/${inv.id}`)).statusCode).toBe(404)
   })
 })
+
+describe('seller screens', () => {
+  test('onboarding: outlet, payout account, tax details, first placement, live', async () => {
+    const z = await member('Pearl Radio', 'sales@pearl.ae', 'media_outlet')
+    expect((await call(z, 'GET', '/api/seller/overview')).json().onboarding).toEqual({ outlet: false, payouts: false, tax: false, placement: false, live: false })
+    expect((await call(z, 'POST', '/api/seller/outlets', { name: 'Pearl FM', channel: 'radio', description: 'Call 050 123 4567' })).json().error).toMatch('not allowed')
+    const outletId = (await call(z, 'POST', '/api/seller/outlets', { name: 'Pearl FM', channel: 'radio', sectors: ['Retail', 'Pets'] })).json().id
+    const placement = { outletId, name: 'Breakfast', saleType: 'auction', days: [1, 2, 3, 4, 5], startsAt: '07:00', endsAt: '09:00',
+      breaks: [{ label: 'Break 1', at: '07:30', seconds: 30 }], startingPrice: AED(2_000), creativeLeadHours: 48, closeLeadHours: 120, listFrom: '2026-11-09', listDays: 5 }
+    expect((await call(z, 'POST', '/api/seller/placements', placement)).json().error).toMatch('payout account')
+    expect((await call(z, 'POST', '/api/seller/payouts/connect')).statusCode).toBe(200)
+    expect((await call(z, 'PUT', '/api/seller/company', { vatRegistered: true, invoiceMode: 'generate' })).json().error).toMatch('TRN')
+    expect((await call(z, 'PUT', '/api/seller/company', { vatRegistered: true, trn: '100200300400500', invoiceMode: 'generate' })).statusCode).toBe(200)
+    expect((await call(z, 'POST', '/api/seller/placements', placement)).json().slots).toBe(5)
+    expect((await call(z, 'GET', '/api/seller/overview')).json().onboarding).toEqual({ outlet: true, payouts: true, tax: true, placement: true, live: true })
+    expect((await call(z, 'GET', '/api/seller/profile')).json().outlets[0].sectors).toEqual(['Retail', 'Pets'])
+  })
+
+  test('inbox, slot panel, block; deal page through proof; earnings and statement', async () => {
+    expect((await call(sellerX, 'POST', `/api/seller/slots/${slotY}/block`, { blocked: true })).statusCode).toBe(400) // not theirs
+    expect((await call(sellerY, 'POST', `/api/seller/slots/${slotY}/block`, { blocked: true })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotY}/bids`, { amount: AED(3_500), brief: BRIEF })).statusCode).toBe(400)
+    expect((await call(sellerY, 'POST', `/api/seller/slots/${slotY}/block`, { blocked: false })).statusCode).toBe(200)
+
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    expect((await call(sellerX, 'GET', '/api/seller/inbox')).json()).toEqual([expect.objectContaining({ type: 'decide', dealId: deal, buyer: 'Northwind Fintech' })])
+    const panel = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
+    expect(panel).toMatchObject({ reservePrice: AED(4_000), bids: [{ kind: 'buy_now', company: 'Northwind Fintech' }, { kind: 'bid', company: 'Al Futtaim' }] })
+    expect((await call(sellerY, 'GET', `/api/seller/slots/${slotX}`)).statusCode).toBe(404)
+    expect((await call(sellerY, 'GET', `/api/seller/deals/${deal}/detail`)).statusCode).toBe(404)
+
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    const f = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('ID3'), headers: { cookie: buyerA.cookie, 'content-type': 'audio/mpeg' } })).json()
+    await call(buyerA, 'POST', `/api/deals/${deal}/creative`, { fileId: f.id })
+    expect((await call(sellerX, 'GET', '/api/seller/inbox')).json().map((t: any) => t.type)).toEqual(['creative'])
+    expect((await call(sellerX, 'GET', '/api/seller/overview')).json().money).toEqual({ available: 0, held: AED(5_115), owed: 0 })
+    const page = (await call(sellerX, 'GET', `/api/seller/deals/${deal}/detail`)).json()
+    expect(page).toMatchObject({ channel: 'radio', creatives: [{ version: 1, status: 'pending', fileId: f.id }], adHasRun: false,
+      proofChecklist: [{ key: 'as_run_log' }, { key: 'audio_clip' }] })
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/creative-review`, { decision: 'approve' })
+
+    now = T('2026-11-09T04:00:00Z') // the ad has run; sessions last 12 hours, so sign in again
+    sellerX.cookie = await signIn('sales@skyline.ae'); buyerA.cookie = await signIn('sara@northwind.ae')
+    expect((await call(sellerX, 'GET', '/api/seller/inbox')).json().map((t: any) => t.type)).toEqual(['proof'])
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items: { as_run_log: 'log', audio_clip: 'clip' } })
+    await call(buyerA, 'POST', `/api/deals/${deal}/approve`)
+    const earn = (await call(sellerX, 'GET', '/api/seller/earnings')).json()
+    expect(earn.deals[0]).toMatchObject({ id: deal, held: false, price: AED(5_500), mediaVat: AED(275) })
+    expect(earn.available + earn.payouts.reduce((n: number, p: any) => n + p.amount, 0)).toBe(earn.deals[0].payout)
+    const csv = await call(sellerX, 'GET', '/api/seller/statement/2026-11')
+    expect(csv.headers['content-type']).toMatch('text/csv')
+    expect(csv.body).toMatch('Released to you')
+  })
+})

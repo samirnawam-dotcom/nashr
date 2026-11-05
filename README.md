@@ -13,7 +13,7 @@ npm run typecheck
 npm start          # API on :3000 + background jobs (fake payment provider outside production)
 npm run seed       # demo data (refuses to run in production); buyer demo@northwind.ae / seller sales@skyline.ae, password nashr-demo-2026
 npm run dev:web    # web app on :5173, proxies /api to :3000
-npm run e2e        # buyer journey in a real browser against the running app
+npm run e2e        # buyer and seller journeys in a real browser against the running app
 ```
 
 Set `DATABASE_URL` for `start`, `seed` and `e2e` (e.g. `postgres://nashr:nashr@localhost:5432/nashr`). Uploaded files go to `FILES_DIR` (default `.files/`, git-ignored).
@@ -32,6 +32,7 @@ server/auth/          access requests, invites, passwords, TOTP 2FA, sessions
 server/api/           HTTP routes per role, response shapes, permission checks
 server/documents/     receipts, publisher invoices (generated or uploaded), commission invoices, credit notes, payout statement
 server/migrations/    SQL migrations
-web/src/              React app (buyer): calendar, bid drawer, directory, campaigns, bookings, documents, bell, sign in, request access, invite
+web/src/              React app. Buyer: calendar, bid drawer, directory, campaigns, bookings, documents. Seller (web/src/seller): dashboard,
+                      calendar, inbox, deals, earnings, listings, profile. Shared: bell, sign in, request access, invite
 e2e/                  browser checks of whole journeys
 ```

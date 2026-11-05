@@ -36,7 +36,7 @@ export function DocumentPage({ id }: { id: string }) {
   const title = d.type === 'media_invoice' || d.type === 'commission_invoice' ? (d.taxDocument ? 'Tax invoice' : 'Invoice') : DOC_TYPE[d.type]
   return (
     <main>
-      <div className="row-flex no-print" style={{ marginBottom: 16 }}><a className="small" href="#/documents">Receipts and invoices</a><div className="spacer" />
+      <div className="row-flex no-print" style={{ marginBottom: 16 }}><a className="small" href="#/documents" onClick={e => { if (history.length > 1) { e.preventDefault(); history.back() } }}>Back</a><div className="spacer" />
         {d.fileId && <a className="btn" href={`/api/files/${d.fileId}`}>Publisher's uploaded invoice</a>}
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button></div>
       <article className="card doc">

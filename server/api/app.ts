@@ -10,6 +10,7 @@ import { buyerRoutes } from './routes-buyer.js'
 import { sellerRoutes } from './routes-seller.js'
 import { adminRoutes } from './routes-admin.js'
 import { planRoutes } from './routes-plan.js'
+import { sellerDeskRoutes } from './routes-seller-desk.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 
@@ -75,6 +76,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   sellerRoutes(route)
   adminRoutes(route)
   planRoutes(route)
+  sellerDeskRoutes(route, deps)
   sharedRoutes(route, deps.storage ?? new DiskStorage())
   return app
 }
