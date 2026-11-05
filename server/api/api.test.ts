@@ -470,3 +470,13 @@ describe('brief scenarios closed in phase F', () => {
     expect((await call(buyerA, 'GET', '/api/waitlist')).json().sort()).toEqual(['Athena', 'KSA'])
   })
 })
+
+test('health: green when the sweeper ran and money flows; red, without details, when a payout is stuck', async () => {
+  await sweep(now)
+  expect((await call(null, 'GET', '/api/health')).json()).toMatchObject({ ok: true, checks: { database: true, sweeper: true, moneyFlowing: true, noFailedPayouts: true, ledgerReconciles: true } })
+  await pool.query(`insert into money_ops (kind, amount, currency, status, idempotency_key, created_at, updated_at) values ('refund', 100, 'AED', 'failed', 'h1', $1, $1)`, [now])
+  const r = await call(null, 'GET', '/api/health')
+  expect(r.statusCode).toBe(503)
+  expect(r.json().checks.noFailedPayouts).toBe(false)
+  expect(r.body).not.toMatch(/AED|100|h1/)
+})

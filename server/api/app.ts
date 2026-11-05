@@ -12,6 +12,7 @@ import { adminRoutes } from './routes-admin.js'
 import { planRoutes } from './routes-plan.js'
 import { sellerDeskRoutes } from './routes-seller-desk.js'
 import { adminDeskRoutes } from './routes-admin-desk.js'
+import { healthRoute } from './routes-health.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 
@@ -37,10 +38,14 @@ export function rateLimit(key: string, max: number, now: number) {
   return ++h.n <= max
 }
 
-export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage }) {
+export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage; log?: boolean }) {
   const clock = deps.clock ?? (() => new Date())
   const app = Fastify({ logger: false })
   // Uploads arrive as raw bytes with their own content type; JSON keeps Fastify's own parser.
+  // One JSON line per request for the log pipeline: no query strings, bodies or cookies (they can carry personal data or tokens).
+  if (deps.log ?? process.env.NODE_ENV === 'production')
+    app.addHook('onResponse', async (req, reply) => console.log(JSON.stringify({ t: new Date().toISOString(), method: req.method,
+      path: req.url.split('?')[0], status: reply.statusCode, ms: Math.round(reply.elapsedTime), ip: req.ip })))
   app.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: MAX_UPLOAD }, (_req, body, done) => done(null, body))
 
   app.setErrorHandler((err: any, req, reply) => {
@@ -80,6 +85,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   planRoutes(route)
   sellerDeskRoutes(route, deps)
   adminDeskRoutes(route, deps)
+  healthRoute(app, { provider: deps.provider, clock })
   sharedRoutes(route, deps.storage ?? new DiskStorage())
   return app
 }
