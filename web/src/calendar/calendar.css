@@ -1,7 +1,9 @@
 /* Calendar: Google Calendar layout, Nashr's calm finish */
 .cal { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
 .cal-side { padding-top: 64px; }
-.side-h { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--slate); margin: 20px 0 8px; }
+.side-h { font: 600 14px var(--display); color: var(--ink); margin: 20px 0 8px; }
+.cal-side > summary { display: none; list-style: none; }
+.cal-side > summary::-webkit-details-marker { display: none; }
 .check { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
 .check input { accent-color: var(--teal); }
 .cal-main { min-width: 0; }
@@ -79,3 +81,27 @@
 .sum .total { border-top: 1px solid var(--line); padding-top: 8px; font: 600 18px var(--display); }
 .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
 .login-card { width: min(420px, 100%); }
+
+/* Phones: filters behind a button, the agenda list instead of the time grid */
+.agenda { display: grid; gap: 20px; }
+.agenda h2 { font: 600 16px var(--display); margin-bottom: 8px; } .agenda h2.today { color: var(--teal); }
+.agenda-item { width: 100%; display: grid; grid-template-columns: 64px 1fr; gap: 12px; text-align: left; background: var(--surface); border: 1px solid var(--line);
+  border-left: 3px solid var(--teal); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; color: inherit; }
+.agenda-time { font: 600 15px var(--display); }
+.agenda-body { display: grid; gap: 2px; }
+.agenda-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 13px; margin-top: 4px; }
+@media (max-width: 760px) {
+  .cal { grid-template-columns: 1fr; padding: 16px; gap: 12px; }
+  .cal-side { padding-top: 0; }
+  .cal-side > summary { display: inline-flex; }
+  .cal-side[open] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+  .cal-head h1 { font-size: 24px; width: 100%; }
+  .cal-head > .muted { width: 100%; }
+  .cal-head { gap: 8px; }
+  .cal-head .spacer { display: none; }
+}
+
+/* Week blocks: every line stays on one line; a narrow block (two programmes side by side) drops the sale-type word */
+.ev { container-type: inline-size; }
+.ev > span, .ev > b, .ev-t > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@container (max-width: 130px) { .ev-t .tag { font-size: 0; gap: 0; } .ev-t .tag svg { width: 13px; } }

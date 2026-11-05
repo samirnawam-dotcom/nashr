@@ -21,7 +21,7 @@ export function status(s: Slot) {
   if (s.youLead) return <span className="dot lead">You lead</span>
   if (s.youBid && s.topBid) return <span className="dot outbid">Outbid</span>
   const soon = s.saleType === 'auction' && closesIn(s.closesAt)
-  if (soon) return <span className="dot soon">{soon}</span>
+  if (soon) return <span className="on-air">{soon}</span> // the on-air signal: bidding is live and about to close
   return <span className="muted">{s.saleType === 'quick_sale' ? (s.bids ? `${s.bids} interested` : 'Open to offers') : s.bids ? `${s.bids} bids` : 'Starting price'}</span>
 }
 const heat = (bids: number) => bids >= 6 ? 'var(--teal-3)' : bids >= 3 ? 'var(--teal-2)' : bids >= 1 ? 'var(--teal-1)' : 'var(--surface)'
@@ -40,7 +40,32 @@ function groups(slots: Slot[]): Group[] {
 }
 const from = (g: Group) => Math.min(...g.slots.map(s => s.topBid ?? s.startingPrice))
 
+/** True on phone-sized screens, where the time grid gives way to a day-by-day list. */
+function useNarrow(px = 760) {
+  const q = `(max-width: ${px}px)`
+  const [narrow, set] = useState(() => matchMedia(q).matches)
+  useEffect(() => { const m = matchMedia(q), f = () => set(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f) }, [q])
+  return narrow
+}
+
+/** Phones: each day's programmes as a list; tapping one opens the same programme panel as the grid. */
+function AgendaView({ days, slots, onPick, onNext }: { days: string[]; slots: Slot[]; onPick: (g: Group) => void; onNext: () => void }) {
+  const all = groups(slots).sort((a, b) => a.start - b.start)
+  const withItems = days.filter(d => all.some(g => g.date === d))
+  if (!withItems.length) return <div className="empty"><p className="muted">Nothing open for these days. Bidding closes a few days before air.</p><button className="btn primary" onClick={onNext}>Show the next week</button></div>
+  return <div className="agenda">{withItems.map(d => <section key={d}>
+    <h2 className={d === todayInDubai() ? 'today' : ''}>{dayLabel(d, { weekday: 'long', day: 'numeric', month: 'short' })}</h2>
+    {all.filter(g => g.date === d).map(g => { const one = g.slots[0], allDay = isAllDay(one)
+      return <button key={g.key} className="agenda-item" onClick={() => onPick(g)}>
+        <span className="agenda-time num">{allDay ? 'All day' : time(one.startsAt)}</span>
+        <span className="agenda-body"><b>{g.outlet}</b><span className="muted">{g.placement}{g.slots.length > 1 ? `, ${g.slots.length} options` : ''}</span>
+          <span className="agenda-meta"><SaleType t={one.saleType} /><span className="num">from {money(from(g))}</span>{status(g.slots.find(s => s.youLead) ?? one)}</span></span>
+      </button> })}
+  </section>)}</div>
+}
+
 export function CalendarPage() {
+  const narrow = useNarrow()
   const [view, setView] = useState<View>('week')
   const [anchor, setAnchor] = useState(todayInDubai())
   const [slots, setSlots] = useState<Slot[]>([])
@@ -64,14 +89,15 @@ export function CalendarPage() {
 
   return (
     <div className="cal">
-      <aside className="cal-side">
+      <details className="cal-side" open={!narrow || undefined}>
+        <summary className="btn">Filters</summary>
         <h3 className="side-h">Channels</h3>
         {CHANNELS.map(c => <label key={c} className="check"><input type="checkbox" checked={channels.has(c)} onChange={() => toggle(channels, c, setChannels)} />{CHANNEL_NAME[c]}</label>)}
         <h3 className="side-h">Sale type</h3>
         <label className="check"><input type="checkbox" checked={saleTypes.has('auction')} onChange={() => toggle(saleTypes, 'auction', setSaleTypes)} /><Gavel /> Auction</label>
         <label className="check"><input type="checkbox" checked={saleTypes.has('quick_sale')} onChange={() => toggle(saleTypes, 'quick_sale', setSaleTypes)} /><Bolt /> Quick sale</label>
         <p className="small muted" style={{ marginTop: 24 }}>All times are Dubai time. Prices exclude VAT.</p>
-      </aside>
+      </details>
 
       <section className="cal-main">
         <header className="cal-head">
@@ -84,8 +110,9 @@ export function CalendarPage() {
           <div className="seg">{(['day', 'week', 'month'] as View[]).map(v => <button key={v} className={v === view ? 'on' : ''} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div>
         </header>
         {error && <p className="error">{error}</p>}
-        {view === 'week' && <WeekView days={days} slots={shown} onPick={setPicked} />}
-        {view === 'day' && <DayView date={anchor} slots={shown} onOpen={setOpen} />}
+        {narrow && view !== 'month' && <AgendaView days={days} slots={shown} onPick={setPicked} onNext={() => step(1)} />}
+        {!narrow && view === 'week' && <WeekView days={days} slots={shown} onPick={setPicked} />}
+        {!narrow && view === 'day' && <DayView date={anchor} slots={shown} onOpen={setOpen} />}
         {view === 'month' && <MonthView weeks={monthGrid(anchor)} month={anchor.slice(0, 7)} slots={shown} onPick={setPicked} onDay={d => { setAnchor(d); setView('day') }} />}
       </section>
 

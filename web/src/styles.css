@@ -1,9 +1,15 @@
 /* Placeholder brand until Nashr's brand files arrive (docs/design/stitch-design-system.md). */
 :root {
-  --bg: #f6f7f9; --surface: #fff; --ink: #1b2430; --slate: #5d6876; --faint: #8a94a3; --line: #e3e6eb;
-  --teal: #0f6b6b; --teal-1: #f0f7f7; --teal-2: #d6ebea; --teal-3: #a9d4d2; --teal-4: #6fb5b2;
-  --green: #1d7a46; --amber: #9a5b00; --red: #a8291f; --radius: 8px;
+  /* Placeholder brand: Omar's approved teal, a deep "studio" teal for the shell, and a saffron on-air signal used only
+     for live and urgent moments. Swap these when the brand files arrive; nothing else hard-codes a colour. */
+  --bg: #f6f7f6; --surface: #fff; --ink: #17212b; --slate: #56616e; --faint: #66717f; --line: #e1e5e4;
+  --teal: #0f6b6b; --teal-1: #eef6f5; --teal-2: #d3e9e7; --teal-3: #a3d0cc; --teal-4: #5fa9a4;
+  --studio: #0a4545; --studio-2: #0d5858; --on-studio: #e7f2f1; --on-studio-dim: #a8c9c6;
+  --signal: #e5a21b; --signal-ink: #6b4500; --signal-1: #fdf3dc;
+  --green: #1d7a46; --green-1: #e7f4ec; --amber: #8f5200; --amber-1: #fbf0dd; --red: #a8291f; --red-1: #fbebe9;
+  --radius: 8px; --radius-lg: 14px; --focus: 0 0 0 3px var(--surface), 0 0 0 5px var(--teal);
   --display: "Geist", system-ui, sans-serif; --body: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --kufi: "Reem Kufi", "IBM Plex Sans Arabic", serif;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
@@ -14,14 +20,23 @@ h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.2; }
 .muted { color: var(--slate); }
 .small { font-size: 13px; }
 
-/* App shell: identical on every screen (owner feedback) */
-.topbar { height: 64px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 32px; padding: 0 32px; position: sticky; top: 0; z-index: 20; }
-.logo { font: 700 22px var(--display); color: var(--teal); text-decoration: none; }
+/* App shell: identical on every screen (owner feedback). The studio-teal bar carries the bilingual wordmark. */
+.topbar { height: 64px; background: var(--studio); color: var(--on-studio); display: flex; align-items: center; gap: 32px; padding: 0 32px; position: sticky; top: 0; z-index: 20; }
+.logo { display: inline-flex; align-items: baseline; gap: 10px; text-decoration: none; color: var(--on-studio); }
+.logo .latin { font: 700 21px var(--display); letter-spacing: -.01em; }
+.logo .arabic { font: 700 24px var(--kufi); color: var(--signal); line-height: 1; }
 .nav { display: flex; gap: 24px; }
-.nav a { color: var(--slate); text-decoration: none; padding: 20px 0; border-bottom: 2px solid transparent; white-space: nowrap; }
-.nav a.active { color: var(--ink); border-color: var(--teal); font-weight: 500; }
+.nav a { color: var(--on-studio-dim); text-decoration: none; padding: 21px 0; border-bottom: 3px solid transparent; white-space: nowrap; }
+.nav a:hover { color: var(--on-studio); }
+.nav a.active { color: #fff; border-color: var(--signal); font-weight: 500; }
+.nav .soon { font-size: 11px; font-weight: 500; color: var(--studio); background: var(--on-studio-dim); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px; }
+.topbar .btn { background: transparent; color: var(--on-studio); border-color: rgba(231, 242, 241, .28); }
+.topbar .btn:hover { background: var(--studio-2); }
+.topbar .who { font-size: 13px; color: var(--on-studio-dim); }
+.menu-btn { display: none; }
+.nav-signout { display: none; }
 .spacer { flex: 1; }
-.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--teal-2); color: var(--teal); display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--signal); color: var(--studio); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
 main { padding: 32px; max-width: 1440px; margin: 0 auto; }
 
 /* Controls */
@@ -38,9 +53,59 @@ main { padding: 32px; max-width: 1440px; margin: 0 auto; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--teal-3); border-color: var(--teal); }
 .error { color: var(--red); background: #fdf1f0; border-radius: var(--radius); padding: 10px 12px; font-size: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
-.dot::before { content: "●"; margin-right: 6px; font-size: 10px; vertical-align: 1px; }
+.dot { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--bg); color: var(--slate); white-space: nowrap; }
+.dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.dot.lead { background: var(--green-1); } .dot.soon { background: var(--amber-1); } .dot.outbid { background: var(--red-1); }
+.dot.muted { color: var(--slate); }
 .lead { color: var(--green); } .outbid { color: var(--red); } .soon { color: var(--amber); }
 .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--slate); }
 a { color: var(--teal); }
 
 .topbar.staff { gap: 20px; } .topbar.staff .nav { gap: 16px; font-size: 14px; }
+
+/* Quality floor: visible keyboard focus, reduced motion, readable small text */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: none; box-shadow: var(--focus); border-radius: 6px; }
+.topbar :where(a, button):focus-visible { box-shadow: 0 0 0 3px var(--studio), 0 0 0 5px var(--signal); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.btn { transition: background-color .12s, border-color .12s; }
+.btn.primary:hover { background: var(--studio-2); border-color: var(--studio-2); }
+h1 { font-size: 30px; letter-spacing: -.015em; }
+.kufi { font-family: var(--kufi); font-weight: 500; }
+
+/* "On air": the one bright signal. Live bidding, closing soon, you lead. */
+.on-air { display: inline-flex; align-items: center; gap: 6px; color: var(--signal-ink); background: var(--signal-1); border-radius: 999px; padding: 2px 10px 2px 8px; font-size: 12px; font-weight: 600; }
+.on-air::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px rgba(229, 162, 27, .25); }
+
+/* Sign-in and access pages: the studio hero on the left, the form on the right */
+.auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr); background: var(--surface); }
+.auth-hero { background: var(--studio); color: var(--on-studio); padding: 48px 56px; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.auth-hero .logo .latin { font-size: 24px; }
+.auth-mark { font: 700 clamp(140px, 18vw, 260px)/1 var(--kufi); color: var(--signal); margin: auto 0 0; padding-bottom: .28em; direction: rtl; text-align: left; }
+.auth-hero h2 { font: 600 clamp(24px, 2.4vw, 34px)/1.2 var(--display); max-width: 18ch; letter-spacing: -.015em; }
+.auth-hero p { color: var(--on-studio-dim); max-width: 46ch; margin: 14px 0 0; }
+.auth-channels { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.auth-channels span { border: 1px solid rgba(231, 242, 241, .3); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.auth-form { display: grid; place-items: center; padding: 40px 24px; }
+.auth-form form { width: min(400px, 100%); display: grid; gap: 16px; }
+.auth-form h1 { font-size: 28px; }
+
+/* Phones and small tablets */
+@media (max-width: 900px) {
+  .topbar { gap: 12px; padding: 0 16px; }
+  .menu-btn { display: inline-flex; }
+  .topbar .nav { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; gap: 0; background: var(--studio); padding: 8px 16px 16px; box-shadow: 0 12px 24px rgba(10, 69, 69, .25); }
+  .topbar.open .nav { display: flex; }
+  .topbar .nav a { padding: 12px 4px; border-bottom: 1px solid rgba(231, 242, 241, .12); }
+  .topbar .nav a.active { border-color: rgba(231, 242, 241, .12); color: var(--signal); }
+  .topbar .nav .nav-signout { display: block; border-bottom: 0; }
+  .topbar .who, .topbar .signout { display: none; }
+  main { padding: 20px 16px; }
+  h1 { font-size: 24px; }
+  .table { display: block; overflow-x: auto; }
+  .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg button { white-space: nowrap; flex: none; }
+  .auth { grid-template-columns: 1fr; }
+  .auth-hero { padding: 28px 20px 32px; }
+  .auth-mark { font-size: 120px; margin: 20px 0 0; }
+}
+.nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }

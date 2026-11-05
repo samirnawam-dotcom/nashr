@@ -10,3 +10,7 @@
 .tabs button.on { color: var(--ink); border-color: var(--teal); font-weight: 500; }
 .kv { display: grid; grid-template-columns: 220px 1fr; gap: 8px 16px; margin: 0; } .kv dt { color: var(--slate); font-size: 13px; } .kv dd { margin: 0; }
 pre.json { background: var(--bg); padding: 10px; border-radius: var(--radius); font-size: 12px; overflow: auto; margin: 0; }
+
+/* Something to do carries the on-air signal; nothing to do goes quiet */
+.attn a.has { border-left: 4px solid var(--signal); }
+.attn a.none b { color: var(--faint); font-weight: 500; }

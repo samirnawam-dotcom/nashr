@@ -108,5 +108,8 @@ Decisions made while building (flag to owner if they disagree):
   monitoring (`/api/health`, JSON logs, graceful shutdown), restore drill (`scripts/restore-drill.sh`, passed, tamper test caught), `docs/runbook.md`
 - [ ] F3 Pilot: plan written (`docs/pilot-plan.md`); running it needs Stripe live (B5), AWS, email service, brand files, legal sign-off and the pilot companies
 
+- [x] UI upgrade (`docs/design/ui-direction.md`): studio-teal shell with bilingual wordmark, sign-in hero, saffron on-air signal,
+  status pills, visible focus, readable small text; phones fixed (menu, calendar day list, filters, scrolling tables)
+
 ### Checkpoint F: launch readiness (software side) ✅ (104 tests + 3 e2e journeys)
 Waiting on the owner: Stripe test then live account (B5), AWS account and budget, email service, brand files, accountant and legal sign-off, pilot companies.

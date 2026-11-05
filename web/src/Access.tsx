@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from './api'
+import { AuthShell } from './Login'
 
 /** Invite-only: five fields, business email; Nashr's team approves (brief scenario 14). */
 export function RequestAccess() {
@@ -11,9 +12,8 @@ export function RequestAccess() {
     try { await api('/access-requests', { method: 'POST', body: f }); setSent(true) } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
-    <div className="login">
-      <form className="card pad login-card" onSubmit={submit}>
-        <span className="logo">Nashr</span>
+    <AuthShell>
+      <form onSubmit={submit}>
         <h1>Request access</h1>
         {sent ? <p>Thanks. Nashr's team reviews every request and will email you an invite link once approved.</p> : <>
           <p className="small muted">Nashr is invite-only for UAE brands, agencies and media outlets.</p>
@@ -29,7 +29,7 @@ export function RequestAccess() {
         </>}
         <p className="small muted"><a href="#/">Back to sign in</a></p>
       </form>
-    </div>
+    </AuthShell>
   )
 }
 
@@ -47,9 +47,8 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
     } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
-    <div className="login">
-      <form className="card pad login-card" onSubmit={submit}>
-        <span className="logo">Nashr</span>
+    <AuthShell>
+      <form onSubmit={submit}>
         <h1>{done ? 'You are in' : 'Set your password'}</h1>
         {done ? <><p>Your account is ready.</p><button type="button" className="btn primary" onClick={() => { history.replaceState(null, '', '/'); onDone() }}>Sign in</button></> : <>
           <div className="field"><label htmlFor="pw">Password (at least 12 characters)</label><input id="pw" type="password" autoComplete="new-password" minLength={12} value={password} onChange={e => setPassword(e.target.value)} required /></div>
@@ -63,6 +62,6 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
           <button className="btn primary" disabled={busy}>{secret ? 'Activate' : 'Continue'}</button>
         </>}
       </form>
-    </div>
+    </AuthShell>
   )
 }

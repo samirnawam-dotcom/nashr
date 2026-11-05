@@ -25,7 +25,7 @@ export function AdminOverview() {
         <div className="card"><dt>Publishers live · buyers</dt><dd className="num">{o.publishers_live} · {o.buyers}</dd></div>
       </dl>
       <h2 className="sec-h">Needs attention</h2>
-      <div className="attn">{attention.map(([n, label, href, hot]) => <a key={label} href={href} className={`card ${hot && n ? 'hot' : ''}`}><b className="num">{n}</b><span className="small">{label}</span></a>)}</div>
+      <div className="attn">{attention.map(([n, label, href, hot]) => <a key={label} href={href} className={`card ${n ? 'has' : 'none'} ${hot && n ? 'hot' : ''}`}><b className="num">{n}</b><span className="small">{label}</span></a>)}</div>
       <h2 className="sec-h">Deals by status</h2>
       <div className="attn">{Object.entries(o.byStatus).map(([s, n]) => <a key={s} href={`#/deals?status=${s}`} className="card"><b className="num">{n}</b><span className="small">{DEAL_STATUS[s]?.[0] ?? s}</span></a>)}</div>
     </main>
