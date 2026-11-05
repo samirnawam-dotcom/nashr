@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { addDays, todayInDubai } from '../calendar/layout'
@@ -21,8 +22,8 @@ export function ListingsPage() {
   return (
     <main>
       <div className="page-h"><h1>Listings</h1><span className="muted small">What you sell repeatedly. Each airing becomes slots on the calendar.</span><div className="spacer" />
-        <a className="btn primary" href="#/listings/new">Add placement</a></div>
-      {!p.company.payoutsEnabled && <p className="warn">Slots go on sale once your payout account is verified. <a href="#/profile">Connect it</a></p>}
+        <a className="btn primary" href="/listings/new">Add placement</a></div>
+      {!p.company.payoutsEnabled && <p className="warn">Slots go on sale once your payout account is verified. <a href="/profile">Connect it</a></p>}
       {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
       {!p.placements.length ? <p className="muted empty">No placements yet.</p>
         : <table className="table card"><thead><tr><th>Placement</th><th>When</th><th>Sold as</th><th className="r">From</th><th className="r">On sale</th><th>Listed until</th><th /></tr></thead>
@@ -61,17 +62,17 @@ export function NewPlacementPage() {
         creativeLeadHours: Number(f.creativeLeadHours), closeLeadHours: Number(f.closeLeadDays) * 24,
         ...(p!.company.payoutsEnabled && Number(f.listDays) ? { listFrom: todayInDubai(), listDays: Number(f.listDays) } : {}) }
       const r = await api('/seller/placements', { method: 'POST', body: JSON.parse(JSON.stringify(body)) })
-      if (r.warnings?.length) setWarnings(r.warnings); else location.hash = '#/listings'
+      if (r.warnings?.length) setWarnings(r.warnings); else navigate('/listings')
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
   if (warnings.length) return <main className="narrow"><h1>Placement saved</h1>
-    {warnings.map(w => <p key={w} className="warn">{w} Check the times if that's not intended.</p>)}<a className="btn primary" href="#/listings">Go to listings</a></main>
-  if (!p.outlets.length) return <main className="narrow"><h1>Add placement</h1><p>Add your outlet first. <a href="#/profile">Outlet profile</a></p></main>
+    {warnings.map(w => <p key={w} className="warn">{w} Check the times if that's not intended.</p>)}<a className="btn primary" href="/listings">Go to listings</a></main>
+  if (!p.outlets.length) return <main className="narrow"><h1>Add placement</h1><p>Add your outlet first. <a href="/profile">Outlet profile</a></p></main>
   const slotted = breaks.length > 0
   return (
     <main className="narrow">
-      <p className="small"><a href="#/listings">Listings</a> › Add placement</p>
+      <p className="small"><a href="/listings">Listings</a> › Add placement</p>
       <h1>Add placement</h1>
       <div className="card pad form section">
         <div className="field"><label htmlFor="o">Outlet</label><select id="o" value={f.outletId} onChange={set('outletId')}>{p.outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></div>
@@ -112,7 +113,7 @@ export function NewPlacementPage() {
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       <div className="row-flex section"><button className="btn primary" disabled={busy || !f.name || !aed(f.startingPrice) || !f.days.length} onClick={save}>Save placement</button>
-        <a className="btn" href="#/listings">Cancel</a></div>
+        <a className="btn" href="/listings">Cancel</a></div>
     </main>
   )
 }

@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// The site's official address for canonical links, share previews and the sitemap (deploys pass their own domain).
+process.env.VITE_SITE_URL ??= 'https://nashr.restbits.online'
+
 export default defineConfig({
   root: 'web',
   plugins: [react()],

@@ -9,7 +9,7 @@
     "start": "tsx server/main.ts",
     "seed": "tsx server/seed.ts",
     "dev:web": "vite --config web/vite.config.ts",
-    "build:web": "vite build --config web/vite.config.ts",
+    "build:web": "vite build --config web/vite.config.ts && tsx scripts/prerender.ts",
     "e2e": "node e2e/buyer-journey.cjs && node e2e/seller-journey.cjs && node e2e/admin-journey.cjs"
   },
   "dependencies": {

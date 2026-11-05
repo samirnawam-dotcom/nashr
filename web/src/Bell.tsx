@@ -57,7 +57,7 @@ export function Bell({ role }: { role: string }) {
       {open && <div className="card bell-pop" role="menu">
         {!data.items.length && <p className="muted small">Nothing yet.</p>}
         {data.items.map(n => { const text = (TEXT[n.kind] ?? (() => n.kind))(n)
-          const href = n.dealId ? (role === 'seller' ? `#/deals/${n.dealId}` : `#/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '#/calendar' : undefined
+          const href = n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '/calendar' : undefined
           return <a key={n.id} href={href} className={n.read ? '' : 'unread'} onClick={() => setOpen(false)} role="menuitem">
             <div>{text}</div><div className="small muted">{n.dealRef ? `${n.dealRef} · ` : ''}{new Date(n.at).toLocaleString('en-GB', { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></a> })}
       </div>}

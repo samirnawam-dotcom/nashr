@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { dayLabel, money } from '../format'
@@ -12,12 +13,12 @@ export function DocumentsPage() {
   useEffect(() => { api<Row[]>('/documents').then(setRows, e => setError(e.message)) }, [])
   return (
     <main>
-      <p className="small"><a href="#/bookings">Bookings</a> › Receipts and invoices</p>
+      <p className="small"><a href="/bookings">Bookings</a> › Receipts and invoices</p>
       <h1>Receipts and invoices</h1>
       {error && <p className="error">{error}</p>}
       {rows && !rows.length && <p className="muted empty">Nothing yet. You get a receipt from Nashr and a tax invoice from the publisher when you pay.</p>}
       {rows && rows.length > 0 && <table className="table card" style={{ marginTop: 20 }}><thead><tr><th>Document</th><th>Number</th><th>Order</th><th>Date</th><th className="r">Total</th></tr></thead>
-        <tbody>{rows.map(r => <tr key={r.id} onClick={() => (location.hash = `#/documents/${r.id}`)}>
+        <tbody>{rows.map(r => <tr key={r.id} onClick={() => (navigate(`/documents/${r.id}`))}>
           <td>{DOC_TYPE[r.type]}</td><td className="num">{r.number}</td><td className="num">{r.dealRef ?? '—'}</td>
           <td className="num">{dayLabel(dubai(r.issuedAt).date, { day: 'numeric', month: 'short', year: 'numeric' })}</td><td className="r num">{money(r.total, r.currency)}</td></tr>)}</tbody></table>}
     </main>
@@ -36,7 +37,7 @@ export function DocumentPage({ id }: { id: string }) {
   const title = d.type === 'media_invoice' || d.type === 'commission_invoice' ? (d.taxDocument ? 'Tax invoice' : 'Invoice') : DOC_TYPE[d.type]
   return (
     <main>
-      <div className="row-flex no-print" style={{ marginBottom: 16 }}><a className="small" href="#/documents" onClick={e => { if (history.length > 1) { e.preventDefault(); history.back() } }}>Back</a><div className="spacer" />
+      <div className="row-flex no-print" style={{ marginBottom: 16 }}><a className="small" href="/documents" onClick={e => { if (history.length > 1) { e.preventDefault(); history.back() } }}>Back</a><div className="spacer" />
         {d.fileId && <a className="btn" href={`/api/files/${d.fileId}`}>Publisher's uploaded invoice</a>}
         <button className="btn primary" onClick={() => print()}>Print or save as PDF</button></div>
       <article className="card doc">

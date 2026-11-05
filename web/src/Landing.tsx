@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './landing.css'
+import { FAQ, PAGES, faqLd, useMeta } from './seo'
 
 /**
  * The first page visitors see. Everything past it can be browsed without an account; signing in is only needed to act.
@@ -11,9 +12,9 @@ const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavio
 export function Landing() {
   const head = useRef<HTMLDivElement>(null), card = useRef<HTMLDivElement>(null), steps = useRef<HTMLOListElement>(null)
   const [i, setI] = useState(2), [hours, setHours] = useState(6)
+  useMeta({ ...PAGES['/'], path: '/', jsonLd: [faqLd()] })
 
   useEffect(() => {
-    document.title = 'Nashr: book UAE airtime and pages in one place'
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
     // The orchestrated moment: the playhead sweeps the board and the top bid climbs in 3% steps until you lead.
     let raf = 0, timer = 0
@@ -40,7 +41,7 @@ export function Landing() {
       io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { fill(); io!.disconnect() } }, { threshold: .4 })
       io.observe(steps.current)
     } else fill()
-    return () => { cancelAnimationFrame(raf); clearInterval(timer); removeEventListener('resize', gut); io?.disconnect(); document.title = 'Nashr' }
+    return () => { cancelAnimationFrame(raf); clearInterval(timer); removeEventListener('resize', gut); io?.disconnect() }
   }, [])
 
   return (
@@ -53,11 +54,11 @@ export function Landing() {
               <h1>Book UAE airtime and pages in one place.</h1>
               <span className="ar" lang="ar">احجز الإعلانات في الإذاعة والتلفزيون والصحف والمنصات الرقمية من مكان واحد</span>
               <p className="lede">Bid on radio breaks, TV spots, print pages, homepage takeovers and podcast reads, from the publishers themselves. Your payment is held until the publisher proves the ad ran.</p>
-              <div className="cta-row"><a className="btn signal" href="#/calendar">Browse the calendar</a><a className="btn ghost" href="#/request-access">Request access</a></div>
+              <div className="cta-row"><a className="btn signal" href="/calendar">Browse the calendar</a><a className="btn ghost" href="/request-access">Request access</a></div>
               <p className="fine">Browse every slot and price freely. Sign in when you're ready to bid or book. <button type="button" className="text-link" onClick={() => go('how')}>See how it works ↓</button></p>
             </div>
 
-            <a className="board" href="#/calendar" aria-label="Example programme board. Open the live calendar">
+            <a className="board" href="/calendar" aria-label="Example programme board. Open the live calendar">
               <div className="board-h"><span><b>Mon 16 Nov</b>, Dubai time</span><span className="live">Bidding live</span></div>
               <div className="axis" aria-hidden="true"><span></span><div className="ticks"><span>06:00</span><span>09:00</span><span>12:00</span><span>15:00</span><span>18:00</span></div></div>
               <div className="lanes" aria-hidden="true">
@@ -159,6 +160,12 @@ export function Landing() {
         </div></section>
       </div>
 
+      <section className="block faq" id="faq" style={{ paddingTop: 0 }}><div className="wrap">
+        <div className="eyeline">Questions</div>
+        <h2>Buying and selling advertising on Nashr</h2>
+        <div className="faq-list">{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
+      </div></section>
+
       <section className="access"><div className="wrap">
         <div>
           <h2>Ready to book?</h2>
@@ -168,11 +175,11 @@ export function Landing() {
         <div className="access-cta">
           <h3>Get an invite</h3>
           <p>Tell us who you are and what you'd like to book or sell. It takes a minute.</p>
-          <div className="cta-links"><a className="btn teal" href="#/request-access">Request access</a><a className="link" href="#/calendar">Or browse the calendar first</a></div>
-          <p className="small">Already invited? <a className="link" href="#/sign-in">Sign in</a></p>
+          <div className="cta-links"><a className="btn teal" href="/request-access">Request access</a><a className="link" href="/calendar">Or browse the calendar first</a></div>
+          <p className="small">Already invited? <a className="link" href="/sign-in">Sign in</a></p>
         </div>
       </div></section>
-      <footer className="lp-foot"><div className="wrap"><span>Nashr, the UAE media marketplace. Prices in AED, times in Dubai time.</span><span className="foot-links"><a href="#/terms">Terms</a><a href="#/privacy">Privacy</a><a href="#/refunds">Refunds</a><a href="#/sign-in">Sign in</a></span></div></footer>
+      <footer className="lp-foot"><div className="wrap"><span>Nashr, the UAE media marketplace. Prices in AED, times in Dubai time.</span><span className="foot-links"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/sign-in">Sign in</a></span></div></footer>
     </div>
   )
 }

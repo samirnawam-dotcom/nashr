@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { dayLabel } from '../format'
@@ -27,7 +28,7 @@ export function EarningsPage() {
         <a className="btn" href={`/api/seller/statement/${month}`}>Download CSV</a></div>
       {!e.deals.length ? <p className="muted empty">No paid bookings yet.</p>
         : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Price</th><th className="r">Your VAT</th><th className="r">Commission</th><th className="r">You receive</th><th>Status</th></tr></thead>
-          <tbody>{e.deals.map(d => <tr key={d.id} onClick={() => (location.hash = `#/deals/${d.id}`)}>
+          <tbody>{e.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
             <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="num">{dayLabel(dubai(d.startsAt).date)}</td>
             <td className="r num">{money(d.price)}</td><td className="r num">{money(d.mediaVat)}</td><td className="r num">−{money(d.fee + d.feeVat)}</td>
             <td className="r num"><b>{money(d.payout)}</b></td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}

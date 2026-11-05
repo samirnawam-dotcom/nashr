@@ -85,7 +85,7 @@ export function AuditPage() {
         <button type="button" className="btn" disabled={!shown.length} onClick={() => csv('nashr-audit.csv', shown.map(a => ({ ...a, detail: JSON.stringify(a.detail) })))}>CSV</button></form>
       {!data ? <Loading error={error} /> : <table className="table card"><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th><th>Detail</th></tr></thead>
         <tbody>{shown.map((a, i) => <tr key={i}><td className="small num">{when(a.at)}</td><td className="mono">{a.actor}</td><td>{a.action}</td>
-          <td className="mono"><a href="#/audit" onClick={e => { e.preventDefault(); setEntity(a.entity_id); setApplied(a.entity_id) }}>{a.entity}:{a.entity_id?.slice(0, 8)}</a></td>
+          <td className="mono"><a href="/audit" onClick={e => { e.preventDefault(); setEntity(a.entity_id); setApplied(a.entity_id) }}>{a.entity}:{a.entity_id?.slice(0, 8)}</a></td>
           <td className="mono small">{a.detail ? JSON.stringify(a.detail).slice(0, 160) : ''}</td></tr>)}</tbody></table>}
     </main>
   )

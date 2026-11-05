@@ -1,31 +1,66 @@
-import { useEffect, useState } from 'react'
+import { navigate, usePath } from './nav'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { api } from './api'
 import { Login } from './Login'
 import { AcceptInvite, RequestAccess } from './Access'
 import { Bell } from './Bell'
 import { CalendarPage } from './calendar/CalendarPage'
-import { BookingPage, BookingsPage } from './bookings/Bookings'
 import { DirectoryPage, OutletPage } from './directory/Directory'
-import { CampaignPage, CampaignsPage } from './campaigns/Campaigns'
-import { DocumentPage, DocumentsPage } from './documents/Documents'
-import { InboxPage, SellerDashboard } from './seller/Dashboard'
-import { SchedulePage, SlotPage } from './seller/Schedule'
-import { SellerDealPage, SellerDealsPage } from './seller/Deals'
-import { EarningsPage } from './seller/Earnings'
-import { ListingsPage, NewPlacementPage } from './seller/Listings'
-import { ProfilePage } from './seller/Profile'
-import { AthenaPage } from './Athena'
-import { AccessPage, AdminOverview } from './admin/Overview'
-import { AccountPage, AccountsPage } from './admin/Accounts'
-import { AdminDealPage, AdminDealsPage, DisputesPage } from './admin/Deals'
-import { FundsPage, PayoutsPage, ReportsPage } from './admin/Money'
-import { AuditPage, DirectoryAdminPage, SettingsPage } from './admin/System'
 import { Landing } from './Landing'
 import { PrivacyPage, RefundsPage, TermsPage } from './Legal'
 import { GuestContext, rememberPlace, takePlace } from './guest'
+import { PAGES, applyMeta } from './seo'
 
-type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null }
-const useHash = () => { const [h, set] = useState(location.hash); useEffect(() => { const f = () => set(location.hash); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
+
+// Screens behind sign-in load only when opened, so visitors download just the public pages (faster landing page).
+const L = <M, K extends keyof M>(load: () => Promise<M>, name: K) => lazy(async () => ({ default: (await load())[name] as M[K] & React.ComponentType<any> })) // eslint-disable-line @typescript-eslint/no-explicit-any
+const load_bookings_Bookings = () => import('./bookings/Bookings')
+const BookingPage = L(load_bookings_Bookings, 'BookingPage')
+const BookingsPage = L(load_bookings_Bookings, 'BookingsPage')
+const load_campaigns_Campaigns = () => import('./campaigns/Campaigns')
+const CampaignPage = L(load_campaigns_Campaigns, 'CampaignPage')
+const CampaignsPage = L(load_campaigns_Campaigns, 'CampaignsPage')
+const load_documents_Documents = () => import('./documents/Documents')
+const DocumentPage = L(load_documents_Documents, 'DocumentPage')
+const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
+const load_seller_Dashboard = () => import('./seller/Dashboard')
+const InboxPage = L(load_seller_Dashboard, 'InboxPage')
+const SellerDashboard = L(load_seller_Dashboard, 'SellerDashboard')
+const load_seller_Schedule = () => import('./seller/Schedule')
+const SchedulePage = L(load_seller_Schedule, 'SchedulePage')
+const SlotPage = L(load_seller_Schedule, 'SlotPage')
+const load_seller_Deals = () => import('./seller/Deals')
+const SellerDealPage = L(load_seller_Deals, 'SellerDealPage')
+const SellerDealsPage = L(load_seller_Deals, 'SellerDealsPage')
+const load_seller_Earnings = () => import('./seller/Earnings')
+const EarningsPage = L(load_seller_Earnings, 'EarningsPage')
+const load_seller_Listings = () => import('./seller/Listings')
+const ListingsPage = L(load_seller_Listings, 'ListingsPage')
+const NewPlacementPage = L(load_seller_Listings, 'NewPlacementPage')
+const load_seller_Profile = () => import('./seller/Profile')
+const ProfilePage = L(load_seller_Profile, 'ProfilePage')
+const load_Athena = () => import('./Athena')
+const AthenaPage = L(load_Athena, 'AthenaPage')
+const load_admin_Overview = () => import('./admin/Overview')
+const AccessPage = L(load_admin_Overview, 'AccessPage')
+const AdminOverview = L(load_admin_Overview, 'AdminOverview')
+const load_admin_Accounts = () => import('./admin/Accounts')
+const AccountPage = L(load_admin_Accounts, 'AccountPage')
+const AccountsPage = L(load_admin_Accounts, 'AccountsPage')
+const load_admin_Deals = () => import('./admin/Deals')
+const AdminDealPage = L(load_admin_Deals, 'AdminDealPage')
+const AdminDealsPage = L(load_admin_Deals, 'AdminDealsPage')
+const DisputesPage = L(load_admin_Deals, 'DisputesPage')
+const load_admin_Money = () => import('./admin/Money')
+const FundsPage = L(load_admin_Money, 'FundsPage')
+const PayoutsPage = L(load_admin_Money, 'PayoutsPage')
+const ReportsPage = L(load_admin_Money, 'ReportsPage')
+const load_admin_System = () => import('./admin/System')
+const AuditPage = L(load_admin_System, 'AuditPage')
+const DirectoryAdminPage = L(load_admin_System, 'DirectoryAdminPage')
+const SettingsPage = L(load_admin_System, 'SettingsPage')
+
+export type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null }
 
 // One page per path; ids are the last segment.
 type Routes = [RegExp, (id: string) => React.ReactNode][]
@@ -102,27 +137,29 @@ const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" view
 
 /** The bilingual wordmark (placeholder until the brand files arrive): Latin in Geist, Arabic in Kufi. */
 export const Wordmark = ({ href }: { href?: string }) => (
-  <a className="logo" href={href ?? '#/'} aria-label="Nashr home"><span className="latin">Nashr</span><span className="arabic" lang="ar">نشر</span></a>)
+  <a className="logo" href={href ?? '/'} aria-label="Nashr home"><span className="latin">Nashr</span><span className="arabic" lang="ar">نشر</span></a>)
 
-export function App() {
-  const [me, setMe] = useState<Me | null | undefined>(undefined), [menu, setMenu] = useState(false)
-  const hash = useHash()
-  useEffect(() => setMenu(false), [hash]) // a phone menu closes once you go somewhere
+export function App({ initialMe }: { initialMe?: Me | null }) {
+  const [me, setMe] = useState<Me | null | undefined>(initialMe), [menu, setMenu] = useState(false)
+  const full = usePath(), hash = full.split('?')[0]
+  useEffect(() => setMenu(false), [full]) // a phone menu closes once you go somewhere
   useEffect(() => { scrollTo(0, 0) }, [hash]) // a new page starts at the top
   const load = () => api<Me>('/me').then(setMe, () => setMe(null))
-  useEffect(() => { load() }, [])
+  useEffect(() => { if (initialMe === undefined) load() }, [])
+  // Screens behind sign-in stay out of search results; public pages set their own metadata.
+  useEffect(() => { if (me && !/^\/(calendar|directory|terms|privacy|refunds)/.test(hash)) applyMeta({ title: 'Nashr', description: PAGES['/'].description, noindex: true }) }, [me, hash])
   // After signing in, go back to where the visitor was, if that page is theirs to see; otherwise to their home.
   const signedIn = async () => {
     const m = await api<Me>('/me').catch(() => null)
-    const next = takePlace()?.replace(/^#/, '')
-    location.hash = next && m && routesFor(m.role).some(([re]) => re.test(next)) ? next : ''
+    const next = takePlace()
+    navigate(next && m && routesFor(m.role).some(([re]) => re.test(next.split('?')[0])) ? next : '/', true)
     setMe(m)
   }
-  if (location.pathname === '/invite') return <AcceptInvite token={location.hash.slice(1)} onDone={() => { location.hash = '/sign-in'; load() }} />
+  if (location.pathname === '/invite') return <AcceptInvite token={location.hash.slice(1)} onDone={() => { navigate('/sign-in', true); load() }} />
   if (me === undefined) return null
 
   if (me === null) {
-    const path = hash.replace(/^#/, '') || '/'
+    const path = hash || '/'
     if (path === '/') return <GuestContext.Provider value={true}><GuestHeader path={path} menu={menu} setMenu={setMenu} /><Landing /><GuestTabs path={path} /></GuestContext.Provider>
     if (path === '/sign-in') return <Login onIn={signedIn} />
     if (path === '/request-access') return <RequestAccess />
@@ -132,7 +169,7 @@ export function App() {
     return (
       <GuestContext.Provider value={true}>
         <GuestHeader path={path} menu={menu} setMenu={setMenu} />
-        {hit[1](hit[0]![1])}
+        <Suspense fallback={<main><p className="muted">Loading…</p></main>}>{hit[1](hit[0]![1])}</Suspense>
         <GuestTabs path={path} />
       </GuestContext.Provider>
     )
@@ -140,30 +177,30 @@ export function App() {
 
   const seller = me.role === 'seller', staff = me.role === 'admin' || me.role === 'founder'
   const home = staff ? '/admin' : seller ? '/home' : '/calendar'
-  const path = hash.replace(/^#/, '') || home
-  if (path === '/sign-in' || path === '/request-access' || path === '/') { location.hash = home; return null }
+  const path = hash === '/' ? home : hash
+  if (path === '/sign-in' || path === '/request-access') { queueMicrotask(() => navigate(home, true)); return null }
 
   const nav = NAV[staff ? 'admin' : seller ? 'seller' : 'buyer']
   const hit = routesFor(me.role).map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
   return (
     <>
       {me.viewingAs && <div className="viewbar" role="status">Viewing {me.company.name} as Nashr, read only. Every page you open is logged.
-        <button className="btn" onClick={async () => { await api('/admin/view-as', { method: 'DELETE' }); location.hash = `#/accounts/${me.viewingAs}`; location.reload() }}>Stop viewing</button></div>}
+        <button className="btn" onClick={async () => { await api('/admin/view-as', { method: 'DELETE' }); navigate(`/accounts/${me.viewingAs}`); location.reload() }}>Stop viewing</button></div>}
       <header className={`topbar ${staff ? 'staff' : ''} ${menu ? 'open' : ''}`}>
         <button className="btn menu-btn" aria-label="Menu" aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
-        <Wordmark href={`#${home}`} />
-        <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`#${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
+        <Wordmark href={`${home}`} />
+        <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
           {l}{p === '/athena' && <span className="soon">soon</span>}</a>)}
-          <a href="#/" className="nav-signout" onClick={async e => { e.preventDefault(); await api('/auth/logout', { method: 'POST' }); location.hash = ''; setMe(null) }}>Sign out</a></nav>
+          <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null) }}>Sign out</a></nav>
         <div className="spacer" />
         <Bell role={me.role} />
         <span className="who">{me.company.name}</span>
-        <button className="btn signout" onClick={async () => { await api('/auth/logout', { method: 'POST' }); location.hash = ''; setMe(null) }}>Sign out</button>
+        <button className="btn signout" onClick={async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null) }}>Sign out</button>
         <span className="avatar" aria-hidden>{me.company.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span>
       </header>
-      {hit ? hit[1](hit[0]![1]) : <main><h1>Not found</h1><p className="muted"><a href={`#${home}`}>Back to the start</a></p></main>}
-      {!staff && <nav className="tabbar" aria-label="Main">{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`#${p}`} className={isActive(path, p) ? 'active' : ''}
+      {hit ? <Suspense fallback={<main><p className="muted">Loading…</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>Not found</h1><p className="muted"><a href={`${home}`}>Back to the start</a></p></main>}
+      {!staff && <nav className="tabbar" aria-label="Main">{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
         aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>}
     </>
   )
@@ -175,13 +212,13 @@ function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; set
     <header className={`topbar ${menu ? 'open' : ''}`}>
       <button className="btn menu-btn" aria-label="Menu" aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
-      <Wordmark href="#/" />
-      <nav className="nav" id="main-nav">{NAV.guest.slice(0, 3).map(([p, l]) => <a key={p} href={`#${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
-        <a href="#/sign-in" className="nav-signout" onClick={rememberPlace}>Sign in</a></nav>
+      <Wordmark href="/" />
+      <nav className="nav" id="main-nav">{NAV.guest.slice(0, 3).map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
+        <a href="/sign-in" className="nav-signout" onClick={rememberPlace}>Sign in</a></nav>
       <div className="spacer" />
       <div className="guest-actions">
-        <a className="signin" href="#/sign-in" onClick={rememberPlace}>Sign in</a>
-        <a className="btn signal" href="#/request-access">Request access</a>
+        <a className="signin" href="/sign-in" onClick={rememberPlace}>Sign in</a>
+        <a className="btn signal" href="/request-access">Request access</a>
       </div>
     </header>
   )
@@ -189,6 +226,6 @@ function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; set
 
 /** Phones: visitors get the same bottom tab bar as buyers, with Sign in as the last tab. */
 function GuestTabs({ path }: { path: string }) {
-  return <nav className="tabbar" aria-label="Main">{NAV.guest.map(([p, l]) => <a key={p} href={`#${p}`} className={isActive(path, p) ? 'active' : ''}
+  return <nav className="tabbar" aria-label="Main">{NAV.guest.map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
     onClick={p === '/sign-in' ? rememberPlace : undefined} aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>
 }

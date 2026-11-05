@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useState } from 'react'
 import { DEAL_STATUS, DealStatus, Loading, date, money, useAct, useLoad, when } from './common'
 import { DOC_TYPE } from '../documents/Documents'
@@ -6,7 +7,7 @@ type Row = { id: string; ref: string; status: string; kind: string; amount: numb
   created_at: string; buyer: string; seller: string; outlet: string; label: string; starts_at: string }
 
 export function AdminDealsPage() {
-  const initial = new URLSearchParams(location.hash.split('?')[1] ?? '').get('status') ?? ''
+  const initial = new URLSearchParams(location.search).get('status') ?? ''
   const [status, setStatus] = useState(initial), [q, setQ] = useState(''), [search, setSearch] = useState('')
   const { data, error } = useLoad<Row[]>(`/admin/deals?status=${status}&q=${encodeURIComponent(search)}`, [status, search])
   return (
@@ -19,7 +20,7 @@ export function AdminDealsPage() {
         <button className="btn">Search</button></form>
       {!data ? <Loading error={error} /> : !data.length ? <p className="muted empty">No deals match.</p>
         : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer</th><th>Publisher</th><th>Airs</th><th className="r">Price</th><th>Next deadline</th><th>Status</th></tr></thead>
-          <tbody>{data.map(d => <tr key={d.id} onClick={() => (location.hash = `#/deals/${d.id}`)}>
+          <tbody>{data.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
             <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td>{d.buyer}</td><td>{d.seller}</td><td className="small num">{date(d.starts_at)}</td>
             <td className="r num">{money(d.amount, d.currency)}</td><td className="small num">{when(d.next_deadline_at)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}
     </main>
@@ -50,9 +51,9 @@ export function AdminDealPage({ id }: { id: string }) {
   const tabs = [['timeline', 'Timeline'], ['money', 'Money'], ['fulfilment', 'Creative and proof'], ['documents', 'Documents']]
   return (
     <main className="narrow wide">
-      <p className="small"><a href="#/deals">Deals</a> › {d.ref}</p>
+      <p className="small"><a href="/deals">Deals</a> › {d.ref}</p>
       <div className="profile-h"><div><h1>{d.outlet} · {d.label}</h1>
-        <p className="muted">{when(d.startsAt)} · <a href={`#/accounts/${d.buyer.id}`}>{d.buyer.name}</a> buys from <a href={`#/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
+        <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> buys from <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}
       {d.status === 'disputed' && <section className="card pad section form">
         <h2>Decide this dispute</h2>
@@ -98,7 +99,7 @@ export function AdminDealPage({ id }: { id: string }) {
         </section>
         {d.brief && <section className="card pad"><h2 style={{ fontSize: 16, marginBottom: 12 }}>Booking brief</h2><pre className="json">{JSON.stringify(d.brief, null, 2)}</pre></section>}
       </div>}
-      {tab === 'documents' && (!d.documents.length ? <p className="muted">No documents yet.</p> : <table className="table card"><tbody>{d.documents.map(x => <tr key={x.id} onClick={() => (location.hash = `#/documents/${x.id}`)}>
+      {tab === 'documents' && (!d.documents.length ? <p className="muted">No documents yet.</p> : <table className="table card"><tbody>{d.documents.map(x => <tr key={x.id} onClick={() => (navigate(`/documents/${x.id}`))}>
         <td className="num">{x.number}</td><td>{DOC_TYPE[x.type]}</td><td className="r num">{money(x.total)}</td><td className="small num">{when(x.issued_at)}</td></tr>)}</tbody></table>)}
     </main>
   )
@@ -114,7 +115,7 @@ export function DisputesPage() {
     <main>
       <div className="page-h"><h1>Disputes</h1><span className="muted small">Disputed deals wait for Nashr's decision. Open issues are still with the publisher until their deadline.</span></div>
       {!data.length ? <p className="muted empty">No disputes or open issues.</p> : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer · publisher</th><th>Issue</th><th>Publisher's offer</th><th>Deadline</th><th>Status</th></tr></thead>
-        <tbody>{data.map(r => <tr key={r.id} onClick={() => (location.hash = `#/deals/${r.id}`)}>
+        <tbody>{data.map(r => <tr key={r.id} onClick={() => (navigate(`/deals/${r.id}`))}>
           <td className="num">{r.ref}</td><td><b>{r.outlet}</b> · {r.label}<div className="small muted num">{money(r.amount)}</div></td><td className="small">{r.buyer}<br />{r.seller}</td>
           <td className="small"><b>{r.reason?.replace(/_/g, ' ')}</b><div className="muted">{r.note}</div></td>
           <td className="small">{!r.offer ? '—' : r.offer.type === 'partial_refund' ? `Refund ${money(r.offer.amount)}` : r.offer.type.replace(/_/g, ' ')}</td>

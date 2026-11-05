@@ -198,3 +198,11 @@
 @media (max-width: 560px) { .lp .hero-grid { padding-block: 24px 48px; } }
 .lp .foot-links { display: flex; gap: 16px; flex-wrap: wrap; }
 .lp .foot-links a { color: var(--on-studio-dim); }
+/* Questions (also published as FAQ structured data) */
+.lp .faq-list { display: grid; gap: 10px; margin-top: 32px; max-width: 860px; }
+.lp .faq-list details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 20px; }
+.lp .faq-list summary { cursor: pointer; padding: 18px 0; font: 600 17px var(--display); list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.lp .faq-list summary::-webkit-details-marker { display: none; }
+.lp .faq-list summary::after { content: "+"; color: var(--teal); font-size: 22px; line-height: 1; }
+.lp .faq-list details[open] summary::after { content: "–"; }
+.lp .faq-list p { margin: 0 0 18px; color: var(--slate); }

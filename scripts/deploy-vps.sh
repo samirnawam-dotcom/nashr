@@ -71,6 +71,7 @@ EOF
   PSQL -qc "create role nashr login password '${DBPASS}'" 2>/dev/null || PSQL -qc "alter role nashr password '${DBPASS}'"
 fi
 PORT="$(grep '^PORT=' "$ENVF" | cut -d= -f2)"
+grep -q '^SITE_URL=' "$ENVF" || echo "SITE_URL=https://${DOMAIN}" >> "$ENVF"   # canonical address for the sitemap
 PSQL -tAc "select 1 from pg_database where datname='nashr'" | grep -q 1 || runuser -u postgres -- env -u PGHOST createdb -h /var/run/postgresql -p "$PGPORT" -O nashr nashr
 
 say "Code ($BRANCH)"
@@ -86,7 +87,7 @@ asapp() { runuser -u nashr -- env HOME="$DATA" $(grep -v '^#' "$ENVF" | xargs) "
 say "Install and build"
 cd "$APP"
 asapp npm ci --no-audit --no-fund --loglevel=error
-asapp npm run -s build:web
+asapp env VITE_SITE_URL="https://$DOMAIN" npm run -s build:web
 
 say "Database migrations"
 asapp npx tsx server/core/migrate.ts
@@ -137,6 +138,12 @@ PROXY="
     proxy_read_timeout 120s;
     proxy_request_buffering off;
     client_max_body_size 100m;
+  }
+  # The live sitemap (every outlet) comes from the app.
+  location = /sitemap.xml {
+    proxy_pass http://127.0.0.1:${PORT}/api/sitemap.xml;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Forwarded-Proto \$scheme;
   }"
 
 if [ "$PLESK" = 1 ]; then plesk_site; else plain_site; fi
@@ -178,7 +185,8 @@ plesk_site() {
   # Plesk includes this per-site file in the site's nginx config (it is what "Additional nginx directives" writes).
   local CONF="/var/www/vhosts/system/$DOMAIN/conf/vhost_nginx.conf"
   [ -d "$(dirname "$CONF")" ] || { echo "Plesk has no config folder for $DOMAIN ($(dirname "$CONF"))."; exit 1; }
-  printf '%s\n  location = /invite { root "%s"; try_files /index.html =404; }\n' "$PROXY" "$ROOT" > "$CONF"
+  # Real page addresses (/directory/gulf-news): a pre-rendered page if there is one, otherwise the app shell.
+  printf '%s\n  location ~ ^/(?!api/|assets/|\\.well-known/)[^.]*$ { root "%s"; try_files $uri.html $uri/index.html /app.html; }\n' "$PROXY" "$ROOT" > "$CONF"
   plesk sbin httpdmng --reconfigure-domain "$DOMAIN" < /dev/null >/dev/null
   if ! nginx -t -q; then
     rm -f "$CONF"; plesk sbin httpdmng --reconfigure-domain "$DOMAIN" < /dev/null >/dev/null
@@ -216,7 +224,7 @@ server {
   add_header Content-Security-Policy "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'" always;
 ${PROXY}
   location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; try_files \$uri =404; }
-  location / { try_files \$uri /index.html; }
+  location / { try_files \$uri \$uri.html \$uri/index.html /app.html; }
 }
 EOF
   ln -sf /etc/nginx/sites-available/nashr /etc/nginx/sites-enabled/nashr

@@ -63,3 +63,10 @@ cd /opt/nashr && runuser -u nashr -- env $(xargs < /etc/nashr.env) node_modules/
 ```
 
 It prints a one-time invite link (valid 7 days). They open it, choose their own password and link their own authenticator app.
+
+## Search (SEO)
+
+- Real addresses (`/calendar`, `/directory/gulf-news`, `/terms`); old `#/` links redirect. Outlet pages use readable slugs.
+- `web/src/seo.ts` sets each page's title, description, canonical address, Open Graph / X tags and JSON-LD (Organization, WebSite, FAQPage, BreadcrumbList, ItemList). Signed-in screens are `noindex`.
+- `npm run build:web` also pre-renders the landing, legal and request-access pages to HTML (`scripts/prerender.ts`) and writes `robots.txt`; set `VITE_SITE_URL` to the site's address (the deploy script does).
+- `/sitemap.xml` is served live by the API (every outlet included); nginx proxies it.

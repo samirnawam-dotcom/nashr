@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useState } from 'react'
 import { api } from '../api'
 import { DealStatus, Loading, date, money, useAct, useLoad } from './common'
@@ -17,7 +18,7 @@ export function AccountsPage() {
         <div className="seg" role="group" aria-label="Type">{[['', 'All'], ['buyer', 'Buyers'], ['publisher', 'Publishers']].map(([v, l]) =>
           <button key={v} className={type === v ? 'on' : ''} onClick={() => setType(v)}>{l}</button>)}</div></div>
       <table className="table card"><thead><tr><th>Company</th><th>Type</th><th>Users</th><th>Payouts</th><th>VAT</th><th className="r">Commission</th><th className="r">Booked value</th><th>Joined</th></tr></thead>
-        <tbody>{shown.map(c => <tr key={c.id} onClick={() => (location.hash = `#/accounts/${c.id}`)}>
+        <tbody>{shown.map(c => <tr key={c.id} onClick={() => (navigate(`/accounts/${c.id}`))}>
           <td><b>{c.name}</b></td><td>{c.type === 'buyer' ? 'Buyer' : 'Publisher'}</td><td>{c.users}{c.suspended ? <span className="outbid small"> · {c.suspended} suspended</span> : ''}</td>
           <td className="small">{c.type === 'publisher' ? (c.payoutsEnabled ? <span className="lead">Verified</span> : <span className="soon">Not verified</span>) : '—'}</td>
           <td className="small">{c.type === 'publisher' ? (c.vatRegistered ? `Registered · ${c.trn ?? 'no TRN'}` : 'Not registered') : '—'}</td>
@@ -38,10 +39,10 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
   const { act, busy, msg } = useAct(load)
   const [rate, setRate] = useState('')
   if (!c) return <Loading error={error} />
-  async function viewAs() { await api(`/admin/view-as/${c!.id}`, { method: 'POST' }); location.hash = c!.type === 'publisher' ? '#/home' : '#/calendar'; location.reload() }
+  async function viewAs() { await api(`/admin/view-as/${c!.id}`, { method: 'POST' }); location.href = c!.type === 'publisher' ? '/home' : '/calendar' }
   return (
     <main className="narrow wide">
-      <p className="small"><a href="#/accounts">Accounts</a> › {c.name}</p>
+      <p className="small"><a href="/accounts">Accounts</a> › {c.name}</p>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{c.type === 'buyer' ? 'Buyer' : 'Publisher'} · joined {date(c.createdAt)}</p></div><div className="spacer" />
         <button className="btn" onClick={viewAs}>View as this account (read only)</button></div>
       {msg}
@@ -70,7 +71,7 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
       {c.outlets.length > 0 && <section className="card pad section"><h2>Outlets</h2>
         <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{o.channel}</span><span><b>{o.name}</b> · <span className="small muted">{o.sectors.join(', ')}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>Recent deals</h2>
-        {!c.deals.length ? <p className="muted">None yet.</p> : <table className="table"><tbody>{c.deals.map(d => <tr key={d.id} onClick={() => (location.hash = `#/deals/${d.id}`)}>
+        {!c.deals.length ? <p className="muted">None yet.</p> : <table className="table"><tbody>{c.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
           <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="r num">{money(d.amount)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}</section>
     </main>
   )

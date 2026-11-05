@@ -19,7 +19,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   await p.goto(BASE + '/#/sign-in'); await p.fill('#email', 'sales@skyline.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.kpis'); await shot('s1-dashboard')
   await p.click('.nav >> text=Inbox'); await p.waitForSelector('.tasks'); await shot('s2-inbox')
-  await p.click(`.tasks a[href="#/deals/${dealId}"]`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')
+  await p.click(`.tasks a[href="/deals/${dealId}"]`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')
   await p.click('button:has-text("Accept")'); await p.waitForSelector('text=Accepted. The buyer')
   // The buyer pays and sends creative
   console.log('pay:', (await (await buyer.post(`${BASE}/api/deals/${dealId}/pay`, { data: { paymentMethod: 'pm_card_4242' } })).json()).status)

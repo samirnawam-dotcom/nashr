@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { api } from './api'
 import { AuthShell } from './Login'
+import { PAGES, useMeta } from './seo'
 
 /** Invite-only: five fields, business email; Nashr's team approves (brief scenario 14). */
 export function RequestAccess() {
+  useMeta(PAGES['/request-access'])
   const [f, setF] = useState({ name: '', email: '', phone: '', role: '', company: '', companyType: 'brand' })
   const [error, setError] = useState(''), [sent, setSent] = useState(false), [busy, setBusy] = useState(false)
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value })
@@ -26,9 +28,9 @@ export function RequestAccess() {
             <option value="brand">A brand</option><option value="agency">An agency</option><option value="media_outlet">A media outlet</option></select></div>
           {error && <p className="error" role="alert">{error}</p>}
           <button className="btn primary" disabled={busy}>Send request</button>
-          <p className="small muted">By sending, you agree to Nashr's <a href="#/terms">terms of use</a> and <a href="#/privacy">privacy policy</a>.</p>
+          <p className="small muted">By sending, you agree to Nashr's <a href="/terms">terms of use</a> and <a href="/privacy">privacy policy</a>.</p>
         </>}
-        <p className="small muted"><a href="#/sign-in">Sign in</a> · <a href="#/">Back to Nashr</a></p>
+        <p className="small muted"><a href="/sign-in">Sign in</a> · <a href="/">Back to Nashr</a></p>
       </form>
     </AuthShell>
   )

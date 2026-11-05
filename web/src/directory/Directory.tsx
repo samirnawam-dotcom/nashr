@@ -1,3 +1,5 @@
+import { navigate } from '../nav'
+import { PAGES, breadcrumb, outletSlug, siteUrl, useMeta } from '../seo'
 import { useEffect, useState } from 'react'
 import { api, type Campaign, type Outlet, type Price } from '../api'
 import { dayLabel, money, time } from '../format'
@@ -24,17 +26,21 @@ export function Waitlist({ topic, label }: { topic: 'KSA' | 'Athena'; label: str
   const [on, setOn] = useState<boolean | null>(null)
   useEffect(() => { if (guest) return void setOn(false); api<string[]>('/waitlist').then(t => setOn(t.includes(topic)), () => setOn(false)) }, [topic])
   if (on === null) return null
-  if (guest) return <a className="btn" href="#/sign-in" onClick={rememberPlace}>{label}</a>
+  if (guest) return <a className="btn" href="/sign-in" onClick={rememberPlace}>{label}</a>
   return on ? <span className="small ok">You're on the list. We'll tell you when it opens.</span>
     : <button className="btn" onClick={() => api('/waitlist', { method: 'POST', body: { topic } }).then(() => setOn(true))}>{label}</button>
 }
 
 export function DirectoryPage() {
+  useMeta({ ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], ['Directory', '/directory']])] })
   const [outlets, setOutlets] = useState<Outlet[] | null>(null), [error, setError] = useState('')
   const [q, setQ] = useState(''), [channel, setChannel] = useState(''), [onlyNashr, setOnlyNashr] = useState(false), [market, setMarket] = useState('AE')
   const [view, setView] = useState<'grid' | 'list'>(() => (localStorage.getItem('nashr:dir-view') as any) || 'grid')
   useEffect(() => { api<Outlet[]>('/directory').then(setOutlets, e => setError(e.message)) }, [])
   useEffect(() => { try { localStorage.setItem('nashr:dir-view', view) } catch { /* fine */ } }, [view])
+  // The directory as a list of outlets for search engines (ItemList), once it has loaded.
+  useMeta(outlets && { ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], ['Directory', '/directory']]), { '@context': 'https://schema.org', '@type': 'ItemList',
+    name: 'UAE media outlets on Nashr', itemListElement: outlets.filter(o => o.market === 'AE').map((o, k) => ({ '@type': 'ListItem', position: k + 1, name: o.name, url: `${siteUrl()}/directory/${outletSlug(o)}` })) }] }, [outlets])
   const shown = (outlets ?? []).filter(o => o.market === market && (!channel || o.channel === channel) && (!onlyNashr || o.onNashr)
     && (!q || `${o.name} ${o.nameAr ?? ''} ${o.sectors.join(' ')} ${o.audience ?? ''}`.toLowerCase().includes(q.toLowerCase())))
   return (
@@ -59,14 +65,14 @@ export function DirectoryPage() {
       {error && <p className="error">{error}</p>}
       {outlets && !shown.length && <p className="muted empty">No outlets match. Clear the filters to see everything.</p>}
       {view === 'grid'
-        ? <div className="outlet-grid">{shown.map(o => <a key={o.id} className="card outlet-card" href={`#/directory/${o.id}`}>
+        ? <div className="outlet-grid">{shown.map(o => <a key={o.id} className="card outlet-card" href={`/directory/${outletSlug(o)}`}>
             <div className="row-flex"><Logo o={o} /><div><b>{o.name}</b>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div></div>
             <div className="small muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).join(', ')}` : ''}</div>
             <PriceTag p={o.price} />
             <span className={o.onNashr ? 'badge on' : 'badge'}>{o.comingSoon ? 'Coming soon' : o.onNashr ? 'On Nashr · book slots' : 'Not on Nashr yet · request a quote'}</span>
           </a>)}</div>
         : shown.length > 0 && <table className="table card"><thead><tr><th>Outlet</th><th>Channel</th><th>Sectors</th><th>Price</th><th /></tr></thead>
-            <tbody>{shown.map(o => <tr key={o.id} onClick={() => (location.hash = `#/directory/${o.id}`)}>
+            <tbody>{shown.map(o => <tr key={o.id} onClick={() => (navigate(`/directory/${outletSlug(o)}`))}>
               <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b></div></td><td>{CHANNEL[o.channel]}</td>
               <td className="small">{o.sectors.join(', ')}</td><td><PriceTag p={o.price} /></td>
               <td className="small">{o.comingSoon ? 'Coming soon' : o.onNashr ? 'Book slots' : 'Request quote'}</td></tr>)}</tbody></table>}
@@ -87,25 +93,33 @@ export function OutletPage({ id }: { id: string }) {
 
   async function quote() {
     setBusy(true); setError('')
-    try { await api(`/outlets/${id}/quote`, { method: 'POST', body: { message } }); setSent('Sent. Nashr will come back to you with a quote.'); setMessage('') }
+    try { await api(`/outlets/${o!.id}/quote`, { method: 'POST', body: { message } }); setSent('Sent. Nashr will come back to you with a quote.'); setMessage('') }
     catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   async function addToCampaign(cid: string) {
     const c = await api<{ items: { outletId: string; planned: number }[] }>(`/campaigns/${cid}`)
-    if (!c.items.some(i => i.outletId === id)) await api(`/campaigns/${cid}/items`, { method: 'PUT', body: { items: [...c.items.map(i => ({ outletId: i.outletId, planned: i.planned })), { outletId: id, planned: 0 }] } })
+    if (!c.items.some(i => i.outletId === o!.id)) await api(`/campaigns/${cid}/items`, { method: 'PUT', body: { items: [...c.items.map(i => ({ outletId: i.outletId, planned: i.planned })), { outletId: o!.id, planned: 0 }] } })
     setAdded(campaigns.find(x => x.id === cid)!.name)
   }
+  const price = o?.price ? (o.price.from === o.price.to ? money(o.price.from, o.price.currency) : `${money(o.price.from, o.price.currency)} to ${money(o.price.to, o.price.currency)}`) : null
+  useMeta(o && {
+    title: `${o.name} advertising: ${CHANNEL[o.channel] === 'TV' ? 'TV' : CHANNEL[o.channel].toLowerCase()} rates and booking in the UAE | Nashr`,
+    description: `Advertise with ${o.name}${o.nameAr ? ` (${o.nameAr})` : ''}, ${CHANNEL[o.channel].toLowerCase()} in the UAE${o.audience ? ` reaching ${o.audience}` : ''}.${price ? ` ${o.price!.label}: ${price}.` : ''} ${o.onNashr ? 'See open slots and book online on Nashr.' : 'Request a quote through Nashr.'}`.slice(0, 300),
+    path: `/directory/${outletSlug(o)}`,
+    jsonLd: [breadcrumb([['Nashr', '/'], ['Directory', '/directory'], [o.name, `/directory/${outletSlug(o)}`]]),
+      { '@context': 'https://schema.org', '@type': 'Organization', name: o.name, ...(o.nameAr ? { alternateName: o.nameAr } : {}), ...(o.website ? { url: o.website } : {}), ...(o.description ? { description: o.description } : {}) }],
+  }, [o])
   if (!o) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
   return (
     <main className="narrow wide">
-      <p className="small"><a href="#/directory">Directory</a> › {o.name}</p>
+      <p className="small"><a href="/directory">Directory</a> › {o.name}</p>
       <div className="profile-h">
         <Logo o={o} size={64} />
         <div><h1>{o.name}</h1><p className="muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.audience ? ` · ${o.audience}` : ''}</p></div>
         <div className="spacer" />
         {campaigns.length > 0 && <select className="btn" aria-label="Add to campaign" value="" onChange={e => e.target.value && addToCampaign(e.target.value)}>
           <option value="">Add to campaign…</option>{campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
-        {o.onNashr && <a className="btn primary" href="#/calendar">Book slots</a>}
+        {o.onNashr && <a className="btn primary" href="/calendar">Book slots</a>}
         {o.comingSoon && <Waitlist topic="KSA" label="Tell me when KSA opens" />}
       </div>
       {added && <p className="ok" role="status">Added to {added}.</p>}

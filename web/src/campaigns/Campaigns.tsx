@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api, type Campaign, type Outlet } from '../api'
 import { dayLabel, money } from '../format'
@@ -19,7 +20,7 @@ export function CampaignsPage() {
     try {
       const { id } = await api('/campaigns', { method: 'POST', body: { name: form!.name, budget: toFils(form!.budget),
         ...(form!.launchDate ? { launchDate: form!.launchDate } : {}), ...(form!.objective ? { objective: form!.objective } : {}) } })
-      location.hash = `#/campaigns/${id}`
+      navigate(`/campaigns/${id}`)
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   return (
@@ -39,7 +40,7 @@ export function CampaignsPage() {
       {!form && error && <p className="error">{error}</p>}
       {list && !list.length && !form && <p className="muted empty">No campaigns yet. Create one to plan outlets and track spend against a budget.</p>}
       {list && list.length > 0 && <table className="table card"><thead><tr><th>Campaign</th><th>Launch</th><th className="r">Budget</th><th className="r">Committed</th><th style={{ width: 200 }} /><th>Status</th></tr></thead>
-        <tbody>{list.map(c => <tr key={c.id} onClick={() => (location.hash = `#/campaigns/${c.id}`)}>
+        <tbody>{list.map(c => <tr key={c.id} onClick={() => (navigate(`/campaigns/${c.id}`))}>
           <td><b>{c.name}</b>{c.objective && <div className="small muted">{c.objective}</div>}</td><td className="num">{c.launchDate ? dayLabel(c.launchDate) : '—'}</td>
           <td className="r num">{money(c.budget)}</td><td className="r num">{money(c.committed)}</td><td><Bar c={c} /></td>
           <td className="small">{c.status === 'active' ? 'Active' : 'Completed'}</td></tr>)}</tbody></table>}
@@ -66,11 +67,11 @@ export function CampaignPage({ id }: { id: string }) {
   const committedFor = (oid: string) => c.items.find(i => i.outletId === oid)?.committed ?? 0
   return (
     <main className="narrow wide">
-      <p className="small"><a href="#/campaigns">Campaigns</a> › {c.name}</p>
+      <p className="small"><a href="/campaigns">Campaigns</a> › {c.name}</p>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{[c.objective, c.launchDate && `Launches ${dayLabel(c.launchDate)}`].filter(Boolean).join(' · ')}</p></div>
         <div className="spacer" />
         {c.status === 'active' ? <button className="btn" onClick={() => setStatus('completed')}>Mark completed</button> : <button className="btn" onClick={() => setStatus('active')}>Reopen</button>}
-        {c.status === 'active' && <a className="btn primary" href="#/calendar">Book slots</a>}</div>
+        {c.status === 'active' && <a className="btn primary" href="/calendar">Book slots</a>}</div>
       <dl className="kpis">
         <div className="card"><dt>Budget</dt><dd className="num">{money(c.budget)}</dd></div>
         <div className="card"><dt>Committed</dt><dd className="num">{money(c.committed)}</dd></div>
@@ -83,7 +84,7 @@ export function CampaignPage({ id }: { id: string }) {
       <h2 className="sec-h">Plan</h2>
       <table className="table card"><thead><tr><th>Outlet</th><th>Status</th><th className="r">Planned (AED)</th><th className="r">Committed</th><th /></tr></thead>
         <tbody>{plan.map((p, i) => { const o = name(p.outletId); return <tr key={p.outletId}>
-          <td><a href={`#/directory/${p.outletId}`}><b>{o?.name ?? c.items.find(x => x.outletId === p.outletId)?.outlet}</b></a></td>
+          <td><a href={`/directory/${p.outletId}`}><b>{o?.name ?? c.items.find(x => x.outletId === p.outletId)?.outlet}</b></a></td>
           <td className="small">{o ? (o.onNashr ? 'On Nashr' : 'Quote needed') : ''}</td>
           <td className="r"><input className="search num" style={{ minWidth: 0, width: 130, textAlign: 'right' }} aria-label="Planned amount" inputMode="decimal" value={p.planned}
             onChange={e => setPlan(plan.map((x, j) => j === i ? { ...x, planned: e.target.value } : x))} /></td>
@@ -101,7 +102,7 @@ export function CampaignPage({ id }: { id: string }) {
       <h2 className="sec-h">Bookings</h2>
       {!c.bookings.length ? <p className="muted">Nothing booked yet.</p>
         : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Price</th><th>Status</th></tr></thead>
-          <tbody>{c.bookings.map(b => <tr key={b.id} onClick={() => (location.hash = `#/bookings/${b.id}`)}>
+          <tbody>{c.bookings.map(b => <tr key={b.id} onClick={() => (navigate(`/bookings/${b.id}`))}>
             <td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {b.label}</td><td className="num">{dayLabel(dubai(b.startsAt).date)}</td>
             <td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table>}
     </main>

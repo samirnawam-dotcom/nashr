@@ -31,7 +31,7 @@ const TASK: Record<string, string> = { decide: 'Accept or decline', choose: 'Cho
 export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
   if (!tasks.length) return <p className="muted empty">Nothing needs you right now.</p>
   return <ul className="tasks card">{tasks.slice(0, limit).map((t, i) => (
-    <li key={i} className={urgent(t.dueAt) ? 'urgent' : ''}><a href={t.dealId ? `#/deals/${t.dealId}` : `#/slots/${t.slotId}`}>
+    <li key={i} className={urgent(t.dueAt) ? 'urgent' : ''}><a href={t.dealId ? `/deals/${t.dealId}` : `/slots/${t.slotId}`}>
       <span className={`task-k ${t.type}`}>{TASK[t.type] ?? t.type}</span>
       <span className="task-body"><span><b>{t.outlet}</b>, {t.label}</span><span className="muted small">{when(t.startsAt)}{t.buyer ? `, ${t.buyer}` : ''}</span>
         {t.kind === 'buy_now' && <span className="badge on">This buyer will pay now</span>}

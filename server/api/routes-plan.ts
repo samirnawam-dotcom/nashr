@@ -36,7 +36,11 @@ function price(r: any) {
   return null
 }
 
-const outletCard = (r: any) => ({ id: r.id, name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url,
+// The outlet's public address segment: "Gulf News" → /directory/gulf-news (same rule as the web app's outletSlug).
+export const SLUG_SQL = `lower(trim(both '-' from regexp_replace(o.name, '[^a-zA-Z0-9]+', '-', 'g')))`
+const slugOf = (name: string, id: string) => name.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || id
+
+const outletCard = (r: any) => ({ id: r.id, slug: slugOf(r.name, r.id), name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url,
   tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r) })
 
 export function planRoutes(route: RouteFn) {
@@ -45,7 +49,9 @@ export function planRoutes(route: RouteFn) {
     (await db.query(`${OUTLET_SQL} order by c.payouts_enabled is not true, o.name`)).rows.map(outletCard))
 
   route('GET', '/api/outlets/:id', [...BUYER, 'admin', 'guest'], async ({ db, at }, req) => {
-    const r = (await db.query(`${OUTLET_SQL} and o.id = $1`, [req.params.id])).rows[0]
+    // By readable address (/directory/gulf-news) or by id (older links).
+    const byId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(req.params.id)
+    const r = (await db.query(`${OUTLET_SQL} and ${byId ? 'o.id = $1::uuid' : `${SLUG_SQL} = $1`} order by o.id limit 1`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const placements = r.bookable ? (await db.query(
       `select p.id, p.name, p.sale_type, p.days, p.starts_at_local::text starts, p.ends_at_local::text ends, p.breaks, p.starting_price, p.any_break_price, p.package_price, p.buy_now_price,
@@ -56,6 +62,18 @@ export function planRoutes(route: RouteFn) {
       placements: placements.map(p => ({ id: p.id, name: p.name, saleType: p.sale_type, days: p.days, startsAt: p.starts, endsAt: p.ends,
         breaks: p.breaks.length, startingPrice: p.starting_price, anyBreakPrice: p.any_break_price, packagePrice: p.package_price,
         buyNowPrice: p.buy_now_price, openSlots: p.open_slots, nextSlotAt: p.next_slot })) }
+  })
+
+  // For search engines: every public page and every outlet, at the site's own address.
+  route('GET', '/api/sitemap.xml', 'public', async ({ db }, req, reply) => {
+    const origin = (process.env.SITE_URL ?? `${req.protocol}://${req.headers.host}`).replace(/\/$/, '')
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    const outlets = (await db.query(`select o.id, o.name from outlets o order by o.name`)).rows
+    const urls = [['/', 'daily', '1.0'], ['/calendar', 'hourly', '0.9'], ['/directory', 'daily', '0.9'], ['/request-access', 'monthly', '0.6'],
+      ...outlets.map(o => [`/directory/${slugOf(o.name, o.id)}`, 'weekly', '0.7']), ['/terms', 'yearly', '0.2'], ['/privacy', 'yearly', '0.2'], ['/refunds', 'yearly', '0.2']]
+    reply.type('application/xml').header('cache-control', 'public, max-age=3600')
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${
+      urls.map(([p, f, pr]) => `  <url><loc>${esc(origin + p)}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`).join('\n')}\n</urlset>\n`
   })
 
   // Outlets not on Nashr: the buyer asks, Nashr's team gets the quote (no contact details either way).

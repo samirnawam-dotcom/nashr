@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { PAGES, breadcrumb, useMeta } from './seo'
 
 /*
  * Terms, privacy and refund policy. DRAFTS written from how Nashr actually works (the timers and fees are the
@@ -7,22 +7,22 @@ import { useEffect } from 'react'
 const UPDATED = '6 November 2026'
 const ENTITY = '[Nashr legal entity name]', LICENCE = '[trade licence number and issuing authority]', ADDRESS = '[registered address, UAE]', CONTACT = '[support email]'
 
-function Page({ title, children }: { title: string; children: React.ReactNode }) {
-  useEffect(() => { document.title = `${title} · Nashr`; return () => { document.title = 'Nashr' } }, [title])
+function Page({ title, path, children }: { title: string; path: string; children: React.ReactNode }) {
+  useMeta({ ...PAGES[path], jsonLd: [breadcrumb([['Nashr', '/'], [title, path]])] }, [path])
   return (
     <main className="legal">
       <p className="warn" role="note"><b>Draft for legal review.</b> This text describes how Nashr works today. It is not final until approved by a UAE lawyer.</p>
       <h1>{title}</h1>
       <p className="muted small">Last updated {UPDATED}</p>
       {children}
-      <nav className="legal-links small" aria-label="Legal"><a href="#/terms">Terms of use</a><a href="#/privacy">Privacy policy</a><a href="#/refunds">Refunds and cancellations</a></nav>
+      <nav className="legal-links small" aria-label="Legal"><a href="/terms">Terms of use</a><a href="/privacy">Privacy policy</a><a href="/refunds">Refunds and cancellations</a></nav>
     </main>
   )
 }
 
 export function TermsPage() {
   return (
-    <Page title="Terms of use">
+    <Page title="Terms of use" path="/terms">
       <h2>1. Who we are</h2>
       <p>Nashr is operated by {ENTITY}, licence {LICENCE}, {ADDRESS} ("Nashr", "we"). Nashr is an online marketplace where brands and agencies ("buyers") book advertising from radio, TV, print, digital and podcast outlets ("publishers").</p>
       <h2>2. Accounts</h2>
@@ -59,7 +59,7 @@ export function TermsPage() {
         <li>Publishers are responsible for their own tax obligations, including VAT on the media they sell.</li>
       </ul>
       <h2>8. Cancellations, issues and disputes</h2>
-      <p>Cancellations and refunds follow the <a href="#/refunds">Refunds and cancellations policy</a>. If a buyer reports an issue with proof, release of the money pauses and the publisher can respond or offer a make-good. If the two sides do not agree, Nashr decides on the evidence on both sides, and Nashr's decision decides where the held money goes.</p>
+      <p>Cancellations and refunds follow the <a href="/refunds">Refunds and cancellations policy</a>. If a buyer reports an issue with proof, release of the money pauses and the publisher can respond or offer a make-good. If the two sides do not agree, Nashr decides on the evidence on both sides, and Nashr's decision decides where the held money goes.</p>
       <h2>9. Liability</h2>
       <p>To the extent the law allows, Nashr is not liable for indirect or consequential loss, or for the content of ads. Nashr's total liability for a booking is limited to the amount Nashr holds or received for that booking. Nothing in these terms limits liability that cannot be limited by law.</p>
       <h2>10. Changes</h2>
@@ -74,7 +74,7 @@ export function TermsPage() {
 
 export function PrivacyPage() {
   return (
-    <Page title="Privacy policy">
+    <Page title="Privacy policy" path="/privacy">
       <p>This policy explains what personal data {ENTITY} ("Nashr") collects, why, and your rights, in line with the UAE Personal Data Protection Law (Federal Decree-Law No. 45 of 2021).</p>
       <h2>What we collect</h2>
       <ul>
@@ -110,7 +110,7 @@ export function PrivacyPage() {
 
 export function RefundsPage() {
   return (
-    <Page title="Refunds and cancellations">
+    <Page title="Refunds and cancellations" path="/refunds">
       <p>Your payment is held by Nashr until the publisher proves the ad ran. These are the rules for getting money back. The exact amounts are always shown on the booking before you confirm.</p>
       <h2>Before you pay</h2>
       <p>Bids and requests cost nothing until the publisher accepts and you pay. If the publisher declines, or you do not pay within the payment window, the booking simply ends.</p>

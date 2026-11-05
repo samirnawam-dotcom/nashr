@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { DealStatus, TaskList, money, when, type Task } from './common'
@@ -7,8 +8,8 @@ type Overview = { company: string; todo: number; money: { available: number; hel
   upcoming: { id: string; ref: string; status: string; label: string; startsAt: string; outlet: string; buyer: string }[] }
 
 const STEPS: [keyof Overview['onboarding'], string, string][] = [
-  ['outlet', 'Add your outlet profile', '#/profile'], ['payouts', 'Connect your payout account', '#/profile'], ['tax', 'Add your TRN and invoice choice', '#/profile'],
-  ['placement', 'Add your first placement', '#/listings/new'], ['live', 'Put slots on sale', '#/listings'],
+  ['outlet', 'Add your outlet profile', '/profile'], ['payouts', 'Connect your payout account', '/profile'], ['tax', 'Add your TRN and invoice choice', '/profile'],
+  ['placement', 'Add your first placement', '/listings/new'], ['live', 'Put slots on sale', '/listings'],
 ]
 
 const greeting = () => { const h = (new Date().getUTCHours() + 4) % 24; return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' } // Dubai time
@@ -33,11 +34,11 @@ export function SellerDashboard() {
         {o.money.owed > 0 && <div className="card"><dt>Owed to Nashr (next payout)</dt><dd className="num" style={{ color: 'var(--red)' }}>{money(o.money.owed)}</dd></div>}
       </dl>
       <div className="dash-cols">
-        <section><div className="row-flex" style={{ marginBottom: 12 }}><h2 className="sec-h" style={{ margin: 0 }}>To do</h2><div className="spacer" /><a className="small" href="#/inbox">Inbox</a></div>
+        <section><div className="row-flex" style={{ marginBottom: 12 }}><h2 className="sec-h" style={{ margin: 0 }}>To do</h2><div className="spacer" /><a className="small" href="/inbox">Inbox</a></div>
           <TaskList tasks={tasks} limit={6} /></section>
         <section><h2 className="sec-h" style={{ marginTop: 0 }}>Coming up</h2>
           {!o.upcoming.length ? <p className="muted empty">No booked slots coming up.</p>
-            : <table className="table card"><tbody>{o.upcoming.map(u => <tr key={u.id} onClick={() => (location.hash = `#/deals/${u.id}`)}>
+            : <table className="table card"><tbody>{o.upcoming.map(u => <tr key={u.id} onClick={() => (navigate(`/deals/${u.id}`))}>
               <td><b>{u.outlet}</b> · {u.label}<div className="small muted">{u.buyer}</div></td><td className="num small">{when(u.startsAt)}</td><td><DealStatus s={u.status} /></td></tr>)}</tbody></table>}
         </section>
       </div>

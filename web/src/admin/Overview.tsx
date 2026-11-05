@@ -9,9 +9,9 @@ export function AdminOverview() {
   const { data: o, error } = useLoad<O>('/admin/overview')
   if (!o) return <Loading error={error} />
   const attention = [
-    [o.access_pending, 'Access requests to review', '#/access', false], [o.disputes, 'Disputes to decide', '#/disputes', true],
-    [o.issues, 'Issues waiting on publishers', '#/disputes', false], [o.failed_ops, 'Failed payouts or refunds', '#/payouts', true],
-    [o.quotes_open, 'Quote requests', '#/directory', false],
+    [o.access_pending, 'Access requests to review', '/access', false], [o.disputes, 'Disputes to decide', '/disputes', true],
+    [o.issues, 'Issues waiting on publishers', '/disputes', false], [o.failed_ops, 'Failed payouts or refunds', '/payouts', true],
+    [o.quotes_open, 'Quote requests', '/directory', false],
   ] as const
   const total = Object.values(o.byStatus).reduce((x, y) => x + y, 0)
   const COLORS: Record<string, string> = { awaiting_seller: 'var(--signal)', awaiting_payment: 'var(--teal-4)', secured: 'var(--teal)', in_review: 'var(--studio-2)',
@@ -19,7 +19,7 @@ export function AdminOverview() {
   return (
     <main>
       <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? 'Ledger reconciles with the payment provider.'
-        : <>Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider ({money(o.reconcile.providerCash)}). <a href="#/funds">Open Funds</a></>}</p>
+        : <>Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider ({money(o.reconcile.providerCash)}). <a href="/funds">Open Funds</a></>}</p>
       <div className="page-h"><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span></div>
       <dl className="figures">
         <div><dt>Bookings paid this month</dt><dd className="num">{o.bookings_month}</dd></div>
@@ -36,7 +36,7 @@ export function AdminOverview() {
           {total === 0 ? <p className="muted">No deals yet.</p> : <div className="card pad">
             <div className="stack" role="img" aria-label="Deals by status">{Object.entries(o.byStatus).map(([s, n]) =>
               <span key={s} style={{ flex: n, background: COLORS[s] ?? 'var(--faint)' }} title={`${DEAL_STATUS[s]?.[0] ?? s}: ${n}`} />)}</div>
-            <ul className="stack-key">{Object.entries(o.byStatus).map(([s, n]) => <li key={s}><a href={`#/deals?status=${s}`}>
+            <ul className="stack-key">{Object.entries(o.byStatus).map(([s, n]) => <li key={s}><a href={`/deals?status=${s}`}>
               <i style={{ background: COLORS[s] ?? 'var(--faint)' }} />{DEAL_STATUS[s]?.[0] ?? s}<b className="num">{n}</b></a></li>)}</ul></div>}
         </section>
       </div>

@@ -241,7 +241,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
         await audit(db, `seller:${c.id}`, 'payouts.started', 'company', c.id, { account }, at)
       }
       const origin = `${req.protocol}://${req.headers.host}`
-      return { url: await pa.link(account, `${origin}/#/profile?payouts=back`, `${origin}/#/profile?payouts=retry`) }
+      return { url: await pa.link(account, `${origin}/profile?payouts=back`, `${origin}/profile?payouts=retry`) }
     }
     if (!(deps.provider instanceof FakeProvider)) throw new MarketError('Payout onboarding opens with the payment provider. It is not connected yet.')
     await db.query(`update companies set provider_account = coalesce(provider_account, 'acct_test_' || substr(md5(id::text), 1, 8)), payouts_enabled = true where id = $1`, [me.actAs.companyId])

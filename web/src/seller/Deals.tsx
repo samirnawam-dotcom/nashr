@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
 import { DOC_TYPE } from '../documents/Documents'
@@ -31,7 +32,7 @@ export function SellerDealsPage() {
       {error && <p className="error">{error}</p>}
       {deals && !shown.length && <p className="muted empty">No deals here.</p>}
       {shown.length > 0 && <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer</th><th>Airs</th><th className="r">Bid</th><th className="r">You receive</th><th>Status</th></tr></thead>
-        <tbody>{shown.map(d => <tr key={d.id} onClick={() => (location.hash = `#/deals/${d.id}`)}>
+        <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
           <td className="num">{d.ref}</td><td>{d.label}</td><td>{d.buyer.company}</td><td className="num">{when(d.startsAt)}</td>
           <td className="r num">{money(d.money.bid)}</td><td className="r num">{money(d.money.youReceive)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}
     </main>
@@ -65,7 +66,7 @@ export function SellerDealPage({ id }: { id: string }) {
   const msg = <>{error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}</>
   return (
     <main className="narrow">
-      <p className="small"><a href="#/deals">Deals</a> › Order {d.ref}</p>
+      <p className="small"><a href="/deals">Deals</a> › Order {d.ref}</p>
       <h1>{d.label}</h1>
       <p className="muted">{when(d.startsAt)} · {d.buyer.company} · <DealStatus s={d.status} /></p>
 
@@ -88,7 +89,7 @@ export function SellerDealPage({ id }: { id: string }) {
         </>}
         {d.status === 'awaiting_payment' && d.paymentFailed && <p className="warn">Payment pending: the buyer's card was declined and they've been asked to update it{d.nextDeadlineAt ? `. The booking lapses at ${when(d.nextDeadlineAt)} if they don't pay` : ''}.</p>}
         {d.status === 'awaiting_payment' && !d.paymentFailed && <p className="muted">Waiting for the buyer to pay{d.nextDeadlineAt ? ` (by ${when(d.nextDeadlineAt)})` : ''}. They can send creative already.</p>}
-        {x.slotStatus === 'awaiting_choice' && ['declined', 'lapsed'].includes(d.status) && <p className="warn">You can choose another bid for this slot. <a href={`#/slots/${x.slotId}`}>Choose the next bid</a></p>}
+        {x.slotStatus === 'awaiting_choice' && ['declined', 'lapsed'].includes(d.status) && <p className="warn">You can choose another bid for this slot. <a href={`/slots/${x.slotId}`}>Choose the next bid</a></p>}
         {msg}
       </div>
 
@@ -176,7 +177,7 @@ export function SellerDealPage({ id }: { id: string }) {
             <button className="btn" onClick={() => setForm(null)}>Back</button></div></div>}</section>}
 
       {x.documents.length > 0 && <section className="card pad section"><h2>Documents</h2>
-        <ul className="timeline">{x.documents.map(doc => <li key={doc.id}><span className="num small">{doc.number}</span><span><a href={`#/documents/${doc.id}`}>{DOC_TYPE[doc.type]}</a> · {money(doc.total, doc.currency)}</span></li>)}</ul></section>}
+        <ul className="timeline">{x.documents.map(doc => <li key={doc.id}><span className="num small">{doc.number}</span><span><a href={`/documents/${doc.id}`}>{DOC_TYPE[doc.type]}</a> · {money(doc.total, doc.currency)}</span></li>)}</ul></section>}
 
       <section className="card pad section"><h2>Timeline</h2>
         <ol className="timeline">{x.timeline.map((e, i) => <li key={i}><span className="small muted num">{when(e.at)}</span><span>{EVENT[e.event] ?? e.event}{e.note && <span className="muted"> · {e.note}</span>}</span></li>)}</ol></section>

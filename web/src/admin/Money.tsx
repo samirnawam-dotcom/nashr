@@ -44,7 +44,7 @@ export function PayoutsPage() {
           <tbody>{data.map(m => <tr key={m.id}>
             <td className="num">{m.ref}</td><td>{m.kind === 'transfer' ? 'Payout' : 'Refund'}</td>
             <td>{m.kind === 'transfer' ? <>{m.company}{m.payoutsEnabled === false && <div className="small outbid">Payout account not verified</div>}</> : 'Buyer card'}</td>
-            <td className="num small">{m.dealId ? <a href={`#/deals/${m.dealId}`}>{m.deal}</a> : '—'}</td><td className="r num">{money(m.amount, m.currency)}</td>
+            <td className="num small">{m.dealId ? <a href={`/deals/${m.dealId}`}>{m.deal}</a> : '—'}</td><td className="r num">{money(m.amount, m.currency)}</td>
             <td className={m.status === 'failed' ? 'outbid' : m.status === 'pending' ? 'soon' : 'lead'}>{m.status}{m.failure && <div className="small">{m.failure}</div>}</td>
             <td className="small num">{when(m.updatedAt)}</td>
             <td className="r">{m.status === 'failed' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/money-ops/${m.id}/retry`, {}, `${m.ref} queued again.`)}>Retry</button>}</td></tr>)}</tbody></table>}

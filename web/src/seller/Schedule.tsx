@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { dayLabel, time } from '../format'
@@ -25,7 +26,7 @@ export function SchedulePage() {
       <div className="legend">{[['var(--teal-4)', 'On sale'], ['var(--amber)', 'Needs your decision'], ['var(--green)', 'Booked'], ['var(--faint)', 'Off sale or taken']].map(([c, l]) =>
         <span key={l}><i style={{ background: c }} />{l}</span>)}<span>Dubai time</span></div>
       {error && <p className="error">{error}</p>}
-      {slots && !slots.length && <p className="muted empty">Nothing listed this week. <a href="#/listings">List slots</a></p>}
+      {slots && !slots.length && <p className="muted empty">Nothing listed this week. <a href="/listings">List slots</a></p>}
       {slots && slots.length > 0 && <div className="scroll-x"><table className="prog">
         <thead><tr><th className="place">Placement</th>{days.map(d => <th key={d}>{dayLabel(d)}</th>)}</tr></thead>
         <tbody>{rows.map(r => <tr key={r}><th className="place">{r}</th>{days.map(d => <td key={d}>
@@ -52,7 +53,7 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
   useEffect(() => { load() }, [id])
   async function act(path: string, body: object) {
     setBusy(true); setError('')
-    try { const r = await api(path, { method: 'POST', body }); onChange?.(); if (r?.id && r?.status) location.hash = `#/deals/${r.id}`; else await load() }
+    try { const r = await api(path, { method: 'POST', body }); onChange?.(); if (r?.id && r?.status) navigate(`/deals/${r.id}`); else await load() }
     catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   if (!s) return error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>
@@ -73,11 +74,11 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
         <td className="r">{b.choosable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/choose`, { bidId: b.id })}>Choose</button>}</td></tr>)}</tbody></table>}
     </section>
     {s.deals.length > 0 && <section><h3 style={{ fontSize: 15, marginBottom: 8 }}>Bookings</h3>
-      <ul className="timeline">{s.deals.map(d => <li key={d.id}><a href={`#/deals/${d.id}`} className="num">{d.ref}</a><span><DealStatus s={d.status} /> · {money(d.amount)}</span></li>)}</ul></section>}
+      <ul className="timeline">{s.deals.map(d => <li key={d.id}><a href={`/deals/${d.id}`} className="num">{d.ref}</a><span><DealStatus s={d.status} /> · {money(d.amount)}</span></li>)}</ul></section>}
     {error && <p className="error" role="alert">{error}</p>}
     {(s.status === 'open' || s.status === 'blocked') && !s.bids.length && <footer className="drawer-f">
       <button className="btn" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/block`, { blocked: s.status === 'open' })}>{s.status === 'open' ? 'Take off sale' : 'Put back on sale'}</button></footer>}
   </>
 }
 
-export const SlotPage = ({ id }: { id: string }) => <main className="narrow"><p className="small"><a href="#/schedule">Calendar</a></p><div className="card pad" style={{ display: 'grid', gap: 16 }}><SlotPanel id={id} /></div></main>
+export const SlotPage = ({ id }: { id: string }) => <main className="narrow"><p className="small"><a href="/schedule">Calendar</a></p><div className="card pad" style={{ display: 'grid', gap: 16 }}><SlotPanel id={id} /></div></main>

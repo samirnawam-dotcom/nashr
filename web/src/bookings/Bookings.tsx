@@ -1,3 +1,4 @@
+import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
 import { dayLabel, money, time } from '../format'
@@ -20,12 +21,12 @@ export function BookingsPage() {
   useEffect(() => { api<Deal[]>('/deals').then(setDeals, e => setError(e.message)) }, [])
   return (
     <main>
-      <div className="page-h"><h1>Bookings</h1><div className="spacer" /><a className="small" href="#/documents">Receipts and invoices</a></div>
+      <div className="page-h"><h1>Bookings</h1><div className="spacer" /><a className="small" href="/documents">Receipts and invoices</a></div>
       {error && <p className="error">{error}</p>}
       {deals && !deals.length && <p className="muted empty">No bookings yet. Bid on a slot in the calendar, or send a buy-now request.</p>}
       {deals && deals.length > 0 && <table className="table card">
         <thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Total</th><th>Status</th></tr></thead>
-        <tbody>{deals.map(d => <tr key={d.id} onClick={() => (location.hash = `#/bookings/${d.id}`)}>
+        <tbody>{deals.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
           <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="num">{when(d.startsAt)}</td>
           <td className="r num">{money(d.total, d.currency)}</td><td><Status s={d.status} /></td></tr>)}</tbody>
       </table>}
@@ -101,7 +102,7 @@ export function BookingPage({ id }: { id: string }) {
   if (!d) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
   return (
     <main className="booking">
-      <p className="small"><a href="#/bookings">Bookings</a> › Order {d.ref}</p>
+      <p className="small"><a href="/bookings">Bookings</a> › Order {d.ref}</p>
       <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)}</p></div><Status s={d.status} /></div>
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">
@@ -175,7 +176,7 @@ export function BookingPage({ id }: { id: string }) {
         {d.status === 'accepted_pay_now' && <>
           <p>The publisher accepted. Please pay{d.nextDeadlineAt ? ` by ${when(d.nextDeadlineAt)}` : ''}.</p>
           <div className="field"><label htmlFor="card">Card</label><select id="card" value={card} onChange={e => setCard(e.target.value)}>{CARDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-          <p className="small muted">The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher. By paying you agree to the <a href="#/terms">terms</a> and the <a href="#/refunds">refund and cancellation policy</a>.</p>
+          <p className="small muted">The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher. By paying you agree to the <a href="/terms">terms</a> and the <a href="/refunds">refund and cancellation policy</a>.</p>
           <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>Pay {money(d.total, d.currency)}</button>
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">Waiting for the publisher's decision. You'll be asked to pay once they accept.</p>}
@@ -198,7 +199,7 @@ export function BookingPage({ id }: { id: string }) {
       {d.documents.length > 0 && <section className="card pad section">
         <h2>Receipts and invoices</h2>
         <ul className="timeline">{d.documents.map(x => <li key={x.id}><span className="num small">{x.number}</span>
-          <span><a href={`#/documents/${x.id}`}>{DOC_TYPE[x.type]}</a> · <span className="num">{money(x.total, x.currency)}</span></span></li>)}</ul>
+          <span><a href={`/documents/${x.id}`}>{DOC_TYPE[x.type]}</a> · <span className="num">{money(x.total, x.currency)}</span></span></li>)}</ul>
       </section>}
       </aside></div>
     </main>

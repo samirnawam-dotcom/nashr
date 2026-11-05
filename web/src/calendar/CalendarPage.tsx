@@ -4,6 +4,7 @@ import { closesIn, dayLabel, money, time } from '../format'
 import { addDays, DAY_END, DAY_START, dubai, isAllDay, layoutDay, monthGrid, todayInDubai, weekOf } from './layout'
 import { BidDrawer } from './BidDrawer'
 import { SignInPrompt, useGuest } from '../guest'
+import { PAGES, useMeta } from '../seo'
 
 type View = 'day' | 'week' | 'month'
 const HOUR = 60, DAY_HOUR = 96 // px per hour in week and day views
@@ -68,6 +69,7 @@ function AgendaView({ days, slots, onPick, onNext }: { days: string[]; slots: Sl
 
 export function CalendarPage() {
   const guest = useGuest()
+  useMeta(PAGES['/calendar'])
   const narrow = useNarrow()
   const [view, setView] = useState<View>('week')
   const [anchor, setAnchor] = useState(todayInDubai())
