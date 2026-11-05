@@ -50,7 +50,13 @@ Brief scenarios now covered: 1–13, 21–26. Decisions made while building:
 Still open from D: sending emails (invite links, notifications) needs the email service chosen (SPEC 10); the rate limiter is per process.
 
 ## Phase E: Screens (after Figma approval)
-- [ ] E1 Buyer: calendar day/week/month, bid drawer, payment, bookings, directory, outlet profile.
+- [~] E1 Buyer: calendar day/week/month, bid drawer, payment, bookings, directory, outlet profile.
+  - [x] Sign in (with authenticator code for staff), app shell
+  - [x] Calendar: Day / Week / Month like Google Calendar, all-day lane, auction/quick-sale icons, channel and sale-type filters, Dubai time
+  - [x] Bid drawer: server minimum next bid, auto-bid maximum, buy-now request, quick-sale interest/offer, booking brief (last one pre-filled)
+  - [x] Bookings list and booking page with payment (test cards), approve proof, cancel
+  - [ ] Directory, outlet profile, campaigns, creative upload, proof review with report an issue, receipts and invoices
+  - e2e: `npm run e2e` (needs seed + API + web running) walks bid → buy-now → seller accepts → declined card → paid
 - [ ] E2 Seller: dashboard, calendar (calendar + programme view), inbox, deals, earnings, add placement, onboarding.
 - [ ] E3 Admin: overview, accounts, publishers, deals, disputes, funds, payouts, audit, settings, reports.
 

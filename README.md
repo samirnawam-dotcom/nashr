@@ -11,6 +11,9 @@ npm ci
 npm test           # builds a fresh nashr_test database each run
 npm run typecheck
 npm start          # API on :3000 + background jobs (fake payment provider outside production)
+npm run seed       # demo data (refuses to run in production); buyer demo@northwind.ae / seller sales@skyline.ae, password nashr-demo-2026
+npm run dev:web    # web app on :5173, proxies /api to :3000
+npm run e2e        # buyer journey in a real browser against the running app
 ```
 
 Set `TEST_DATABASE_URL` to use another test database. `npm run db:migrate` applies migrations to `DATABASE_URL`.
@@ -27,4 +30,6 @@ server/auth/          access requests, invites, passwords, TOTP 2FA, sessions
 server/api/           HTTP routes per role, response shapes, permission checks
 server/documents/     receipts, publisher invoices (generated or uploaded), commission invoices, credit notes, payout statement
 server/migrations/    SQL migrations
+web/src/              React app: calendar (day/week/month), bid drawer, bookings, sign in
+e2e/                  browser checks of whole journeys
 ```

@@ -2,6 +2,8 @@ import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { buyerDeal, buyerSlot } from './shapes.js'
 import { placeBid, requestBuyNow, showInterest } from '../marketplace/market.js'
+import { minNextBid } from '../core/money.js'
+import { setting } from '../core/settings.js'
 import { approve, cancelByBuyer, confirmPayment } from '../payments/payments.js'
 import { reportIssue, respondToOffer } from '../fulfilment/issues.js'
 import { uploadCreative } from '../fulfilment/creative.js'
@@ -29,10 +31,24 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots', [...BUYER, 'admin'], async ({ db, me }, req) => {
     const from = req.query.from ?? new Date().toISOString(), to = req.query.to ?? new Date(Date.now() + 35 * 86_400_000).toISOString()
     const { rows } = await db.query(
-      `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids
+      `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids,
+         exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = $3) mine
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
-       where s.starts_at >= $1 and s.starts_at < $2 and s.status <> 'blocked' and o.market = 'AE' order by s.starts_at`, [from, to])
+       where s.starts_at >= $1 and s.starts_at < $2 and s.status <> 'blocked' and o.market = 'AE' order by s.starts_at`, [from, to, me.actAs.companyId])
     return rows.map(r => buyerSlot(r, me.actAs.companyId))
+  })
+
+  // One slot for the bid drawer: the server says what the next bid must be, the screen never works it out.
+  route('GET', '/api/slots/:id', [...BUYER, 'admin'], async ({ db, me, at }, req) => {
+    const r = (await db.query(
+      `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids
+       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked'`, [req.params.id])).rows[0]
+    if (!r) throw new NotFound()
+    const mine = (await db.query(`select max(max_amount) max, bool_or(brief is not null) has_brief from bids where slot_id = $1 and buyer_id = $2`,
+      [r.id, me.actAs.companyId])).rows[0]
+    return { ...buyerSlot(r, me.actAs.companyId), creativeDueAt: r.creative_due_at,
+      minNextBid: r.top_amount ? minNextBid(r.top_amount, await setting(db, 'min_step_bp', at)) : r.starting_price,
+      yourMax: mine.max, briefOnFile: !!mine.has_brief }
   })
 
   route('POST', '/api/slots/:id/bids', BUYER, async ({ db, at, me }, req) =>
