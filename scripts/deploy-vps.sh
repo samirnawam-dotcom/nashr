@@ -32,13 +32,20 @@ APT update || true
 APT install curl git rsync ca-certificates gnupg openssl postgresql-common >/dev/null
 if [ "$PLESK" = 0 ]; then APT install nginx certbot python3-certbot-nginx >/dev/null; fi
 
-say "PostgreSQL 16"
+say "PostgreSQL 16 (Nashr's own instance)"
 if [ ! -x /usr/lib/postgresql/16/bin/postgres ]; then
   /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y < /dev/null >/dev/null
   APT install postgresql-16 >/dev/null
 fi
-systemctl enable --now postgresql >/dev/null
-PGPORT="$(runuser -u postgres -- psql -tAc 'show port' < /dev/null)"
+# A dedicated cluster, so an existing PostgreSQL (Plesk's, or anyone's) and its passwords are never touched.
+if ! pg_lsclusters -h | awk '$1 == "16" && $2 == "nashr"' | grep -q .; then
+  pg_createcluster 16 nashr --start-conf=auto < /dev/null >/dev/null
+fi
+systemctl enable postgresql@16-nashr >/dev/null 2>&1 || true
+systemctl start postgresql@16-nashr
+PGPORT="$(pg_lsclusters -h | awk '$1 == "16" && $2 == "nashr" {print $3}')"
+PSQL() { runuser -u postgres -- env -u PGHOST -u PGPASSWORD psql -h /var/run/postgresql -p "$PGPORT" "$@" < /dev/null; }
+echo "PostgreSQL 16 cluster 'nashr' on port $PGPORT"
 
 say "Node.js 22"
 if ! node -v 2>/dev/null | grep -q '^v2[2-9]'; then
@@ -61,12 +68,10 @@ LOG_REQUESTS=1
 FILES_DIR=${DATA}/files
 EOF
   chmod 600 "$ENVF"
-  runuser -u postgres -- psql -qc "create role nashr login password '${DBPASS}'" < /dev/null 2>/dev/null \
-    || runuser -u postgres -- psql -qc "alter role nashr password '${DBPASS}'" < /dev/null
+  PSQL -qc "create role nashr login password '${DBPASS}'" 2>/dev/null || PSQL -qc "alter role nashr password '${DBPASS}'"
 fi
 PORT="$(grep '^PORT=' "$ENVF" | cut -d= -f2)"
-runuser -u postgres -- psql -tAc "select 1 from pg_database where datname='nashr'" < /dev/null | grep -q 1 \
-  || runuser -u postgres -- createdb -O nashr nashr
+PSQL -tAc "select 1 from pg_database where datname='nashr'" | grep -q 1 || runuser -u postgres -- env -u PGHOST createdb -h /var/run/postgresql -p "$PGPORT" -O nashr nashr
 
 say "Code ($BRANCH)"
 git config --global --get-all safe.directory 2>/dev/null | grep -qx "$APP" || git config --global --add safe.directory "$APP"
@@ -100,8 +105,8 @@ say "Service (API on 127.0.0.1:$PORT)"
 cat > /etc/systemd/system/nashr.service <<EOF
 [Unit]
 Description=Nashr API and background jobs
-After=network.target postgresql.service
-Requires=postgresql.service
+After=network.target postgresql@16-nashr.service
+Requires=postgresql@16-nashr.service
 
 [Service]
 User=nashr
