@@ -14,3 +14,22 @@ pre.json { background: var(--bg); padding: 10px; border-radius: var(--radius); f
 /* Something to do carries the on-air signal; nothing to do goes quiet */
 .attn a.has { border-left: 4px solid var(--signal); }
 .attn a.none b { color: var(--faint); font-weight: 500; }
+
+/* Overview (Stitch v3): reconciliation strip, figures with hairlines, attention list, stacked status bar */
+.recon { margin: -32px -32px 24px; padding: 8px 32px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.recon::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.recon.ok { background: var(--green-1); color: var(--green); } .recon.bad { background: var(--red-1); color: var(--red); }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 0 0 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.figures > div { padding: 18px 20px; border-left: 1px solid var(--line); } .figures > div:first-child { border-left: 0; }
+.figures dt { font-size: 13px; color: var(--slate); } .figures dd { margin: 6px 0 0; font: 600 26px var(--display); letter-spacing: -.01em; }
+.figures small { font-size: 12px; color: var(--slate); }
+.attn-list { list-style: none; margin: 0; padding: 0; } .attn-list li + li { border-top: 1px solid var(--line); }
+.attn-list li { border-left: 3px solid transparent; } .attn-list li.has { border-left-color: var(--signal); } .attn-list li.hot { border-left-color: var(--red); }
+.attn-list a { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; color: inherit; text-decoration: none; }
+.attn-list a:hover { background: var(--bg); } .attn-list b { font: 600 20px var(--display); }
+.attn-list li.none { color: var(--faint); } .attn-list li.none b { font-weight: 500; }
+.stack { display: flex; height: 14px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.stack-key { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 6px; }
+.stack-key a { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; color: inherit; text-decoration: none; padding: 4px 0; }
+.stack-key i { width: 10px; height: 10px; border-radius: 3px; }
+@media (max-width: 900px) { .recon { margin: -20px -16px 16px; padding: 8px 16px; } }

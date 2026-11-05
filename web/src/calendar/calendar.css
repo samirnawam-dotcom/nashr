@@ -105,3 +105,20 @@
 .ev { container-type: inline-size; }
 .ev > span, .ev > b, .ev-t > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @container (max-width: 130px) { .ev-t .tag { font-size: 0; gap: 0; } .ev-t .tag svg { width: 13px; } }
+
+/* Bid drawer (Stitch v3): prices as tiles, money inputs with a currency prefix, quick raises */
+.drawer .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border: 0; padding: 0; }
+.drawer .prices > div { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); }
+.drawer .prices dd { font: 600 22px var(--display); margin: 4px 0 0; }
+.drawer .prices small { display: block; font: 400 12px var(--body); color: var(--slate); margin-top: 2px; }
+.money-input { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.money-input:focus-within { box-shadow: var(--focus); }
+.money-input span { display: grid; place-items: center; padding: 0 12px; background: var(--bg); color: var(--slate); font-weight: 500; border-right: 1px solid var(--line); }
+.money-input input { border: 0 !important; flex: 1; min-width: 0; padding: 10px 12px; font: 600 20px var(--display); font-variant-numeric: tabular-nums; outline: none; }
+.money-input input:focus { outline: none !important; }
+.quick-add { display: flex; gap: 6px; margin-top: 6px; } .quick-add .btn { padding: 4px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.ev-time { font-weight: 600; color: var(--ink); }
+.ev-t { gap: 6px; }
+.cal-key { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; justify-items: start; }
+.cal-foot { margin-top: 12px; padding-left: 2px; }

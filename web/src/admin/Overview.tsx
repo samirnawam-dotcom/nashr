@@ -13,21 +13,33 @@ export function AdminOverview() {
     [o.issues, 'Issues waiting on publishers', '#/disputes', false], [o.failed_ops, 'Failed payouts or refunds', '#/payouts', true],
     [o.quotes_open, 'Quote requests', '#/directory', false],
   ] as const
+  const total = Object.values(o.byStatus).reduce((x, y) => x + y, 0)
+  const COLORS: Record<string, string> = { awaiting_seller: 'var(--signal)', awaiting_payment: 'var(--teal-4)', secured: 'var(--teal)', in_review: 'var(--studio-2)',
+    issue_open: 'var(--amber)', disputed: 'var(--red)', released: 'var(--green)', paid_out: '#2f9e62' }
   return (
     <main>
-      <div className="page-h"><h1>Overview</h1></div>
-      {!o.reconcile.ok && <p className="error">Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider balance {money(o.reconcile.providerCash)}. <a href="#/funds">Funds</a></p>}
-      <dl className="kpis">
-        <div className="card"><dt>Bookings paid this month</dt><dd className="num">{o.bookings_month}</dd></div>
-        <div className="card"><dt>Booked value this month (excl. VAT)</dt><dd className="num">{money(o.gmv_month)}</dd></div>
-        <div className="card"><dt>Held for bookings</dt><dd className="num">{money(o.held)}</dd></div>
-        <div className="card"><dt>Nashr commission earned</dt><dd className="num">{money(o.revenue)}</dd></div>
-        <div className="card"><dt>Publishers live · buyers</dt><dd className="num">{o.publishers_live} · {o.buyers}</dd></div>
+      <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? 'Ledger reconciles with the payment provider.'
+        : <>Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider ({money(o.reconcile.providerCash)}). <a href="#/funds">Open Funds</a></>}</p>
+      <div className="page-h"><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span></div>
+      <dl className="figures">
+        <div><dt>Bookings paid this month</dt><dd className="num">{o.bookings_month}</dd></div>
+        <div><dt>Booked value this month</dt><dd className="num">{money(o.gmv_month)}</dd><small>excl. VAT</small></div>
+        <div><dt>Held for bookings</dt><dd className="num">{money(o.held)}</dd></div>
+        <div><dt>Nashr commission earned</dt><dd className="num">{money(o.revenue)}</dd></div>
+        <div><dt>Publishers live</dt><dd className="num">{o.publishers_live}</dd><small>{o.buyers} buyers</small></div>
       </dl>
-      <h2 className="sec-h">Needs attention</h2>
-      <div className="attn">{attention.map(([n, label, href, hot]) => <a key={label} href={href} className={`card ${n ? 'has' : 'none'} ${hot && n ? 'hot' : ''}`}><b className="num">{n}</b><span className="small">{label}</span></a>)}</div>
-      <h2 className="sec-h">Deals by status</h2>
-      <div className="attn">{Object.entries(o.byStatus).map(([s, n]) => <a key={s} href={`#/deals?status=${s}`} className="card"><b className="num">{n}</b><span className="small">{DEAL_STATUS[s]?.[0] ?? s}</span></a>)}</div>
+      <div className="grid2">
+        <section><h2 className="sec-h">Needs attention</h2>
+          <ul className="attn-list card">{attention.map(([n, label, href, hot]) => <li key={label} className={n ? (hot ? 'hot' : 'has') : 'none'}>
+            <a href={href}><b className="num">{n}</b><span>{label}</span>{n > 0 && <span className="btn task-act">Open</span>}</a></li>)}</ul></section>
+        <section><h2 className="sec-h">Deals by status</h2>
+          {total === 0 ? <p className="muted">No deals yet.</p> : <div className="card pad">
+            <div className="stack" role="img" aria-label="Deals by status">{Object.entries(o.byStatus).map(([s, n]) =>
+              <span key={s} style={{ flex: n, background: COLORS[s] ?? 'var(--faint)' }} title={`${DEAL_STATUS[s]?.[0] ?? s}: ${n}`} />)}</div>
+            <ul className="stack-key">{Object.entries(o.byStatus).map(([s, n]) => <li key={s}><a href={`#/deals?status=${s}`}>
+              <i style={{ background: COLORS[s] ?? 'var(--faint)' }} />{DEAL_STATUS[s]?.[0] ?? s}<b className="num">{n}</b></a></li>)}</ul></div>}
+        </section>
+      </div>
     </main>
   )
 }

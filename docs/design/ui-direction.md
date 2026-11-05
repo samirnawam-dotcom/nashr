@@ -30,3 +30,22 @@ The app's visual identity before Omar's brand files arrive. Every colour and fon
 - Replace the `--teal`, `--studio` and `--signal` values and the font families.
 - Swap the `Wordmark` component in `web/src/App.tsx` and the hero mark in `web/src/Login.tsx` for the logo.
 - Re-run `npm run e2e` and the screenshots.
+
+## Stitch v3 (professional pass)
+
+- Stitch design system "Nashr v3 Professional Studio" (`assets/8264616920506566350` in project 9500135600237380992) encodes these tokens and the content rules.
+- Seven reference screens are in `docs/design/stitch-v3/`.
+
+Adopted in the app:
+- the 5-step booking tracker, with work on the left and the money summary fixed on the right
+- price tiles, AED-prefixed amounts and quick raises in the bid panel
+- calendar blocks showing the time range and the outlet, with a colour key and a payment-held note
+- a greeting and an action button on each publisher task
+- the reconciliation strip, hairline figures, attention list and stacked status bar on the admin overview
+- a bottom tab bar on phones
+
+Left out on purpose:
+- buyers seeing "Reserve met"
+- invented badges and claims ("GST/VAT compliant ledger", "Institutional media exchange", "Audit Node DXB-01")
+- a manual payout trigger (payouts are automatic)
+- "Keep me signed in 30 days" (sessions last 12 hours) and "Forgot password" (not built yet)

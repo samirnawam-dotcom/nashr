@@ -11,6 +11,8 @@ const STEPS: [keyof Overview['onboarding'], string, string][] = [
   ['placement', 'Add your first placement', '#/listings/new'], ['live', 'Put slots on sale', '#/listings'],
 ]
 
+const greeting = () => { const h = (new Date().getUTCHours() + 4) % 24; return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening' } // Dubai time
+
 export function SellerDashboard() {
   const [o, setO] = useState<Overview | null>(null), [tasks, setTasks] = useState<Task[]>([]), [error, setError] = useState('')
   useEffect(() => { api<Overview>('/seller/overview').then(setO, e => setError(e.message)); api<Task[]>('/seller/inbox').then(setTasks, () => {}) }, [])
@@ -18,7 +20,7 @@ export function SellerDashboard() {
   const done = STEPS.filter(([k]) => o.onboarding[k]).length
   return (
     <main>
-      <div className="page-h"><h1>{o.company}</h1></div>
+      <div className="page-h"><h1>{greeting()}, {o.company}</h1></div>
       {done < STEPS.length && <section className="card pad section" style={{ maxWidth: 560 }}>
         <h2>Get ready to sell · {done} of {STEPS.length}</h2>
         <ul className="checklist">{STEPS.map(([k, label, href]) => <li key={k} className={o.onboarding[k] ? 'done' : ''}>
@@ -30,7 +32,7 @@ export function SellerDashboard() {
         <div className="card"><dt>Released, to be paid out</dt><dd className="num">{money(o.money.available)}</dd></div>
         {o.money.owed > 0 && <div className="card"><dt>Owed to Nashr (next payout)</dt><dd className="num" style={{ color: 'var(--red)' }}>{money(o.money.owed)}</dd></div>}
       </dl>
-      <div className="grid2">
+      <div className="dash-cols">
         <section><div className="row-flex" style={{ marginBottom: 12 }}><h2 className="sec-h" style={{ margin: 0 }}>To do</h2><div className="spacer" /><a className="small" href="#/inbox">Inbox</a></div>
           <TaskList tasks={tasks} limit={6} /></section>
         <section><h2 className="sec-h" style={{ marginTop: 0 }}>Coming up</h2>

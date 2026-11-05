@@ -22,18 +22,22 @@ export { money }
 
 export type Task = { type: string; dealId: string | null; ref: string | null; slotId: string; outlet: string; label: string; startsAt: string
   buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null; belowReserve?: boolean }
+const ACTION: Record<string, string> = { decide: 'Decide', choose: 'Choose a bid', creative: 'Review', creative_missing: 'Decide', proof: 'Send proof',
+  issue: 'Respond', prerun: 'Confirm', invoice: 'Upload' }
+const urgent = (iso: string | null) => !!iso && new Date(iso).getTime() - Date.now() < 24 * 3_600_000
 const TASK: Record<string, string> = { decide: 'Accept or decline', choose: 'Choose the next bid', creative: 'Review creative', creative_missing: 'Creative not received',
   proof: 'Send proof', issue: 'Respond to an issue', prerun: 'Confirm the pre-run check', invoice: 'Upload your invoice' }
 
 export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
   if (!tasks.length) return <p className="muted empty">Nothing needs you right now.</p>
   return <ul className="tasks card">{tasks.slice(0, limit).map((t, i) => (
-    <li key={i}><a href={t.dealId ? `#/deals/${t.dealId}` : `#/slots/${t.slotId}`}>
+    <li key={i} className={urgent(t.dueAt) ? 'urgent' : ''}><a href={t.dealId ? `#/deals/${t.dealId}` : `#/slots/${t.slotId}`}>
       <span className={`task-k ${t.type}`}>{TASK[t.type] ?? t.type}</span>
-      <span><b>{t.outlet}</b> · {t.label} · <span className="muted">{when(t.startsAt)}</span>{t.buyer && <span className="muted"> · {t.buyer}</span>}
-        {t.kind === 'buy_now' && <span className="badge on" style={{ marginLeft: 8 }}>This buyer will pay now</span>}
-        {t.belowReserve && <span className="badge" style={{ marginLeft: 8, color: 'var(--amber)' }}>Below your reserve</span>}</span>
+      <span className="task-body"><span><b>{t.outlet}</b>, {t.label}</span><span className="muted small">{when(t.startsAt)}{t.buyer ? `, ${t.buyer}` : ''}</span>
+        {t.kind === 'buy_now' && <span className="badge on">This buyer will pay now</span>}
+        {t.belowReserve && <span className="badge" style={{ color: 'var(--amber)' }}>Below your reserve</span>}</span>
       <span className="num">{t.amount ? money(t.amount) : ''}</span>
       <span className={`small ${due(t.dueAt) === 'overdue' || /in \d+h/.test(due(t.dueAt)) ? 'soon' : 'muted'}`}>{due(t.dueAt)}</span>
+      <span className={`btn ${t.type === 'decide' || t.type === 'proof' ? 'primary' : ''} task-act`}>{ACTION[t.type] ?? 'Open'}</span>
     </a></li>))}</ul>
 }

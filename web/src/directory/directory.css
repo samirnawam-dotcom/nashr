@@ -37,3 +37,27 @@
 a.btn { text-decoration: none; display: inline-block; }
 .table td.num, .table td.r.num { white-space: nowrap; }
 .section > p { margin: 0 0 12px; }
+
+/* Booking page (Stitch v3): progress tracker, work on the left, money and documents on the right */
+main.booking { max-width: 1180px; }
+.page-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 8px 0 20px; }
+.page-title p { margin: 4px 0 0; }
+.tracker { list-style: none; margin: 0 0 24px; padding: 20px 24px; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); counter-reset: step; }
+.tracker li { position: relative; display: grid; justify-items: center; gap: 4px; text-align: center; font-size: 14px; color: var(--slate); }
+.tracker li::before { content: ""; position: absolute; top: 15px; left: calc(-50% + 18px); right: calc(50% + 18px); height: 2px; background: var(--line); }
+.tracker li:first-child::before { display: none; }
+.tracker li.done::before, .tracker li.now::before { background: var(--teal); }
+.tracker-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--line); background: var(--surface); font: 600 13px var(--display); position: relative; }
+.tracker li.done .tracker-dot { background: var(--teal); border-color: var(--teal); color: #fff; }
+.tracker li.now .tracker-dot { border-color: var(--signal); color: var(--signal-ink); box-shadow: 0 0 0 4px var(--signal-1); }
+.tracker li.done b, .tracker li.now b { color: var(--ink); }
+.tracker.stopped { opacity: .6; }
+.booking-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+.booking-main > .section:first-child { margin-top: 0; }
+.booking-side { position: sticky; top: 84px; display: grid; gap: 16px; }
+.booking-side .section { margin-top: 0; }
+@media (max-width: 900px) {
+  .booking-cols { grid-template-columns: 1fr; }
+  .booking-side { position: static; order: -1; }
+  .tracker { padding: 14px 8px; } .tracker li { font-size: 12px; } .tracker li .small { display: none; }
+}

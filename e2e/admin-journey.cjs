@@ -35,7 +35,7 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   p.on('dialog', d => d.accept())
   await p.goto(BASE + '/'); await p.fill('#email', 'ops@nashr.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('#code'); await p.fill('#code', totp('JBSWY3DPEHPK3PXP')); await p.click('button:has-text("Sign in")')
-  await p.waitForSelector('.attn'); await shot('a1-overview')
+  await p.waitForSelector('.attn-list'); await shot('a1-overview')
   // Decide the dispute
   await p.click('.nav >> text=Disputes'); await p.waitForSelector('table'); await shot('a2-disputes')
   await p.click('tbody tr >> nth=0'); await p.waitForSelector('text=Decide this dispute'); await p.selectOption('#out', 'partial_refund'); await p.fill('#amt', '1000')

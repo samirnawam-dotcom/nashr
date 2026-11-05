@@ -38,6 +38,7 @@ function groups(slots: Slot[]): Group[] {
   }
   return [...m.values()]
 }
+const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 const from = (g: Group) => Math.min(...g.slots.map(s => s.topBid ?? s.startingPrice))
 
 /** True on phone-sized screens, where the time grid gives way to a day-by-day list. */
@@ -96,6 +97,8 @@ export function CalendarPage() {
         <h3 className="side-h">Sale type</h3>
         <label className="check"><input type="checkbox" checked={saleTypes.has('auction')} onChange={() => toggle(saleTypes, 'auction', setSaleTypes)} /><Gavel /> Auction</label>
         <label className="check"><input type="checkbox" checked={saleTypes.has('quick_sale')} onChange={() => toggle(saleTypes, 'quick_sale', setSaleTypes)} /><Bolt /> Quick sale</label>
+        <h3 className="side-h">Key</h3>
+        <ul className="cal-key"><li><span className="dot lead">You lead</span></li><li><span className="on-air">Closes soon</span></li><li><span className="dot outbid">Outbid</span></li></ul>
         <p className="small muted" style={{ marginTop: 24 }}>All times are Dubai time. Prices exclude VAT.</p>
       </details>
 
@@ -113,6 +116,7 @@ export function CalendarPage() {
         {narrow && view !== 'month' && <AgendaView days={days} slots={shown} onPick={setPicked} onNext={() => step(1)} />}
         {!narrow && view === 'week' && <WeekView days={days} slots={shown} onPick={setPicked} />}
         {!narrow && view === 'day' && <DayView date={anchor} slots={shown} onOpen={setOpen} />}
+        {!narrow && view !== 'month' && <p className="cal-foot small muted">Your payment is held until the publisher proves the ad ran. You pay only once the publisher accepts.</p>}
         {view === 'month' && <MonthView weeks={monthGrid(anchor)} month={anchor.slice(0, 7)} slots={shown} onPick={setPicked} onDay={d => { setAnchor(d); setView('day') }} />}
       </section>
 
@@ -159,8 +163,8 @@ function WeekView({ days, slots, onPick }: { days: string[]; slots: Slot[]; onPi
               const leads = g.slots.filter(s => s.youLead).length
               return <button key={g.key} className="ev" onClick={() => onPick(g)} style={{ top: top(g.start), height: top(g.end) - top(g.start) - 2,
                 left: `calc(${(l.col / l.cols) * 100}% + 2px)`, width: `calc(${100 / l.cols}% - 4px)`, background: heat(Math.max(...g.slots.map(s => s.bids))) }}>
-                <span className="ev-t"><SaleType t={g.slots[0].saleType} /> <span className="small muted num">{time(g.slots[0].startsAt)}</span></span>
-                <b className="ev-name">{g.outlet} · {g.placement}</b>
+                <span className="ev-t"><span className="small num ev-time">{hhmm(g.start)}–{hhmm(g.end)}</span><SaleType t={g.slots[0].saleType} /></span>
+                <b className="ev-name">{g.outlet}</b><span className="small muted">{g.placement}</span>
                 <span className="small num">{single ? `${single.label} · ` : `${g.slots.filter(s => s.kind === 'single').length} breaks · from `}{money(from(g))}</span>
                 <span className="small">{single ? status(single) : leads ? <span className="dot lead">You lead on {leads}</span> : null}</span>
               </button> })}

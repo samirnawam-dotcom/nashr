@@ -56,6 +56,22 @@ const full = (iso: string) => `${dayLabel(dubai(iso).date, { day: 'numeric', mon
 const ProofValue = ({ v }: { v: unknown }) => typeof v === 'string' && v.startsWith('files/') ? <a href={`/api/${v}`}>Download</a>
   : typeof v === 'string' && /^https?:\/\//.test(v) ? <a href={v} target="_blank" rel="noreferrer noopener">{v}</a> : <span>{String(v ?? '—')}</span>
 
+/** Where the booking is, in five steps (from the Stitch v3 design). A booking that stopped shows where and why above. */
+const STEPS: [string, string[], string[]][] = [
+  ['Requested', ['opened'], ['awaiting_publisher']], ['Accepted', ['accept'], ['accepted_pay_now']], ['Paid', ['pay'], ['payment_secured']],
+  ['Aired', ['submit_proof'], ['proof_ready', 'issue_open', 'disputed']],
+  ['Released', ['approve', 'auto_release', 'release', 'partial_refund'], ['released', 'complete']],
+]
+const STOPPED = ['not_selected', 'lapsed', 'cancelled', 'refunded']
+function Tracker({ status, timeline }: { status: string; timeline: { at: string; event: string }[] }) {
+  const reached = (i: number) => timeline.some(e => STEPS[i][1].includes(e.event))
+  const current = STEPS.findIndex(st => st[2].includes(status))
+  return <ol className={`tracker ${STOPPED.includes(status) ? 'stopped' : ''}`} aria-label="Booking progress">{STEPS.map(([label, events], i) => {
+    const at = timeline.find(e => events.includes(e.event))?.at, done = reached(i) || (current >= 0 && i < current)
+    return <li key={label} className={done ? 'done' : i === current ? 'now' : ''} aria-current={i === current ? 'step' : undefined}>
+      <span className="tracker-dot" aria-hidden>{done ? '✓' : i + 1}</span><b>{label}</b>{at && <span className="small muted num">{full(at)}</span>}</li> })}</ol>
+}
+
 export function BookingPage({ id }: { id: string }) {
   const [d, setD] = useState<Detail | null>(null), [card, setCard] = useState(CARDS[0][0])
   const [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
@@ -84,39 +100,11 @@ export function BookingPage({ id }: { id: string }) {
   }
   if (!d) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
   return (
-    <main className="narrow">
+    <main className="booking">
       <p className="small"><a href="#/bookings">Bookings</a> › Order {d.ref}</p>
-      <h1>{d.outlet} · {d.label}</h1>
-      <p className="muted">{when(d.startsAt)} · <Status s={d.status} /></p>
-      <div className="card pad">
-        <dl className="sum num">
-          <div><dt>Price</dt><dd>{money(d.price, d.currency)}</dd></div>
-          <div><dt>VAT (charged by the publisher)</dt><dd>{money(d.vat, d.currency)}</dd></div>
-          <div className="total"><dt>Total</dt><dd>{money(d.total, d.currency)}</dd></div>
-        </dl>
-        {d.status === 'accepted_pay_now' && <>
-          <p>The publisher accepted. Please pay{d.nextDeadlineAt ? ` by ${when(d.nextDeadlineAt)}` : ''}.</p>
-          <div className="field"><label htmlFor="card">Card</label><select id="card" value={card} onChange={e => setCard(e.target.value)}>{CARDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-          <p className="small muted">The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher.</p>
-          <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>Pay {money(d.total, d.currency)}</button>
-        </>}
-        {d.status === 'awaiting_publisher' && <p className="muted">Waiting for the publisher's decision. You'll be asked to pay once they accept.</p>}
-        {d.reason && ['not_selected', 'lapsed', 'cancelled', 'refunded'].includes(d.status) && <p className="muted">Reason: {d.reason}</p>}
-        {d.status === 'payment_secured' && !terms && <button className="btn" disabled={busy} onClick={() => api(`/deals/${d.id}/cancel-preview`).then(setTerms, e => setError(e.message))}>Cancel booking…</button>}
-        {terms && d.status === 'payment_secured' && (!terms.allowed ? <p className="warn">{terms.reason}</p> : <div className="form">
-          <p><b>If you cancel now</b>{terms.free ? ' (inside the free cancellation window)' : ''}:</p>
-          <dl className="sum num">
-            <div><dt>You paid</dt><dd>{money(terms.paid!, d.currency)}</dd></div>
-            {terms.publisherKeeps! > 0 && <div><dt>Kept by the publisher (cancellation fee)</dt><dd>−{money(terms.publisherKeeps!, d.currency)}</dd></div>}
-            <div><dt>Card processing cost of the refund</dt><dd>−{money(terms.processing!, d.currency)}</dd></div>
-            <div className="total"><dt>Refunded to your card</dt><dd>{money(terms.refund!, d.currency)}</dd></div>
-          </dl>
-          <div className="row-flex"><button className="btn primary" disabled={busy} onClick={async () => { await act(`/deals/${d.id}/cancel`); setTerms(null) }}>Confirm cancellation</button>
-            <button className="btn" onClick={() => setTerms(null)}>Keep the booking</button></div></div>)}
-        {error && <p className="error" role="alert">{error}</p>}
-        {note && <p className="ok" role="status">{note}</p>}
-      </div>
-
+      <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)}</p></div><Status s={d.status} /></div>
+      <Tracker status={d.status} timeline={d.timeline} />
+      <div className="booking-cols"><div className="booking-main">
       {d.prerun && !d.prerun.confirmedAt && d.status === 'payment_secured' && <section className="card pad section">
         <h2>Pre-run check</h2><p>Your ad airs soon. Confirm the publisher has the final version of your creative.</p>
         <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/prerun`, {}, 'Thanks. The publisher has been told.')}>Confirm final version</button>
@@ -170,16 +158,49 @@ export function BookingPage({ id }: { id: string }) {
           <input id="file" type="file" disabled={busy} onChange={e => e.target.files?.[0] && sendCreative(e.target.files[0])} /></div>}
       </section>}
 
-      {d.documents.length > 0 && <section className="card pad section">
-        <h2>Receipts and invoices</h2>
-        <ul className="timeline">{d.documents.map(x => <li key={x.id}><span className="num small">{x.number}</span>
-          <span><a href={`#/documents/${x.id}`}>{DOC_TYPE[x.type]}</a> · <span className="num">{money(x.total, x.currency)}</span></span></li>)}</ul>
-      </section>}
+
 
       <section className="card pad section">
         <h2>Timeline</h2>
         <ol className="timeline">{d.timeline.map((e, i) => <li key={i}><span className="small muted num">{full(e.at)}</span><span>{EVENT[e.event] ?? e.event.replace(/_/g, ' ')}</span></li>)}</ol>
       </section>
+      </div>
+      <aside className="booking-side">
+      <div className="card pad summary">
+        <dl className="sum num">
+          <div><dt>Price</dt><dd>{money(d.price, d.currency)}</dd></div>
+          <div><dt>VAT (charged by the publisher)</dt><dd>{money(d.vat, d.currency)}</dd></div>
+          <div className="total"><dt>Total</dt><dd>{money(d.total, d.currency)}</dd></div>
+        </dl>
+        {d.status === 'accepted_pay_now' && <>
+          <p>The publisher accepted. Please pay{d.nextDeadlineAt ? ` by ${when(d.nextDeadlineAt)}` : ''}.</p>
+          <div className="field"><label htmlFor="card">Card</label><select id="card" value={card} onChange={e => setCard(e.target.value)}>{CARDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+          <p className="small muted">The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher.</p>
+          <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>Pay {money(d.total, d.currency)}</button>
+        </>}
+        {d.status === 'awaiting_publisher' && <p className="muted">Waiting for the publisher's decision. You'll be asked to pay once they accept.</p>}
+        {d.reason && ['not_selected', 'lapsed', 'cancelled', 'refunded'].includes(d.status) && <p className="muted">Reason: {d.reason}</p>}
+        {d.status === 'payment_secured' && !terms && <button className="btn" disabled={busy} onClick={() => api(`/deals/${d.id}/cancel-preview`).then(setTerms, e => setError(e.message))}>Cancel booking…</button>}
+        {terms && d.status === 'payment_secured' && (!terms.allowed ? <p className="warn">{terms.reason}</p> : <div className="form">
+          <p><b>If you cancel now</b>{terms.free ? ' (inside the free cancellation window)' : ''}:</p>
+          <dl className="sum num">
+            <div><dt>You paid</dt><dd>{money(terms.paid!, d.currency)}</dd></div>
+            {terms.publisherKeeps! > 0 && <div><dt>Kept by the publisher (cancellation fee)</dt><dd>−{money(terms.publisherKeeps!, d.currency)}</dd></div>}
+            <div><dt>Card processing cost of the refund</dt><dd>−{money(terms.processing!, d.currency)}</dd></div>
+            <div className="total"><dt>Refunded to your card</dt><dd>{money(terms.refund!, d.currency)}</dd></div>
+          </dl>
+          <div className="row-flex"><button className="btn primary" disabled={busy} onClick={async () => { await act(`/deals/${d.id}/cancel`); setTerms(null) }}>Confirm cancellation</button>
+            <button className="btn" onClick={() => setTerms(null)}>Keep the booking</button></div></div>)}
+        {error && <p className="error" role="alert">{error}</p>}
+        {note && <p className="ok" role="status">{note}</p>}
+      </div>
+
+      {d.documents.length > 0 && <section className="card pad section">
+        <h2>Receipts and invoices</h2>
+        <ul className="timeline">{d.documents.map(x => <li key={x.id}><span className="num small">{x.number}</span>
+          <span><a href={`#/documents/${x.id}`}>{DOC_TYPE[x.type]}</a> · <span className="num">{money(x.total, x.currency)}</span></span></li>)}</ul>
+      </section>}
+      </aside></div>
     </main>
   )
 }

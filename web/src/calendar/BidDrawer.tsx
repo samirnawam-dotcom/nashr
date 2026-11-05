@@ -57,9 +57,12 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
 
       {s.available && <>
         {s.saleType === 'auction' ? <section className="form">
-          <div className="field"><label htmlFor="amt">Your bid (AED, excl. VAT)</label><input id="amt" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
+          <div className="field"><label htmlFor="amt">Your bid (excl. VAT)</label>
+            <div className="money-input"><span aria-hidden>AED</span><input id="amt" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
+            <div className="quick-add" aria-label="Raise your bid">{[100, 250, 500].map(n => <button key={n} type="button" className="btn"
+              onClick={() => setAmount(String(Math.max(Number(amount.replace(/,/g, '')) || 0, s.minNextBid / 100) + n))}>+{n}</button>)}</div></div>
           <label className="check"><input type="checkbox" checked={auto} onChange={e => setAuto(e.target.checked)} /> Auto-bid</label>
-          {auto && <div className="field"><label htmlFor="max">Maximum bid (AED)</label><input id="max" inputMode="decimal" value={max} onChange={e => setMax(e.target.value)} />
+          {auto && <div className="field"><label htmlFor="max">Maximum bid</label><div className="money-input"><span aria-hidden>AED</span><input id="max" inputMode="decimal" value={max} onChange={e => setMax(e.target.value)} /></div>
             <span className="small muted">We raise your bid in 3% steps when you're outbid, up to this maximum.</span></div>}
           {s.yourMax ? <p className="small muted">Your current maximum: {money(s.yourMax)}</p> : null}
         </section> : <section className="form">
