@@ -152,6 +152,8 @@ if [ "$FIRST_SEED" = 1 ]; then
   echo "Demo sign-ins: demo@northwind.ae (buyer), sales@skyline.ae (publisher), ops@nashr.ae / omar@nashr.ae (staff)"
   cat "$DATA/demo-credentials.txt"
   echo "(Saved in $DATA/demo-credentials.txt, readable by root only.)"
+elif [ -f "$DATA/demo-credentials.txt" ]; then
+  echo "Demo sign-in details: cat $DATA/demo-credentials.txt"
 fi
 echo "Logs: journalctl -u nashr -f      Update later: run this same script again."
 }
@@ -173,10 +175,16 @@ plesk_site() {
   rsync -a --delete --chown="$OWNER:psacln" "$APP/dist/web/" "$ROOT/"
   echo "Web app copied to $ROOT"
 
-  local CONF=/root/nashr-nginx.conf
-  printf '%s\n  location = /invite { try_files /index.html =404; }\n' "$PROXY" > "$CONF"
-  plesk bin site --update-web-server-settings "$DOMAIN" -additional-nginx-settings-file "$CONF" < /dev/null >/dev/null 2>&1 \
-    || plesk bin domain --update-web-server-settings "$DOMAIN" -additional-nginx-settings-file "$CONF" < /dev/null
+  # Plesk includes this per-site file in the site's nginx config (it is what "Additional nginx directives" writes).
+  local CONF="/var/www/vhosts/system/$DOMAIN/conf/vhost_nginx.conf"
+  [ -d "$(dirname "$CONF")" ] || { echo "Plesk has no config folder for $DOMAIN ($(dirname "$CONF"))."; exit 1; }
+  printf '%s\n  location = /invite { root "%s"; try_files /index.html =404; }\n' "$PROXY" "$ROOT" > "$CONF"
+  plesk sbin httpdmng --reconfigure-domain "$DOMAIN" < /dev/null >/dev/null
+  if ! nginx -t -q; then
+    rm -f "$CONF"; plesk sbin httpdmng --reconfigure-domain "$DOMAIN" < /dev/null >/dev/null
+    echo "nginx refused the /api settings, so they were removed and your other sites are unaffected. Paste the nginx -t output above."; exit 1
+  fi
+  systemctl reload nginx
   echo "nginx: /api is proxied to the API"
 
   if [ ! -f "$DATA/.cert-plesk" ]; then
