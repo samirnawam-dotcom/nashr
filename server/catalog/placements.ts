@@ -22,7 +22,30 @@ export async function checkDeadlines(db: Db, p: Pick<PlacementInput, 'creativeLe
     throw new MarketError(`Bidding must close at least ${need / 24} days before air so there is time to accept, pay and deliver the creative.`)
 }
 
+const mins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+/** An end time before the start is overnight only when it plainly is: starts in the evening, ends by the morning (brief section 7). */
+export function checkTimes(p: Pick<PlacementInput, 'startsAt' | 'endsAt'>) {
+  if (!p.startsAt || !p.endsAt) return
+  const s = mins(p.startsAt), e = mins(p.endsAt)
+  if (e === s || (e < s && !(s >= 18 * 60 && e <= 6 * 60))) throw new MarketError('The end time must be after the start time.')
+}
+
+/** The [start, end) minutes of a programme on its own day; overnight ones run past 24:00. */
+const span = (startsAt?: string | null, endsAt?: string | null) => {
+  const s = startsAt ? mins(startsAt.slice(0, 5)) : 0, e = endsAt ? mins(endsAt.slice(0, 5)) : startsAt ? s + 1 : 24 * 60
+  return [s, e <= s ? e + 24 * 60 : e]
+}
+
+/** Warn (never block) when a new programme overlaps another placement of the same outlet on a shared day (brief section 7). */
+export async function overlapWarnings(db: Db, p: PlacementInput) {
+  const others = (await db.query(`select name, days, starts_at_local::text s, ends_at_local::text e from placements where outlet_id = $1 and not archived`, [p.outletId])).rows
+  const [a0, a1] = span(p.startsAt, p.endsAt)
+  return others.filter(o => o.days.some((d: number) => p.days.includes(d)) && (() => { const [b0, b1] = span(o.s, o.e); return a0 < b1 && b0 < a1 })())
+    .map(o => `This overlaps ${o.name} on ${o.days.filter((d: number) => p.days.includes(d)).length} of the same days.`)
+}
+
 export async function createPlacement(db: Db, p: PlacementInput, actor: string, at: Date): Promise<string> {
+  checkTimes(p)
   await checkDeadlines(db, p, at)
   const row = await one(db,
     `insert into placements (outlet_id, name, sale_type, days, starts_at_local, ends_at_local, breaks, starting_price, any_break_price,
@@ -52,12 +75,14 @@ export async function generateSlots(db: Db, placementId: string, fromDate: strin
     const date = addDays(fromDate, i)
     if (!p.days.includes(isoWeekday(date))) continue
     const start = atLocal(date, p.starts_at_local?.slice(0, 5) ?? '00:00', m)
-    const end = p.ends_at_local ? atLocal(date, p.ends_at_local.slice(0, 5), m) : null
+    // overnight: an end (or a break) earlier in the clock than the start belongs to the next day
+    const later = (t: string) => t < (p.starts_at_local?.slice(0, 5) ?? '00:00') ? atLocal(addDays(date, 1), t, m) : atLocal(date, t, m)
+    const end = p.ends_at_local ? later(p.ends_at_local.slice(0, 5)) : null
     const slots: { kind: string; label: string; startsAt: Date; endsAt: Date | null; price: number }[] =
       breaks.length === 0
         ? [{ kind: 'single', label: p.name, startsAt: start, endsAt: end, price: p.starting_price }]
         : breaks.map(b => {
-            const s = b.at ? atLocal(date, b.at, m) : start
+            const s = b.at ? later(b.at) : start
             return { kind: 'single', label: b.label, startsAt: s, endsAt: b.seconds ? new Date(s.getTime() + b.seconds * 1000) : null, price: p.starting_price }
           })
     if (breaks.length && p.any_break_price) slots.push({ kind: 'any', label: 'Any break', startsAt: start, endsAt: end, price: p.any_break_price })

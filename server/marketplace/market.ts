@@ -19,6 +19,12 @@ async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown) 
   if (problems.length) throw new MarketError(problems.join(' '))
 }
 
+/** Only open markets can be booked; KSA is "coming soon" at launch (brief section 14, scenario 19). */
+async function assertMarketOpen(db: Db, slot: any, at: Date) {
+  const { market } = await one(db, `select o.market from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  if (!(await setting<string[]>(db, 'open_markets', at)).includes(market)) throw new MarketError('This market is coming soon. Join the waiting list to hear when it opens.')
+}
+
 /** A bid may be tagged to one of the buyer's own campaigns. */
 async function checkCampaign(db: Db, campaignId: string | undefined, buyerId: string) {
   if (!campaignId) return
@@ -41,6 +47,7 @@ async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; 
 export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amount: number; maxAmount?: number; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || slot.sale_type !== 'auction' || at >= slot.closes_at) throw new MarketError('Bidding is closed for this slot.')
+  await assertMarketOpen(db, slot, at)
   await requireBrief(db, slot, a.buyerId, a.brief)
   await checkCampaign(db, a.campaignId, a.buyerId)
   const step = await setting<number>(db, 'min_step_bp', at)
@@ -85,6 +92,7 @@ export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string
   if (slot.status !== 'open' || !slot.buy_now_price || at >= slot.closes_at) throw new MarketError('Buy now is not available for this slot.')
   const open = await db.query(`select 1 from deals where slot_id = $1 and buyer_id = $2 and kind = 'buy_now' and status = 'awaiting_seller'`, [slot.id, a.buyerId])
   if (open.rowCount) throw new MarketError('You already have a buy-now request on this slot.')
+  await assertMarketOpen(db, slot, at)
   await requireBrief(db, slot, a.buyerId, a.brief)
   await checkCampaign(db, a.campaignId, a.buyerId)
   const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'buy_now', amount: slot.buy_now_price, brief: a.brief, campaignId: a.campaignId }, at)
@@ -95,6 +103,7 @@ export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string
 export async function showInterest(db: Db, a: { slotId: string; buyerId: string; amount?: number; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
   if (slot.status !== 'open' || slot.sale_type !== 'quick_sale') throw new MarketError('This slot is not a quick sale.')
+  await assertMarketOpen(db, slot, at)
   await requireBrief(db, slot, a.buyerId, a.brief)
   await checkCampaign(db, a.campaignId, a.buyerId)
   const amount = a.amount ?? slot.starting_price

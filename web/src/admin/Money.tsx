@@ -53,7 +53,8 @@ export function PayoutsPage() {
 }
 
 type Agg = { bookings: number; gmv: number; commission: number }
-type R = { from: string; to: string; byMonth: (Agg & { month: string })[]; byChannel: (Agg & { channel: string })[]; byOutlet: (Agg & { outlet: string; channel: string })[]; bySaleType: (Agg & { kind: string })[] }
+type Losses = { refunds: number; refunded: number; from_buyers: number; charged_to_sellers: number; recovered_from_sellers: number }
+type R = { from: string; to: string; sellersStillOwe: number; refundLosses: Losses; byMonth: (Agg & { month: string })[]; byChannel: (Agg & { channel: string })[]; byOutlet: (Agg & { outlet: string; channel: string })[]; bySaleType: (Agg & { kind: string })[] }
 const KIND: Record<string, string> = { auction: 'Auction', buy_now: 'Buy now', quick_sale: 'Quick sale', choice: 'Next bid chosen' }
 
 export function ReportsPage() {
@@ -77,6 +78,15 @@ export function ReportsPage() {
         <Table title="By how it sold" rows={data.bySaleType} label={r => KIND[r.kind] ?? r.kind} name="sale_type" />
         <Table title="Top outlets" rows={data.byOutlet} label={r => `${r.outlet} (${r.channel})`} name="outlet" />
       </div>}
+      {data && <section className="section"><h2 style={{ fontSize: 16, marginBottom: 8 }}>Refund losses</h2>
+        <dl className="kpis">
+          <div className="card"><dt>Refunds sent</dt><dd className="num">{data.refundLosses.refunds} · {money(data.refundLosses.refunded)}</dd></div>
+          <div className="card"><dt>Card costs kept from buyer cancellations</dt><dd className="num">{money(data.refundLosses.from_buyers)}</dd></div>
+          <div className="card"><dt>Card costs charged to publishers</dt><dd className="num">{money(data.refundLosses.charged_to_sellers)}</dd></div>
+          <div className="card"><dt>Recovered from publisher payouts</dt><dd className="num">{money(data.refundLosses.recovered_from_sellers)}</dd></div>
+          <div className="card"><dt>Publishers still owe (all time)</dt><dd className="num">{money(data.sellersStillOwe)}</dd></div>
+        </dl>
+        <p className="small muted">Card costs are Nashr's estimate until the payment provider's own refund fees are recorded (Stripe, B5).</p></section>}
       <p className="small muted">Period {date(from)} to {date(to)}.</p>
     </main>
   )

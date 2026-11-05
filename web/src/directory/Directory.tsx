@@ -17,13 +17,22 @@ export const PriceTag = ({ p }: { p: Price }) => !p ? <span className="small mut
   <span className="price-tag"><b className="num">{p.from === p.to ? money(p.from, p.currency) : `${money(p.from, p.currency)}–${(p.to / 100).toLocaleString('en-US')}`}</b>
     <span className={`level ${p.level}`}>{p.label}</span></span>)
 
+/** "Tell me when it opens" for KSA and Athena (brief sections 14, 21). */
+export function Waitlist({ topic, label }: { topic: 'KSA' | 'Athena'; label: string }) {
+  const [on, setOn] = useState<boolean | null>(null)
+  useEffect(() => { api<string[]>('/waitlist').then(t => setOn(t.includes(topic)), () => setOn(false)) }, [topic])
+  if (on === null) return null
+  return on ? <span className="small ok">You're on the list. We'll tell you when it opens.</span>
+    : <button className="btn" onClick={() => api('/waitlist', { method: 'POST', body: { topic } }).then(() => setOn(true))}>{label}</button>
+}
+
 export function DirectoryPage() {
   const [outlets, setOutlets] = useState<Outlet[] | null>(null), [error, setError] = useState('')
-  const [q, setQ] = useState(''), [channel, setChannel] = useState(''), [onlyNashr, setOnlyNashr] = useState(false)
+  const [q, setQ] = useState(''), [channel, setChannel] = useState(''), [onlyNashr, setOnlyNashr] = useState(false), [market, setMarket] = useState('AE')
   const [view, setView] = useState<'grid' | 'list'>(() => (localStorage.getItem('nashr:dir-view') as any) || 'grid')
   useEffect(() => { api<Outlet[]>('/directory').then(setOutlets, e => setError(e.message)) }, [])
   useEffect(() => { try { localStorage.setItem('nashr:dir-view', view) } catch { /* fine */ } }, [view])
-  const shown = (outlets ?? []).filter(o => (!channel || o.channel === channel) && (!onlyNashr || o.onNashr)
+  const shown = (outlets ?? []).filter(o => o.market === market && (!channel || o.channel === channel) && (!onlyNashr || o.onNashr)
     && (!q || `${o.name} ${o.nameAr ?? ''} ${o.sectors.join(' ')} ${o.audience ?? ''}`.toLowerCase().includes(q.toLowerCase())))
   return (
     <main>
@@ -34,6 +43,8 @@ export function DirectoryPage() {
           <button className={!channel ? 'on' : ''} onClick={() => setChannel('')}>All</button>
           {CHANNELS.map(c => <button key={c} className={channel === c ? 'on' : ''} onClick={() => setChannel(c)}>{CHANNEL[c]}</button>)}
         </div>
+        <div className="seg" role="group" aria-label="Market"><button className={market === 'AE' ? 'on' : ''} onClick={() => setMarket('AE')}>UAE</button>
+          <button className={market === 'SA' ? 'on' : ''} onClick={() => setMarket('SA')}>KSA · coming soon</button></div>
         <label className="check"><input type="checkbox" checked={onlyNashr} onChange={e => setOnlyNashr(e.target.checked)} /> On Nashr only</label>
         <div className="spacer" />
         <div className="seg" role="group" aria-label="View">
@@ -41,6 +52,7 @@ export function DirectoryPage() {
           <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>
         </div>
       </div>
+      {market === 'SA' && <p className="warn row-flex">Saudi Arabia opens soon. You can add Saudi outlets to a campaign plan now; booking opens with the market. <Waitlist topic="KSA" label="Tell me when KSA opens" /></p>}
       {error && <p className="error">{error}</p>}
       {outlets && !shown.length && <p className="muted empty">No outlets match. Clear the filters to see everything.</p>}
       {view === 'grid'
@@ -48,13 +60,13 @@ export function DirectoryPage() {
             <div className="row-flex"><Logo o={o} /><div><b>{o.name}</b>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div></div>
             <div className="small muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).join(', ')}` : ''}</div>
             <PriceTag p={o.price} />
-            <span className={o.onNashr ? 'badge on' : 'badge'}>{o.onNashr ? 'On Nashr · book slots' : 'Not on Nashr yet · request a quote'}</span>
+            <span className={o.onNashr ? 'badge on' : 'badge'}>{o.comingSoon ? 'Coming soon' : o.onNashr ? 'On Nashr · book slots' : 'Not on Nashr yet · request a quote'}</span>
           </a>)}</div>
         : shown.length > 0 && <table className="table card"><thead><tr><th>Outlet</th><th>Channel</th><th>Sectors</th><th>Price</th><th /></tr></thead>
             <tbody>{shown.map(o => <tr key={o.id} onClick={() => (location.hash = `#/directory/${o.id}`)}>
               <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b></div></td><td>{CHANNEL[o.channel]}</td>
               <td className="small">{o.sectors.join(', ')}</td><td><PriceTag p={o.price} /></td>
-              <td className="small">{o.onNashr ? 'Book slots' : 'Request quote'}</td></tr>)}</tbody></table>}
+              <td className="small">{o.comingSoon ? 'Coming soon' : o.onNashr ? 'Book slots' : 'Request quote'}</td></tr>)}</tbody></table>}
     </main>
   )
 }
@@ -90,8 +102,10 @@ export function OutletPage({ id }: { id: string }) {
         {campaigns.length > 0 && <select className="btn" aria-label="Add to campaign" value="" onChange={e => e.target.value && addToCampaign(e.target.value)}>
           <option value="">Add to campaign…</option>{campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
         {o.onNashr && <a className="btn primary" href="#/calendar">Book slots</a>}
+        {o.comingSoon && <Waitlist topic="KSA" label="Tell me when KSA opens" />}
       </div>
       {added && <p className="ok" role="status">Added to {added}.</p>}
+      {o.comingSoon && <p className="warn">Coming soon: this market is not open yet. You can plan it in a campaign; booking opens with the market.</p>}
       <div className="cols">
         <section className="card pad">
           {o.description && <p>{o.description}</p>}
@@ -103,7 +117,7 @@ export function OutletPage({ id }: { id: string }) {
           </dl>
           {o.price?.level === 'estimate' && <p className="small muted">This range is Nashr's estimate. The outlet has not confirmed it.</p>}
         </section>
-        {!o.onNashr && <section className="card pad form">
+        {!o.onNashr && !o.comingSoon && <section className="card pad form">
           <h3>Request a quote</h3>
           <p className="small muted">This outlet isn't on Nashr yet. Tell us what you need and Nashr's team will get you a price.</p>
           <div className="field"><label htmlFor="q">What you'd like to book</label><textarea id="q" rows={4} maxLength={2000} value={message} onChange={e => setMessage(e.target.value)} placeholder="Dates, formats, budget" /></div>

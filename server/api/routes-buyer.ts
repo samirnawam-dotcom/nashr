@@ -4,7 +4,7 @@ import { buyerDeal, buyerSlot } from './shapes.js'
 import { placeBid, requestBuyNow, showInterest } from '../marketplace/market.js'
 import { minNextBid } from '../core/money.js'
 import { setting } from '../core/settings.js'
-import { approve, cancelByBuyer, confirmPayment } from '../payments/payments.js'
+import { approve, buyerCancelTerms, cancelByBuyer, confirmPayment } from '../payments/payments.js'
 import { reportIssue, respondToOffer } from '../fulfilment/issues.js'
 import { uploadCreative } from '../fulfilment/creative.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
@@ -20,7 +20,8 @@ const brief = { type: 'object', additionalProperties: false, properties: {
   creativeToFollow: { type: 'boolean' }, notes: { type: 'string', maxLength: 2000 } } }
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.
-const DEAL_SQL = `select d.*, s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
+const DEAL_SQL = `select d.*, (select e.note from deal_events e where e.deal_id = d.id and e.event in ('decline', 'expire', 'lapse', 'cancel_by_seller', 'cancel_by_buyer', 'creative_missed', 'proof_missed', 'supersede') order by e.id desc limit 1) status_note,
+  s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
                   join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies sc on sc.id = d.seller_id`
 
 /** The buyer's own deal, or not found. */
@@ -119,6 +120,12 @@ export function buyerRoutes(route: RouteFn) {
     await ownDeal(db, req.params.id, me.actAs.companyId)
     await approve(db, req.params.id, `buyer:${me.actAs.companyId}`, at)
     return buyerDeal(await ownDeal(db, req.params.id, me.actAs.companyId))
+  })
+
+  // What a cancellation would refund, shown before the buyer confirms (scenario 25).
+  route('GET', '/api/deals/:id/cancel-preview', BUYER, async ({ db, at, me }, req) => {
+    const d = await ownDeal(db, req.params.id, me.actAs.companyId)
+    return buyerCancelTerms(db, d, at)
   })
 
   route('POST', '/api/deals/:id/cancel', BUYER, async ({ db, at, me }, req) => {

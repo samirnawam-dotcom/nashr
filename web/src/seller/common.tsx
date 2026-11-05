@@ -21,7 +21,7 @@ export const due = (iso: string | null) => {
 export { money }
 
 export type Task = { type: string; dealId: string | null; ref: string | null; slotId: string; outlet: string; label: string; startsAt: string
-  buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null }
+  buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null; belowReserve?: boolean }
 const TASK: Record<string, string> = { decide: 'Accept or decline', choose: 'Choose the next bid', creative: 'Review creative', creative_missing: 'Creative not received',
   proof: 'Send proof', issue: 'Respond to an issue', prerun: 'Confirm the pre-run check', invoice: 'Upload your invoice' }
 
@@ -31,7 +31,8 @@ export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
     <li key={i}><a href={t.dealId ? `#/deals/${t.dealId}` : `#/slots/${t.slotId}`}>
       <span className={`task-k ${t.type}`}>{TASK[t.type] ?? t.type}</span>
       <span><b>{t.outlet}</b> · {t.label} · <span className="muted">{when(t.startsAt)}</span>{t.buyer && <span className="muted"> · {t.buyer}</span>}
-        {t.kind === 'buy_now' && <span className="badge on" style={{ marginLeft: 8 }}>Buy now</span>}</span>
+        {t.kind === 'buy_now' && <span className="badge on" style={{ marginLeft: 8 }}>This buyer will pay now</span>}
+        {t.belowReserve && <span className="badge" style={{ marginLeft: 8, color: 'var(--amber)' }}>Below your reserve</span>}</span>
       <span className="num">{t.amount ? money(t.amount) : ''}</span>
       <span className={`small ${due(t.dueAt) === 'overdue' || /in \d+h/.test(due(t.dueAt)) ? 'soon' : 'muted'}`}>{due(t.dueAt)}</span>
     </a></li>))}</ul>

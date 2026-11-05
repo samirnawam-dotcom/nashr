@@ -198,6 +198,24 @@ describe('scenario 12: disputes', () => {
     expect(await heldFor(pool, id, 'AED')).toBe(0)
   })
 
+  test('release and full refund also work, and every outcome tells both sides', async () => {
+    for (const [label, outcome, status] of [['Break 1', 'release', 'released'], ['Break 3', 'refund', 'refunded']] as const) {
+      const id = await accepted(label)
+      await pay(id)
+      await tx(async c => {
+        await transition(c, id, 'submit_proof', 'seller', h(RUN_END, 2))
+        await transition(c, id, 'report_issue', 'buyer', h(RUN_END, 5))
+        await transition(c, id, 'escalate', 'system:timer', h(RUN_END, 53))
+        await decideDispute(c, id, outcome, 'admin', h(RUN_END, 60))
+      })
+      expect((await deal(id)).status).toBe(status)
+      const told = (await pool.query(`select company_id from notifications where deal_id = $1 and kind = 'dispute.decided'`, [id])).rows.map(r => r.company_id)
+      expect(told.sort()).toEqual([(await deal(id)).buyer_id, (await deal(id)).seller_id].sort())
+    }
+    await runMoneyOps(provider, h(RUN_END, 61))
+    expect((await reconcile(provider, 'AED')).ok).toBe(true)
+  })
+
   test('make-good: the seller reruns, the money stays secured', async () => {
     const id = await accepted()
     await pay(id)

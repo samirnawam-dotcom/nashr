@@ -7,6 +7,8 @@ import { audit } from '../core/audit.js'
 import { buyerStatus } from './shapes.js'
 
 const BUYER: ['buyer'] = ['buyer']
+const OPEN = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1)`
+
 const DONE = `('released', 'paid_out')`
 const BOOKED = `('awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')`
 
@@ -17,24 +19,25 @@ const BOOKED = `('awaiting_payment', 'secured', 'in_review', 'issue_open', 'disp
  *   estimate  "Estimate, unconfirmed"   the outlet is not on Nashr; Nashr entered a range
  */
 const OUTLET_SQL = `
-  select o.*, c.payouts_enabled bookable,
+  select o.*, c.payouts_enabled and ${OPEN} ? o.market bookable, not (${OPEN} ? o.market) coming_soon,
     (select min(p.starting_price) from placements p where p.outlet_id = o.id and not p.archived) rate_low,
     (select max(coalesce(p.package_price, p.starting_price)) from placements p where p.outlet_id = o.id and not p.archived) rate_high,
     t.n sales, t.low typical_low, t.high typical_high
   from outlets o left join companies c on c.id = o.company_id
   left join lateral (select count(*)::int n, percentile_disc(0.25) within group (order by d.amount) low, percentile_disc(0.75) within group (order by d.amount) high
     from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id where p.outlet_id = o.id and d.status in ${DONE}) t on true
-  where o.market = 'AE'`
+  where true`
 
 function price(r: any) {
   if (r.bookable && r.sales >= 3) return { level: 'typical', label: 'Typical on Nashr', from: r.typical_low, to: r.typical_high, currency: 'AED' }
+  if (r.coming_soon && r.rate_low != null) return { level: 'rate', label: "Publisher's rate", from: r.rate_low, to: r.rate_high, currency: r.est_currency }
   if (r.bookable && r.rate_low != null) return { level: 'rate', label: "Publisher's rate", from: r.rate_low, to: r.rate_high, currency: 'AED' }
   if (r.est_low != null) return { level: 'estimate', label: 'Estimate, unconfirmed', from: r.est_low, to: r.est_high ?? r.est_low, currency: r.est_currency }
   return null
 }
 
 const outletCard = (r: any) => ({ id: r.id, name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url,
-  tier: r.tier, audience: r.audience, onNashr: !!r.bookable, price: price(r) })
+  tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r) })
 
 export function planRoutes(route: RouteFn) {
   // The directory is for buyers and Nashr only; sellers cannot see it (brief section 6).
@@ -57,7 +60,7 @@ export function planRoutes(route: RouteFn) {
 
   // Outlets not on Nashr: the buyer asks, Nashr's team gets the quote (no contact details either way).
   route('POST', '/api/outlets/:id/quote', BUYER, async ({ db, at, me }, req) => {
-    const o = (await db.query(`select id, name from outlets where id = $1 and market = 'AE'`, [req.params.id])).rows[0]
+    const o = (await db.query(`select id, name from outlets where id = $1`, [req.params.id])).rows[0]
     if (!o) throw new NotFound()
     if (containsContactDetails(req.body.message)) throw new MarketError('Emails and phone numbers are not allowed. Talk through Nashr.')
     const q = (await db.query(`insert into quote_requests (outlet_id, buyer_id, message, created_at) values ($1, $2, $3, $4) returning id`,
@@ -67,6 +70,16 @@ export function planRoutes(route: RouteFn) {
     await audit(db, `buyer:${me.actAs.companyId}`, 'quote.requested', 'outlet', o.id, null, at)
     return { id: q.id }
   }, { type: 'object', required: ['message'], properties: { message: { type: 'string', minLength: 1, maxLength: 2000 } } })
+
+  // "Tell me when it opens" for KSA and Athena (brief sections 14 and 21).
+  route('GET', '/api/waitlist', ['buyer', 'seller'], async ({ db, me }) =>
+    (await db.query(`select topic from waitlist where company_id = $1`, [me.actAs.companyId])).rows.map(r => r.topic))
+
+  route('POST', '/api/waitlist', ['buyer', 'seller'], async ({ db, at, me }, req) => {
+    await db.query(`insert into waitlist (company_id, topic, user_id, created_at) values ($1, $2, $3, $4) on conflict do nothing`,
+      [me.actAs.companyId, req.body.topic, me.userId, at])
+    return { ok: true }
+  }, { type: 'object', required: ['topic'], properties: { topic: { enum: ['KSA', 'Athena'] } } })
 
   // Campaigns: a budget and a plan of outlets; bookings tagged to the campaign count against it.
   const totals = `select c.*, c.launch_date::text launch_text,
@@ -124,7 +137,7 @@ export function planRoutes(route: RouteFn) {
     if (!c) throw new NotFound()
     await db.query(`delete from campaign_items where campaign_id = $1`, [c.id])
     for (const i of req.body.items)
-      await db.query(`insert into campaign_items (campaign_id, outlet_id, planned_amount) select $1, id, $3 from outlets where id = $2 and market = 'AE'`,
+      await db.query(`insert into campaign_items (campaign_id, outlet_id, planned_amount) select $1, id, $3 from outlets where id = $2`, // Saudi outlets can be planned, not booked (brief section 6)
         [c.id, i.outletId, i.planned ?? 0])
     return { ok: true }
   }, { type: 'object', required: ['items'], properties: { items: { type: 'array', maxItems: 200, items: { type: 'object', required: ['outletId'],

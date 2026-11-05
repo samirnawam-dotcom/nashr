@@ -5,7 +5,7 @@ import { dubai } from '../calendar/layout'
 import { DOC_TYPE } from '../documents/Documents'
 import '../directory/directory.css'
 
-type Deal = { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null }
+type Deal = { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
 
 const STATUS: Record<string, [string, string]> = {
   awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Payment secured', 'lead'],
@@ -60,6 +60,7 @@ export function BookingPage({ id }: { id: string }) {
   const [d, setD] = useState<Detail | null>(null), [card, setCard] = useState(CARDS[0][0])
   const [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
   const [issue, setIssue] = useState<null | { reason: string; note: string }>(null)
+  const [terms, setTerms] = useState<null | { allowed: boolean; reason?: string; free?: boolean; paid?: number; publisherKeeps?: number; processing?: number; refund?: number }>(null)
   const load = () => api<Detail>(`/deals/${id}`).then(setD, e => setError(e.message))
   useEffect(() => { load() }, [id])
   async function sendCreative(file: File) {
@@ -100,7 +101,18 @@ export function BookingPage({ id }: { id: string }) {
           <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>Pay {money(d.total, d.currency)}</button>
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">Waiting for the publisher's decision. You'll be asked to pay once they accept.</p>}
-        {d.status === 'payment_secured' && <button className="btn" disabled={busy} onClick={() => confirm('Cancel this booking? The cancellation rules decide how much comes back.') && act(`/deals/${d.id}/cancel`)}>Cancel booking</button>}
+        {d.reason && ['not_selected', 'lapsed', 'cancelled', 'refunded'].includes(d.status) && <p className="muted">Reason: {d.reason}</p>}
+        {d.status === 'payment_secured' && !terms && <button className="btn" disabled={busy} onClick={() => api(`/deals/${d.id}/cancel-preview`).then(setTerms, e => setError(e.message))}>Cancel booking…</button>}
+        {terms && d.status === 'payment_secured' && (!terms.allowed ? <p className="warn">{terms.reason}</p> : <div className="form">
+          <p><b>If you cancel now</b>{terms.free ? ' (inside the free cancellation window)' : ''}:</p>
+          <dl className="sum num">
+            <div><dt>You paid</dt><dd>{money(terms.paid!, d.currency)}</dd></div>
+            {terms.publisherKeeps! > 0 && <div><dt>Kept by the publisher (cancellation fee)</dt><dd>−{money(terms.publisherKeeps!, d.currency)}</dd></div>}
+            <div><dt>Card processing cost of the refund</dt><dd>−{money(terms.processing!, d.currency)}</dd></div>
+            <div className="total"><dt>Refunded to your card</dt><dd>{money(terms.refund!, d.currency)}</dd></div>
+          </dl>
+          <div className="row-flex"><button className="btn primary" disabled={busy} onClick={async () => { await act(`/deals/${d.id}/cancel`); setTerms(null) }}>Confirm cancellation</button>
+            <button className="btn" onClick={() => setTerms(null)}>Keep the booking</button></div></div>)}
         {error && <p className="error" role="alert">{error}</p>}
         {note && <p className="ok" role="status">{note}</p>}
       </div>

@@ -22,10 +22,10 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
   const q = async (sql: string) => (await db.query(sql, [me, at])).rows
   const base = `from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                 join companies b on b.id = d.buyer_id where d.seller_id = $1`
-  const cols = `d.id deal_id, d.ref, s.id slot_id, s.label, s.starts_at, o.name outlet, b.name buyer, d.amount`
+  const cols = `d.id deal_id, d.ref, s.id slot_id, s.label, s.starts_at, o.name outlet, b.name buyer, d.amount, coalesce(d.amount < s.reserve_price, false) below_reserve`
   const rows = [
     ...(await q(`select 'decide' type, ${cols}, d.next_deadline_at due, d.kind ${base} and d.status = 'awaiting_seller' and $2::timestamptz is not null`)),
-    ...(await q(`select 'choose' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.name outlet, null buyer, s.top_amount amount, s.choice_deadline_at due, null kind
+    ...(await q(`select 'choose' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.name outlet, null buyer, s.top_amount amount, false below_reserve, s.choice_deadline_at due, null kind
                  from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                  where o.company_id = $1 and s.status = 'awaiting_choice' and s.choice_deadline_at > $2`)),
     ...(await q(`select 'creative' type, ${cols}, s.creative_due_at due, null kind ${base} and d.status in ('awaiting_payment', 'secured') and $2::timestamptz is not null
@@ -43,7 +43,7 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
   ]
   return rows.sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity)).map(r => ({
     type: r.type, dealId: r.deal_id, ref: r.ref, slotId: r.slot_id, outlet: r.outlet, label: r.label, startsAt: r.starts_at,
-    buyer: r.buyer, amount: r.amount, dueAt: r.due, kind: r.kind }))
+    buyer: r.buyer, amount: r.amount, dueAt: r.due, kind: r.kind, belowReserve: r.type === 'decide' && r.below_reserve }))
 }
 
 export function sellerDeskRoutes(route: RouteFn, deps: { provider: unknown }) {

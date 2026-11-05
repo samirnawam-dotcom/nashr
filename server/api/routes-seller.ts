@@ -6,13 +6,15 @@ import { cancelBySeller, creativeMissed } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
 import { reviewCreative } from '../fulfilment/creative.js'
 import { offerFix } from '../fulfilment/issues.js'
-import { createPlacement, generateSlots } from '../catalog/placements.js'
+import { createPlacement, generateSlots, overlapWarnings } from '../catalog/placements.js'
 
 const SELLER: ['seller'] = ['seller']
 const reason = { type: 'object', required: ['reason'], properties: { reason: { type: 'string', minLength: 1, maxLength: 1000 } } }
 
 // Before acceptance the money preview uses the rates that acceptance would freeze: the publisher's own rate or the default.
-const DEAL_SQL = `select d.*, s.label, s.starts_at, s.reserve_price, o.channel, o.sectors, bc.name buyer_name, b.brief, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
+const DEAL_SQL = `select d.*, d.status = 'awaiting_payment' and exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'charge' and m.status = 'failed')
+    and not exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'charge' and m.status in ('pending', 'requires_action', 'succeeded')) payment_failed,
+  s.label, s.starts_at, s.reserve_price, o.channel, o.sectors, bc.name buyer_name, b.brief, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
     coalesce((select (value)::int from settings where key = 'commission:' || d.seller_id order by valid_from desc limit 1),
              (select (value)::int from settings where key = 'default_commission_bp' order by valid_from desc limit 1)) default_commission_bp
   from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
@@ -98,7 +100,8 @@ export function sellerRoutes(route: RouteFn) {
   route('POST', '/api/seller/placements', SELLER, async ({ db, at, me }, req) => {
     const outlet = (await db.query(`select id from outlets where id = $1 and company_id = $2`, [req.body.outletId, me.actAs.companyId])).rows[0]
     if (!outlet) throw new NotFound()
+    const warnings = await overlapWarnings(db, req.body)
     const id = await createPlacement(db, req.body, `seller:${me.actAs.companyId}`, at)
-    return { id, slots: req.body.listDays ? await generateSlots(db, id, req.body.listFrom, req.body.listDays, at) : 0 }
+    return { id, warnings, slots: req.body.listDays ? await generateSlots(db, id, req.body.listFrom, req.body.listDays, at) : 0 }
   })
 }

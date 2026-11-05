@@ -4,7 +4,7 @@ import { DOC_TYPE } from '../documents/Documents'
 import { DealStatus, money, when } from './common'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
-  brief: any; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
+  brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
   money: { bid: number; mediaVat: number; fee: number; feeVat: number; youReceive: number; commissionBp: number }
   otherBids: { id: string; label: string; company: string; amount: number }[] }
 type Detail = { channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
@@ -86,7 +86,8 @@ export function SellerDealPage({ id }: { id: string }) {
             <div className="row-flex"><button className="btn primary" disabled={busy || !form.reason.trim()} onClick={() => act(`/seller/deals/${d.id}/decline`, { reason: form.reason }, 'Declined.')}>Decline</button>
               <button className="btn" onClick={() => setForm(null)}>Back</button></div></div>}
         </>}
-        {d.status === 'awaiting_payment' && <p className="muted">Waiting for the buyer to pay{d.nextDeadlineAt ? ` (by ${when(d.nextDeadlineAt)})` : ''}. They can send creative already.</p>}
+        {d.status === 'awaiting_payment' && d.paymentFailed && <p className="warn">Payment pending: the buyer's card was declined and they've been asked to update it{d.nextDeadlineAt ? `. The booking lapses at ${when(d.nextDeadlineAt)} if they don't pay` : ''}.</p>}
+        {d.status === 'awaiting_payment' && !d.paymentFailed && <p className="muted">Waiting for the buyer to pay{d.nextDeadlineAt ? ` (by ${when(d.nextDeadlineAt)})` : ''}. They can send creative already.</p>}
         {x.slotStatus === 'awaiting_choice' && ['declined', 'lapsed'].includes(d.status) && <p className="warn">You can choose another bid for this slot. <a href={`#/slots/${x.slotId}`}>Choose the next bid</a></p>}
         {msg}
       </div>

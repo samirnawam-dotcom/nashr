@@ -13,7 +13,7 @@ const PASSWORD = 'nashr-demo-2026'
 const BRIEF = { advertiser: 'Demo brand', industry: 'Banking', message: 'Demo campaign', language: 'english', landingUrl: 'https://example.com', creativeToFollow: true }
 
 await migrate()
-await pool.query(`truncate files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
+await pool.query(`truncate reminders, waitlist, files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
   prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
 await pool.query(`delete from settings where valid_from > '2000-01-01'`)
 
@@ -90,6 +90,11 @@ await pool.query(`update outlets set tier = 'Tier 1', audience = 'Decision maker
 for (const [name, channel, sectors, low, high] of [['Arabian Business', 'print', ['Banking', 'Real estate'], 18_000, 26_000], ['Dubai Eye 103.8', 'radio', ['Retail', 'Hospitality'], 2_500, 4_000],
   ['The National', 'digital', ['Technology', 'Banking'], 7_000, 12_000]] as const)
   await pool.query(`insert into outlets (name, channel, sectors, est_low, est_high) values ($1, $2, $3, $4, $5)`, [name, channel, sectors, AED(low), AED(high)])
+
+// Saudi outlets stay in the directory as "Coming soon" until KSA opens (brief section 14).
+for (const [name, nameAr, channel, low, high] of [['Rotana FM', 'روتانا إف إم', 'radio', 4_000, 7_000], ['Arab News', 'عرب نيوز', 'print', 15_000, 25_000]] as const)
+  await pool.query(`insert into outlets (name, name_ar, channel, market, sectors, est_low, est_high, est_currency) values ($1, $2, $3, 'SA', '{Banking,Retail}', $4, $5, 'SAR')`,
+    [name, nameAr, channel, low * 100, high * 100])
 
 // A campaign with a plan, and one buy-now the publisher has accepted (pay it from Bookings).
 const campaign = (await pool.query(`insert into campaigns (buyer_id, name, budget, launch_date, objective, created_at) values ($1, 'Q4 business cards launch', $2, $3, 'Awareness', now()) returning id`,

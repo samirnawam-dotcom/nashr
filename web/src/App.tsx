@@ -14,6 +14,7 @@ import { SellerDealPage, SellerDealsPage } from './seller/Deals'
 import { EarningsPage } from './seller/Earnings'
 import { ListingsPage, NewPlacementPage } from './seller/Listings'
 import { ProfilePage } from './seller/Profile'
+import { AthenaPage } from './Athena'
 import { AccessPage, AdminOverview } from './admin/Overview'
 import { AccountPage, AccountsPage } from './admin/Accounts'
 import { AdminDealPage, AdminDealsPage, DisputesPage } from './admin/Deals'
@@ -35,6 +36,7 @@ const BUYER: Routes = [
   [/^\/bookings/, () => <BookingsPage />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <DocumentsPage />],
+  [/^\/athena/, () => <AthenaPage />],
 ]
 const SELLER: Routes = [
   [/^\/home/, () => <SellerDashboard />],
@@ -68,7 +70,7 @@ const ADMIN = (founder: boolean): Routes => [
 const NAV: Record<string, string[][]> = {
   admin: [['/admin', 'Overview'], ['/access', 'Access'], ['/accounts', 'Accounts'], ['/deals', 'Deals'], ['/disputes', 'Disputes'], ['/funds', 'Funds'],
     ['/payouts', 'Payouts'], ['/directory', 'Directory'], ['/reports', 'Reports'], ['/audit', 'Audit'], ['/settings', 'Settings']],
-  buyer: [['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/campaigns', 'Campaigns'], ['/bookings', 'Bookings']],
+  buyer: [['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/campaigns', 'Campaigns'], ['/bookings', 'Bookings'], ['/athena', 'Athena · soon']],
   seller: [['/home', 'Dashboard'], ['/schedule', 'Calendar'], ['/inbox', 'Inbox'], ['/deals', 'Deals'], ['/earnings', 'Earnings'], ['/listings', 'Listings'], ['/profile', 'Profile']],
 }
 

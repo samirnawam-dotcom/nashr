@@ -6,7 +6,7 @@ export const T = (iso: string) => new Date(iso)
 export const BRIEF = { advertiser: 'Northwind Fintech', industry: 'Banking', message: 'Business cards for growing companies', language: 'english', creativeToFollow: true }
 
 export async function reset() {
-  await pool.query(`truncate files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues, prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
+  await pool.query(`truncate reminders, waitlist, files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues, prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
   await pool.query(`delete from settings where valid_from > '2000-01-01'`)
 }
 

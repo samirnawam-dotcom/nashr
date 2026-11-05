@@ -10,6 +10,10 @@ import { DiskStorage } from '../files/storage.js'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { sweep } from '../marketplace/sweeper.js'
+import { runMoneyOps } from '../payments/payments.js'
+import { balance } from '../payments/ledger.js'
+import { addWorkingDays } from '../core/market.js'
 
 let now = T('2026-11-01T08:00:00Z')
 const provider = new FakeProvider()
@@ -346,5 +350,123 @@ describe('admin screens', () => {
     const onNashr = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
     expect((await call(admin, 'PUT', `/api/admin/outlets/${onNashr}`, { name: 'Hacked' })).json().error).toMatch('not on Nashr')
     expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === off).price).toMatchObject({ level: 'estimate', to: AED(9_000) })
+  })
+})
+
+describe('brief scenarios closed in phase F', () => {
+  /** Move the clock; sessions last 12 hours, so everyone signs in again. */
+  async function jump(iso: string) {
+    now = T(iso)
+    buyerA.cookie = await signIn('sara@northwind.ae'); buyerB.cookie = await signIn('ali@alfuttaim.ae')
+    sellerX.cookie = await signIn('sales@skyline.ae'); sellerY.cookie = await signIn('sales@gulfradio.ae')
+    admin.cookie = await signIn('ops@nashr.ae', totp((admin as any).secret, now))
+  }
+  const kinds = async (who: Who) => (await call(who, 'GET', '/api/notifications')).json().items.map((n: any) => n.kind)
+  const deadline = async (deal: string) => (await call(buyerA, 'GET', `/api/deals/${deal}`)).json().nextDeadlineAt as string
+  const hoursBefore = (iso: string, h: number) => new Date(new Date(iso).getTime() - h * 3_600_000).toISOString()
+
+  test('scenarios 2 and 20: a bid below the reserve is flagged to the seller only; a decline shows the buyer the reason', async () => {
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    expect(JSON.stringify((await call(buyerB, 'GET', `/api/slots/${slotX}`)).json())).not.toMatch(/reserve/i)
+    await jump('2026-11-04T04:00:00Z'); await sweep(now) // bidding closed
+    const [task] = (await call(sellerX, 'GET', '/api/seller/inbox')).json()
+    expect(task).toMatchObject({ type: 'decide', belowReserve: true, buyer: 'Al Futtaim' })
+    await call(sellerX, 'POST', `/api/seller/deals/${task.dealId}/decline`, { reason: 'The break was sold off-platform' })
+    expect((await call(buyerB, 'GET', '/api/deals')).json()[0]).toMatchObject({ status: 'not_selected', reason: 'The break was sold off-platform' })
+  })
+
+  test('scenarios 3 and 5: reminders before the deadline; a declined card shows "payment pending" to the seller, then lapses with a reason', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const due = await deadline(deal)
+    await jump(hoursBefore(due, 11)); await sweep(now); await sweep(now)
+    expect((await kinds(sellerX)).filter((k: string) => k === 'reminder.decide')).toHaveLength(1) // once, however often the sweeper runs
+    await jump(hoursBefore(due, 1)); await sweep(now)
+    expect((await kinds(sellerX)).filter((k: string) => k === 'reminder.decide')).toHaveLength(2)
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_0002' })).json()).toMatchObject({ status: 'failed' })
+    expect((await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).json()).toMatchObject({ status: 'awaiting_payment', paymentFailed: true })
+    await jump(new Date(new Date(await deadline(deal)).getTime() + 60_000).toISOString()); await sweep(now)
+    expect((await call(buyerA, 'GET', `/api/deals/${deal}`)).json()).toMatchObject({ status: 'lapsed', reason: 'Payment was not made in time' })
+  })
+
+  test('scenarios 11, 17 and 25: review reminders on day 3 and day 1, auto-release; the money always adds up; cancellation is previewed exactly', async () => {
+    // one booking runs to auto-release, another is cancelled by the buyer outside the free window
+    const run = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const cancel = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${run}/accept`); await call(sellerY, 'POST', `/api/seller/deals/${cancel}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${run}/pay`, { paymentMethod: 'pm_card_4242' }); await call(buyerB, 'POST', `/api/deals/${cancel}/pay`, { paymentMethod: 'pm_card_4242' })
+
+    await jump('2026-11-03T08:00:00Z') // two days later: outside the 24-hour free window, before the creative deadline
+    const terms = (await call(buyerB, 'GET', `/api/deals/${cancel}/cancel-preview`)).json()
+    expect(terms).toMatchObject({ allowed: true, free: false, paid: AED(5_775), publisherKeeps: AED(866.25) })
+    expect(terms.refund).toBe(terms.paid - terms.publisherKeeps - terms.processing)
+    await call(buyerB, 'POST', `/api/deals/${cancel}/cancel`)
+    const refundOp = (await pool.query(`select amount from money_ops where deal_id = $1 and kind = 'refund'`, [cancel])).rows[0]
+    expect(refundOp.amount).toBe(terms.refund) // what the buyer saw is what they get
+
+    await jump('2026-11-09T04:00:00Z')
+    await call(sellerX, 'POST', `/api/seller/deals/${run}/proof`, { items: { as_run_log: 'log', audio_clip: 'clip' } })
+    const release = await deadline(run)
+    await jump(hoursBefore(release, 71)); await sweep(now)
+    await jump(hoursBefore(release, 23)); await sweep(now)
+    expect((await kinds(buyerA)).filter((k: string) => k === 'reminder.review')).toHaveLength(2) // day 3 and day 1
+    await jump(new Date(new Date(release).getTime() + 60_000).toISOString()); await sweep(now)
+    expect((await call(buyerA, 'GET', `/api/deals/${run}`)).json()).toMatchObject({ status: 'released' })
+    await runMoneyOps(provider, now)
+
+    // Scenario 17: received = held + released (not yet paid out) + paid out + refunded + card costs kept
+    const b = (a: string) => balance(pool, a, 'AED')
+    const sum = async (sql: string) => Number((await pool.query(sql)).rows[0].n)
+    const received = await sum(`select coalesce(sum(amount), 0) n from money_ops where kind = 'charge' and status = 'succeeded'`)
+    const paidOut = await sum(`select coalesce(sum(amount), 0) n from money_ops where kind = 'transfer' and status = 'succeeded'`)
+    const refunded = await sum(`select coalesce(sum(amount), 0) n from money_ops where kind = 'refund' and status = 'succeeded'`)
+    const held = -(await b('held'))
+    const released = -(await b(`seller_payable:${sellerX.companyId}`)) - (await b(`seller_payable:${sellerY.companyId}`)) - (await b('nashr_revenue')) - (await b('vat_payable'))
+    const costsKept = -(await b('refund_costs')) - (await b(`seller_receivable:${sellerX.companyId}`)) - (await b(`seller_receivable:${sellerY.companyId}`))
+    expect(received).toBe(AED(5_775) * 2)
+    expect(held + released + paidOut + refunded + costsKept).toBe(received)
+    expect(Math.abs(held)).toBe(0) // nothing is left held for a deal that is released or cancelled
+    expect((await call(admin, 'GET', '/api/admin/funds')).json().reconcile.ok).toBe(true)
+    expect((await call(admin, 'GET', '/api/admin/reports?from=2026-11-01&to=2026-11-30')).json().refundLosses).toMatchObject({ refunds: 1, from_buyers: terms.processing })
+  })
+
+  test('scenario 18: overnight programmes, overlap warnings, podcast release times', async () => {
+    const outletId = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    const base = { outletId, saleType: 'auction', days: [1], startingPrice: AED(1_000), creativeLeadHours: 48, closeLeadHours: 120, listFrom: '2026-11-16', listDays: 1 }
+    expect((await call(sellerX, 'POST', '/api/seller/placements', { ...base, name: 'Backwards', startsAt: '09:00', endsAt: '08:00' })).json().error).toMatch('after the start')
+    const late = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, name: 'Late Night', startsAt: '23:00', endsAt: '02:00',
+      breaks: [{ label: 'Break 1', at: '23:30', seconds: 30 }, { label: 'Break 2', at: '00:30', seconds: 30 }] })).json()
+    expect(late.slots).toBe(2)
+    const slots = (await pool.query(`select label, starts_at from slots where placement_id = $1 order by starts_at`, [late.id])).rows
+    expect(slots.map(r => [r.label, r.starts_at.toISOString()])).toEqual([['Break 1', '2026-11-16T19:30:00.000Z'], ['Break 2', '2026-11-16T20:30:00.000Z']]) // 00:30 is Tuesday
+    const clash = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, name: 'After Hours', startsAt: '01:00', endsAt: '03:00' })).json()
+    expect(clash.warnings).toEqual([]) // 01:00 Monday is not 01:00 Tuesday: the overnight show runs into Tuesday
+    const overlap = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, name: 'Midnight Mix', startsAt: '22:00', endsAt: '23:45' })).json()
+    expect(overlap.warnings).toEqual(['This overlaps Late Night on 1 of the same days.'])
+    const pod = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, name: 'Weekly episode', days: [4], startsAt: '06:00', breaks: [{ label: 'Pre-roll' }], listFrom: '2026-11-19' })).json()
+    expect((await pool.query(`select starts_at from slots where placement_id = $1`, [pod.id])).rows[0].starts_at.toISOString()).toBe('2026-11-19T02:00:00.000Z') // Thursday 06:00 Dubai
+  })
+
+  test('scenarios 16 and 19: KSA is coming soon: listed and plannable, never bookable; waiting lists work', async () => {
+    const ksa = (await pool.query(`insert into companies (name, type, payouts_enabled) values ('Rotana Media', 'publisher', true) returning id`)).rows[0].id
+    const outlet = (await pool.query(`insert into outlets (company_id, name, channel, market, est_currency) values ($1, 'Rotana FM', 'radio', 'SA', 'SAR') returning id`, [ksa])).rows[0].id
+    const placement = await tx(c => createPlacement(c, { outletId: outlet, name: 'Drive', saleType: 'auction', days: [1, 2, 3, 4, 5, 6, 7], startsAt: '07:00', endsAt: '09:00',
+      startingPrice: AED(3_000), creativeLeadHours: 48, closeLeadHours: 120 }, 'seller', now))
+    await tx(c => generateSlots(c, placement, '2026-11-16', 7, now))
+    const slots = (await pool.query(`select id, currency, air_date::text d from slots where placement_id = $1 order by air_date`, [placement])).rows
+    expect(slots).toHaveLength(7) // programmes air on the days the seller picks, weekend or not
+    expect(slots[0].currency).toBe('SAR')
+    // KSA deadlines count working days around a Friday-Saturday weekend: Thursday + 1 working day is Sunday (UAE: Monday)
+    const thu = T('2026-11-19T09:00:00Z')
+    expect((await addWorkingDays(pool, thu, 1, 'SA')).toISOString().slice(0, 10)).toBe('2026-11-22')
+    expect((await addWorkingDays(pool, thu, 1, 'AE')).toISOString().slice(0, 10)).toBe('2026-11-20')
+    expect((await call(buyerA, 'GET', '/api/slots?from=2026-11-15T00:00:00Z&to=2026-11-23T00:00:00Z')).json().some((s: any) => s.outlet === 'Rotana FM')).toBe(false)
+    expect((await call(buyerA, 'POST', `/api/slots/${slots[0].id}/bids`, { amount: AED(3_000), brief: BRIEF })).json().error).toMatch('coming soon')
+    expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === outlet)).toMatchObject({ market: 'SA', comingSoon: true, onNashr: false })
+    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'GCC', budget: AED(10_000) })).json().id
+    await call(buyerA, 'PUT', `/api/campaigns/${c}/items`, { items: [{ outletId: outlet, planned: AED(3_000) }] })
+    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json().items).toHaveLength(1)
+    for (const topic of ['KSA', 'Athena', 'KSA']) await call(buyerA, 'POST', '/api/waitlist', { topic })
+    expect((await call(buyerA, 'GET', '/api/waitlist')).json().sort()).toEqual(['Athena', 'KSA'])
   })
 })

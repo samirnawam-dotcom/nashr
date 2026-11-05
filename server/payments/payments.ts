@@ -1,5 +1,6 @@
 import { type Db, one, pool, tx } from '../core/db.js'
 import { audit } from '../core/audit.js'
+import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
 import { pct, split } from '../core/money.js'
 import { transition } from '../marketplace/deals.js'
@@ -152,18 +153,27 @@ export async function onTimerEvent(db: Db, deal: any, event: string, at: Date) {
 }
 
 /** Buyer cancels (brief section 12): full refund in the free window, then minus the cancellation fee, nothing after the creative deadline. */
+/** What a buyer cancellation would mean right now: shown before confirming (scenario 25), applied by cancelByBuyer. */
+export async function buyerCancelTerms(db: Db, deal: any, at: Date) {
+  if (deal.status !== 'secured') return { allowed: false, reason: 'Only a paid booking that has not run can be cancelled.' }
+  const { paid_at, creative_due_at } = await one(db, `select (select at from deal_events where deal_id = $1 and event = 'pay' order by id desc limit 1) paid_at,
+                                                        s.creative_due_at from slots s where s.id = $2`, [deal.id, deal.slot_id])
+  if (at >= creative_due_at) return { allowed: false, reason: 'This booking can no longer be cancelled for a refund: the creative deadline has passed.' }
+  const paid = await heldFor(db, deal.id, deal.currency)
+  const free = at.getTime() - paid_at.getTime() <= (await setting<number>(db, 'free_cancel_hours', at)) * 3_600_000
+  const keepPrice = free ? 0 : pct(deal.amount, await setting(db, 'cancel_fee_bp', at)) // the publisher keeps 15% (+ its VAT)
+  const publisherKeeps = keepPrice + pct(keepPrice, deal.media_vat_bp)
+  const processing = Math.min(await processingCost(db, paid, at), paid - publisherKeeps) // card cost of the refund, borne by the buyer
+  return { allowed: true, free, currency: deal.currency, paid, publisherKeeps, processing, refund: paid - publisherKeeps - processing }
+}
+
 export async function cancelByBuyer(db: Db, dealId: string, buyerId: string, at: Date) {
   const deal = await lockDeal(db, dealId)
   if (deal.buyer_id !== buyerId) throw new MarketError('This booking is not yours.')
-  const { paid_at, creative_due_at } = await one(db, `select (select at from deal_events where deal_id = $1 and event = 'pay' order by id desc limit 1) paid_at,
-                                                        s.creative_due_at from slots s where s.id = $2`, [deal.id, deal.slot_id])
-  if (at >= creative_due_at) throw new MarketError('This booking can no longer be cancelled for a refund: the creative deadline has passed.')
-  const held = await heldFor(db, deal.id, deal.currency)
-  const free = at.getTime() - paid_at.getTime() <= (await setting<number>(db, 'free_cancel_hours', at)) * 3_600_000
-  const keepPrice = free ? 0 : pct(deal.amount, await setting(db, 'cancel_fee_bp', at)) // the publisher keeps 15% (+ its VAT)
-  const keep = keepPrice + pct(keepPrice, deal.media_vat_bp)
-  await transition(db, dealId, 'cancel_by_buyer', `buyer:${buyerId}`, at, free ? 'Inside the free cancellation window' : 'Cancellation fee applies')
-  await refund(db, deal, held - keep, 'buyer', at)
+  const t = await buyerCancelTerms(db, deal, at)
+  if (!t.allowed) throw new MarketError(t.reason!)
+  await transition(db, dealId, 'cancel_by_buyer', `buyer:${buyerId}`, at, t.free ? 'Inside the free cancellation window' : 'Cancellation fee applies')
+  await refund(db, deal, t.paid! - t.publisherKeeps!, 'buyer', at)
 }
 
 /** Seller cancels: full refund, recorded against the seller, card cost recovered from their payouts (scenarios 8, 25). */
@@ -184,6 +194,8 @@ export async function decideDispute(db: Db, dealId: string, outcome: 'release' |
     if (!refundAmount || refundAmount <= 0 || refundAmount >= held) throw new MarketError('Enter a partial refund between zero and the amount paid.')
     await refund(db, deal, refundAmount, 'seller', at)
   }
+  for (const side of [deal.buyer_id, deal.seller_id]) // both sides hear the decision (scenario 12)
+    await notify(db, side, 'dispute.decided', deal.id, { outcome, ...(refundAmount ? { amount: refundAmount } : {}) }, at)
   return deal
 }
 

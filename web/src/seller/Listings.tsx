@@ -45,7 +45,7 @@ export function ListingsPage() {
 const aed = (v: string) => v.trim() ? Math.round(Number(v.replace(/,/g, '')) * 100) : undefined
 
 export function NewPlacementPage() {
-  const [p, setP] = useState<Profile | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  const [p, setP] = useState<Profile | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [warnings, setWarnings] = useState<string[]>([])
   const [f, setF] = useState({ outletId: '', name: '', saleType: 'auction', days: [1, 2, 3, 4, 5], startsAt: '', endsAt: '', startingPrice: '', anyBreakPrice: '', packagePrice: '',
     buyNowPrice: '', reservePrice: '', creativeLeadHours: '48', closeLeadDays: '5', listDays: '28' })
   const [breaks, setBreaks] = useState<{ label: string; at: string; seconds: string }[]>([])
@@ -60,11 +60,13 @@ export function NewPlacementPage() {
         startingPrice: aed(f.startingPrice), anyBreakPrice: aed(f.anyBreakPrice), packagePrice: aed(f.packagePrice), buyNowPrice: aed(f.buyNowPrice), reservePrice: aed(f.reservePrice),
         creativeLeadHours: Number(f.creativeLeadHours), closeLeadHours: Number(f.closeLeadDays) * 24,
         ...(p!.company.payoutsEnabled && Number(f.listDays) ? { listFrom: todayInDubai(), listDays: Number(f.listDays) } : {}) }
-      await api('/seller/placements', { method: 'POST', body: JSON.parse(JSON.stringify(body)) })
-      location.hash = '#/listings'
+      const r = await api('/seller/placements', { method: 'POST', body: JSON.parse(JSON.stringify(body)) })
+      if (r.warnings?.length) setWarnings(r.warnings); else location.hash = '#/listings'
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
+  if (warnings.length) return <main className="narrow"><h1>Placement saved</h1>
+    {warnings.map(w => <p key={w} className="warn">{w} Check the times if that's not intended.</p>)}<a className="btn primary" href="#/listings">Go to listings</a></main>
   if (!p.outlets.length) return <main className="narrow"><h1>Add placement</h1><p>Add your outlet first. <a href="#/profile">Outlet profile</a></p></main>
   const slotted = breaks.length > 0
   return (
@@ -78,7 +80,7 @@ export function NewPlacementPage() {
           <option value="auction">Auction (buyers bid; you accept the winner)</option><option value="quick_sale">Quick sale (fixed price; you pick a buyer)</option></select></div>
         <div className="field"><span className="small muted">Days</span><div className="days">{DAYS.map((d, i) => <label key={d} className={f.days.includes(i + 1) ? 'on' : ''}>
           <input type="checkbox" hidden checked={f.days.includes(i + 1)} onChange={() => setF({ ...f, days: f.days.includes(i + 1) ? f.days.filter(x => x !== i + 1) : [...f.days, i + 1].sort() })} />{d}</label>)}</div></div>
-        <div className="row-flex"><div className="field"><label htmlFor="sa">Starts (Dubai time, empty for all day)</label><input id="sa" type="time" value={f.startsAt} onChange={set('startsAt')} /></div>
+        <div className="row-flex"><div className="field"><label htmlFor="sa">Starts (Dubai time, empty for all day; overnight like 23:00–02:00 works)</label><input id="sa" type="time" value={f.startsAt} onChange={set('startsAt')} /></div>
           <div className="field"><label htmlFor="ea">Ends</label><input id="ea" type="time" value={f.endsAt} onChange={set('endsAt')} /></div></div>
         <div className="field"><span className="small muted">{channel === 'podcast' ? 'Positions' : 'Breaks'} (each one is sold on its own; leave empty to sell the whole slot)</span>
           {breaks.map((b, i) => <div className="breaks-row" key={i}>

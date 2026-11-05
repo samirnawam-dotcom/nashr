@@ -168,11 +168,21 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       where d.status in ${LIVE} and (d.created_at at time zone 'Asia/Dubai')::date between $1::date and $2::date`
     const agg = `count(*)::int bookings, sum(d.amount)::bigint gmv, sum(round(d.amount * coalesce(d.commission_bp, 0) / 10000.0))::bigint commission`
     const q = async (sql: string) => (await db.query(sql, [from, to])).rows
-    return { from, to,
+    const outstanding = await sumLike(db, 'seller_receivable:')
+    return { from, to, sellersStillOwe: outstanding,
       byMonth: await q(`select to_char(d.created_at at time zone 'Asia/Dubai', 'YYYY-MM') as month, ${agg} ${base} group by 1 order by 1`),
       byChannel: await q(`select o.channel, ${agg} ${base} group by 1 order by gmv desc`),
       byOutlet: await q(`select o.name outlet, o.channel, ${agg} ${base} group by 1, 2 order by gmv desc limit 50`),
-      bySaleType: await q(`select d.kind, ${agg} ${base} group by 1 order by gmv desc`) }
+      bySaleType: await q(`select d.kind, ${agg} ${base} group by 1 order by gmv desc`),
+      // Refund losses (brief 12A): refunds sent, card costs recovered from buyers and sellers, what sellers still owe.
+      // ponytail: the provider's own refund fees are recorded with Stripe (B5); until then "card costs" are Nashr's estimate.
+      refundLosses: (await db.query(`select
+          (select count(*)::int from money_ops where kind = 'refund' and (created_at at time zone 'Asia/Dubai')::date between $1::date and $2::date) refunds,
+          (select coalesce(sum(amount), 0)::bigint from money_ops where kind = 'refund' and (created_at at time zone 'Asia/Dubai')::date between $1::date and $2::date) refunded,
+          (select coalesce(sum(amount), 0)::bigint from ledger_entries where ref = 'card cost kept from refund' and (at at time zone 'Asia/Dubai')::date between $1::date and $2::date) from_buyers,
+          (select coalesce(sum(amount), 0)::bigint from ledger_entries where ref = 'card cost recoverable from seller' and (at at time zone 'Asia/Dubai')::date between $1::date and $2::date) charged_to_sellers,
+          (select coalesce(sum(amount), 0)::bigint from ledger_entries where ref = 'deducted from payout' and (at at time zone 'Asia/Dubai')::date between $1::date and $2::date) recovered_from_sellers`,
+        [from, to])).rows[0] }
   })
 
   // Quote requests from the directory, and the directory entries for outlets not on Nashr.
