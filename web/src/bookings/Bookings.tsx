@@ -175,7 +175,7 @@ export function BookingPage({ id }: { id: string }) {
         {d.status === 'accepted_pay_now' && <>
           <p>The publisher accepted. Please pay{d.nextDeadlineAt ? ` by ${when(d.nextDeadlineAt)}` : ''}.</p>
           <div className="field"><label htmlFor="card">Card</label><select id="card" value={card} onChange={e => setCard(e.target.value)}>{CARDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-          <p className="small muted">The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher.</p>
+          <p className="small muted">The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher. By paying you agree to the <a href="#/terms">terms</a> and the <a href="#/refunds">refund and cancellation policy</a>.</p>
           <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>Pay {money(d.total, d.currency)}</button>
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">Waiting for the publisher's decision. You'll be asked to pay once they accept.</p>}

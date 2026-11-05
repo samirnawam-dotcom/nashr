@@ -38,6 +38,7 @@ export function Login({ onIn, note }: { onIn: () => void; note?: string }) {
         <button className="btn primary" disabled={busy}>Sign in</button>
         <p className="small muted">Nashr is invite-only for UAE brands, agencies and media outlets. <a href="#/request-access">Request access</a></p>
         <p className="small muted"><a href="#/">Back to Nashr</a> · <a href="#/calendar">Browse the calendar</a></p>
+        <p className="small muted"><a href="#/terms">Terms</a> · <a href="#/privacy">Privacy</a> · <a href="#/refunds">Refunds</a></p>
       </form>
     </AuthShell>
   )

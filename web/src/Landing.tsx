@@ -172,7 +172,7 @@ export function Landing() {
           <p className="small">Already invited? <a className="link" href="#/sign-in">Sign in</a></p>
         </div>
       </div></section>
-      <footer className="lp-foot"><div className="wrap"><span>Nashr, the UAE media marketplace. Prices in AED, times in Dubai time.</span><span><a href="#/sign-in">Sign in</a></span></div></footer>
+      <footer className="lp-foot"><div className="wrap"><span>Nashr, the UAE media marketplace. Prices in AED, times in Dubai time.</span><span className="foot-links"><a href="#/terms">Terms</a><a href="#/privacy">Privacy</a><a href="#/refunds">Refunds</a><a href="#/sign-in">Sign in</a></span></div></footer>
     </div>
   )
 }

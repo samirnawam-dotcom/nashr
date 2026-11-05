@@ -26,6 +26,7 @@ export function RequestAccess() {
             <option value="brand">A brand</option><option value="agency">An agency</option><option value="media_outlet">A media outlet</option></select></div>
           {error && <p className="error" role="alert">{error}</p>}
           <button className="btn primary" disabled={busy}>Send request</button>
+          <p className="small muted">By sending, you agree to Nashr's <a href="#/terms">terms of use</a> and <a href="#/privacy">privacy policy</a>.</p>
         </>}
         <p className="small muted"><a href="#/sign-in">Sign in</a> · <a href="#/">Back to Nashr</a></p>
       </form>

@@ -21,6 +21,7 @@ import { AdminDealPage, AdminDealsPage, DisputesPage } from './admin/Deals'
 import { FundsPage, PayoutsPage, ReportsPage } from './admin/Money'
 import { AuditPage, DirectoryAdminPage, SettingsPage } from './admin/System'
 import { Landing } from './Landing'
+import { PrivacyPage, RefundsPage, TermsPage } from './Legal'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 
 type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null }
@@ -69,13 +70,15 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/settings/, () => <SettingsPage isFounder={founder} />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
 ]
+// Terms, privacy and refunds are open to everyone, signed in or not.
+const LEGAL: Routes = [[/^\/terms$/, () => <TermsPage />], [/^\/privacy$/, () => <PrivacyPage />], [/^\/refunds$/, () => <RefundsPage />]]
 // Visitors can browse the calendar and the directory; everything else asks them to sign in.
-const GUEST: Routes = [
+const GUEST: Routes = [...LEGAL,
   [/^\/calendar/, () => <CalendarPage />],
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
 ]
-const routesFor = (role: string): Routes => role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER
+const routesFor = (role: string): Routes => [...LEGAL, ...(role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER)]
 const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 

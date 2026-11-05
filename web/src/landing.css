@@ -196,3 +196,5 @@
 .lp .text-link { background: none; border: 0; padding: 0; font: inherit; color: #fff; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .lp .hero-grid { padding-block: 56px 72px; }
 @media (max-width: 560px) { .lp .hero-grid { padding-block: 24px 48px; } }
+.lp .foot-links { display: flex; gap: 16px; flex-wrap: wrap; }
+.lp .foot-links a { color: var(--on-studio-dim); }

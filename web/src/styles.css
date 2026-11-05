@@ -132,3 +132,12 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 @media (max-width: 900px) { .guest-actions a.signin { display: none; } .guest-actions .btn.signal { padding: 7px 12px; } }
 .signin-prompt .btn { white-space: nowrap; }
 .signin-prompt.compact .row-flex { gap: 8px; flex-wrap: wrap; }
+
+/* Terms, privacy and refunds: a readable column */
+main.legal { max-width: 760px; }
+main.legal h1 { margin: 16px 0 4px; }
+main.legal h2 { font-size: 18px; margin: 28px 0 8px; }
+main.legal p, main.legal li { line-height: 1.65; }
+main.legal ul { padding-left: 20px; display: grid; gap: 6px; }
+main.legal .table { margin: 8px 0; }
+.legal-links { display: flex; gap: 16px; margin: 40px 0 24px; padding-top: 16px; border-top: 1px solid var(--line); }
