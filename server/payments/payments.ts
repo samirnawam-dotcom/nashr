@@ -43,7 +43,25 @@ export async function confirmPayment(provider: PaymentProvider, a: { dealId: str
     return newOp(c, { dealId: deal.id, kind: 'charge', amount: split(deal.amount, ratesOf(deal)).buyerPays, currency: deal.currency, key: `charge:${deal.id}:${n + 1}` }, at)
   })
   const res = await provider.charge({ amount: op.amount, currency: op.currency, paymentMethod: a.paymentMethod, idempotencyKey: op.idempotency_key })
-  return tx(c => recordCharge(c, op.id, res, at))
+  const out = await tx(c => recordCharge(c, op.id, res, at))
+  if (out.status === 'succeeded') await recordFee(provider, op.id, at)
+  // 3-D Secure: the buyer's browser completes it with this secret; the provider's webhook reports the outcome.
+  return res.status === 'requires_action' ? { ...out, clientSecret: res.clientSecret } : out
+}
+
+/**
+ * Book the provider's processing fee for a succeeded charge (cash → processing_fees), so Nashr's cash in the ledger
+ * matches the provider's balance, which is net of fees. Once per charge; a missed one is caught by the money check.
+ */
+export async function recordFee(provider: PaymentProvider, opId: string, at: Date) {
+  if (!provider.chargeFee) return
+  const op = await one(pool, `select * from money_ops where id = $1`, [opId])
+  if (op.status !== 'succeeded' || !op.provider_id) return
+  const fee = await provider.chargeFee(op.provider_id)
+  await tx(async c => {
+    const done = await c.query(`select 1 from ledger_entries where debit = 'processing_fees' and ref = $1`, [`fee ${op.ref}`])
+    if (!done.rowCount) await post(c, [{ debit: 'processing_fees', credit: 'cash', amount: fee, dealId: op.deal_id, ref: `fee ${op.ref}` }], op.currency, at)
+  })
 }
 
 async function recordCharge(db: Db, opId: string, res: ChargeResult, at: Date) {
@@ -226,11 +244,16 @@ export async function runMoneyOps(provider: PaymentProvider, at: Date) {
 /**
  * Provider notifications (webhooks). Stored first under the event id, so the same event never counts twice (SPEC 5.6).
  */
-export async function handleProviderEvent(ev: { id: string; type: string; data: any }, at: Date) {
-  return tx(async c => {
+export async function handleProviderEvent(ev: { id: string; type: string; data: any }, at: Date, provider?: PaymentProvider) {
+  const result = await tx(async c => {
     const ins = await c.query(`insert into provider_events (id, type, payload, received_at) values ($1, $2, $3, $4) on conflict do nothing`,
       [ev.id, ev.type, JSON.stringify(ev.data), at])
     if (!ins.rowCount) return 'duplicate'
+    if (ev.type === 'account.updated') { // a publisher finished (or lost) payout verification on the provider's pages
+      const co = (await c.query(`update companies set payouts_enabled = $2 where provider_account = $1 and payouts_enabled <> $2 returning id`, [ev.data.account, ev.data.ready])).rows[0]
+      if (co) await audit(c, 'system:provider', ev.data.ready ? 'payouts.connected' : 'payouts.disabled', 'company', co.id, { account: ev.data.account }, at)
+      return co ? 'handled' : 'ignored'
+    }
     const op = (await c.query(`select * from money_ops where provider_id = $1`, [ev.data.id])).rows[0]
     if (!op) return 'ignored'
     if (ev.type === 'charge.succeeded') await recordCharge(c, op.id, { id: op.provider_id, status: 'succeeded' }, at)
@@ -239,6 +262,11 @@ export async function handleProviderEvent(ev: { id: string; type: string; data: 
     if (ev.type === 'charge.dispute.created') await audit(c, 'system:provider', 'chargeback.opened', 'deal', op.deal_id, ev.data, at) // goes to the admin as a dispute
     return 'handled'
   })
+  if (result === 'handled' && ev.type === 'charge.succeeded' && provider) {
+    const op = (await pool.query(`select id from money_ops where provider_id = $1 and kind = 'charge'`, [ev.data.id])).rows[0]
+    if (op) await recordFee(provider, op.id, at)
+  }
+  return result
 }
 
 /** Daily check (SPEC 5.6): the ledger balances, and Nashr's cash in the ledger matches the provider balance. */

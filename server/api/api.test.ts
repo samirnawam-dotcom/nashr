@@ -11,9 +11,11 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { sweep } from '../marketplace/sweeper.js'
-import { runMoneyOps } from '../payments/payments.js'
+import { reconcile, runMoneyOps } from '../payments/payments.js'
 import { balance } from '../payments/ledger.js'
 import { addWorkingDays } from '../core/market.js'
+import { createHmac } from 'node:crypto'
+import { StripeProvider } from '../payments/stripe.js'
 
 let now = T('2026-11-01T08:00:00Z')
 const provider = new FakeProvider()
@@ -590,5 +592,91 @@ describe('security review fixes', () => {
     const code = totp((admin as any).secret, now)
     expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'ops@nashr.ae', password: PASS, totpCode: code } })).statusCode).toBe(200)
     expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'ops@nashr.ae', password: PASS, totpCode: code } })).json().error).toMatch('authenticator')
+  })
+})
+
+describe('Stripe (task B5) against an in-memory Stripe', () => {
+  /** Behaves like Stripe's REST API with its test cards: 4242 succeeds, 0002 is declined, 3155 asks for 3-D Secure. */
+  function fakeStripe() {
+    const s = { pis: new Map<string, any>(), seen: new Map<string, any>(), accounts: new Map<string, any>(), refunded: 0, transferred: 0, n: 0, calls: [] as string[] }
+    const fee = (amount: number) => Math.round(amount * 0.029) + 100
+    const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+    const http = async (url: string | URL | Request, init?: RequestInit) => {
+      const u = new URL(String(url)), method = init?.method ?? 'GET', b = new URLSearchParams(String(init?.body ?? ''))
+      const key = (init?.headers as any)?.['idempotency-key']
+      s.calls.push(`${method} ${u.pathname}`)
+      if (key && s.seen.has(key)) return json(200, s.seen.get(key))
+      const remember = (body: any) => { if (key) s.seen.set(key, body); return json(200, body) }
+      if (method === 'POST' && u.pathname === '/v1/payment_intents') {
+        const pm = b.get('payment_method')!, id = `pi_${++s.n}`
+        if (pm.endsWith('0002')) return json(402, { error: { type: 'card_error', code: 'card_declined', message: 'Your card was declined.' } })
+        const pi = { id, amount: Number(b.get('amount')), currency: b.get('currency'), status: pm.endsWith('3155') ? 'requires_action' : 'succeeded', client_secret: `${id}_secret` }
+        s.pis.set(id, pi); return remember(pi)
+      }
+      const pi = u.pathname.match(/^\/v1\/payment_intents\/(pi_\d+)$/)
+      if (pi) { const p = s.pis.get(pi[1]); return json(200, { ...p, latest_charge: { balance_transaction: { fee: fee(p.amount) } } }) }
+      if (u.pathname === '/v1/refunds') { s.refunded += Number(b.get('amount')); return remember({ id: `re_${++s.n}` }) }
+      if (u.pathname === '/v1/transfers') { s.transferred += Number(b.get('amount')); return remember({ id: `tr_${++s.n}` }) }
+      if (u.pathname === '/v1/balance') {
+        const ok = [...s.pis.values()].filter(p => p.status === 'succeeded')
+        return json(200, { available: [{ currency: 'aed', amount: ok.reduce((n, p) => n + p.amount - fee(p.amount), 0) - s.refunded - s.transferred }], pending: [] })
+      }
+      if (method === 'POST' && u.pathname === '/v1/accounts') { const id = `acct_${++s.n}`; s.accounts.set(id, { id, details_submitted: false, payouts_enabled: false }); return remember({ id }) }
+      if (u.pathname === '/v1/account_links') return json(200, { url: `https://connect.stripe.com/setup/e/${b.get('account')}` })
+      const acct = u.pathname.match(/^\/v1\/accounts\/(acct_\d+)$/)
+      if (acct) return json(200, s.accounts.get(acct[1]))
+      return json(404, { error: { message: `no route ${method} ${u.pathname}` } })
+    }
+    return { s, http }
+  }
+  const WHSEC = 'whsec_test_secret'
+  const signed = (event: unknown, at = now) => {
+    const body = JSON.stringify(event), t = Math.floor(at.getTime() / 1000)
+    return { body, header: `t=${t},v1=${createHmac('sha256', WHSEC).update(`${t}.${body}`).digest('hex')}` }
+  }
+
+  test('pay with 3-D Secure, signed webhook secures it once, Stripe fee booked so the money check holds; payout onboarding', async () => {
+    const { s, http } = fakeStripe()
+    const stripe = new StripeProvider('sk_test_x', http as any)
+    const sapp = buildApp({ provider: stripe, clock: () => now, stripe: { publishableKey: 'pk_test_x', webhookSecret: WHSEC } })
+    const scall = (who: Who | null, method: any, url: string, payload?: unknown) => sapp.inject({ method, url, payload: payload as any, headers: who ? { cookie: who.cookie } : {} })
+    expect((await scall(null, 'GET', '/api/config')).json()).toEqual({ stripePublishableKey: 'pk_test_x' })
+
+    const deal = (await scall(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await scall(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await scall(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_0002' })).json()).toMatchObject({ status: 'failed', failure: 'Your card was declined.' })
+    const pay = (await scall(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_3155' })).json()
+    expect(pay).toMatchObject({ status: 'requires_action', clientSecret: expect.stringMatching(/^pi_\d+_secret$/) })
+    const piId = pay.clientSecret.replace('_secret', '')
+
+    // The buyer passes 3-D Secure in the browser; Stripe then tells us. A forged or stale event is refused.
+    s.pis.get(piId).status = 'succeeded'
+    const ev = { id: 'evt_1', type: 'payment_intent.succeeded', data: { object: { id: piId } } }
+    const good = signed(ev)
+    const post = (sig: { body: string; header: string }) => sapp.inject({ method: 'POST', url: '/api/stripe/webhook', payload: sig.body, headers: { 'content-type': 'application/json', 'stripe-signature': sig.header } })
+    expect((await post({ body: good.body, header: good.header.replace(/v1=./, 'v1=0') })).statusCode).toBe(400)
+    expect((await post(signed(ev, new Date(now.getTime() - 3_600_000)))).statusCode).toBe(400)
+    expect((await post(good)).json()).toEqual({ received: true, handled: 'handled' })
+    expect((await post(good)).json()).toEqual({ received: true, handled: 'duplicate' })
+    expect((await scall(buyerA, 'GET', `/api/deals/${deal}`)).json().status).toBe('payment_secured')
+
+    const fee = Number((await pool.query(`select sum(amount) n from ledger_entries where debit = 'processing_fees'`)).rows[0].n)
+    expect(fee).toBe(Math.round(s.pis.get(piId).amount * 0.029) + 100)
+    expect(await reconcile(stripe, 'AED')).toMatchObject({ ok: true })
+
+    // Publisher payouts: onboarding on Stripe's pages, then Stripe says the account is ready.
+    await pool.query(`update companies set provider_account = null, payouts_enabled = false where id = $1`, [sellerY.companyId])
+    const link = (await scall(sellerY, 'POST', '/api/seller/payouts/connect')).json()
+    expect(link.url).toMatch(/^https:\/\/connect\.stripe\.com\/setup\/e\/acct_\d+$/)
+    const acct = link.url.split('/').pop()
+    expect((await scall(sellerY, 'POST', '/api/seller/payouts/refresh')).json()).toEqual({ payoutsEnabled: false })
+    expect((await post(signed({ id: 'evt_2', type: 'account.updated', data: { object: { id: acct, details_submitted: true, payouts_enabled: true } } }))).json().handled).toBe('handled')
+    expect((await scall(sellerY, 'GET', '/api/seller/profile')).json().company.payoutsEnabled).toBe(true)
+    expect(s.calls.filter(c => c === 'POST /v1/accounts')).toHaveLength(1)
+  })
+
+  test('the webhook is off without a secret, and the fake provider keeps its test cards', async () => {
+    expect((await app.inject({ method: 'POST', url: '/api/stripe/webhook', payload: '{}', headers: { 'content-type': 'application/json' } })).statusCode).toBe(404)
+    expect((await call(null, 'GET', '/api/config')).json()).toEqual({ stripePublishableKey: null })
   })
 })

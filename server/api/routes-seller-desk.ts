@@ -4,7 +4,7 @@ import { MarketError } from '../marketplace/market.js'
 import { split } from '../core/money.js'
 import { audit } from '../core/audit.js'
 import { balance } from '../payments/ledger.js'
-import { FakeProvider } from '../payments/provider.js'
+import { FakeProvider, type PaymentProvider } from '../payments/provider.js'
 import { generateSlots } from '../catalog/placements.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
 import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
@@ -46,7 +46,7 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
     buyer: r.buyer, amount: r.amount, dueAt: r.due, kind: r.kind, belowReserve: r.type === 'decide' && r.below_reserve }))
 }
 
-export function sellerDeskRoutes(route: RouteFn, deps: { provider: unknown }) {
+export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvider }) {
   route('GET', '/api/seller/inbox', SELLER, async ({ db, at, me }) => inbox(db, me.actAs.companyId, at))
 
   route('GET', '/api/seller/overview', SELLER, async ({ db, at, me }) => {
@@ -130,6 +130,18 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: unknown }) {
   route('POST', '/api/seller/deals/:id/prerun', SELLER, async ({ db, at, me }, req) => {
     await confirmPreRun(db, req.params.id, me.actAs.companyId, at)
     return { ok: true }
+  })
+
+  // After the provider's pages: ask whether the account can receive payouts yet (the webhook also tells us).
+  route('POST', '/api/seller/payouts/refresh', SELLER, async ({ db, at, me }) => {
+    const c = (await db.query(`select provider_account, payouts_enabled from companies where id = $1`, [me.actAs.companyId])).rows[0]
+    if (!deps.provider.payoutAccount || !c.provider_account) return { payoutsEnabled: c.payouts_enabled }
+    const ready = await deps.provider.payoutAccount.ready(c.provider_account)
+    if (ready !== c.payouts_enabled) {
+      await db.query(`update companies set payouts_enabled = $2 where id = $1`, [me.actAs.companyId, ready])
+      await audit(db, `seller:${me.actAs.companyId}`, ready ? 'payouts.connected' : 'payouts.disabled', 'company', me.actAs.companyId, null, at)
+    }
+    return { payoutsEnabled: ready }
   })
 
   route('POST', '/api/seller/deals/:id/invoice', SELLER, async ({ db, at, me }, req) => {
@@ -217,7 +229,20 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: unknown }) {
     trn: { type: 'string', pattern: '^(\\d{15})?$' }, vatRegistered: { type: 'boolean' }, invoiceMode: { enum: ['generate', 'upload'] } } })
 
   // ponytail: payout onboarding is the provider's hosted flow (Stripe Connect, B5). With the test provider it verifies at once.
-  route('POST', '/api/seller/payouts/connect', SELLER, async ({ db, at, me }) => {
+  // Real provider: open (or continue) the publisher's onboarding on the provider's own pages; we come back to the profile.
+  route('POST', '/api/seller/payouts/connect', SELLER, async ({ db, at, me }, req) => {
+    const pa = deps.provider.payoutAccount
+    if (pa) {
+      const c = (await db.query(`select id, name, provider_account from companies where id = $1`, [me.actAs.companyId])).rows[0]
+      const email = (await db.query(`select email from users where id = $1`, [me.userId])).rows[0]?.email
+      const account = c.provider_account ?? await pa.create({ companyId: c.id, name: c.name, email })
+      if (!c.provider_account) {
+        await db.query(`update companies set provider_account = $2 where id = $1`, [c.id, account])
+        await audit(db, `seller:${c.id}`, 'payouts.started', 'company', c.id, { account }, at)
+      }
+      const origin = `${req.protocol}://${req.headers.host}`
+      return { url: await pa.link(account, `${origin}/#/profile?payouts=back`, `${origin}/#/profile?payouts=retry`) }
+    }
     if (!(deps.provider instanceof FakeProvider)) throw new MarketError('Payout onboarding opens with the payment provider. It is not connected yet.')
     await db.query(`update companies set provider_account = coalesce(provider_account, 'acct_test_' || substr(md5(id::text), 1, 8)), payouts_enabled = true where id = $1`, [me.actAs.companyId])
     await audit(db, `seller:${me.actAs.companyId}`, 'payouts.connected', 'company', me.actAs.companyId, { provider: 'test' }, at)

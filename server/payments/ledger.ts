@@ -10,6 +10,7 @@ import type { Db } from '../core/db.js'
  *   nashr_revenue            Nashr's commission
  *   vat_payable              VAT on Nashr's commission (only when Nashr is VAT-registered)
  *   refund_costs             card processing costs on refunds: recovered (credit) or recoverable (debit)
+ *   processing_fees          the payment provider's fee on each charge, taken out of Nashr's provider balance (expense)
  */
 export type Entry = { debit: string; credit: string; amount: number; dealId?: string | null; ref?: string }
 

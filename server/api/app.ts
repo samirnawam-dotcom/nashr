@@ -15,6 +15,7 @@ import { adminDeskRoutes } from './routes-admin-desk.js'
 import { healthRoute } from './routes-health.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
+import { type StripeConfig, stripeWebhook } from './routes-stripe.js'
 
 export type Ctx = { db: pg.PoolClient; at: Date; me: Session & { actAs: { companyId: string; role: string } }; provider: PaymentProvider }
 type Role = 'buyer' | 'seller' | 'admin' | 'founder' | 'guest' // 'guest': also readable without signing in (me is null)
@@ -39,7 +40,7 @@ export function rateLimit(key: string, max: number, now: number) {
   return ++h.n <= max
 }
 
-export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage; log?: boolean }) {
+export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage; log?: boolean; stripe?: StripeConfig }) {
   const clock = deps.clock ?? (() => new Date())
   // Bodies are checked strictly: unknown fields are an error, never silently passed to the handler (security review F2).
   const app = Fastify({ logger: false, trustProxy: process.env.TRUST_PROXY === '1', // behind the load balancer: real client IPs for rate limits and logs
@@ -121,6 +122,9 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   sellerDeskRoutes(route, deps)
   adminDeskRoutes(route, deps)
   healthRoute(app, { provider: deps.provider, clock })
+  stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
+  // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.
+  route('GET', '/api/config', 'public', async () => ({ stripePublishableKey: deps.stripe?.publishableKey ?? null }))
   sharedRoutes(route, deps.storage ?? new DiskStorage())
   return app
 }
