@@ -5,6 +5,7 @@ import { addDays, DAY_END, DAY_START, dubai, isAllDay, layoutDay, monthGrid, tod
 import { BidDrawer } from './BidDrawer'
 import { SignInPrompt, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
+import { PhotoBand } from '../PhotoBand'
 
 type View = 'day' | 'week' | 'month'
 const HOUR = 60, DAY_HOUR = 96 // px per hour in week and day views
@@ -115,9 +116,9 @@ export function CalendarPage() {
       </details>
 
       <section className="cal-main">
+        <PhotoBand img="/brand/tv-wide.jpg" title="Calendar" sub="Every open radio break, TV spot, page and takeover, in Dubai time. Prices exclude VAT." />
         <header className="cal-head">
-          <h1>Calendar</h1>
-          <span className="muted">{title}</span>
+          <span className="cal-range">{title}</span>
           <div className="spacer" />
           <button className="btn" onClick={() => setAnchor(todayInDubai())}>Today</button>
           <button className="btn" aria-label="Previous" onClick={() => view === 'month' ? stepMonth(-1) : step(-1)}>‹</button>
