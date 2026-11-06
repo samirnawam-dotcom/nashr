@@ -264,3 +264,11 @@
   .lp .foot-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; } }
+
+/* Background video: the control room behind the hero, the printing press behind the closing band */
+.lp .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; opacity: .55; }
+.lp .hero-shade { position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(6, 38, 42, .96) 0%, rgba(6, 38, 42, .86) 38%, rgba(6, 38, 42, .55) 70%, rgba(6, 38, 42, .7) 100%),
+    linear-gradient(0deg, rgba(6, 38, 42, .95) 0%, rgba(6, 38, 42, 0) 30%); }
+.lp .closing-photo video, .lp .closing-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; opacity: .6; }
+@media (max-width: 700px) { .lp .hero-video { opacity: .35; } .lp .hero-shade { background: linear-gradient(180deg, rgba(6, 38, 42, .85), rgba(6, 38, 42, .95)); } }

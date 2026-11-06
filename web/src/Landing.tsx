@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './landing.css'
+import { BgVideo } from './BgVideo'
 import { FAQ, PAGES, faqLd, useMeta } from './seo'
 
 /**
@@ -61,7 +62,7 @@ export function Landing() {
   return (
     <div className="lp">
       <section className="hero">
-        <div className="hero-bg" aria-hidden><span className="glow g1" /><span className="glow g2" /><span className="grid-lines" /><span className="grain" /></div>
+        <div className="hero-bg" aria-hidden><BgVideo className="hero-video" src="/brand/hero-control.mp4" poster="/brand/hero-control.jpg" /><span className="hero-shade" /><span className="glow g1" /><span className="glow g2" /><span className="grid-lines" /><span className="grain" /></div>
         <div className="wrap hero-grid">
           <div className="hero-copy">
             <p className="kicker"><span className="live-dot" aria-hidden />Live in the UAE. Saudi Arabia next.</p>
@@ -216,7 +217,7 @@ export function Landing() {
       </section>
 
       <section className="closing">
-        <div className="closing-photo" aria-hidden><img src="/brand/skyline.jpg" width={2000} height={834} alt="" loading="lazy" decoding="async" /></div>
+        <div className="closing-photo" aria-hidden><BgVideo src="/brand/closing-press.mp4" poster="/brand/closing-press.jpg" /></div>
         <div className="hero-bg" aria-hidden><span className="glow g2" /><span className="grid-lines" /><span className="grain" /></div>
         <div className="wrap closing-grid">
           <div>
