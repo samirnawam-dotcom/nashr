@@ -10,6 +10,7 @@ import { Landing } from './Landing'
 import { PrivacyPage, RefundsPage, TermsPage } from './Legal'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
+import { LangSwitch, t } from './i18n'
 
 
 // Screens behind sign-in load only when opened, so visitors download just the public pages (faster landing page).
@@ -123,11 +124,11 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', 'Overview'], ['/access', 'Access'], ['/accounts', 'Accounts'], ['/deals', 'Deals'], ['/disputes', 'Disputes'], ['/funds', 'Funds'],
-    ['/payouts', 'Payouts'], ['/reports', 'Reports'], ['/directory', 'Directory'], ['/audit', 'Audit'], ['/settings', 'Settings']],
-  guest: [['/', 'Home'], ['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/sign-in', 'Sign in']],
-  buyer: [['/dashboard', 'Dashboard'], ['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/campaigns', 'Campaigns'], ['/bookings', 'Bookings'], ['/athena', 'Athena']],
-  seller: [['/home', 'Dashboard'], ['/schedule', 'Calendar'], ['/inbox', 'Inbox'], ['/deals', 'Deals'], ['/earnings', 'Earnings'], ['/listings', 'Listings'], ['/profile', 'Profile']],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/funds', t('Funds')],
+    ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/settings', t('Settings')]],
+  guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/sign-in', t('Sign in')]],
+  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/athena', t('Athena')]],
+  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')]],
 }
 
 const ICON: Record<string, string> = {
@@ -148,13 +149,13 @@ const ICON: Record<string, string> = {
   '/settings': 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4',
 }
 // Where the sidebar starts a new group, per role (sentence-case labels; the groups are real sections of the work).
-const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': 'Money', '/directory': 'System' }, seller: { '/earnings': 'Your business' }, buyer: { '/campaigns': 'Plan and book' } }
-const ROLE: Record<string, string> = { buyer: 'Buyer', seller: 'Publisher', admin: 'Nashr operations', founder: 'Nashr founder' }
+const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: { '/earnings': t('Your business') }, buyer: { '/campaigns': t('Plan and book') } }
+const ROLE: Record<string, string> = { buyer: t('Buyer'), seller: t('Publisher'), admin: t('Nashr operations'), founder: t('Nashr founder') }
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
 
 /** The bilingual wordmark (placeholder until the brand files arrive): Latin in Geist, Arabic in Kufi. */
 export const Wordmark = ({ href }: { href?: string }) => (
-  <a className="logo" href={href ?? '/'} aria-label="Nashr home"><span className="latin">Nashr</span><span className="arabic" lang="ar">نشر</span></a>)
+  <a className="logo" href={href ?? '/'} aria-label={t("Nashr home")}><span className="latin">Nashr</span><span className="arabic" lang="ar">نشر</span></a>)
 
 export function App({ initialMe }: { initialMe?: Me | null }) {
   const [me, setMe] = useState<Me | null | undefined>(initialMe), [menu, setMenu] = useState(false)
@@ -186,7 +187,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
     return (
       <GuestContext.Provider value={true}>
         <GuestHeader path={path} menu={menu} setMenu={setMenu} />
-        <Suspense fallback={<main><p className="muted">Loading…</p></main>}>{hit[1](hit[0]![1])}</Suspense>
+        <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense>
         <GuestTabs path={path} />
       </GuestContext.Provider>
     )
@@ -205,33 +206,34 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
     <div className="shell">
       <aside className="side">
         <Wordmark href={`${home}`} />
-        <nav className="nav side-nav" aria-label="Main">{nav.map(([p, l]) => <Fragment key={p}>
+        <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-            <TabIcon path={p} />{l}{p === '/athena' && <span className="soon">soon</span>}</a></Fragment>)}</nav>
+            <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}</a></Fragment>)}</nav>
         <div className="side-foot">
           <div className="side-me"><span className="avatar" aria-hidden>{initials}</span>
             <span className="who"><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role}</span></span><span className="spacer" /><Bell role={me.role} /></div>
-          <button className="btn signout" onClick={signOut}>Sign out</button>
+          <div className="side-actions"><button className="btn signout" onClick={signOut}>{t("Sign out")}</button><LangSwitch className="on-dark" /></div>
         </div>
       </aside>
       <div className="shell-main">
-      {me.viewingAs && <div className="viewbar" role="status">Viewing {me.company.name} as Nashr, read only. Every page you open is logged.
-        <button className="btn" onClick={async () => { await api('/admin/view-as', { method: 'DELETE' }); navigate(`/accounts/${me.viewingAs}`); location.reload() }}>Stop viewing</button></div>}
+      {me.viewingAs && <div className="viewbar" role="status">{t('Viewing {name} as Nashr, read only. Every page you open is logged.', { name: me.company.name })}
+        <button className="btn" onClick={async () => { await api('/admin/view-as', { method: 'DELETE' }); navigate(`/accounts/${me.viewingAs}`); location.reload() }}>{t("Stop viewing")}</button></div>}
       <header className={`topbar ${staff ? 'staff' : ''} ${menu ? 'open' : ''}`}>
-        <button className="btn menu-btn" aria-label="Menu" aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
+        <button className="btn menu-btn" aria-label={t("Menu")} aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-          {l}{p === '/athena' && <span className="soon">soon</span>}</a>)}
-          <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>Sign out</a></nav>
+          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}</a>)}
+          <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
+        <LangSwitch className="on-dark topbar-lang" />
         <Bell role={me.role} />
         <span className="avatar" aria-hidden>{initials}</span>
       </header>
-      {hit ? <Suspense fallback={<main><p className="muted">Loading…</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>Not found</h1><p className="muted"><a href={`${home}`}>Back to the start</a></p></main>}
+      {hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>
-      {!staff && <nav className="tabbar" aria-label="Main">{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
+      {!staff && <nav className="tabbar" aria-label={t("Main")}>{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
         aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>}
     </div>
   )
@@ -241,15 +243,16 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
 function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; setMenu: (v: boolean) => void }) {
   return (
     <header className={`topbar ${menu ? 'open' : ''}`}>
-      <button className="btn menu-btn" aria-label="Menu" aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
+      <button className="btn menu-btn" aria-label={t("Menu")} aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
       <Wordmark href="/" />
       <nav className="nav" id="main-nav">{NAV.guest.slice(0, 3).map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
-        <a href="/sign-in" className="nav-signout" onClick={rememberPlace}>Sign in</a></nav>
+        <a href="/sign-in" className="nav-signout" onClick={rememberPlace}>{t("Sign in")}</a></nav>
       <div className="spacer" />
       <div className="guest-actions">
-        <a className="signin" href="/sign-in" onClick={rememberPlace}>Sign in</a>
-        <a className="btn signal" href="/request-access">Request access</a>
+        <LangSwitch />
+        <a className="signin" href="/sign-in" onClick={rememberPlace}>{t("Sign in")}</a>
+        <a className="btn signal" href="/request-access">{t("Request access")}</a>
       </div>
     </header>
   )
@@ -257,6 +260,6 @@ function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; set
 
 /** Phones: visitors get the same bottom tab bar as buyers, with Sign in as the last tab. */
 function GuestTabs({ path }: { path: string }) {
-  return <nav className="tabbar" aria-label="Main">{NAV.guest.map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
+  return <nav className="tabbar" aria-label={t("Main")}>{NAV.guest.map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
     onClick={p === '/sign-in' ? rememberPlace : undefined} aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>
 }

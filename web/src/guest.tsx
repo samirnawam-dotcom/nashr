@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import { t } from './i18n'
 
 /** True while nobody is signed in: pages show everything, and actions ask the visitor to sign in first. */
 export const GuestContext = createContext(false)
@@ -13,10 +14,10 @@ export function takePlace() { try { const h = sessionStorage.getItem(NEXT); sess
 export function SignInPrompt({ to, compact }: { to: string; compact?: boolean }) {
   return (
     <div className={`signin-prompt ${compact ? 'compact' : ''}`} role="note">
-      <p><b>Sign in to {to}.</b> {!compact && 'Nashr is invite-only for UAE brands, agencies and media outlets.'}</p>
+      <p><b>{t('Sign in to {action}.', { action: to })}</b> {!compact && t('Nashr is invite-only for UAE brands, agencies and media outlets.')}</p>
       <div className="row-flex">
-        <a className="btn primary" href="/sign-in" onClick={rememberPlace}>Sign in</a>
-        <a className="btn" href="/request-access" onClick={rememberPlace}>Request access</a>
+        <a className="btn primary" href="/sign-in" onClick={rememberPlace}>{t("Sign in")}</a>
+        <a className="btn" href="/request-access" onClick={rememberPlace}>{t("Request access")}</a>
       </div>
     </div>
   )

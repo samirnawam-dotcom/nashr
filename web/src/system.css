@@ -462,3 +462,47 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 .auth-foot a { color: var(--slate); text-decoration: none; }
 .auth-foot a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 900px) { .auth-form { min-height: 0; padding: 32px 20px 24px; } .auth-form > form { margin-block: 0; } }
+
+/* ======================================================================================================
+ * Arabic: IBM Plex Sans Arabic for headings and text, no letter-spacing (it breaks joined letters), a little more
+ * line height for the script, and the pieces that depend on direction mirrored. Flex and grid flip on their own.
+ * ==================================================================================================== */
+:root[lang="ar"] { --display: "IBM Plex Sans Arabic", "IBM Plex Sans", system-ui, sans-serif; --body: "IBM Plex Sans Arabic", "IBM Plex Sans", system-ui, sans-serif; }
+:root[lang="ar"] body { line-height: 1.7; }
+:root[lang="ar"] *, :root[lang="ar"] *::before, :root[lang="ar"] *::after { letter-spacing: 0 !important; }
+:root[lang="ar"] h1, :root[lang="ar"] h2, :root[lang="ar"] h3, :root[lang="ar"] h4 { font-weight: 700; line-height: 1.35; }
+:root[lang="ar"] .logo .latin, :root[lang="ar"] [lang="en"], :root[lang="ar"] .num { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+:root[lang="ar"] .table th, :root[lang="ar"] .r { text-align: start; }
+:root[lang="ar"] .table .r, :root[lang="ar"] .r { text-align: end; }
+/* Mirrored pieces */
+:root[dir="rtl"] .pw-wrap input { padding-right: 14px !important; padding-left: 72px !important; }
+:root[dir="rtl"] .pw-toggle { right: auto; left: 6px; }
+:root[dir="rtl"] .auth-error { padding: 12px 40px 12px 14px; }
+:root[dir="rtl"] .auth-error::before { left: auto; right: 14px; }
+:root[dir="rtl"] .photo-band::after { background: linear-gradient(270deg, rgba(6, 38, 42, .94) 0%, rgba(6, 38, 42, .72) 50%, rgba(6, 38, 42, .25) 100%); }
+:root[dir="rtl"] .photo-head::after { background: linear-gradient(270deg, rgba(6, 38, 42, .95) 0%, rgba(6, 38, 42, .74) 48%, rgba(6, 38, 42, .38) 100%); }
+:root[dir="rtl"] .photo-band-actions { margin-left: 0; margin-right: auto; padding-left: 0; padding-right: 20px; }
+:root[dir="rtl"] .bell-pop a.unread::before { left: auto; right: 6px; }
+:root[dir="rtl"] .side .bell-pop { left: auto; right: -150px; }
+:root[dir="rtl"] .profile-cover + .profile-h { padding-left: 0; padding-right: 24px; }
+:root[dir="rtl"] .table-wrap.card > .table td:first-child, :root[dir="rtl"] .table-wrap.card > .table th:first-child { left: auto; right: 0; }
+@media (max-width: 700px) { :root[dir="rtl"] .photo-band-actions { padding-right: 0; } }
+
+/* The language switch: quiet text button, in the other language's own script */
+.lang-switch { background: none; border: 0; padding: 8px 12px; border-radius: 999px; font: 600 14px/1 var(--body); cursor: pointer; color: inherit; }
+.lang-switch[lang="ar"] { font-family: "IBM Plex Sans Arabic", sans-serif; font-size: 15px; }
+.lang-switch[lang="en"] { font-family: "IBM Plex Sans", sans-serif; }
+.topbar .lang-switch, .lang-switch.on-dark { color: #d8e8e5; }
+.topbar .lang-switch:hover, .lang-switch.on-dark:hover { background: rgba(232, 243, 241, .08); color: #fff; }
+.lang-switch:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(229, 162, 27, .45); }
+.side-actions { display: flex; gap: 8px; align-items: center; } .side-actions .signout { flex: 1; }
+.auth-lang { color: var(--slate); padding: 0; } .auth-lang:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.topbar-lang { display: none; }
+@media (max-width: 900px) { .topbar-lang { display: inline-flex; } .guest-actions .lang-switch { padding: 6px 8px; } }
+/* Arabic: Latin names in tight calendar blocks keep their own direction, so they truncate at the end; typed codes stay left to right */
+:root[dir="rtl"] :is(.ev-name, .ev .small, .ev .ell, .chip, .opt, .agenda-body b, .agenda-body .muted, .outlet-card b, .ranked-label) { unicode-bidi: plaintext; }
+:root[dir="rtl"] :is(input[type="email"], input[type="tel"], input[type="url"], input[inputmode="numeric"], input[inputmode="decimal"], input[autocomplete="one-time-code"]) { direction: ltr; text-align: right; }
+:root[dir="rtl"] .hours, :root[dir="rtl"] .agenda-time { direction: ltr; }
+:root[dir="rtl"] :is(.agenda-item, .ev) { border-left-width: 1px; border-left-color: var(--line); border-right: 3px solid var(--teal); text-align: right; }
+:root[dir="rtl"] .saved-list li.on { box-shadow: inset -3px 0 0 var(--teal, #0f6b6b); }
+:root[dir="rtl"] .saved-name { text-align: right; padding: 8px 10px 8px 4px; }

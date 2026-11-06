@@ -8,26 +8,27 @@ import { PAGES, useMeta } from '../seo'
 import { PhotoBand } from '../PhotoBand'
 import { SavedSearches } from './SavedSearches'
 import { activeCount, DAYPARTS, matches, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
+import { isAr, ltr, t } from '../i18n'
 
 type View = 'day' | 'week' | 'month'
 const HOUR = 60, DAY_HOUR = 96 // px per hour in week and day views
 const MIN_BLOCK = 60          // a programme block is shown at least this many minutes tall
 const CHANNELS = ['print', 'digital', 'radio', 'tv', 'podcast'] as const
-const CHANNEL_NAME: Record<string, string> = { print: 'Print', digital: 'Digital', radio: 'Radio', tv: 'TV', podcast: 'Podcast' }
+const CHANNEL_NAME: Record<string, string> = { print: t("Print"), digital: t("Digital"), radio: t("Radio"), tv: t("TV"), podcast: t("Podcast") }
 
 export const Gavel = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8" /></svg>
 export const Bolt = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-export const SaleType = ({ t }: { t: Slot['saleType'] }) =>
-  <span className="tag">{t === 'auction' ? <Gavel /> : <Bolt />}{t === 'auction' ? 'Auction' : 'Quick sale'}</span>
+export const SaleType = ({ t: kind }: { t: Slot['saleType'] }) =>
+  <span className="tag">{kind === 'auction' ? <Gavel /> : <Bolt />}{kind === 'auction' ? t("Auction") : t("Quick sale")}</span>
 
 /** One status line per item: you lead, outbid, closing soon, or the bid count (premium finish: dot + label). */
 export function status(s: Slot) {
-  if (!s.available) return <span className="muted">Not available</span>
-  if (s.youLead) return <span className="dot lead">You lead</span>
-  if (s.youBid && s.topBid) return <span className="dot outbid">Outbid</span>
+  if (!s.available) return <span className="muted">{t("Not available")}</span>
+  if (s.youLead) return <span className="dot lead">{t("You lead")}</span>
+  if (s.youBid && s.topBid) return <span className="dot outbid">{t("Outbid")}</span>
   const soon = s.saleType === 'auction' && closesIn(s.closesAt)
   if (soon) return <span className="on-air">{soon}</span> // the on-air signal: bidding is live and about to close
-  return <span className="muted">{s.saleType === 'quick_sale' ? (s.bids ? `${s.bids} interested` : 'Open to offers') : s.bids ? `${s.bids} bids` : 'Starting price'}</span>
+  return <span className="muted">{s.saleType === 'quick_sale' ? (s.bids ? t('{n} interested', { n: s.bids }) : t("Open to offers")) : s.bids ? t('{n} bids', { n: s.bids }) : t("Starting price")}</span>
 }
 const heat = (bids: number) => bids >= 6 ? 'var(--teal-3)' : bids >= 3 ? 'var(--teal-2)' : bids >= 1 ? 'var(--teal-1)' : 'var(--surface)'
 
@@ -58,14 +59,14 @@ function useNarrow(px = 760) {
 function AgendaView({ days, slots, onPick, onNext }: { days: string[]; slots: Slot[]; onPick: (g: Group) => void; onNext: () => void }) {
   const all = groups(slots).sort((a, b) => a.start - b.start)
   const withItems = days.filter(d => all.some(g => g.date === d))
-  if (!withItems.length) return <div className="empty"><p className="muted">Nothing open for these days. Bidding closes a few days before air.</p><button className="btn primary" onClick={onNext}>Show the next week</button></div>
+  if (!withItems.length) return <div className="empty"><p className="muted">{t("Nothing open for these days. Bidding closes a few days before air.")}</p><button className="btn primary" onClick={onNext}>{t("Show the next week")}</button></div>
   return <div className="agenda">{withItems.map(d => <section key={d}>
     <h2 className={d === todayInDubai() ? 'today' : ''}>{dayLabel(d, { weekday: 'long', day: 'numeric', month: 'short' })}</h2>
     {all.filter(g => g.date === d).map(g => { const one = g.slots[0], allDay = isAllDay(one)
       return <button key={g.key} className="agenda-item" onClick={() => onPick(g)}>
-        <span className="agenda-time num">{allDay ? 'All day' : time(one.startsAt)}</span>
-        <span className="agenda-body"><b>{g.outlet}</b><span className="muted">{g.placement}{g.slots.length > 1 ? `, ${g.slots.length} options` : ''}</span>
-          <span className="agenda-meta"><SaleType t={one.saleType} /><span className="num">from {money(from(g))}</span>{status(g.slots.find(s => s.youLead) ?? one)}</span></span>
+        <span className="agenda-time num">{allDay ? t("All day") : time(one.startsAt)}</span>
+        <span className="agenda-body"><b>{g.outlet}</b><span className="muted">{g.placement}{g.slots.length > 1 ? t(', {n} options', { n: g.slots.length }) : ''}</span>
+          <span className="agenda-meta"><SaleType t={one.saleType} /><span className="num">{t('from {price}', { price: money(from(g)) })}</span>{status(g.slots.find(s => s.youLead) ?? one)}</span></span>
       </button> })}
   </section>)}</div>
 }
@@ -111,53 +112,53 @@ export function CalendarPage() {
   const toggle = (set: Set<string>, v: string, put: (s: Set<string>) => void) => { const n = new Set(set); n.has(v) ? n.delete(v) : n.add(v); put(n) }
   const title = view === 'month' ? dayLabel(anchor, { month: 'long', year: 'numeric' })
     : view === 'day' ? dayLabel(anchor, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-    : `Week of ${dayLabel(days[0], { day: 'numeric', month: 'short' })} – ${dayLabel(days[6], { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : t('Week of {from} – {to}', { from: dayLabel(days[0], { day: 'numeric', month: 'short' }), to: dayLabel(days[6], { day: 'numeric', month: 'short', year: 'numeric' }) })
 
   return (
     <div className="cal">
       <details className="cal-side" open={!narrow || undefined}>
-        <summary className="btn">Filters{active ? ` (${active})` : ''}</summary>
+        <summary className="btn">{t('Filters')}{active ? ` (${active})` : ''}</summary>
         {!guest && <SavedSearches filter={filter} active={active} names={CHANNEL_NAME} onApply={apply} />}
-        {guest && active > 0 && <p className="small muted saved-guest"><a href="/sign-in">Sign in</a> to save this search and get an alert when new slots match.</p>}
-        <label className="side-h" htmlFor="cal-q">Search</label>
-        <input id="cal-q" className="search cal-search" type="search" placeholder="Outlet, programme or audience" value={q} onChange={e => setQ(e.target.value)} />
-        <h3 className="side-h">Channels</h3>
+        {guest && active > 0 && <p className="small muted saved-guest">{t('Sign in to save this search and get an alert when new slots match.')} <a href="/sign-in">{t('Sign in')}</a></p>}
+        <label className="side-h" htmlFor="cal-q">{t("Search")}</label>
+        <input id="cal-q" className="search cal-search" type="search" placeholder={t("Outlet, programme or audience")} value={q} onChange={e => setQ(e.target.value)} />
+        <h3 className="side-h">{t("Channels")}</h3>
         {CHANNELS.map(c => <label key={c} className="check"><input type="checkbox" checked={channels.has(c)} onChange={() => toggle(channels, c, setChannels)} />{CHANNEL_NAME[c]}</label>)}
-        <h3 className="side-h">Sale type</h3>
-        <label className="check"><input type="checkbox" checked={saleTypes.has('auction')} onChange={() => toggle(saleTypes, 'auction', setSaleTypes)} /><Gavel /> Auction</label>
-        <label className="check"><input type="checkbox" checked={saleTypes.has('quick_sale')} onChange={() => toggle(saleTypes, 'quick_sale', setSaleTypes)} /><Bolt /> Quick sale</label>
-        <label className="side-h" htmlFor="cal-sector">Sector</label>
+        <h3 className="side-h">{t("Sale type")}</h3>
+        <label className="check"><input type="checkbox" checked={saleTypes.has('auction')} onChange={() => toggle(saleTypes, 'auction', setSaleTypes)} /><Gavel /> {t('Auction')}</label>
+        <label className="check"><input type="checkbox" checked={saleTypes.has('quick_sale')} onChange={() => toggle(saleTypes, 'quick_sale', setSaleTypes)} /><Bolt /> {t('Quick sale')}</label>
+        <label className="side-h" htmlFor="cal-sector">{t("Sector")}</label>
         <select id="cal-sector" className="cal-input" value={sector} onChange={e => setSector(e.target.value)}>
-          <option value="">Any sector</option>{sectors.map(x => <option key={x}>{x}</option>)}</select>
-        <label className="side-h" htmlFor="cal-max">Up to (AED, excl. VAT)</label>
-        <input id="cal-max" className="cal-input" inputMode="numeric" placeholder="Any price" value={maxPrice} onChange={e => setMaxPrice(e.target.value.replace(/[^\d]/g, ''))} />
-        <h3 className="side-h">Time of day</h3>
-        {DAYPARTS.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={dayparts.has(v)} onChange={() => toggle(dayparts, v, setDayparts)} />{l}</label>)}
-        <label className="check cal-soon"><input type="checkbox" checked={closingSoon} onChange={e => setClosingSoon(e.target.checked)} />Bidding closes within 24 hours</label>
-        {active > 0 && <button type="button" className="btn cal-clear" onClick={clear}>Clear filters ({active})</button>}
-        <h3 className="side-h">Key</h3>
-        <ul className="cal-key">{!guest && <li><span className="dot lead">You lead</span></li>}<li><span className="on-air">Closes soon</span></li>{!guest && <li><span className="dot outbid">Outbid</span></li>}</ul>
-        {guest && <SignInPrompt to="bid or book" compact />}
-        <p className="small muted" style={{ marginTop: 24 }}>All times are Dubai time. Prices exclude VAT.</p>
+          <option value="">{t("Any sector")}</option>{sectors.map(x => <option key={x}>{x}</option>)}</select>
+        <label className="side-h" htmlFor="cal-max">{t("Up to (AED, excl. VAT)")}</label>
+        <input id="cal-max" className="cal-input" inputMode="numeric" placeholder={t("Any price")} value={maxPrice} onChange={e => setMaxPrice(e.target.value.replace(/[^\d]/g, ''))} />
+        <h3 className="side-h">{t("Time of day")}</h3>
+        {DAYPARTS.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={dayparts.has(v)} onChange={() => toggle(dayparts, v, setDayparts)} />{t(l)}</label>)}
+        <label className="check cal-soon"><input type="checkbox" checked={closingSoon} onChange={e => setClosingSoon(e.target.checked)} />{t("Bidding closes within 24 hours")}</label>
+        {active > 0 && <button type="button" className="btn cal-clear" onClick={clear}>{t('Clear filters')} ({active})</button>}
+        <h3 className="side-h">{t("Key")}</h3>
+        <ul className="cal-key">{!guest && <li><span className="dot lead">{t("You lead")}</span></li>}<li><span className="on-air">{t("Closes soon")}</span></li>{!guest && <li><span className="dot outbid">{t("Outbid")}</span></li>}</ul>
+        {guest && <SignInPrompt to={t('bid or book')} compact />}
+        <p className="small muted" style={{ marginTop: 24 }}>{t("All times are Dubai time. Prices exclude VAT.")}</p>
       </details>
 
       <section className="cal-main">
-        <PhotoBand img="/brand/tv-wide.jpg" title="Calendar" sub="Every open radio break, TV spot, page and takeover, in Dubai time. Prices exclude VAT." />
+        <PhotoBand img="/brand/tv-wide.jpg" title={t("Calendar")} sub={t("Every open radio break, TV spot, page and takeover, in Dubai time. Prices exclude VAT.")} />
         <header className="cal-head">
           <span className="cal-range">{title}</span>
-          {active > 0 && <span className="muted small" role="status">{shown.length} of {slots.length} slots</span>}
+          {active > 0 && <span className="muted small" role="status">{t('{n} of {total} slots', { n: shown.length, total: slots.length })}</span>}
           <div className="spacer" />
-          <button className="btn" onClick={() => setAnchor(todayInDubai())}>Today</button>
-          <button className="btn" aria-label="Previous" onClick={() => view === 'month' ? stepMonth(-1) : step(-1)}>‹</button>
-          <button className="btn" aria-label="Next" onClick={() => view === 'month' ? stepMonth(1) : step(1)}>›</button>
-          <div className="seg">{(['day', 'week', 'month'] as View[]).map(v => <button key={v} className={v === view ? 'on' : ''} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div>
+          <button className="btn" onClick={() => setAnchor(todayInDubai())}>{t("Today")}</button>
+          <button className="btn" aria-label={t("Previous")} onClick={() => view === 'month' ? stepMonth(-1) : step(-1)}>{isAr ? '›' : '‹'}</button>
+          <button className="btn" aria-label={t("Next")} onClick={() => view === 'month' ? stepMonth(1) : step(1)}>{isAr ? '‹' : '›'}</button>
+          <div className="seg">{(['day', 'week', 'month'] as View[]).map(v => <button key={v} className={v === view ? 'on' : ''} onClick={() => setView(v)}>{t(v[0].toUpperCase() + v.slice(1))}</button>)}</div>
         </header>
         {error && <p className="error">{error}</p>}
-        {active > 0 && slots.length > 0 && !shown.length && <p className="cal-empty">No slots match these filters this {view}. <button type="button" className="text-link" onClick={clear}>Clear filters</button> or try the next {view}.</p>}
+        {active > 0 && slots.length > 0 && !shown.length && <p className="cal-empty">{t(view === 'month' ? 'No slots match these filters this month.' : view === 'day' ? 'No slots match these filters this day.' : 'No slots match these filters this week.')} <button type="button" className="text-link" onClick={clear}>{t("Clear filters")}</button></p>}
         {narrow && view !== 'month' && <AgendaView days={days} slots={shown} onPick={setPicked} onNext={() => step(1)} />}
         {!narrow && view === 'week' && <WeekView days={days} slots={shown} onPick={setPicked} />}
         {!narrow && view === 'day' && <DayView date={anchor} slots={shown} onOpen={setOpen} />}
-        {!narrow && view !== 'month' && <p className="cal-foot small muted">Your payment is held until the publisher proves the ad ran. You pay only once the publisher accepts.</p>}
+        {!narrow && view !== 'month' && <p className="cal-foot small muted">{t("Your payment is held until the publisher proves the ad ran. You pay only once the publisher accepts.")}</p>}
         {view === 'month' && <MonthView weeks={monthGrid(anchor)} month={anchor.slice(0, 7)} slots={shown} onPick={setPicked} onDay={d => { setAnchor(d); setView('day') }} />}
       </section>
 
@@ -171,7 +172,7 @@ function AllDayLane({ cols, slots, onPick, style }: { cols: { key: string; date:
   const all = groups(slots.filter(isAllDay))
   return (
     <div className="allday" style={style}>
-      <div className="gutter small muted">All day</div>
+      <div className="gutter small muted">{t("All day")}</div>
       {cols.map(c => <div key={c.key} className="allday-cell">
         {all.filter(g => g.date === c.date && (!c.outlet || g.outlet === c.outlet)).map(g => <button key={g.key} className="chip" style={{ background: heat(g.slots[0].bids) }} onClick={() => onPick(g)}>
           <b>{g.outlet}</b> · {g.placement} · {money(from(g))} <SaleType t={g.slots[0].saleType} /></button>)}
@@ -204,10 +205,10 @@ function WeekView({ days, slots, onPick }: { days: string[]; slots: Slot[]; onPi
               const leads = g.slots.filter(s => s.youLead).length
               return <button key={g.key} className="ev" onClick={() => onPick(g)} style={{ top: top(g.start), height: top(g.end) - top(g.start) - 2,
                 left: `calc(${(l.col / l.cols) * 100}% + 2px)`, width: `calc(${100 / l.cols}% - 4px)`, background: heat(Math.max(...g.slots.map(s => s.bids))) }}>
-                <span className="ev-t"><span className="small num ev-time">{hhmm(g.start)}–{hhmm(g.end)}</span><SaleType t={g.slots[0].saleType} /></span>
+                <span className="ev-t"><span className="small num ev-time">{ltr(`${hhmm(g.start)}–${hhmm(g.end)}`)}</span><SaleType t={g.slots[0].saleType} /></span>
                 <b className="ev-name">{g.outlet}</b><span className="small muted">{g.placement}</span>
-                <span className="small num">{single ? `${single.label} · ` : `${g.slots.filter(s => s.kind === 'single').length} breaks · from `}{money(from(g))}</span>
-                <span className="small">{single ? status(single) : leads ? <span className="dot lead">You lead on {leads}</span> : null}</span>
+                <span className="small num">{single ? `${single.label} · ` : t('{n} breaks · from ', { n: g.slots.filter(s => s.kind === 'single').length })}{money(from(g))}</span>
+                <span className="small">{single ? status(single) : leads ? <span className="dot lead">{t('You lead on {n}', { n: leads })}</span> : null}</span>
               </button> })}
           </div>
         })}
@@ -247,7 +248,7 @@ function DayView({ date, slots, onOpen }: { date: string; slots: Slot[]; onOpen:
           </div>
         })}
       </div>
-      {!outlets.length && <p className="muted empty">Nothing on sale this day. Try the next day or the week view.</p>}
+      {!outlets.length && <p className="muted empty">{t("Nothing on sale this day. Try the next day or the week view.")}</p>}
     </div></div>
   )
 }
@@ -256,13 +257,13 @@ function MonthView({ weeks, month, slots, onPick, onDay }: { weeks: string[][]; 
   const all = groups(slots)
   return (
     <div className="month card">
-      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => <div key={d} className="month-h small muted">{d}</div>)}
+      {[t('Mon'), t('Tue'), t('Wed'), t('Thu'), t('Fri'), t('Sat'), t('Sun')].map(d => <div key={d} className="month-h small muted">{d}</div>)}
       {weeks.flat().map(d => { const gs = all.filter(g => g.date === d)
         return <div key={d} className={`month-cell ${d.slice(0, 7) !== month ? 'out' : ''}`}>
           <button className="month-date" onClick={() => onDay(d)}>{Number(d.slice(8))}</button>
           {gs.slice(0, 3).map(g => <button key={g.key} className="chip" style={{ background: heat(Math.max(...g.slots.map(s => s.bids))) }} onClick={() => onPick(g)}>
             {g.slots[0].saleType === 'auction' ? <Gavel /> : <Bolt />} {g.outlet} · {money(from(g))}</button>)}
-          {gs.length > 3 && <button className="more small" onClick={() => onDay(d)}>+{gs.length - 3} more</button>}
+          {gs.length > 3 && <button className="more small" onClick={() => onDay(d)}>{t('+{n} more', { n: gs.length - 3 })}</button>}
         </div> })}
     </div>
   )
@@ -274,7 +275,7 @@ function ProgrammePanel({ g, onClose, onOpen }: { g: Group; onClose: () => void;
     <div className="scrim" onClick={onClose}>
       <aside className="drawer" onClick={e => e.stopPropagation()}>
         <header className="drawer-h"><div><h2>{g.outlet} · {g.placement}</h2><p className="muted small">{dayLabel(g.date, { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
-          <button className="btn" onClick={onClose} aria-label="Close">✕</button></header>
+          <button className="btn" onClick={onClose} aria-label={t("Close")}>✕</button></header>
         <ul className="list">
           {[...g.slots].sort((a, b) => order[a.kind] - order[b.kind] || a.startsAt.localeCompare(b.startsAt)).map(s =>
             <li key={s.id}><button className="row" onClick={() => onOpen(s.id)} disabled={!s.available}>
