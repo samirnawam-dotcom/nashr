@@ -4,6 +4,7 @@ import { api } from './api'
 import { installNavigation } from './nav'
 import './styles.css'
 import './calendar/calendar.css'
+import './system.css'
 
 // Find out who is signed in before drawing, so a pre-rendered page (landing, legal) stays on screen instead of flashing.
 installNavigation()

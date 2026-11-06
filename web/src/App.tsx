@@ -1,5 +1,5 @@
 import { navigate, usePath } from './nav'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useState } from 'react'
 import { api } from './api'
 import { Login } from './Login'
 import { AcceptInvite, RequestAccess } from './Access'
@@ -122,7 +122,7 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
 
 const NAV: Record<string, string[][]> = {
   admin: [['/admin', 'Overview'], ['/access', 'Access'], ['/accounts', 'Accounts'], ['/deals', 'Deals'], ['/disputes', 'Disputes'], ['/funds', 'Funds'],
-    ['/payouts', 'Payouts'], ['/directory', 'Directory'], ['/reports', 'Reports'], ['/audit', 'Audit'], ['/settings', 'Settings']],
+    ['/payouts', 'Payouts'], ['/reports', 'Reports'], ['/directory', 'Directory'], ['/audit', 'Audit'], ['/settings', 'Settings']],
   guest: [['/', 'Home'], ['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/sign-in', 'Sign in']],
   buyer: [['/dashboard', 'Dashboard'], ['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/campaigns', 'Campaigns'], ['/bookings', 'Bookings'], ['/athena', 'Athena']],
   seller: [['/home', 'Dashboard'], ['/schedule', 'Calendar'], ['/inbox', 'Inbox'], ['/deals', 'Deals'], ['/earnings', 'Earnings'], ['/listings', 'Listings'], ['/profile', 'Profile']],
@@ -136,7 +136,18 @@ const ICON: Record<string, string> = {
   '/bookings': 'M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM10 7v12', '/home': 'M4 11 12 4l8 7M6 10v10h12V10',
   '/': 'M4 11 12 4l8 7M6 10v10h12V10', '/sign-in': 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4',
   '/inbox': 'M4 13h5l1 3h4l1-3h5M5 5h14l1 8v6H4v-6z', '/deals': 'M5 7h14M5 12h14M5 17h9',
+  '/athena': 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18',
+  '/earnings': 'M4 19h16M7 15V9M12 15V5M17 15v-4', '/listings': 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  '/profile': 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0', '/admin': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
+  '/access': 'M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21a8 8 0 0 1 12-6.9M19 14v6M16 17h6', '/accounts': 'M3 21V8l9-5 9 5v13M9 21v-6h6v6M3 21h18',
+  '/disputes': 'M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  '/funds': 'M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18', '/payouts': 'M4 8h14l-3-3M20 16H6l3 3',
+  '/reports': 'M4 20V11M10 20V5M16 20v-6M2 20h20', '/audit': 'M9 4h6l1 2h3v15H5V6h3zM9 11h6M9 15h6',
+  '/settings': 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4',
 }
+// Where the sidebar starts a new group, per role (sentence-case labels; the groups are real sections of the work).
+const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': 'Money', '/directory': 'System' }, seller: { '/earnings': 'Your business' }, buyer: { '/campaigns': 'Plan and book' } }
+const ROLE: Record<string, string> = { buyer: 'Buyer', seller: 'Publisher', admin: 'Nashr operations', founder: 'Nashr founder' }
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
 
 /** The bilingual wordmark (placeholder until the brand files arrive): Latin in Geist, Arabic in Kufi. */
@@ -185,9 +196,24 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   if (path === '/sign-in' || path === '/request-access') { queueMicrotask(() => navigate(home, true)); return null }
 
   const nav = NAV[staff ? 'admin' : seller ? 'seller' : 'buyer']
+  const initials = me.company.name.split(' ').map(w => w[0]).slice(0, 2).join('')
+  const signOut = async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null) }
   const hit = routesFor(me.role).map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
   return (
-    <>
+    <div className="shell">
+      <aside className="side">
+        <Wordmark href={`${home}`} />
+        <nav className="nav side-nav" aria-label="Main">{nav.map(([p, l]) => <Fragment key={p}>
+          {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
+          <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
+            <TabIcon path={p} />{l}{p === '/athena' && <span className="soon">soon</span>}</a></Fragment>)}</nav>
+        <div className="side-foot">
+          <div className="side-me"><span className="avatar" aria-hidden>{initials}</span>
+            <span className="who"><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role}</span></span><span className="spacer" /><Bell role={me.role} /></div>
+          <button className="btn signout" onClick={signOut}>Sign out</button>
+        </div>
+      </aside>
+      <div className="shell-main">
       {me.viewingAs && <div className="viewbar" role="status">Viewing {me.company.name} as Nashr, read only. Every page you open is logged.
         <button className="btn" onClick={async () => { await api('/admin/view-as', { method: 'DELETE' }); navigate(`/accounts/${me.viewingAs}`); location.reload() }}>Stop viewing</button></div>}
       <header className={`topbar ${staff ? 'staff' : ''} ${menu ? 'open' : ''}`}>
@@ -196,17 +222,16 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
           {l}{p === '/athena' && <span className="soon">soon</span>}</a>)}
-          <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null) }}>Sign out</a></nav>
+          <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>Sign out</a></nav>
         <div className="spacer" />
         <Bell role={me.role} />
-        <span className="who">{me.company.name}</span>
-        <button className="btn signout" onClick={async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null) }}>Sign out</button>
-        <span className="avatar" aria-hidden>{me.company.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span>
+        <span className="avatar" aria-hidden>{initials}</span>
       </header>
       {hit ? <Suspense fallback={<main><p className="muted">Loading…</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>Not found</h1><p className="muted"><a href={`${home}`}>Back to the start</a></p></main>}
+      </div>
       {!staff && <nav className="tabbar" aria-label="Main">{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
         aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>}
-    </>
+    </div>
   )
 }
 

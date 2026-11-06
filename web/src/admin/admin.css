@@ -1,3 +1,4 @@
+@layer legacy {
 .attn { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .attn a { padding: 16px; color: inherit; text-decoration: none; display: grid; gap: 4px; }
 .attn a:hover { border-color: var(--teal-3); }
@@ -33,3 +34,5 @@ pre.json { background: var(--bg); padding: 10px; border-radius: var(--radius); f
 .stack-key a { display: grid; grid-template-columns: 14px 1fr auto; gap: 10px; align-items: center; color: inherit; text-decoration: none; padding: 4px 0; }
 .stack-key i { width: 10px; height: 10px; border-radius: 3px; }
 @media (max-width: 900px) { .recon { margin: -20px -16px 16px; padding: 8px 16px; } }
+
+}

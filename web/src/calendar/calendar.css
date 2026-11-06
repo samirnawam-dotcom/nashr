@@ -1,3 +1,4 @@
+@layer legacy {
 /* Calendar: Google Calendar layout, Nashr's calm finish */
 .cal { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
 .cal-side { padding-top: 64px; }
@@ -122,3 +123,5 @@
 .ev-t { gap: 6px; }
 .cal-key { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; justify-items: start; }
 .cal-foot { margin-top: 12px; padding-left: 2px; }
+
+}

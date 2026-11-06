@@ -1,3 +1,4 @@
+@layer legacy {
 .page-h { display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
 .search { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; min-width: 280px; background: var(--surface); }
@@ -34,7 +35,7 @@
 .doc table { width: 100%; border-collapse: collapse; margin: 24px 0; } .doc th, .doc td { text-align: left; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .doc .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
 @media print { .topbar, .no-print { display: none !important; } main { padding: 0; } .doc { border: 0; padding: 0; } body { background: #fff; } }
-a.btn { text-decoration: none; display: inline-block; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .table td.num, .table td.r.num { white-space: nowrap; }
 .section > p { margin: 0 0 12px; }
 
@@ -60,4 +61,6 @@ main.booking { max-width: 1180px; }
   .booking-cols { grid-template-columns: 1fr; }
   .booking-side { position: static; order: -1; }
   .tracker { padding: 14px 8px; } .tracker li { font-size: 12px; } .tracker li .small { display: none; }
+}
+
 }

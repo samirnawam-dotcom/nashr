@@ -1,3 +1,5 @@
+@layer system-base, legacy; /* lowest first: system layout defaults, then older styles; system.css itself is unlayered and wins */
+@layer legacy {
 /* Placeholder brand until Nashr's brand files arrive (docs/design/stitch-design-system.md). */
 :root {
   /* Placeholder brand: Omar's approved teal, a deep "studio" teal for the shell, and a saffron on-air signal used only
@@ -141,3 +143,5 @@ main.legal p, main.legal li { line-height: 1.65; }
 main.legal ul { padding-left: 20px; display: grid; gap: 6px; }
 main.legal .table { margin: 8px 0; }
 .legal-links { display: flex; gap: 16px; margin: 40px 0 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+}
