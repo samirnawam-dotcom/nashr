@@ -1,18 +1,18 @@
 /* The landing page, scoped under .lp. Control-room hero with the live board as the one bold element; quiet paper below. */
 .lp { --night: #06262a; --night-2: #0b3438; --ink: #0e1d21; --slate: #4d5c61; --line: rgba(14, 29, 33, .09); --paper: #f2f5f4;
-  --teal: #0f6b6b; --signal: #e5a21b; --on: #e8f3f1; --on-dim: #9fbfbb; --display: "Schibsted Grotesk", "IBM Plex Sans", sans-serif;
+  --teal: #0f6b6b; --signal: #e5a21b; --on: #e8f3f1; --on-dim: #9fbfbb; --display: "Instrument Sans", "IBM Plex Sans", sans-serif;
   background: var(--paper); color: var(--ink); overflow-x: clip; }
 .lp .wrap { max-width: 1200px; margin: 0 auto; padding-inline: max(24px, env(safe-area-inset-left)); }
 .lp h1, .lp h2, .lp h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
 .lp p { margin: 0; }
 
 /* Buttons on the landing page */
-.lp .btn { min-height: 46px; padding: 0 22px; border-radius: 12px; font: 600 15px/1 var(--display); letter-spacing: -.005em; }
-.lp .btn.signal { background: linear-gradient(180deg, #f2b740, var(--signal)); border: 1px solid #c4860a; color: #1c1300;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 1px 2px rgba(0, 0, 0, .2), 0 10px 24px -10px rgba(229, 162, 27, .7); }
-.lp .btn.signal:hover { background: linear-gradient(180deg, #f5c25a, #eaa923); color: #1c1300; }
-.lp .btn.ghost { background: rgba(232, 243, 241, .06); border: 1px solid rgba(232, 243, 241, .22); color: var(--on); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
-.lp .btn.ghost:hover { background: rgba(232, 243, 241, .12); color: #fff; }
+.lp .btn { min-height: 48px; padding: 0 24px; border-radius: 12px; font: 600 15px/1 "IBM Plex Sans", sans-serif; letter-spacing: -.003em; }
+.lp .btn.signal { background: #e5a21b; border: 1px solid #e5a21b; color: #1c1300; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 8px 20px -10px rgba(229, 162, 27, .55); }
+.lp .btn.signal:hover { background: #eeae2c; border-color: #eeae2c; color: #1c1300; }
+.lp .btn.ghost { background: transparent; border: 1px solid rgba(232, 243, 241, .26); color: #f2f7f6; box-shadow: none; }
+.lp .btn.ghost:hover { background: rgba(232, 243, 241, .08); border-color: rgba(232, 243, 241, .4); color: #fff; }
+.lp .btn:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(229, 162, 27, .45); }
 .lp .text-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* ------------------------------------------------------------------ hero: the control room */
@@ -33,7 +33,7 @@
 .lp .kicker { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--on-dim); margin-bottom: 26px;
   padding: 6px 14px 6px 10px; border-radius: 999px; background: rgba(232, 243, 241, .05); border: 1px solid rgba(232, 243, 241, .1); }
 .lp .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 4px rgba(229, 162, 27, .2), 0 0 12px rgba(229, 162, 27, .8); animation: lp-pulse 2.4s ease-in-out infinite; }
-.lp .hero h1 { font-size: clamp(40px, 4.3vw, 70px); font-weight: 800; letter-spacing: -.042em; line-height: 1; color: #fff; max-width: 14ch; }
+.lp .hero h1 { font-size: clamp(40px, 4.3vw, 68px); font-weight: 650; letter-spacing: -.035em; line-height: 1.02; color: #fff; max-width: 14ch; }
 .lp .hero .ar { font: 500 clamp(16px, 1.25vw, 19px)/1.7 "IBM Plex Sans Arabic", sans-serif; color: #bfa978; margin-top: 18px; text-align: left; max-width: 48ch; text-wrap: balance; }
 .lp .lede { font-size: 17.5px; line-height: 1.6; color: #b9d0cc; max-width: 46ch; margin: 20px 0 32px; }
 .lp .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -95,7 +95,7 @@
 /* ------------------------------------------------------------------ the product, framed */
 .lp .product { background: linear-gradient(180deg, var(--night) 0, var(--night) 420px, var(--paper) 420px); padding-bottom: 24px; }
 .lp .product-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; padding-block: 56px 36px; color: var(--on); }
-.lp .product-head h2 { font-size: clamp(28px, 3vw, 40px); font-weight: 750; letter-spacing: -.035em; line-height: 1.05; color: #fff; }
+.lp .product-head h2 { font-size: clamp(28px, 3vw, 40px); font-weight: 650; letter-spacing: -.035em; line-height: 1.05; color: #fff; }
 .lp .product-head p { color: #a9c4c0; font-size: 16.5px; line-height: 1.6; max-width: 46ch; }
 .lp .frame { margin: 0; border-radius: 18px; overflow: hidden; background: #fff; border: 1px solid rgba(14, 29, 33, .12);
   box-shadow: 0 2px 4px rgba(6, 38, 42, .06), 0 40px 90px -30px rgba(6, 38, 42, .45); }
@@ -106,14 +106,14 @@
 
 /* ------------------------------------------------------------------ sections */
 .lp .block { padding-block: 96px; }
-.lp .block h2 { font-size: clamp(30px, 3.4vw, 46px); font-weight: 750; letter-spacing: -.038em; line-height: 1.04; max-width: 20ch; }
+.lp .block h2 { font-size: clamp(30px, 3.4vw, 46px); font-weight: 650; letter-spacing: -.038em; line-height: 1.04; max-width: 20ch; }
 .lp .intro { color: var(--slate); font-size: 17px; line-height: 1.6; max-width: 56ch; margin: 18px 0 0; }
 
 /* bento: four real features, unequal sizes */
 .lp .bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
 .lp .tile { position: relative; overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 28px; display: grid; gap: 10px; align-content: start;
   box-shadow: 0 1px 2px rgba(14, 29, 33, .04), 0 12px 28px -18px rgba(14, 29, 33, .18); min-height: 280px; }
-.lp .tile h3 { font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+.lp .tile h3 { font-size: 20px; font-weight: 650; letter-spacing: -.015em; }
 .lp .tile p { color: var(--slate); font-size: 15px; line-height: 1.55; max-width: 40ch; }
 .lp .t-cal { grid-column: span 4; background: radial-gradient(120% 80% at 100% 100%, #e6f1ef, #fff 60%); }
 .lp .t-price { grid-column: span 2; }
@@ -150,7 +150,7 @@
 .lp .steps li.on::before { background: var(--teal); color: #fff; box-shadow: 0 6px 16px -6px rgba(15, 107, 107, .6); }
 .lp .steps li.pay.on::before { background: var(--signal); color: #1c1300; box-shadow: 0 6px 16px -6px rgba(229, 162, 27, .7); }
 .lp .steps li.on::after { background: linear-gradient(90deg, var(--teal), #dde6e4); }
-.lp .steps h3 { font-size: 18px; font-weight: 700; letter-spacing: -.015em; margin-bottom: 8px; }
+.lp .steps h3 { font-size: 17px; font-weight: 650; letter-spacing: -.01em; margin-bottom: 8px; }
 .lp .steps p { font-size: 14.5px; color: var(--slate); line-height: 1.55; }
 
 /* two audiences */
@@ -158,7 +158,7 @@
 .lp .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .lp .aud { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px; display: grid; gap: 14px; align-content: start; box-shadow: 0 12px 28px -20px rgba(14, 29, 33, .2); }
 .lp .aud h3 { font-size: 15px; font-weight: 600; color: var(--teal); letter-spacing: 0; }
-.lp .aud-lede { font: 750 28px/1.1 var(--display); letter-spacing: -.03em; }
+.lp .aud-lede { font: 650 28px/1.1 var(--display); letter-spacing: -.03em; }
 .lp .aud ul { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 12px; }
 .lp .aud li { position: relative; padding-left: 28px; color: var(--slate); line-height: 1.55; }
 .lp .aud li::before { content: ""; position: absolute; left: 0; top: 4px; width: 16px; height: 16px; border-radius: 6px; background: #edf5f4 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%230f6b6b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat; }
@@ -201,7 +201,7 @@
 .lp .closing-photo::after { content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, rgba(6, 38, 42, .96) 0%, rgba(6, 38, 42, .82) 45%, rgba(6, 38, 42, .35) 100%), linear-gradient(0deg, rgba(6, 38, 42, .7), transparent 40%); }
 .lp .closing-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 40px; align-items: center; padding-block: 96px; }
-.lp .closing h2 { font-size: clamp(32px, 3.6vw, 52px); font-weight: 800; letter-spacing: -.04em; line-height: 1; color: #fff; max-width: 16ch; }
+.lp .closing h2 { font-size: clamp(30px, 3.4vw, 48px); font-weight: 650; letter-spacing: -.03em; line-height: 1.05; color: #fff; max-width: 16ch; }
 .lp .closing p { color: #a9c4c0; font-size: 17px; line-height: 1.6; max-width: 50ch; margin: 18px 0 30px; }
 .lp .closing-mark { font: 700 clamp(120px, 15vw, 210px)/1 "Reem Kufi", serif; color: var(--signal); text-align: right; text-shadow: 0 20px 60px rgba(229, 162, 27, .25); }
 

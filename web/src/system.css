@@ -2,7 +2,7 @@
  * Nashr design system. Loaded unlayered, so it wins over every older stylesheet (those sit in @layer legacy).
  * Direction: a broadcast control room meets the newsroom. Deep control-room teal for chrome, cool paper for work,
  * the owner's broadcast teal for actions, saffron only when something is on air or due.
- * Type: Schibsted Grotesk (a grotesk drawn for a news publisher) for display; IBM Plex Sans for text and figures.
+ * Type: Instrument Sans for display (calm, precise, at 600-700, never heavier); IBM Plex Sans for text and figures (it pairs with IBM Plex Sans Arabic).
  */
 :root {
   /* palette */
@@ -18,7 +18,7 @@
   --green: #17734a; --green-1: #e5f3ea; --amber: #8a5300; --amber-1: #fbefd9; --red: #b0281c; --red-1: #fbe9e6;
 
   /* type */
-  --display: "Schibsted Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --display: "Instrument Sans", "IBM Plex Sans", system-ui, sans-serif;
   --body: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
   --arabic: "IBM Plex Sans Arabic", "IBM Plex Sans", sans-serif;
   --kufi: "Reem Kufi", "IBM Plex Sans Arabic", serif;
@@ -40,7 +40,7 @@ body { background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--body)
 [lang="ar"] { font-family: var(--arabic); }
 ::selection { background: rgba(15, 107, 107, .18); }
 
-/* Type scale (1.25 ratio from 15px), display in Schibsted Grotesk with tight tracking */
+/* Type scale (1.25 ratio from 15px), display in Instrument Sans */
 .small { font-size: 13px; }
 .muted { color: var(--slate); }
 .num, td, .kpis dd, .stat-value, .hero-value { font-variant-numeric: tabular-nums; }
@@ -173,8 +173,6 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 .topbar .nav a.active { color: #fff; border-color: var(--signal); }
 .topbar .btn { background: rgba(214, 236, 233, .06); border-color: rgba(214, 236, 233, .16); color: var(--on-studio); box-shadow: none; }
 .topbar .btn:hover { background: rgba(214, 236, 233, .12); color: #fff; }
-.guest-actions .btn.signal { background: linear-gradient(180deg, #f0b23a, var(--signal)); border-color: #c98a0c; color: var(--night); font-weight: 600;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 4px 12px -4px rgba(229, 162, 27, .55); }
 .logo .latin { font-family: var(--display); letter-spacing: -.03em; }
 
 /* Phones: tab bar on a frosted surface */
@@ -194,7 +192,7 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 .auth-hero > .auth-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; opacity: .55; }
 .auth-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(180deg, rgba(6, 38, 42, .55) 0%, rgba(6, 38, 42, .82) 55%, rgba(6, 38, 42, .96) 100%); }
-.auth-hero h2 { font: 700 clamp(28px, 2.8vw, 40px)/1.08 var(--display); letter-spacing: -.03em; color: #fff; }
+.auth-hero h2 { font: 650 clamp(28px, 2.6vw, 38px)/1.1 var(--display); letter-spacing: -.025em; color: #fff; }
 .auth-form h1 { font-size: 30px; }
 .auth-form form { gap: 18px; }
 .auth-channels span { border-color: rgba(214, 236, 233, .22); color: #cfe3e0; }
@@ -227,7 +225,7 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
   a { color: var(--teal); text-underline-offset: 3px; text-decoration-thickness: 1px; }
   a:hover { color: var(--teal-hover); }
   h1, h2, h3, h4 { font-family: var(--display); color: inherit; text-wrap: balance; }
-  h1 { font-size: 30px; font-weight: 700; letter-spacing: -.028em; line-height: 1.1; }
+  h1 { font-size: 30px; font-weight: 650; letter-spacing: -.02em; line-height: 1.12; }
   h2 { font-size: 19px; font-weight: 650; letter-spacing: -.015em; line-height: 1.25; }
   h3 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; line-height: 1.3; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
@@ -377,3 +375,60 @@ main.legal .table-wrap { margin: 8px 0; }
 .reviews .review-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .review-list li { display: grid; gap: 8px; align-content: start; }
 .review-list p { margin: 0; line-height: 1.55; }
+
+/* ======================================================================================================
+ * Type and controls, final pass. One heading voice (Instrument Sans at 600-700, gentle tracking), and one
+ * button system: three sizes, four variants, flat fills with a hairline top light, one focus ring.
+ * ==================================================================================================== */
+h1, h2, h3, h4, .page-title { font-family: var(--display); font-weight: 650; letter-spacing: -.018em; font-stretch: 100%; }
+h1 { font-size: clamp(26px, 2.2vw, 30px); line-height: 1.15; }
+h2 { font-size: 20px; line-height: 1.25; }
+h3 { font-size: 16px; line-height: 1.3; letter-spacing: -.01em; }
+.sec-h { font: 650 17px/1.3 var(--display); letter-spacing: -.012em; }
+.hero-value { font-family: var(--display); font-weight: 650; letter-spacing: -.03em; }
+.stat-value { font-family: var(--display); font-weight: 650; letter-spacing: -.02em; }
+.photo-band h1, .photo-head h1 { font-weight: 650; letter-spacing: -.022em; }
+.logo .latin, .side .logo .latin { font-weight: 700; letter-spacing: -.02em; }
+
+.btn, a.btn, select.btn, label.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 38px; padding: 0 16px; border-radius: 10px; font: 600 14px/1 var(--body); letter-spacing: -.003em;
+  border: 1px solid #d3dcda; background: #fff; color: var(--ink); text-decoration: none; cursor: pointer;
+  box-shadow: 0 1px 0 rgba(14, 29, 33, .04); transition: background-color .15s, border-color .15s, box-shadow .15s, color .15s; }
+.btn:hover, a.btn:hover { background: #f5f8f7; border-color: #bccac7; color: var(--ink); }
+.btn:active { background: #eef3f2; transform: none; }
+.btn:focus-visible, a.btn:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(15, 107, 107, .28); border-color: var(--teal, #0f6b6b); }
+.btn.primary, a.btn.primary { background: #0f6b6b; border-color: #0f6b6b; color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 1px 2px rgba(6, 38, 42, .18); }
+.btn.primary:hover, a.btn.primary:hover { background: #0c5e5e; border-color: #0c5e5e; color: #fff; }
+.btn.primary:active { background: #0a5151; }
+.btn.primary:focus-visible { box-shadow: 0 0 0 3px rgba(15, 107, 107, .35); }
+.btn.signal, a.btn.signal { background: #e5a21b; border-color: #e5a21b; color: #1c1300; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 1px 2px rgba(60, 40, 0, .18); }
+.btn.signal:hover, a.btn.signal:hover { background: #eeae2c; border-color: #eeae2c; color: #1c1300; }
+.btn.danger { color: #a4231a; border-color: #ecc9c5; } .btn.danger:hover { background: #fdf3f2; border-color: #e2aaa4; color: #8c1d15; }
+.btn.sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+.btn.lg { min-height: 46px; padding: 0 22px; font-size: 15px; border-radius: 12px; }
+.btn:disabled, .btn[aria-disabled="true"], .btn.primary:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+/* Buttons on dark surfaces (header, photo headers, sidebar) */
+.topbar .btn:not(.signal):not(.primary), .photo-head .btn:not(.primary), .photo-band-actions .btn:not(.primary):not(.signal), .side .btn {
+  background: rgba(232, 243, 241, .08); border-color: rgba(232, 243, 241, .22); color: #f2f7f6; box-shadow: none; }
+.topbar .btn:not(.signal):not(.primary):hover, .photo-head .btn:not(.primary):hover, .photo-band-actions .btn:not(.primary):not(.signal):hover, .side .btn:hover {
+  background: rgba(232, 243, 241, .15); border-color: rgba(232, 243, 241, .32); color: #fff; }
+.guest-actions .btn.signal, .guest-actions a.btn.signal { min-height: 36px; padding: 0 16px; background: #e5a21b; border-color: #e5a21b; color: #1c1300;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 1px 2px rgba(60, 40, 0, .18); }
+.guest-actions .btn.signal:hover, .guest-actions a.btn.signal:hover { background: #eeae2c; border-color: #eeae2c; color: #1c1300; }
+
+/* Links inside text: teal with a light underline that firms up on hover. Whole-row links keep their own styling; table links are quieter. */
+main :is(p, dd, label, .small, .muted, .field, .panel-h) > a:not(.btn) { color: var(--teal, #0f6b6b); text-decoration-line: underline; text-decoration-thickness: 1px;
+  text-underline-offset: 3px; text-decoration-color: rgba(15, 107, 107, .35); }
+main :is(p, dd, label, .small, .muted, .field, .panel-h) > a:not(.btn):hover { color: #0a5151; text-decoration-color: currentColor; }
+main .table td a:not(.btn) { color: var(--teal, #0f6b6b); font-weight: 600; text-decoration: none; }
+main .table td a:not(.btn):hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Segmented controls and fields match the buttons */
+.seg { border-radius: 10px; }
+.seg button { font: 600 13px/1.3 var(--body); }
+.field input, .field select, .field textarea, .search, input.search, .cal-input { border-radius: 10px; border-color: #d3dcda; }
+.field input:focus, .field select:focus, .field textarea:focus, .search:focus, .cal-input:focus { outline: 0; border-color: var(--teal, #0f6b6b); box-shadow: 0 0 0 3px rgba(15, 107, 107, .18); }
+
+/* The menu button exists only where the menu collapses */
+.topbar .menu-btn { display: none; }
+@media (max-width: 900px) { .topbar .menu-btn { display: inline-flex; } }
