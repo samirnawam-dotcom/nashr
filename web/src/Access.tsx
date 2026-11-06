@@ -14,7 +14,7 @@ export function RequestAccess() {
     try { await api('/access-requests', { method: 'POST', body: f }); setSent(true) } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
-    <AuthShell>
+    <AuthShell photo="/brand/auth-request.jpg">
       <form onSubmit={submit}>
         <h1>Request access</h1>
         {sent ? <p>Thanks. Nashr's team reviews every request and will email you an invite link once approved.</p> : <>
@@ -50,7 +50,7 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
     } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
-    <AuthShell>
+    <AuthShell photo="/brand/auth-invite.jpg">
       <form onSubmit={submit}>
         <h1>{done ? 'You are in' : 'Set your password'}</h1>
         {done ? <><p>Your account is ready.</p><button type="button" className="btn primary" onClick={() => { history.replaceState(null, '', '/'); onDone() }}>Sign in</button></> : <>
