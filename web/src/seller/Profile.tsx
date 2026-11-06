@@ -3,7 +3,7 @@ import { api } from '../api'
 import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
 
-type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null }
+type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null }
 type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean }; outlets: Outlet[] }
 const CHANNELS = [['radio', 'Radio'], ['tv', 'TV'], ['print', 'Print'], ['digital', 'Digital'], ['podcast', 'Podcast']]
 

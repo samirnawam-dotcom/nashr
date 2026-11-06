@@ -41,7 +41,7 @@ export function buyerRoutes(route: RouteFn) {
     const company = me?.actAs.companyId ?? null
     const from = req.query.from ?? new Date().toISOString(), to = req.query.to ?? new Date(Date.now() + 35 * 86_400_000).toISOString()
     const { rows } = await db.query(
-      `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids,
+      `select s.*, p.name placement, o.name outlet, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids,
          exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = $3) mine
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
        where s.starts_at >= $1 and s.starts_at < $2 and s.status <> 'blocked' and ${OPEN_MARKET} order by s.starts_at`, [from, to, company])
@@ -52,7 +52,7 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
     const r = (await db.query(
-      `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids
+      `select s.*, p.name placement, o.name outlet, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, bool_or(brief is not null) has_brief from bids where slot_id = $1 and buyer_id = $2`,

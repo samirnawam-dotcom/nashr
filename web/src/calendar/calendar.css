@@ -125,3 +125,9 @@
 .cal-foot { margin-top: 12px; padding-left: 2px; }
 
 }
+.cal-search, .cal-input { width: 100%; min-width: 0; }
+.cal-input { min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; color: var(--ink); }
+.cal-soon { margin-top: 12px; }
+.cal-clear { margin-top: 14px; width: 100%; justify-content: center; }
+.cal-empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; color: var(--slate); }
+label.side-h { display: block; }

@@ -13,7 +13,7 @@ export async function api<T = any>(path: string, init?: { method?: string; body?
 }
 
 export type Slot = {
-  id: string; outlet: string; channel: string; placement: string; label: string; kind: 'single' | 'any' | 'package'
+  id: string; outlet: string; channel: string; sectors: string[]; audience: string | null; placement: string; label: string; kind: 'single' | 'any' | 'package'
   saleType: 'auction' | 'quick_sale'; startsAt: string; endsAt: string | null; closesAt: string; currency: string
   startingPrice: number; buyNowPrice: number | null; topBid: number | null; bids: number; available: boolean; youLead: boolean; youBid: boolean
 }

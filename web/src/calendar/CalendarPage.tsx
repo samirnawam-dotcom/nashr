@@ -6,6 +6,7 @@ import { BidDrawer } from './BidDrawer'
 import { SignInPrompt, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { PhotoBand } from '../PhotoBand'
+import { activeCount, DAYPARTS, matches, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
 
 type View = 'day' | 'week' | 'month'
 const HOUR = 60, DAY_HOUR = 96 // px per hour in week and day views
@@ -77,6 +78,8 @@ export function CalendarPage() {
   const [slots, setSlots] = useState<Slot[]>([])
   const [channels, setChannels] = useState<Set<string>>(new Set(CHANNELS))
   const [saleTypes, setSaleTypes] = useState<Set<string>>(new Set(['auction', 'quick_sale']))
+  const [q, setQ] = useState(''), [sector, setSector] = useState(''), [maxPrice, setMaxPrice] = useState('')
+  const [dayparts, setDayparts] = useState<Set<string>>(new Set()), [closingSoon, setClosingSoon] = useState(false)
   const [picked, setPicked] = useState<Group | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -92,7 +95,14 @@ export function CalendarPage() {
     }, () => {})
   }, [])
 
-  const shown = useMemo(() => slots.filter(s => channels.has(s.channel) && saleTypes.has(s.saleType)), [slots, channels, saleTypes])
+  // One filter object for the screen and for saved searches; the matching rules are shared with the server.
+  const filter: SlotFilter = useMemo(() => ({ channels: [...channels], saleTypes: [...saleTypes], ...(sector ? { sector } : {}), ...(q.trim() ? { q } : {}),
+    ...(Number(maxPrice) > 0 ? { maxPrice: Math.round(Number(maxPrice) * 100) } : {}), ...(dayparts.size ? { dayparts: [...dayparts] as Daypart[] } : {}),
+    ...(closingSoon ? { closingWithinHours: 24 } : {}) }), [channels, saleTypes, sector, q, maxPrice, dayparts, closingSoon])
+  const shown = useMemo(() => slots.filter(s => matches(filter, s)), [slots, filter])
+  const sectors = useMemo(() => [...new Set(slots.flatMap(s => s.sectors ?? []).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [slots])
+  const active = activeCount(filter, { channels: CHANNELS.length, saleTypes: 2 })
+  const clear = () => { setChannels(new Set(CHANNELS)); setSaleTypes(new Set(['auction', 'quick_sale'])); setQ(''); setSector(''); setMaxPrice(''); setDayparts(new Set()); setClosingSoon(false) }
   const step = (n: number) => setAnchor(addDays(anchor, view === 'day' ? n : view === 'week' ? 7 * n : 0) as string)
   const stepMonth = (n: number) => { const d = new Date(anchor + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); setAnchor(d.toISOString().slice(0, 10)) }
   const toggle = (set: Set<string>, v: string, put: (s: Set<string>) => void) => { const n = new Set(set); n.has(v) ? n.delete(v) : n.add(v); put(n) }
@@ -103,12 +113,23 @@ export function CalendarPage() {
   return (
     <div className="cal">
       <details className="cal-side" open={!narrow || undefined}>
-        <summary className="btn">Filters</summary>
+        <summary className="btn">Filters{active ? ` (${active})` : ''}</summary>
+        <label className="side-h" htmlFor="cal-q">Search</label>
+        <input id="cal-q" className="search cal-search" type="search" placeholder="Outlet, programme or audience" value={q} onChange={e => setQ(e.target.value)} />
         <h3 className="side-h">Channels</h3>
         {CHANNELS.map(c => <label key={c} className="check"><input type="checkbox" checked={channels.has(c)} onChange={() => toggle(channels, c, setChannels)} />{CHANNEL_NAME[c]}</label>)}
         <h3 className="side-h">Sale type</h3>
         <label className="check"><input type="checkbox" checked={saleTypes.has('auction')} onChange={() => toggle(saleTypes, 'auction', setSaleTypes)} /><Gavel /> Auction</label>
         <label className="check"><input type="checkbox" checked={saleTypes.has('quick_sale')} onChange={() => toggle(saleTypes, 'quick_sale', setSaleTypes)} /><Bolt /> Quick sale</label>
+        <label className="side-h" htmlFor="cal-sector">Sector</label>
+        <select id="cal-sector" className="cal-input" value={sector} onChange={e => setSector(e.target.value)}>
+          <option value="">Any sector</option>{sectors.map(x => <option key={x}>{x}</option>)}</select>
+        <label className="side-h" htmlFor="cal-max">Up to (AED, excl. VAT)</label>
+        <input id="cal-max" className="cal-input" inputMode="numeric" placeholder="Any price" value={maxPrice} onChange={e => setMaxPrice(e.target.value.replace(/[^\d]/g, ''))} />
+        <h3 className="side-h">Time of day</h3>
+        {DAYPARTS.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={dayparts.has(v)} onChange={() => toggle(dayparts, v, setDayparts)} />{l}</label>)}
+        <label className="check cal-soon"><input type="checkbox" checked={closingSoon} onChange={e => setClosingSoon(e.target.checked)} />Bidding closes within 24 hours</label>
+        {active > 0 && <button type="button" className="btn cal-clear" onClick={clear}>Clear filters ({active})</button>}
         <h3 className="side-h">Key</h3>
         <ul className="cal-key">{!guest && <li><span className="dot lead">You lead</span></li>}<li><span className="on-air">Closes soon</span></li>{!guest && <li><span className="dot outbid">Outbid</span></li>}</ul>
         {guest && <SignInPrompt to="bid or book" compact />}
@@ -119,6 +140,7 @@ export function CalendarPage() {
         <PhotoBand img="/brand/tv-wide.jpg" title="Calendar" sub="Every open radio break, TV spot, page and takeover, in Dubai time. Prices exclude VAT." />
         <header className="cal-head">
           <span className="cal-range">{title}</span>
+          {active > 0 && <span className="muted small" role="status">{shown.length} of {slots.length} slots</span>}
           <div className="spacer" />
           <button className="btn" onClick={() => setAnchor(todayInDubai())}>Today</button>
           <button className="btn" aria-label="Previous" onClick={() => view === 'month' ? stepMonth(-1) : step(-1)}>‹</button>
@@ -126,6 +148,7 @@ export function CalendarPage() {
           <div className="seg">{(['day', 'week', 'month'] as View[]).map(v => <button key={v} className={v === view ? 'on' : ''} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div>
         </header>
         {error && <p className="error">{error}</p>}
+        {active > 0 && slots.length > 0 && !shown.length && <p className="cal-empty">No slots match these filters this {view}. <button type="button" className="text-link" onClick={clear}>Clear filters</button> or try the next {view}.</p>}
         {narrow && view !== 'month' && <AgendaView days={days} slots={shown} onPick={setPicked} onNext={() => step(1)} />}
         {!narrow && view === 'week' && <WeekView days={days} slots={shown} onPick={setPicked} />}
         {!narrow && view === 'day' && <DayView date={anchor} slots={shown} onOpen={setOpen} />}

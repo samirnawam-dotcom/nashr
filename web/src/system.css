@@ -352,3 +352,4 @@ main.legal .table-wrap { margin: 8px 0; }
   .guest-actions a.signin { padding: 8px 14px; border-radius: 999px; font-size: 14px; color: #d8e8e5; transition: background-color .15s, color .15s; }
   .guest-actions a.signin:hover { background: rgba(214, 236, 233, .07); color: #fff; }
 }
+.text-link { background: none; border: 0; padding: 0; font: inherit; color: var(--teal, #0f6b6b); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

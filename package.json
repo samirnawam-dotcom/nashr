@@ -5,7 +5,7 @@
   "scripts": {
     "db:migrate": "tsx server/core/migrate.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "start": "tsx server/main.ts",
     "seed": "tsx server/seed.ts",
     "dev:web": "vite --config web/vite.config.ts",
