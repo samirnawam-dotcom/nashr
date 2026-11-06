@@ -1,4 +1,5 @@
 import { PAGES, breadcrumb, useMeta } from './seo'
+import { PhotoBand } from './PhotoBand'
 
 /*
  * Terms, privacy and refund policy. DRAFTS written from how Nashr actually works (the timers and fees are the
@@ -7,13 +8,14 @@ import { PAGES, breadcrumb, useMeta } from './seo'
 const UPDATED = '6 November 2026'
 const ENTITY = '[Nashr legal entity name]', LICENCE = '[trade licence number and issuing authority]', ADDRESS = '[registered address, UAE]', CONTACT = '[support email]'
 
+const PHOTO: Record<string, string> = { '/terms': '/brand/print-wide.jpg', '/privacy': '/brand/desk-wide.jpg', '/refunds': '/brand/campaigns-wide.jpg' }
+
 function Page({ title, path, children }: { title: string; path: string; children: React.ReactNode }) {
   useMeta({ ...PAGES[path], jsonLd: [breadcrumb([['Nashr', '/'], [title, path]])] }, [path])
   return (
     <main className="legal">
+      <PhotoBand img={PHOTO[path] ?? '/brand/print-wide.jpg'} title={title} sub={`Last updated ${UPDATED}`} focus={path === '/privacy' ? '60% 18%' : undefined} />
       <p className="warn" role="note"><b>Draft for legal review.</b> This text describes how Nashr works today. It is not final until approved by a UAE lawyer.</p>
-      <h1>{title}</h1>
-      <p className="muted small">Last updated {UPDATED}</p>
       {children}
       <nav className="legal-links small" aria-label="Legal"><a href="/terms">Terms of use</a><a href="/privacy">Privacy policy</a><a href="/refunds">Refunds and cancellations</a></nav>
     </main>
