@@ -16,9 +16,9 @@ export function RequestAccess() {
   return (
     <AuthShell photo="/brand/auth-request.jpg">
       <form onSubmit={submit}>
-        <h1>Request access</h1>
-        {sent ? <p>Thanks. Nashr's team reviews every request and will email you an invite link once approved.</p> : <>
-          <p className="small muted">Nashr is invite-only for UAE brands, agencies and media outlets.</p>
+        <div className="auth-title"><h1>{sent ? 'Request sent' : 'Request access'}</h1>
+          <p>{sent ? "Thanks. Nashr's team reviews every request and will email you an invite link once approved." : 'Nashr is invite-only for UAE brands, agencies and media outlets. Tell us who you are and we will be in touch.'}</p></div>
+        {!sent && <>
           <div className="field"><label htmlFor="n">Full name</label><input id="n" autoComplete="name" value={f.name} onChange={set('name')} required /></div>
           <div className="field"><label htmlFor="e">Work email</label><input id="e" type="email" autoComplete="email" value={f.email} onChange={set('email')} required /></div>
           <div className="field"><label htmlFor="p">Phone</label><input id="p" type="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} required /></div>
@@ -26,11 +26,11 @@ export function RequestAccess() {
           <div className="field"><label htmlFor="r">Your role</label><input id="r" autoComplete="organization-title" value={f.role} onChange={set('role')} required /></div>
           <div className="field"><label htmlFor="t">You are</label><select id="t" value={f.companyType} onChange={set('companyType')}>
             <option value="brand">A brand</option><option value="agency">An agency</option><option value="media_outlet">A media outlet</option></select></div>
-          {error && <p className="error" role="alert">{error}</p>}
-          <button className="btn primary" disabled={busy}>Send request</button>
+          {error && <p className="auth-error" role="alert">{error}</p>}
+          <button className="btn primary lg auth-submit" disabled={busy}>{busy ? 'Sending…' : 'Send request'}</button>
           <p className="small muted">By sending, you agree to Nashr's <a href="/terms">terms of use</a> and <a href="/privacy">privacy policy</a>.</p>
         </>}
-        <p className="small muted"><a href="/sign-in">Sign in</a> · <a href="/">Back to Nashr</a></p>
+        <div className="auth-alt"><span>Already invited?</span><a className="btn auth-alt-btn" href="/sign-in">Sign in</a></div>
       </form>
     </AuthShell>
   )
@@ -52,17 +52,18 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
   return (
     <AuthShell photo="/brand/auth-invite.jpg">
       <form onSubmit={submit}>
-        <h1>{done ? 'You are in' : 'Set your password'}</h1>
-        {done ? <><p>Your account is ready.</p><button type="button" className="btn primary" onClick={() => { history.replaceState(null, '', '/'); onDone() }}>Sign in</button></> : <>
-          <div className="field"><label htmlFor="pw">Password (at least 12 characters)</label><input id="pw" type="password" autoComplete="new-password" minLength={12} value={password} onChange={e => setPassword(e.target.value)} required /></div>
+        <div className="auth-title"><h1>{done ? 'You are in' : 'Set your password'}</h1>
+          <p>{done ? 'Your account is ready. Sign in with your work email and new password.' : 'Choose a password for your Nashr account. Use at least 12 characters.'}</p></div>
+        {done ? <><button type="button" className="btn primary lg auth-submit" onClick={() => { history.replaceState(null, '', '/'); onDone() }}>Sign in</button></> : <>
+          <div className="field"><label htmlFor="pw">Password</label><input id="pw" type="password" autoComplete="new-password" minLength={12} value={password} onChange={e => setPassword(e.target.value)} required /></div>
           <div className="field"><label htmlFor="pw2">Repeat password</label><input id="pw2" type="password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} required /></div>
           {secret && <>
             <p className="small">Staff accounts need an authenticator app. Add this key to your app, then enter the 6-digit code.</p>
             <code className="num" style={{ wordBreak: 'break-all' }}>{secret}</code>
             <div className="field"><label htmlFor="code">Code from your authenticator app</label><input id="code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value)} required /></div>
           </>}
-          {error && <p className="error" role="alert">{error}</p>}
-          <button className="btn primary" disabled={busy}>{secret ? 'Activate' : 'Continue'}</button>
+          {error && <p className="auth-error" role="alert">{error}</p>}
+          <button className="btn primary lg auth-submit" disabled={busy}>{secret ? 'Activate' : 'Continue'}</button>
         </>}
       </form>
     </AuthShell>
