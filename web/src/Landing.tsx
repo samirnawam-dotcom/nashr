@@ -161,6 +161,7 @@ export function Landing() {
       <section className="block sides">
         <div className="wrap split">
           <article className="aud">
+            <img className="aud-photo" src="/brand/buyers.jpg" width={960} height={540} alt="A planning team mapping a campaign on a glass wall" loading="lazy" decoding="async" />
             <h3>For brands and agencies</h3>
             <p className="aud-lede">Every UAE outlet on one calendar.</p>
             <ul>
@@ -171,6 +172,7 @@ export function Landing() {
             <a className="btn" href="/calendar">Browse the calendar</a>
           </article>
           <article className="aud pub">
+            <img className="aud-photo" src="/brand/publishers.jpg" width={960} height={540} alt="Broadcast camera operators filming a live programme" loading="lazy" decoding="async" />
             <h3>For radio, TV, print, digital and podcasts</h3>
             <p className="aud-lede">Sell your inventory to serious buyers.</p>
             <ul>
@@ -205,12 +207,16 @@ export function Landing() {
 
       <section className="block faq" id="faq">
         <div className="wrap faq-grid">
-          <h2>Questions buyers and publishers ask</h2>
+          <div className="faq-side">
+            <h2>Questions buyers and publishers ask</h2>
+            <img className="faq-photo" src="/brand/desk.jpg" width={720} height={900} alt="" loading="lazy" decoding="async" />
+          </div>
           <div className="faq-list">{FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div>
         </div>
       </section>
 
       <section className="closing">
+        <div className="closing-photo" aria-hidden><img src="/brand/skyline.jpg" width={2000} height={834} alt="" loading="lazy" decoding="async" /></div>
         <div className="hero-bg" aria-hidden><span className="glow g2" /><span className="grid-lines" /><span className="grain" /></div>
         <div className="wrap closing-grid">
           <div>
