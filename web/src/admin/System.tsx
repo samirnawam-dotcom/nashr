@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Loading, csv, date, money, useAct, useLoad, when } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type S = { key: string; value: unknown; founderOnly: boolean; history: { value: unknown; from: string; by: string }[] }
 // What each setting means, in the owner's words (SPEC 11, 12). Unlisted keys show their raw name.
@@ -26,7 +27,7 @@ export function SettingsPage({ isFounder }: { isFounder: boolean }) {
   }
   return (
     <main>
-      <div className="page-h"><h1>Settings</h1><span className="muted small">Changes take effect immediately and are kept with their history. Financial settings are the founder's.</span></div>
+      <PhotoBand img="/brand/radio-wide.jpg" title="Settings" sub="Changes take effect immediately and are kept with their history. Financial settings are the founder's." />
       {msg}
       <table className="table card"><thead><tr><th>Setting</th><th>Value</th><th>Changed</th><th /></tr></thead>
         <tbody>{data.map(s => { const locked = s.founderOnly && !isFounder; return [
@@ -77,7 +78,7 @@ export function AuditPage() {
   const shown = (data ?? []).filter(a => !q || `${a.actor} ${a.action} ${a.entity}`.toLowerCase().includes(q.toLowerCase()))
   return (
     <main>
-      <div className="page-h"><h1>Audit log</h1><span className="muted small">Append-only. Latest 500 entries; filter by record to see its whole history.</span></div>
+      <PhotoBand img="/brand/tv-wide.jpg" title="Audit log" sub="Append-only. Latest 500 entries; filter by record to see its whole history." />
       <form className="toolbar" onSubmit={e => { e.preventDefault(); setApplied(entity.trim()) }}>
         <input className="search" type="search" aria-label="Filter" placeholder="Filter by actor or action" value={q} onChange={e => setQ(e.target.value)} />
         <input className="search mono" aria-label="Record id" placeholder="Record id (deal, company, user…)" value={entity} onChange={e => setEntity(e.target.value)} />
@@ -109,7 +110,7 @@ export function DirectoryAdminPage() {
   }
   return (
     <main>
-      <div className="page-h"><h1>Directory</h1><span className="muted small">Outlets not on Nashr show Nashr's estimate, marked "unconfirmed". Publishers on Nashr manage their own profile.</span></div>
+      <PhotoBand img="/brand/skyline.jpg" title="Directory" sub={`Outlets not on Nashr show Nashr's estimate, marked "unconfirmed". Publishers on Nashr manage their own profile.`} />
       {msg}
       <h2 className="sec-h">Quote requests</h2>
       {!quotes.data ? <Loading error={quotes.error} /> : !quotes.data.length ? <p className="muted">None yet.</p> : <table className="table card"><tbody>{quotes.data.map(q => <tr key={q.id}>

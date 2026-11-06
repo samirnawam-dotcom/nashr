@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { DEAL_STATUS, Loading, date, money, useAct, useLoad } from './common'
 import { CHANNEL, Delta, Funnel, Hero, RankedBars, StatTile, WeekColumns, compact } from '../charts'
+import { PhotoBand } from '../PhotoBand'
 
 type O = { access_pending: number; quotes_open: number; disputes: number; issues: number; failed_ops: number; pending_ops: number; gmv_month: number
   bookings_month: number; publishers_live: number; buyers: number; revenue: number; held: number
@@ -87,7 +88,7 @@ export function AccessPage() {
   if (!data) return <Loading error={error} />
   return (
     <main>
-      <div className="page-h"><h1>Access requests</h1><span className="muted small">Nashr is invite-only. Approving creates the company and an invite link (valid 7 days).</span></div>
+      <PhotoBand img="/brand/dash-buyer.jpg" title="Access requests" sub="Nashr is invite-only. Approving creates the company and an invite link (valid 7 days)." />
       {msg}
       {!data.length ? <p className="muted empty">No requests.</p> : <table className="table card"><thead><tr><th>Person</th><th>Company</th><th>Received</th><th>Status</th><th style={{ width: 360 }} /></tr></thead>
         <tbody>{data.map(r => <tr key={r.id}>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Loading, csv, date, money, useAct, useLoad, when } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type Funds = { accounts: Record<string, number>; reconcile: { ledgerCash: number; providerCash: number; ok: boolean }
   recent: { at: string; debit: string; credit: string; amount: number; currency: string; ref: string | null; deal: string | null }[] }
@@ -15,7 +16,7 @@ export function FundsPage() {
   if (!f) return <Loading error={error} />
   return (
     <main>
-      <div className="page-h"><h1>Funds</h1><span className="muted small">Double-entry ledger. Every movement is recorded once and never changed.</span></div>
+      <PhotoBand img="/brand/digital-wide.jpg" title="Funds" sub="Double-entry ledger. Every movement is recorded once and never changed." />
       <p className={f.reconcile.ok ? 'ok' : 'error'}>{f.reconcile.ok ? 'Reconciled: ' : 'Does not reconcile: '}ledger cash {money(f.reconcile.ledgerCash)}, payment provider {money(f.reconcile.providerCash)}.</p>
       <dl className="kpis">{ACCOUNT.map(([k, label, hint]) => <div key={k} className="card" title={hint}><dt>{label}</dt><dd className="num">{money(f.accounts[k])}</dd><div className="small muted">{hint}</div></div>)}</dl>
       <h2 className="sec-h">Latest movements</h2>
@@ -35,7 +36,7 @@ export function PayoutsPage() {
   const { act, busy, msg } = useAct(load)
   return (
     <main>
-      <div className="page-h"><h1>Payouts and refunds</h1><span className="muted small">Sent every minute by the money job. A retry reuses the same key, so nothing is paid twice.</span></div>
+      <PhotoBand img="/brand/podcast-wide.jpg" title="Payouts and refunds" sub="Sent every minute by the money job. A retry reuses the same key, so nothing is paid twice." />
       <div className="toolbar"><div className="seg" role="group" aria-label="Status">{[['', 'All'], ['failed', 'Failed'], ['pending', 'Pending'], ['succeeded', 'Sent']].map(([v, l]) =>
         <button key={v} className={status === v ? 'on' : ''} onClick={() => setStatus(v)}>{l}</button>)}</div></div>
       {msg}
@@ -69,7 +70,7 @@ export function ReportsPage() {
         <td className="r num small">{r.gmv ? `${((r.commission / r.gmv) * 100).toFixed(1)}%` : '—'}</td></tr>)}</tbody></table>}</section>
   return (
     <main>
-      <div className="page-h"><h1>Reports</h1><span className="muted small">Paid bookings, by the date they were booked (Dubai). Values excl. VAT.</span></div>
+      <PhotoBand img="/brand/campaigns-wide.jpg" title="Reports" sub="Paid bookings, by the date they were booked (Dubai). Values excl. VAT." />
       <div className="toolbar"><label className="small muted" htmlFor="f">From</label><input id="f" className="search" style={{ minWidth: 0 }} type="date" value={from} onChange={e => setFrom(e.target.value)} />
         <label className="small muted" htmlFor="t">To</label><input id="t" className="search" style={{ minWidth: 0 }} type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
       {!data ? <Loading error={error} /> : <div className="grid2">

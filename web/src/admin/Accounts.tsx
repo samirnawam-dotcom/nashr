@@ -2,6 +2,7 @@ import { navigate } from '../nav'
 import { useState } from 'react'
 import { api } from '../api'
 import { DealStatus, Loading, date, money, useAct, useLoad } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type C = { id: string; name: string; type: string; trn: string | null; vatRegistered: boolean; payoutsEnabled: boolean; invoiceMode: string; createdAt: string
   users: number; suspended: number; gmv: number; commissionBp: number | null }
@@ -13,7 +14,7 @@ export function AccountsPage() {
   const shown = data.filter(c => !q || c.name.toLowerCase().includes(q.toLowerCase()))
   return (
     <main>
-      <div className="page-h"><h1>Accounts</h1></div>
+      <PhotoBand img="/brand/dash-seller.jpg" title="Accounts" sub="Every buyer and publisher company on Nashr, with their people, outlets and bookings." />
       <div className="toolbar"><input className="search" type="search" aria-label="Search" placeholder="Search companies" value={q} onChange={e => setQ(e.target.value)} />
         <div className="seg" role="group" aria-label="Type">{[['', 'All'], ['buyer', 'Buyers'], ['publisher', 'Publishers']].map(([v, l]) =>
           <button key={v} className={type === v ? 'on' : ''} onClick={() => setType(v)}>{l}</button>)}</div></div>
@@ -43,6 +44,7 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
   return (
     <main className="narrow wide">
       <p className="small"><a href="/accounts">Accounts</a> › {c.name}</p>
+      <div className="profile-cover slim" aria-hidden><img src={`/brand/dash-${c.type === 'buyer' ? 'buyer' : 'seller'}.jpg`} width={1600} height={400} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{c.type === 'buyer' ? 'Buyer' : 'Publisher'} · joined {date(c.createdAt)}</p></div><div className="spacer" />
         <button className="btn" onClick={viewAs}>View as this account (read only)</button></div>
       {msg}

@@ -4,6 +4,7 @@ import { api } from '../api'
 import { dayLabel, money } from '../format'
 import { dubai } from '../calendar/layout'
 import '../directory/directory.css'
+import { PhotoBand } from '../PhotoBand'
 
 export const DOC_TYPE: Record<string, string> = { receipt: 'Payment receipt', media_invoice: 'Tax invoice (media)', commission_invoice: 'Commission invoice', credit_note: 'Credit note' }
 type Row = { id: string; type: string; number: string; total: number; currency: string; issuedAt: string; dealId: string | null; dealRef: string | null }
@@ -14,7 +15,7 @@ export function DocumentsPage() {
   return (
     <main>
       <p className="small"><a href="/bookings">Bookings</a> › Receipts and invoices</p>
-      <h1>Receipts and invoices</h1>
+      <PhotoBand img="/brand/bookings-wide.jpg" title="Receipts and invoices" sub="Payment receipts, tax invoices and credit notes for every booking." />
       {error && <p className="error">{error}</p>}
       {rows && !rows.length && <p className="muted empty">Nothing yet. You get a receipt from Nashr and a tax invoice from the publisher when you pay.</p>}
       {rows && rows.length > 0 && <table className="table card" style={{ marginTop: 20 }}><thead><tr><th>Document</th><th>Number</th><th>Order</th><th>Date</th><th className="r">Total</th></tr></thead>

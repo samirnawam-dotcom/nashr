@@ -2,6 +2,7 @@ import { navigate } from '../nav'
 import { useState } from 'react'
 import { DEAL_STATUS, DealStatus, Loading, date, money, useAct, useLoad, when } from './common'
 import { DOC_TYPE } from '../documents/Documents'
+import { PhotoBand } from '../PhotoBand'
 
 type Row = { id: string; ref: string; status: string; kind: string; amount: number; currency: string; commission_bp: number | null; next_deadline_at: string | null
   created_at: string; buyer: string; seller: string; outlet: string; label: string; starts_at: string }
@@ -12,7 +13,7 @@ export function AdminDealsPage() {
   const { data, error } = useLoad<Row[]>(`/admin/deals?status=${status}&q=${encodeURIComponent(search)}`, [status, search])
   return (
     <main>
-      <div className="page-h"><h1>Deals</h1></div>
+      <PhotoBand img="/brand/bookings-wide.jpg" title="Deals" sub="Every booking on the platform, from request to release." />
       <form className="toolbar" onSubmit={e => { e.preventDefault(); setSearch(q) }}>
         <input className="search" type="search" aria-label="Search" placeholder="Order number, buyer or publisher" value={q} onChange={e => setQ(e.target.value)} />
         <select className="btn" aria-label="Status" value={status} onChange={e => setStatus(e.target.value)}><option value="">All statuses</option>
@@ -52,6 +53,7 @@ export function AdminDealPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/deals">Deals</a> › {d.ref}</p>
+      <div className="profile-cover slim" aria-hidden><img src={`/brand/${d.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{d.outlet} · {d.label}</h1>
         <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> buys from <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}
@@ -113,7 +115,7 @@ export function DisputesPage() {
   if (!data) return <Loading error={error} />
   return (
     <main>
-      <div className="page-h"><h1>Disputes</h1><span className="muted small">Disputed deals wait for Nashr's decision. Open issues are still with the publisher until their deadline.</span></div>
+      <PhotoBand img="/brand/print-wide.jpg" title="Disputes" sub="Disputed deals wait for Nashr's decision. Open issues are still with the publisher until their deadline." />
       {!data.length ? <p className="muted empty">No disputes or open issues.</p> : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer · publisher</th><th>Issue</th><th>Publisher's offer</th><th>Deadline</th><th>Status</th></tr></thead>
         <tbody>{data.map(r => <tr key={r.id} onClick={() => (navigate(`/deals/${r.id}`))}>
           <td className="num">{r.ref}</td><td><b>{r.outlet}</b> · {r.label}<div className="small muted num">{money(r.amount)}</div></td><td className="small">{r.buyer}<br />{r.seller}</td>
