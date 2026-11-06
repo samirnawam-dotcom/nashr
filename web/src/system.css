@@ -506,3 +506,9 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 :root[dir="rtl"] :is(.agenda-item, .ev) { border-left-width: 1px; border-left-color: var(--line); border-right: 3px solid var(--teal); text-align: right; }
 :root[dir="rtl"] .saved-list li.on { box-shadow: inset -3px 0 0 var(--teal, #0f6b6b); }
 :root[dir="rtl"] .saved-name { text-align: right; padding: 8px 10px 8px 4px; }
+/* Arabic: the booking tracker's connectors run from the right; the sidebar name truncates at its end; plan amounts line up on the left */
+:root[dir="rtl"] .tracker li::before { left: calc(50% + 18px); right: calc(-50% + 18px); }
+:root[dir="rtl"] :is(.side-me .who b, .side-me .who span) { unicode-bidi: plaintext; text-align: right; }
+:root[dir="rtl"] .plan-table .r { text-align: left; }
+:root[dir="rtl"] .plan-table th, :root[dir="rtl"] .plan-table td { padding: 8px 0 8px 8px; text-align: right; }
+:root[dir="rtl"] .plan-table th.r, :root[dir="rtl"] .plan-table td.r { text-align: left; }

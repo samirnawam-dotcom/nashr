@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { usePath } from '../nav'
 import { describe, type SlotFilter } from '../../../server/shared/slot-filter'
+import { t } from '../i18n'
+import { money } from '../format'
 
 export type Saved = { id: string; name: string; filter: SlotFilter; alerts: boolean }
 
@@ -25,7 +27,7 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
     if (!id || !list || applied.current === id) return
     applied.current = id
     if (hit) onApply(hit.filter)
-    else setNote('That saved search was deleted, so the calendar shows every slot.')
+    else setNote(t('That saved search was deleted, so the calendar shows every slot.'))
   }, [path, list])
 
   const current = canonical(filter)
@@ -34,7 +36,7 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
     try {
       const s = await api<Saved>('/searches', { method: 'POST', body: { name: name.trim(), filter, alerts } })
       setList([...(list ?? []), s]); setSaving(false)
-      setNote(alerts ? 'Saved. We will alert you when new slots match.' : 'Saved.')
+      setNote(alerts ? t('Saved. We will alert you when new slots match.') : t('Saved.'))
     } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   async function toggle(s: Saved) {
@@ -44,31 +46,31 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
   }
   async function remove(s: Saved) {
     setError(''); setNote('')
-    try { await api(`/searches/${s.id}`, { method: 'DELETE' }); setList(list!.filter(x => x.id !== s.id)); setNote(`Deleted “${s.name}”.`) }
+    try { await api(`/searches/${s.id}`, { method: 'DELETE' }); setList(list!.filter(x => x.id !== s.id)); setNote(t('Deleted “{name}”.', { name: s.name })) }
     catch (err: any) { setError(err.message) }
   }
 
   return (
-    <section className="saved" aria-label="Saved searches">
-      <h3 className="side-h">Saved searches</h3>
-      {list && !list.length && !saving && <p className="small muted">Set the filters below, then save the search to get an alert when new slots match.</p>}
+    <section className="saved" aria-label={t("Saved searches")}>
+      <h3 className="side-h">{t("Saved searches")}</h3>
+      {list && !list.length && !saving && <p className="small muted">{t("Set the filters below, then save the search to get an alert when new slots match.")}</p>}
       {list && list.length > 0 && <ul className="saved-list">{list.map(s => {
         const on = canonical(s.filter) === current
         return <li key={s.id} className={on ? 'on' : ''}>
-          <button type="button" className="saved-name" aria-current={on || undefined} title={describe(s.filter, names)} onClick={() => onApply(s.filter)}>
-            <b>{s.name}</b><span>{describe(s.filter, names)}</span></button>
+          <button type="button" className="saved-name" aria-current={on || undefined} title={describe(s.filter, names, t, money)} onClick={() => onApply(s.filter)}>
+            <b>{s.name}</b><span>{describe(s.filter, names, t, money)}</span></button>
           <button type="button" className={`saved-bell ${s.alerts ? 'is-on' : ''}`} aria-pressed={s.alerts} onClick={() => toggle(s)}
-            aria-label={`${s.alerts ? 'Turn off' : 'Turn on'} alerts for ${s.name}`} title={s.alerts ? 'Alerts on' : 'Alerts off'}>
+            aria-label={t(s.alerts ? 'Turn off alerts for {name}' : 'Turn on alerts for {name}', { name: s.name })} title={s.alerts ? t('Alerts on') : t('Alerts off')}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />{!s.alerts && <path d="M3 3l18 18" />}</svg>
           </button>
-          <button type="button" className="saved-del" onClick={() => remove(s)} aria-label={`Delete ${s.name}`} title="Delete">×</button>
+          <button type="button" className="saved-del" onClick={() => remove(s)} aria-label={t('Delete {name}', { name: s.name })} title={t("Delete")}>×</button>
         </li> })}</ul>}
-      {active > 0 && !saving && !list?.some(x => canonical(x.filter) === current) && <button type="button" className="btn saved-save" onClick={() => { setName(describe(filter, names).slice(0, 80)); setAlerts(true); setSaving(true); setNote('') }}>Save this search</button>}
+      {active > 0 && !saving && !list?.some(x => canonical(x.filter) === current) && <button type="button" className="btn saved-save" onClick={() => { setName(describe(filter, names, t, money).slice(0, 80)); setAlerts(true); setSaving(true); setNote('') }}>{t("Save this search")}</button>}
       {saving && <form className="saved-form" onSubmit={save}>
-        <label className="small" htmlFor="saved-name">Name</label>
+        <label className="small" htmlFor="saved-name">{t("Name")}</label>
         <input id="saved-name" className="cal-input" value={name} maxLength={80} onChange={e => setName(e.target.value)} required autoFocus />
-        <label className="check"><input type="checkbox" checked={alerts} onChange={e => setAlerts(e.target.checked)} />Alert me when new slots match</label>
-        <div className="row-flex"><button className="btn primary" disabled={busy || !name.trim()}>Save</button><button type="button" className="btn" onClick={() => setSaving(false)}>Cancel</button></div>
+        <label className="check"><input type="checkbox" checked={alerts} onChange={e => setAlerts(e.target.checked)} />{t("Alert me when new slots match")}</label>
+        <div className="row-flex"><button className="btn primary" disabled={busy || !name.trim()}>{t("Save")}</button><button type="button" className="btn" onClick={() => setSaving(false)}>{t("Cancel")}</button></div>
       </form>}
       {error && <p className="error small" role="alert">{error}</p>}
       {note && <p className="ok small" role="status">{note}</p>}

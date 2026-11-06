@@ -49,13 +49,15 @@ export const activeCount = (f: SlotFilter, all: { channels: number; saleTypes: n
     !!f.dayparts?.length, !!f.q?.trim(), f.closingWithinHours != null].filter(Boolean).length
 
 /** A short sentence for a saved search: "Radio · Banking · under AED 5,000 · morning". */
-export function describe(f: SlotFilter, names: Record<string, string> = {}): string {
+export function describe(f: SlotFilter, names: Record<string, string> = {}, tr: (s: string) => string = s => s,
+  price: (fils: number) => string = fils => `AED ${(fils / 100).toLocaleString('en-US')}`): string {
+  const part = (s: string) => tr(s)
   const parts = [
-    f.channels?.length ? f.channels.map(c => names[c] ?? c).join(', ') : 'All channels',
+    f.channels?.length ? f.channels.map(c => names[c] ?? c).join(tr(', ')) : part('All channels'),
     f.sector, f.q?.trim() && `“${f.q.trim()}”`,
-    f.maxPrice != null && `under AED ${(f.maxPrice / 100).toLocaleString('en-US')}`,
-    f.dayparts?.length && f.dayparts.map(d => d === 'allday' ? 'all day' : d).join(', '),
-    f.saleTypes?.length === 1 && (f.saleTypes[0] === 'auction' ? 'auctions' : 'quick sales'),
+    f.maxPrice != null && part('under {price}').replace('{price}', price(f.maxPrice)),
+    f.dayparts?.length && f.dayparts.map(d => part(d === 'allday' ? 'all day' : d)).join(tr(', ')),
+    f.saleTypes?.length === 1 && part(f.saleTypes[0] === 'auction' ? 'auctions' : 'quick sales'),
   ]
   return parts.filter(Boolean).join(' · ')
 }
