@@ -5,6 +5,7 @@ import { dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
 import { DOC_TYPE } from '../documents/Documents'
 import '../directory/directory.css'
+import { PhotoBand } from '../PhotoBand'
 
 type Deal = { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
 
@@ -21,7 +22,9 @@ export function BookingsPage() {
   useEffect(() => { api<Deal[]>('/deals').then(setDeals, e => setError(e.message)) }, [])
   return (
     <main>
-      <div className="page-h"><h1>Bookings</h1><div className="spacer" /><a className="small" href="/documents">Receipts and invoices</a></div>
+      <PhotoBand img="/brand/bookings-wide.jpg" title="Bookings" sub="Every booking from bid to proof, with your payment held until you approve that the ad ran.">
+        <a className="btn" href="/documents">Receipts and invoices</a>
+      </PhotoBand>
       {error && <p className="error">{error}</p>}
       {deals && !deals.length && <p className="muted empty">No bookings yet. Bid on a slot in the calendar, or send a buy-now request.</p>}
       {deals && deals.length > 0 && <table className="table card">
@@ -103,6 +106,7 @@ export function BookingPage({ id }: { id: string }) {
   return (
     <main className="booking">
       <p className="small"><a href="/bookings">Bookings</a> › Order {d.ref}</p>
+      <div className="profile-cover slim" aria-hidden><img src={`/brand/${d.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)}</p></div><Status s={d.status} /></div>
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">

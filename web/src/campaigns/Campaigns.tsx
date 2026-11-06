@@ -5,6 +5,7 @@ import { dayLabel, money } from '../format'
 import { dubai } from '../calendar/layout'
 import { Status } from '../bookings/Bookings'
 import '../directory/directory.css'
+import { PhotoBand } from '../PhotoBand'
 
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
 const pct = (n: number, of: number) => `${Math.min(100, of ? (n / of) * 100 : 0)}%`
@@ -25,8 +26,9 @@ export function CampaignsPage() {
   }
   return (
     <main>
-      <div className="page-h"><h1>Campaigns</h1><span className="muted small">Plan outlets against a budget. Bids and requests tagged to a campaign count against it.</span>
-        <div className="spacer" /><button className="btn primary" onClick={() => setForm({ name: '', budget: '', launchDate: '', objective: '' })}>New campaign</button></div>
+      <PhotoBand img="/brand/campaigns-wide.jpg" title="Campaigns" sub="Plan outlets against a budget. Bids and requests tagged to a campaign count against it.">
+        <button className="btn primary" onClick={() => setForm({ name: '', budget: '', launchDate: '', objective: '' })}>New campaign</button>
+      </PhotoBand>
       {form && <section className="card pad form" style={{ maxWidth: 560, marginBottom: 20 }}>
         <h3>New campaign</h3>
         <div className="field"><label htmlFor="cn">Name</label><input id="cn" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
@@ -68,6 +70,7 @@ export function CampaignPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/campaigns">Campaigns</a> › {c.name}</p>
+      <div className="profile-cover slim" aria-hidden><img src="/brand/campaigns-wide.jpg" width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{[c.objective, c.launchDate && `Launches ${dayLabel(c.launchDate)}`].filter(Boolean).join(' · ')}</p></div>
         <div className="spacer" />
         {c.status === 'active' ? <button className="btn" onClick={() => setStatus('completed')}>Mark completed</button> : <button className="btn" onClick={() => setStatus('active')}>Reopen</button>}

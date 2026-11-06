@@ -4,7 +4,7 @@ export function PhotoBand({ img, title, sub, children }: { img: string; title: s
     <header className="photo-band">
       <img src={img} alt="" width={1600} height={500} decoding="async" fetchPriority="high" />
       <div className="photo-band-copy"><h1>{title}</h1>{sub && <p>{sub}</p>}</div>
-      {children}
+      {children && <div className="photo-band-actions">{children}</div>}
     </header>
   )
 }

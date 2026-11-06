@@ -290,3 +290,16 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
   .photo-head h1 { width: 100%; }
   .photo-head .spacer { display: none; }
 }
+
+.photo-band-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 10px; align-self: flex-end; padding-left: 20px; }
+.photo-band-actions .btn:not(.primary) { background: rgba(232, 243, 241, .1); border-color: rgba(232, 243, 241, .28); color: #fff; box-shadow: none; }
+.photo-band-actions .btn:not(.primary):hover { background: rgba(232, 243, 241, .18); color: #fff; }
+.profile-cover.slim { height: 120px; margin-bottom: 18px; }
+@media (max-width: 700px) {
+  .photo-band { flex-wrap: wrap; gap: 14px; }
+  .photo-band-actions { margin-left: 0; padding-left: 0; width: 100%; }
+  .profile-cover.slim { height: 84px; }
+}
+.profile-cover { position: relative; }
+.profile-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6, 38, 42, .45), rgba(6, 38, 42, .15)); }
+.profile-cover.slim + .profile-h { padding-left: 0; }
