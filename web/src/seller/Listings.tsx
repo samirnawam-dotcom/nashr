@@ -28,7 +28,7 @@ export function ListingsPage() {
       {!p.company.payoutsEnabled && <p className="warn">Slots go on sale once your payout account is verified. <a href="/profile">Connect it</a></p>}
       {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
       {!p.placements.length ? <p className="muted empty">No placements yet.</p>
-        : <table className="table card"><thead><tr><th>Placement</th><th>When</th><th>Sold as</th><th className="r">From</th><th className="r">On sale</th><th>Listed until</th><th /></tr></thead>
+        : <div className="table-wrap card"><table className="table"><thead><tr><th>Placement</th><th>When</th><th>Sold as</th><th className="r">From</th><th className="r">On sale</th><th>Listed until</th><th /></tr></thead>
           <tbody>{p.placements.map(x => <tr key={x.id} style={x.archived ? { opacity: .55 } : undefined}>
             <td><b>{x.name}</b><div className="small muted">{x.outlet}{x.breaks.length ? ` · ${x.breaks.length} breaks` : ''}</div></td>
             <td className="small">{x.days.map(d => DAYS[d - 1]).join(', ')}{x.startsAt ? ` · ${x.startsAt.slice(0, 5)}${x.endsAt ? `–${x.endsAt.slice(0, 5)}` : ''}` : ''}</td>
@@ -40,7 +40,7 @@ export function ListingsPage() {
                 act(`/seller/placements/${x.id}/slots`, { from, days: 28 }, r => `${r.slots} new slots listed from ${from}.`) }}>List 4 more weeks</button>}
               <button className="btn" disabled={busy} onClick={() => act(`/seller/placements/${x.id}/archive`, { archived: !x.archived }, () => x.archived ? 'Restored.' : 'Archived. Slots already on sale stay on sale.')}>
                 {x.archived ? 'Restore' : 'Archive'}</button></div></td>
-          </tr>)}</tbody></table>}
+          </tr>)}</tbody></table></div>}
     </main>
   )
 }

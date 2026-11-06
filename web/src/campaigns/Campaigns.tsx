@@ -41,11 +41,11 @@ export function CampaignsPage() {
       </section>}
       {!form && error && <p className="error">{error}</p>}
       {list && !list.length && !form && <p className="muted empty">No campaigns yet. Create one to plan outlets and track spend against a budget.</p>}
-      {list && list.length > 0 && <table className="table card"><thead><tr><th>Campaign</th><th>Launch</th><th className="r">Budget</th><th className="r">Committed</th><th style={{ width: 200 }} /><th>Status</th></tr></thead>
+      {list && list.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>Campaign</th><th>Launch</th><th className="r">Budget</th><th className="r">Committed</th><th style={{ width: 200 }} /><th>Status</th></tr></thead>
         <tbody>{list.map(c => <tr key={c.id} onClick={() => (navigate(`/campaigns/${c.id}`))}>
           <td><b>{c.name}</b>{c.objective && <div className="small muted">{c.objective}</div>}</td><td className="num">{c.launchDate ? dayLabel(c.launchDate) : '—'}</td>
           <td className="r num">{money(c.budget)}</td><td className="r num">{money(c.committed)}</td><td><Bar c={c} /></td>
-          <td className="small">{c.status === 'active' ? 'Active' : 'Completed'}</td></tr>)}</tbody></table>}
+          <td className="small">{c.status === 'active' ? 'Active' : 'Completed'}</td></tr>)}</tbody></table></div>}
     </main>
   )
 }
@@ -85,7 +85,7 @@ export function CampaignPage({ id }: { id: string }) {
       <p className="small muted">Prices excl. VAT. Committed means accepted by the publisher; tag bids to this campaign from the bid drawer.</p>
 
       <h2 className="sec-h">Plan</h2>
-      <table className="table card"><thead><tr><th>Outlet</th><th>Status</th><th className="r">Planned (AED)</th><th className="r">Committed</th><th /></tr></thead>
+      <div className="table-wrap card"><table className="table"><thead><tr><th>Outlet</th><th>Status</th><th className="r">Planned (AED)</th><th className="r">Committed</th><th /></tr></thead>
         <tbody>{plan.map((p, i) => { const o = name(p.outletId); return <tr key={p.outletId}>
           <td><a href={`/directory/${p.outletId}`}><b>{o?.name ?? c.items.find(x => x.outletId === p.outletId)?.outlet}</b></a></td>
           <td className="small">{o ? (o.onNashr ? 'On Nashr' : 'Quote needed') : ''}</td>
@@ -98,16 +98,16 @@ export function CampaignPage({ id }: { id: string }) {
           <select className="btn" aria-label="Add outlet" value={pick} onChange={e => setPick(e.target.value)}><option value="">Add an outlet…</option>
             {outlets.filter(o => !plan.some(p => p.outletId === o.id)).map(o => <option key={o.id} value={o.id}>{o.name}{o.onNashr ? '' : ' (quote)'}</option>)}</select>
           <button className="btn" disabled={!pick} onClick={() => { const next = [...plan, { outletId: pick, planned: '' }]; setPick(''); save(next) }}>Add</button>
-          <div className="spacer" /><button className="btn primary" onClick={() => save()}>Save plan</button></div></td></tr></tbody></table>
+          <div className="spacer" /><button className="btn primary" onClick={() => save()}>Save plan</button></div></td></tr></tbody></table></div>
       {error && <p className="error" role="alert">{error}</p>}
       {saved && <p className="ok" role="status">{saved}</p>}
 
       <h2 className="sec-h">Bookings</h2>
       {!c.bookings.length ? <p className="muted">Nothing booked yet.</p>
-        : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Price</th><th>Status</th></tr></thead>
+        : <div className="table-wrap card"><table className="table"><thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Price</th><th>Status</th></tr></thead>
           <tbody>{c.bookings.map(b => <tr key={b.id} onClick={() => (navigate(`/bookings/${b.id}`))}>
             <td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {b.label}</td><td className="num">{dayLabel(dubai(b.startsAt).date)}</td>
-            <td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table>}
+            <td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )
 }

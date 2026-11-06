@@ -115,11 +115,11 @@ export function RefundsPage() {
       <h2>Before you pay</h2>
       <p>Bids and requests cost nothing until the publisher accepts and you pay. If the publisher declines, or you do not pay within the payment window, the booking simply ends.</p>
       <h2>If you cancel after paying</h2>
-      <table className="table card"><thead><tr><th>When</th><th>What you get back</th></tr></thead><tbody>
+      <div className="table-wrap card"><table className="table"><thead><tr><th>When</th><th>What you get back</th></tr></thead><tbody>
         <tr><td>Within 24 hours of paying (and before the creative deadline)</td><td>Everything you paid, less the card processing cost of the refund.</td></tr>
         <tr><td>After 24 hours, before the creative deadline</td><td>What you paid, less a 15% cancellation fee kept by the publisher (plus VAT on it, where applicable), less the card processing cost of the refund.</td></tr>
         <tr><td>After the creative deadline</td><td>No refund: the publisher has reserved the slot for you.</td></tr>
-      </tbody></table>
+      </tbody></table></div>
       <h2>If the publisher cancels or the ad does not run</h2>
       <p>You get a full refund of what you paid. If the ad ran in the wrong place or time, the publisher may offer a make-good (a replacement run); you can accept it or ask Nashr to decide.</p>
       <h2>If the proof is wrong</h2>

@@ -71,9 +71,9 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
       <div><dt>Creative due</dt><dd className="num small">{when(s.creativeDueAt)}</dd></div>
     </dl>
     <section><h3 style={{ fontSize: 15, marginBottom: 8 }}>Bids and requests</h3>
-      {!s.bids.length ? <p className="muted small">None yet.</p> : <table className="table"><tbody>{s.bids.map(b => <tr key={b.id}>
+      {!s.bids.length ? <p className="muted small">None yet.</p> : <div className="table-wrap"><table className="table"><tbody>{s.bids.map(b => <tr key={b.id}>
         <td>{b.company}<div className="small muted">{KIND[b.kind]} · {b.status.replace('_', ' ')}</div></td><td className="r num">{money(b.amount)}</td>
-        <td className="r">{b.choosable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/choose`, { bidId: b.id })}>Choose</button>}</td></tr>)}</tbody></table>}
+        <td className="r">{b.choosable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/choose`, { bidId: b.id })}>Choose</button>}</td></tr>)}</tbody></table></div>}
     </section>
     {s.deals.length > 0 && <section><h3 style={{ fontSize: 15, marginBottom: 8 }}>Bookings</h3>
       <ul className="timeline">{s.deals.map(d => <li key={d.id}><a href={`/deals/${d.id}`} className="num">{d.ref}</a><span><DealStatus s={d.status} /> · {money(d.amount)}</span></li>)}</ul></section>}

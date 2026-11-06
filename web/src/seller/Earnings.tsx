@@ -28,15 +28,15 @@ export function EarningsPage() {
         <label className="small muted" htmlFor="m">Monthly statement</label><input id="m" className="search" style={{ minWidth: 0 }} type="month" value={month} onChange={x => setMonth(x.target.value)} />
         <a className="btn" href={`/api/seller/statement/${month}`}>Download CSV</a></div>
       {!e.deals.length ? <p className="muted empty">No paid bookings yet.</p>
-        : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Price</th><th className="r">Your VAT</th><th className="r">Commission</th><th className="r">You receive</th><th>Status</th></tr></thead>
+        : <div className="table-wrap card"><table className="table"><thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Price</th><th className="r">Your VAT</th><th className="r">Commission</th><th className="r">You receive</th><th>Status</th></tr></thead>
           <tbody>{e.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
             <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="num">{dayLabel(dubai(d.startsAt).date)}</td>
             <td className="r num">{money(d.price)}</td><td className="r num">{money(d.mediaVat)}</td><td className="r num">−{money(d.fee + d.feeVat)}</td>
-            <td className="r num"><b>{money(d.payout)}</b></td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}
+            <td className="r num"><b>{money(d.payout)}</b></td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}
       <h2 className="sec-h">Payouts</h2>
       {!e.payouts.length ? <p className="muted">No payouts yet. Released money is transferred to your payout account automatically.</p>
-        : <table className="table card"><tbody>{e.payouts.map((p, i) => <tr key={i}><td className="num">{dayLabel(dubai(p.at).date, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-          <td className="small muted">{p.ref}</td><td className="r num">{money(p.amount, p.currency)}</td></tr>)}</tbody></table>}
+        : <div className="table-wrap card"><table className="table"><tbody>{e.payouts.map((p, i) => <tr key={i}><td className="num">{dayLabel(dubai(p.at).date, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+          <td className="small muted">{p.ref}</td><td className="r num">{money(p.amount, p.currency)}</td></tr>)}</tbody></table></div>}
     </main>
   )
 }

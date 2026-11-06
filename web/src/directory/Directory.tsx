@@ -73,11 +73,11 @@ export function DirectoryPage() {
             <PriceTag p={o.price} />
             <span className={o.onNashr ? 'badge on' : 'badge'}>{o.comingSoon ? 'Coming soon' : o.onNashr ? 'On Nashr · book slots' : 'Not on Nashr yet · request a quote'}</span>
           </a>)}</div>
-        : shown.length > 0 && <table className="table card"><thead><tr><th>Outlet</th><th>Channel</th><th>Sectors</th><th>Price</th><th /></tr></thead>
+        : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>Outlet</th><th>Channel</th><th>Sectors</th><th>Price</th><th /></tr></thead>
             <tbody>{shown.map(o => <tr key={o.id} onClick={() => (navigate(`/directory/${outletSlug(o)}`))}>
               <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b></div></td><td>{CHANNEL[o.channel]}</td>
               <td className="small">{o.sectors.join(', ')}</td><td><PriceTag p={o.price} /></td>
-              <td className="small">{o.comingSoon ? 'Coming soon' : o.onNashr ? 'Book slots' : 'Request quote'}</td></tr>)}</tbody></table>}
+              <td className="small">{o.comingSoon ? 'Coming soon' : o.onNashr ? 'Book slots' : 'Request quote'}</td></tr>)}</tbody></table></div>}
     </main>
   )
 }
@@ -151,7 +151,7 @@ export function OutletPage({ id }: { id: string }) {
       </div>
       {o.placements.length > 0 && <>
         <h2 className="sec-h">What you can book</h2>
-        <table className="table card"><thead><tr><th>Placement</th><th>When</th><th>Sold as</th><th className="r">From</th><th className="r">Options</th><th>Next open</th></tr></thead>
+        <div className="table-wrap card"><table className="table"><thead><tr><th>Placement</th><th>When</th><th>Sold as</th><th className="r">From</th><th className="r">Options</th><th>Next open</th></tr></thead>
           <tbody>{o.placements.map(p => <tr key={p.id}>
             <td><b>{p.name}</b>{p.breaks > 0 && <div className="small muted">{p.breaks} {o.channel === 'podcast' ? 'positions' : 'breaks'}</div>}</td>
             <td className="small">{p.days.map(d => DAYS[d]).join(', ')}{p.startsAt ? ` · ${p.startsAt.slice(0, 5)}${p.endsAt ? `–${p.endsAt.slice(0, 5)}` : ''}` : ''}</td>
@@ -159,7 +159,7 @@ export function OutletPage({ id }: { id: string }) {
             <td className="r num">{money(p.startingPrice)}</td>
             <td className="r small">{[p.anyBreakPrice && `Any break ${money(p.anyBreakPrice)}`, p.packagePrice && `All breaks ${money(p.packagePrice)}`].filter(Boolean).join(' · ') || '—'}</td>
             <td className="small">{p.nextSlotAt ? `${dayLabel(dubai(p.nextSlotAt).date)} ${time(p.nextSlotAt)} · ${p.openSlots} open` : 'Nothing open'}</td>
-          </tr>)}</tbody></table>
+          </tr>)}</tbody></table></div>
       </>}
     </main>
   )

@@ -98,8 +98,8 @@ export function WeekColumns({ weeks, title, format = v => compact(v), valueName 
           <b>{money(hv.value)}</b><span>{hover === weeks.length - 1 ? 'This week' : `Week of ${weekLabel(hv.week)}`}</span></div>}
       </div>
       <details className="chart-table"><summary>Show as table</summary>
-        <table className="table"><thead><tr><th>Week of</th><th className="r">{valueName}</th></tr></thead>
-          <tbody>{weeks.map(x => <tr key={x.week}><td>{weekLabel(x.week)}</td><td className="r num">{money(x.value)}</td></tr>)}</tbody></table>
+        <div className="table-wrap"><table className="table"><thead><tr><th>Week of</th><th className="r">{valueName}</th></tr></thead>
+          <tbody>{weeks.map(x => <tr key={x.week}><td>{weekLabel(x.week)}</td><td className="r num">{money(x.value)}</td></tr>)}</tbody></table></div>
       </details>
     </figure>
   )

@@ -18,10 +18,10 @@ export function DocumentsPage() {
       <PhotoBand img="/brand/bookings-wide.jpg" title="Receipts and invoices" sub="Payment receipts, tax invoices and credit notes for every booking." />
       {error && <p className="error">{error}</p>}
       {rows && !rows.length && <p className="muted empty">Nothing yet. You get a receipt from Nashr and a tax invoice from the publisher when you pay.</p>}
-      {rows && rows.length > 0 && <table className="table card" style={{ marginTop: 20 }}><thead><tr><th>Document</th><th>Number</th><th>Order</th><th>Date</th><th className="r">Total</th></tr></thead>
+      {rows && rows.length > 0 && <div className="table-wrap card" style={{ marginTop: 20 }}><table className="table"><thead><tr><th>Document</th><th>Number</th><th>Order</th><th>Date</th><th className="r">Total</th></tr></thead>
         <tbody>{rows.map(r => <tr key={r.id} onClick={() => (navigate(`/documents/${r.id}`))}>
           <td>{DOC_TYPE[r.type]}</td><td className="num">{r.number}</td><td className="num">{r.dealRef ?? '—'}</td>
-          <td className="num">{dayLabel(dubai(r.issuedAt).date, { day: 'numeric', month: 'short', year: 'numeric' })}</td><td className="r num">{money(r.total, r.currency)}</td></tr>)}</tbody></table>}
+          <td className="num">{dayLabel(dubai(r.issuedAt).date, { day: 'numeric', month: 'short', year: 'numeric' })}</td><td className="r num">{money(r.total, r.currency)}</td></tr>)}</tbody></table></div>}
     </main>
   )
 }

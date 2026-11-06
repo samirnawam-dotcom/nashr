@@ -92,8 +92,8 @@ export function SellerDashboard() {
         <section className="panel">
           <div className="panel-h"><h2>Coming up on air</h2><div className="spacer" /><a href="/deals">Deals</a></div>
           {!o.upcoming.length ? <p className="dash-empty">No booked slots coming up.</p>
-            : <table className="table"><tbody>{o.upcoming.map(u => <tr key={u.id} onClick={() => (navigate(`/deals/${u.id}`))}>
-              <td><b>{u.outlet}</b> · {u.label}<div className="small muted">{u.buyer}</div></td><td className="num small">{when(u.startsAt)}</td><td><DealStatus s={u.status} /></td></tr>)}</tbody></table>}
+            : <div className="table-wrap"><table className="table"><tbody>{o.upcoming.map(u => <tr key={u.id} onClick={() => (navigate(`/deals/${u.id}`))}>
+              <td><b>{u.outlet}</b> · {u.label}<div className="small muted">{u.buyer}</div></td><td className="num small">{when(u.startsAt)}</td><td><DealStatus s={u.status} /></td></tr>)}</tbody></table></div>}
         </section>
       </div>
     </main>

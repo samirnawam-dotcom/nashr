@@ -27,12 +27,12 @@ export function BookingsPage() {
       </PhotoBand>
       {error && <p className="error">{error}</p>}
       {deals && !deals.length && <p className="muted empty">No bookings yet. Bid on a slot in the calendar, or send a buy-now request.</p>}
-      {deals && deals.length > 0 && <table className="table card">
+      {deals && deals.length > 0 && <div className="table-wrap card"><table className="table">
         <thead><tr><th>Order</th><th>Slot</th><th>Airs</th><th className="r">Total</th><th>Status</th></tr></thead>
         <tbody>{deals.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
           <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="num">{when(d.startsAt)}</td>
           <td className="r num">{money(d.total, d.currency)}</td><td><Status s={d.status} /></td></tr>)}</tbody>
-      </table>}
+      </table></div>}
     </main>
   )
 }
@@ -154,9 +154,9 @@ export function BookingPage({ id }: { id: string }) {
       {(['accepted_pay_now', 'payment_secured'].includes(d.status) || d.creatives.length > 0) && <section className="card pad section">
         <h2>Creative</h2>
         <p className="small muted">Due {full(d.creativeDueAt)} (Dubai time). Technical fixes don't count as a change round.</p>
-        {d.creatives.length > 0 && <table className="table"><tbody>{d.creatives.map(c => <tr key={c.version}>
+        {d.creatives.length > 0 && <div className="table-wrap"><table className="table"><tbody>{d.creatives.map(c => <tr key={c.version}>
           <td className="num">v{c.version}</td><td>{CREATIVE[c.status] ?? c.status}{c.reason && <div className="small muted">{c.reason}</div>}</td>
-          <td className="small num">{full(c.uploadedAt)}</td><td className="r"><a className="small" href={`/api/files/${c.fileId}`}>Download</a></td></tr>)}</tbody></table>}
+          <td className="small num">{full(c.uploadedAt)}</td><td className="r"><a className="small" href={`/api/files/${c.fileId}`}>Download</a></td></tr>)}</tbody></table></div>}
         {['accepted_pay_now', 'payment_secured'].includes(d.status) && new Date(d.creativeDueAt) > new Date()
           && !d.creatives.some(c => c.status === 'approved' || c.status === 'pending') && <div className="field">
           <label htmlFor="file">{d.creatives.length ? 'Upload a new version' : 'Upload your creative'}</label>

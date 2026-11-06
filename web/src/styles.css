@@ -103,7 +103,6 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
   .topbar .who, .topbar .signout { display: none; }
   main { padding: 20px 16px; }
   h1 { font-size: 24px; }
-  .table { display: block; overflow-x: auto; }
   .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .seg button { white-space: nowrap; flex: none; }
   .auth { grid-template-columns: 1fr; }

@@ -303,3 +303,20 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 .profile-cover { position: relative; }
 .profile-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(6, 38, 42, .45), rgba(6, 38, 42, .15)); }
 .profile-cover.slim + .profile-h { padding-left: 0; }
+
+/* Wide tables scroll inside their own card, never the page. On phones they keep a readable width and pin the first column. */
+.table-wrap { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.table-wrap.card { overflow-y: hidden; }
+.table-wrap > .table { min-width: 100%; margin: 0; }
+.table-wrap { margin-top: 16px; }
+.chart-table .table-wrap { margin-top: 8px; }
+main.legal .table-wrap { margin: 8px 0; }
+.report-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); }
+@media (max-width: 700px) {
+  .table-wrap.card > .table { min-width: 620px; }
+  .table-wrap.card > .table td, .table-wrap.card > .table th { white-space: nowrap; }
+  .table-wrap.card > .table td:first-child, .table-wrap.card > .table th:first-child { position: sticky; left: 0; z-index: 1; white-space: normal; min-width: 150px; max-width: 190px; }
+  .table-wrap.card > .table td:first-child { background: var(--surface, #fff); box-shadow: 1px 0 0 var(--line); }
+  .table-wrap.card > .table tbody tr:hover td:first-child { background: #f6faf9; }
+  .table-wrap.card > .table th:first-child { box-shadow: 1px 0 0 var(--line); }
+}

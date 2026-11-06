@@ -18,13 +18,13 @@ export function AccountsPage() {
       <div className="toolbar"><input className="search" type="search" aria-label="Search" placeholder="Search companies" value={q} onChange={e => setQ(e.target.value)} />
         <div className="seg" role="group" aria-label="Type">{[['', 'All'], ['buyer', 'Buyers'], ['publisher', 'Publishers']].map(([v, l]) =>
           <button key={v} className={type === v ? 'on' : ''} onClick={() => setType(v)}>{l}</button>)}</div></div>
-      <table className="table card"><thead><tr><th>Company</th><th>Type</th><th>Users</th><th>Payouts</th><th>VAT</th><th className="r">Commission</th><th className="r">Booked value</th><th>Joined</th></tr></thead>
+      <div className="table-wrap card"><table className="table"><thead><tr><th>Company</th><th>Type</th><th>Users</th><th>Payouts</th><th>VAT</th><th className="r">Commission</th><th className="r">Booked value</th><th>Joined</th></tr></thead>
         <tbody>{shown.map(c => <tr key={c.id} onClick={() => (navigate(`/accounts/${c.id}`))}>
           <td><b>{c.name}</b></td><td>{c.type === 'buyer' ? 'Buyer' : 'Publisher'}</td><td>{c.users}{c.suspended ? <span className="outbid small"> · {c.suspended} suspended</span> : ''}</td>
           <td className="small">{c.type === 'publisher' ? (c.payoutsEnabled ? <span className="lead">Verified</span> : <span className="soon">Not verified</span>) : '—'}</td>
           <td className="small">{c.type === 'publisher' ? (c.vatRegistered ? `Registered · ${c.trn ?? 'no TRN'}` : 'Not registered') : '—'}</td>
           <td className="r num small">{c.type === 'publisher' ? (c.commissionBp != null ? `${c.commissionBp / 100}% (own)` : 'Default') : ''}</td>
-          <td className="r num">{money(c.gmv)}</td><td className="small num">{date(c.createdAt)}</td></tr>)}</tbody></table>
+          <td className="r num">{money(c.gmv)}</td><td className="small num">{date(c.createdAt)}</td></tr>)}</tbody></table></div>
     </main>
   )
 }
@@ -65,16 +65,16 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
           <span className="small muted">Founder only. Deals already accepted keep their rate.</span></div>}
       </section>}
       <section className="card pad section"><h2>Users</h2>
-        <table className="table"><tbody>{c.users.map(u => <tr key={u.id}>
+        <div className="table-wrap"><table className="table"><tbody>{c.users.map(u => <tr key={u.id}>
           <td><b>{u.name}</b><div className="small muted">{u.email}{u.phone ? ` · ${u.phone}` : ''}</div></td><td className="small">{u.role}</td>
           <td className={`small ${u.status === 'suspended' ? 'outbid' : ''}`}>{u.status}</td>
           <td className="r">{u.status === 'active' && <button className="btn" disabled={busy} onClick={() => confirm(`Suspend ${u.name}? They are signed out at once.`) && act('POST', `/admin/users/${u.id}/status`, { status: 'suspended' }, `${u.name} suspended.`)}>Suspend</button>}
-            {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, `${u.name} restored.`)}>Restore</button>}</td></tr>)}</tbody></table></section>
+            {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, `${u.name} restored.`)}>Restore</button>}</td></tr>)}</tbody></table></div></section>
       {c.outlets.length > 0 && <section className="card pad section"><h2>Outlets</h2>
         <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{o.channel}</span><span><b>{o.name}</b> · <span className="small muted">{o.sectors.join(', ')}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>Recent deals</h2>
-        {!c.deals.length ? <p className="muted">None yet.</p> : <table className="table"><tbody>{c.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
-          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="r num">{money(d.amount)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}</section>
+        {!c.deals.length ? <p className="muted">None yet.</p> : <div className="table-wrap"><table className="table"><tbody>{c.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
+          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="r num">{money(d.amount)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}</section>
     </main>
   )
 }

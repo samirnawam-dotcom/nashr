@@ -20,10 +20,10 @@ export function AdminDealsPage() {
           {Object.entries(DEAL_STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select>
         <button className="btn">Search</button></form>
       {!data ? <Loading error={error} /> : !data.length ? <p className="muted empty">No deals match.</p>
-        : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer</th><th>Publisher</th><th>Airs</th><th className="r">Price</th><th>Next deadline</th><th>Status</th></tr></thead>
+        : <div className="table-wrap card"><table className="table"><thead><tr><th>Order</th><th>Slot</th><th>Buyer</th><th>Publisher</th><th>Airs</th><th className="r">Price</th><th>Next deadline</th><th>Status</th></tr></thead>
           <tbody>{data.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
             <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td>{d.buyer}</td><td>{d.seller}</td><td className="small num">{date(d.starts_at)}</td>
-            <td className="r num">{money(d.amount, d.currency)}</td><td className="small num">{when(d.next_deadline_at)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}
+            <td className="r num">{money(d.amount, d.currency)}</td><td className="small num">{when(d.next_deadline_at)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )
 }
@@ -76,16 +76,16 @@ export function AdminDealPage({ id }: { id: string }) {
         <div className="card"><dt>Held now</dt><dd className="num">{money(d.money.held)}</dd>{pendingRefunds > 0 && <div className="small muted">{money(pendingRefunds)} refund being sent</div>}</div>
       </dl>
       <div className="tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === 'timeline' && <table className="table card"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Who</th><th>Note</th></tr></thead>
+      {tab === 'timeline' && <div className="table-wrap card"><table className="table"><thead><tr><th>When</th><th>Event</th><th>Status</th><th>Who</th><th>Note</th></tr></thead>
         <tbody>{d.events.map((e, i) => <tr key={i}><td className="small num">{when(e.at)}</td><td>{e.event.replace(/_/g, ' ')}</td>
-          <td className="small">{e.from_status ? `${e.from_status} → ` : ''}{e.to_status}</td><td className="mono">{e.actor}</td><td className="small">{e.note}</td></tr>)}</tbody></table>}
+          <td className="small">{e.from_status ? `${e.from_status} → ` : ''}{e.to_status}</td><td className="mono">{e.actor}</td><td className="small">{e.note}</td></tr>)}</tbody></table></div>}
       {tab === 'money' && <>
-        <table className="table card"><thead><tr><th>When</th><th>From (credit)</th><th>To (debit)</th><th className="r">Amount</th><th>Reference</th></tr></thead>
+        <div className="table-wrap card"><table className="table"><thead><tr><th>When</th><th>From (credit)</th><th>To (debit)</th><th className="r">Amount</th><th>Reference</th></tr></thead>
           <tbody>{d.ledger.map((l, i) => <tr key={i}><td className="small num">{when(l.at)}</td><td className="mono">{l.credit}</td><td className="mono">{l.debit}</td>
-            <td className="r num">{money(l.amount, l.currency)}</td><td className="small">{l.ref}</td></tr>)}</tbody></table>
+            <td className="r num">{money(l.amount, l.currency)}</td><td className="small">{l.ref}</td></tr>)}</tbody></table></div>
         <h2 className="sec-h">Payments, refunds and transfers</h2>
-        <table className="table card"><tbody>{d.moneyOps.map(m => <tr key={m.ref}><td className="num">{m.ref}</td><td>{m.kind}</td><td className="r num">{money(m.amount, m.currency)}</td>
-          <td className={m.status === 'failed' ? 'outbid' : ''}>{m.status}{m.failure && <div className="small">{m.failure}</div>}</td><td className="small num">{when(m.created_at)}</td></tr>)}</tbody></table>
+        <div className="table-wrap card"><table className="table"><tbody>{d.moneyOps.map(m => <tr key={m.ref}><td className="num">{m.ref}</td><td>{m.kind}</td><td className="r num">{money(m.amount, m.currency)}</td>
+          <td className={m.status === 'failed' ? 'outbid' : ''}>{m.status}{m.failure && <div className="small">{m.failure}</div>}</td><td className="small num">{when(m.created_at)}</td></tr>)}</tbody></table></div>
       </>}
       {tab === 'fulfilment' && <div className="grid2">
         <section className="card pad"><h2 style={{ fontSize: 16, marginBottom: 12 }}>Creative</h2>
@@ -101,8 +101,8 @@ export function AdminDealPage({ id }: { id: string }) {
         </section>
         {d.brief && <section className="card pad"><h2 style={{ fontSize: 16, marginBottom: 12 }}>Booking brief</h2><pre className="json">{JSON.stringify(d.brief, null, 2)}</pre></section>}
       </div>}
-      {tab === 'documents' && (!d.documents.length ? <p className="muted">No documents yet.</p> : <table className="table card"><tbody>{d.documents.map(x => <tr key={x.id} onClick={() => (navigate(`/documents/${x.id}`))}>
-        <td className="num">{x.number}</td><td>{DOC_TYPE[x.type]}</td><td className="r num">{money(x.total)}</td><td className="small num">{when(x.issued_at)}</td></tr>)}</tbody></table>)}
+      {tab === 'documents' && (!d.documents.length ? <p className="muted">No documents yet.</p> : <div className="table-wrap card"><table className="table"><tbody>{d.documents.map(x => <tr key={x.id} onClick={() => (navigate(`/documents/${x.id}`))}>
+        <td className="num">{x.number}</td><td>{DOC_TYPE[x.type]}</td><td className="r num">{money(x.total)}</td><td className="small num">{when(x.issued_at)}</td></tr>)}</tbody></table></div>)}
     </main>
   )
 }
@@ -116,12 +116,12 @@ export function DisputesPage() {
   return (
     <main>
       <PhotoBand img="/brand/print-wide.jpg" title="Disputes" sub="Disputed deals wait for Nashr's decision. Open issues are still with the publisher until their deadline." />
-      {!data.length ? <p className="muted empty">No disputes or open issues.</p> : <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer · publisher</th><th>Issue</th><th>Publisher's offer</th><th>Deadline</th><th>Status</th></tr></thead>
+      {!data.length ? <p className="muted empty">No disputes or open issues.</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>Order</th><th>Slot</th><th>Buyer · publisher</th><th>Issue</th><th>Publisher's offer</th><th>Deadline</th><th>Status</th></tr></thead>
         <tbody>{data.map(r => <tr key={r.id} onClick={() => (navigate(`/deals/${r.id}`))}>
           <td className="num">{r.ref}</td><td><b>{r.outlet}</b> · {r.label}<div className="small muted num">{money(r.amount)}</div></td><td className="small">{r.buyer}<br />{r.seller}</td>
           <td className="small"><b>{r.reason?.replace(/_/g, ' ')}</b><div className="muted">{r.note}</div></td>
           <td className="small">{!r.offer ? '—' : r.offer.type === 'partial_refund' ? `Refund ${money(r.offer.amount)}` : r.offer.type.replace(/_/g, ' ')}</td>
-          <td className="small num">{r.status === 'disputed' ? 'Nashr to decide' : when(r.dueAt)}</td><td><DealStatus s={r.status} /></td></tr>)}</tbody></table>}
+          <td className="small num">{r.status === 'disputed' ? 'Nashr to decide' : when(r.dueAt)}</td><td><DealStatus s={r.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )
 }

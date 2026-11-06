@@ -20,9 +20,9 @@ export function FundsPage() {
       <p className={f.reconcile.ok ? 'ok' : 'error'}>{f.reconcile.ok ? 'Reconciled: ' : 'Does not reconcile: '}ledger cash {money(f.reconcile.ledgerCash)}, payment provider {money(f.reconcile.providerCash)}.</p>
       <dl className="kpis">{ACCOUNT.map(([k, label, hint]) => <div key={k} className="card" title={hint}><dt>{label}</dt><dd className="num">{money(f.accounts[k])}</dd><div className="small muted">{hint}</div></div>)}</dl>
       <h2 className="sec-h">Latest movements</h2>
-      <table className="table card"><thead><tr><th>When</th><th>Order</th><th>From</th><th>To</th><th className="r">Amount</th><th>Reference</th></tr></thead>
+      <div className="table-wrap card"><table className="table"><thead><tr><th>When</th><th>Order</th><th>From</th><th>To</th><th className="r">Amount</th><th>Reference</th></tr></thead>
         <tbody>{f.recent.map((r, i) => <tr key={i}><td className="small num">{when(r.at)}</td><td className="num small">{r.deal ?? '—'}</td>
-          <td className="mono">{r.credit}</td><td className="mono">{r.debit}</td><td className="r num">{money(r.amount, r.currency)}</td><td className="small">{r.ref}</td></tr>)}</tbody></table>
+          <td className="mono">{r.credit}</td><td className="mono">{r.debit}</td><td className="r num">{money(r.amount, r.currency)}</td><td className="small">{r.ref}</td></tr>)}</tbody></table></div>
     </main>
   )
 }
@@ -41,14 +41,14 @@ export function PayoutsPage() {
         <button key={v} className={status === v ? 'on' : ''} onClick={() => setStatus(v)}>{l}</button>)}</div></div>
       {msg}
       {!data ? <Loading error={error} /> : !data.length ? <p className="muted empty">Nothing here.</p>
-        : <table className="table card"><thead><tr><th>Reference</th><th>Type</th><th>To</th><th>Order</th><th className="r">Amount</th><th>Status</th><th>Updated</th><th /></tr></thead>
+        : <div className="table-wrap card"><table className="table"><thead><tr><th>Reference</th><th>Type</th><th>To</th><th>Order</th><th className="r">Amount</th><th>Status</th><th>Updated</th><th /></tr></thead>
           <tbody>{data.map(m => <tr key={m.id}>
             <td className="num">{m.ref}</td><td>{m.kind === 'transfer' ? 'Payout' : 'Refund'}</td>
             <td>{m.kind === 'transfer' ? <>{m.company}{m.payoutsEnabled === false && <div className="small outbid">Payout account not verified</div>}</> : 'Buyer card'}</td>
             <td className="num small">{m.dealId ? <a href={`/deals/${m.dealId}`}>{m.deal}</a> : '—'}</td><td className="r num">{money(m.amount, m.currency)}</td>
             <td className={m.status === 'failed' ? 'outbid' : m.status === 'pending' ? 'soon' : 'lead'}>{m.status}{m.failure && <div className="small">{m.failure}</div>}</td>
             <td className="small num">{when(m.updatedAt)}</td>
-            <td className="r">{m.status === 'failed' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/money-ops/${m.id}/retry`, {}, `${m.ref} queued again.`)}>Retry</button>}</td></tr>)}</tbody></table>}
+            <td className="r">{m.status === 'failed' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/money-ops/${m.id}/retry`, {}, `${m.ref} queued again.`)}>Retry</button>}</td></tr>)}</tbody></table></div>}
     </main>
   )
 }
@@ -65,15 +65,15 @@ export function ReportsPage() {
   const Table = ({ title, rows, label, name }: { title: string; rows: (Agg & Record<string, any>)[]; label: (r: any) => string; name: string }) => <section className="section">
     <div className="row-flex" style={{ marginBottom: 8 }}><h2 style={{ fontSize: 16 }}>{title}</h2><div className="spacer" />
       <button className="btn" disabled={!rows.length} onClick={() => csv(`nashr-${name}-${from}-${to}.csv`, rows.map(r => ({ [name]: label(r), bookings: r.bookings, gmv_aed: r.gmv / 100, commission_aed: r.commission / 100 })))}>CSV</button></div>
-    {!rows.length ? <p className="muted">No paid bookings in this period.</p> : <table className="table card"><thead><tr><th /><th className="r">Bookings</th><th className="r">Booked value</th><th className="r">Commission</th><th className="r">Take rate</th></tr></thead>
+    {!rows.length ? <p className="muted">No paid bookings in this period.</p> : <div className="table-wrap card"><table className="table"><thead><tr><th /><th className="r">Bookings</th><th className="r">Booked value</th><th className="r">Commission</th><th className="r">Take rate</th></tr></thead>
       <tbody>{rows.map((r, i) => <tr key={i}><td>{label(r)}</td><td className="r num">{r.bookings}</td><td className="r num">{money(r.gmv)}</td><td className="r num">{money(r.commission)}</td>
-        <td className="r num small">{r.gmv ? `${((r.commission / r.gmv) * 100).toFixed(1)}%` : '—'}</td></tr>)}</tbody></table>}</section>
+        <td className="r num small">{r.gmv ? `${((r.commission / r.gmv) * 100).toFixed(1)}%` : '—'}</td></tr>)}</tbody></table></div>}</section>
   return (
     <main>
       <PhotoBand img="/brand/campaigns-wide.jpg" title="Reports" sub="Paid bookings, by the date they were booked (Dubai). Values excl. VAT." />
       <div className="toolbar"><label className="small muted" htmlFor="f">From</label><input id="f" className="search" style={{ minWidth: 0 }} type="date" value={from} onChange={e => setFrom(e.target.value)} />
         <label className="small muted" htmlFor="t">To</label><input id="t" className="search" style={{ minWidth: 0 }} type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
-      {!data ? <Loading error={error} /> : <div className="grid2">
+      {!data ? <Loading error={error} /> : <div className="grid2 report-grid">
         <Table title="By month" rows={data.byMonth} label={r => r.month} name="month" />
         <Table title="By channel" rows={data.byChannel} label={r => r.channel} name="channel" />
         <Table title="By how it sold" rows={data.bySaleType} label={r => KIND[r.kind] ?? r.kind} name="sale_type" />

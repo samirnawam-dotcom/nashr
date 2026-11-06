@@ -32,10 +32,10 @@ export function SellerDealsPage() {
       <div className="toolbar"><div className="seg" role="group" aria-label="Filter">{FILTERS.map(([k, l]) => <button key={k} className={f === k ? 'on' : ''} onClick={() => setF(k)}>{l}</button>)}</div></div>
       {error && <p className="error">{error}</p>}
       {deals && !shown.length && <p className="muted empty">No deals here.</p>}
-      {shown.length > 0 && <table className="table card"><thead><tr><th>Order</th><th>Slot</th><th>Buyer</th><th>Airs</th><th className="r">Bid</th><th className="r">You receive</th><th>Status</th></tr></thead>
+      {shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>Order</th><th>Slot</th><th>Buyer</th><th>Airs</th><th className="r">Bid</th><th className="r">You receive</th><th>Status</th></tr></thead>
         <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
           <td className="num">{d.ref}</td><td>{d.label}</td><td>{d.buyer.company}</td><td className="num">{when(d.startsAt)}</td>
-          <td className="r num">{money(d.money.bid)}</td><td className="r num">{money(d.money.youReceive)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table>}
+          <td className="r num">{money(d.money.bid)}</td><td className="r num">{money(d.money.youReceive)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )
 }
@@ -115,9 +115,9 @@ export function SellerDealPage({ id }: { id: string }) {
         <h2>Creative</h2>
         <p className="small muted">Due {when(x.creativeDueAt)}. A technical problem with the file doesn't use one of the buyer's change rounds.</p>
         {!x.creatives.length && <p className="muted">Not received yet.</p>}
-        {x.creatives.length > 0 && <table className="table"><tbody>{x.creatives.map(c => <tr key={c.version}>
+        {x.creatives.length > 0 && <div className="table-wrap"><table className="table"><tbody>{x.creatives.map(c => <tr key={c.version}>
           <td className="num">v{c.version}</td><td>{CREATIVE[c.status]}{c.reason && <div className="small muted">{REJECT[c.reason] ?? c.reason}</div>}</td>
-          <td className="small muted">{c.fileType} · {Math.max(1, Math.round(c.fileSize / 1024))} KB</td><td className="r"><a className="small" href={`/api/files/${c.fileId}`}>Download</a></td></tr>)}</tbody></table>}
+          <td className="small muted">{c.fileType} · {Math.max(1, Math.round(c.fileSize / 1024))} KB</td><td className="r"><a className="small" href={`/api/files/${c.fileId}`}>Download</a></td></tr>)}</tbody></table></div>}
         {latest?.status === 'pending' && (form?.k !== 'review' ? <div className="row-flex">
           <button className="btn primary" disabled={busy} onClick={() => act(`/seller/deals/${d.id}/creative-review`, { decision: 'approve' }, 'Creative approved.')}>Approve</button>
           <button className="btn" onClick={() => setForm({ k: 'review', decision: 'changes', reason: '' })}>Ask for changes or reject</button></div>

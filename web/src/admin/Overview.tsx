@@ -90,7 +90,7 @@ export function AccessPage() {
     <main>
       <PhotoBand img="/brand/dash-buyer.jpg" title="Access requests" sub="Nashr is invite-only. Approving creates the company and an invite link (valid 7 days)." />
       {msg}
-      {!data.length ? <p className="muted empty">No requests.</p> : <table className="table card"><thead><tr><th>Person</th><th>Company</th><th>Received</th><th>Status</th><th style={{ width: 360 }} /></tr></thead>
+      {!data.length ? <p className="muted empty">No requests.</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>Person</th><th>Company</th><th>Received</th><th>Status</th><th style={{ width: 360 }} /></tr></thead>
         <tbody>{data.map(r => <tr key={r.id}>
           <td><b>{r.name}</b><div className="small muted">{r.role} · {r.email} · {r.phone}</div></td>
           <td>{r.company}<div className="small muted">{TYPE[r.company_type]}</div></td><td className="small num">{date(r.created_at)}</td>
@@ -101,7 +101,7 @@ export function AccessPage() {
               <input className="search" style={{ minWidth: 0, flex: 1 }} aria-label={`Reason for ${r.name}`} placeholder="Reason (for reject or more info)" value={reason[r.id] ?? ''} onChange={e => setReason({ ...reason, [r.id]: e.target.value })} /></div>
             <div className="row-flex"><button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'info', reason: reason[r.id] }, 'Asked for more information.')}>Ask for info</button>
               <button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'rejected', reason: reason[r.id] }, 'Rejected.')}>Reject</button></div>
-          </div>}</td></tr>)}</tbody></table>}
+          </div>}</td></tr>)}</tbody></table></div>}
     </main>
   )
 }
