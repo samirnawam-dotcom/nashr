@@ -6,6 +6,7 @@ import { BidDrawer } from './BidDrawer'
 import { SignInPrompt, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { PhotoBand } from '../PhotoBand'
+import { SavedSearches } from './SavedSearches'
 import { activeCount, DAYPARTS, matches, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
 
 type View = 'day' | 'week' | 'month'
@@ -96,12 +97,14 @@ export function CalendarPage() {
   }, [])
 
   // One filter object for the screen and for saved searches; the matching rules are shared with the server.
-  const filter: SlotFilter = useMemo(() => ({ channels: [...channels], saleTypes: [...saleTypes], ...(sector ? { sector } : {}), ...(q.trim() ? { q } : {}),
+  const filter: SlotFilter = useMemo(() => ({ ...(channels.size < CHANNELS.length ? { channels: [...channels] } : {}), ...(saleTypes.size < 2 ? { saleTypes: [...saleTypes] } : {}), ...(sector ? { sector } : {}), ...(q.trim() ? { q } : {}),
     ...(Number(maxPrice) > 0 ? { maxPrice: Math.round(Number(maxPrice) * 100) } : {}), ...(dayparts.size ? { dayparts: [...dayparts] as Daypart[] } : {}),
     ...(closingSoon ? { closingWithinHours: 24 } : {}) }), [channels, saleTypes, sector, q, maxPrice, dayparts, closingSoon])
   const shown = useMemo(() => slots.filter(s => matches(filter, s)), [slots, filter])
   const sectors = useMemo(() => [...new Set(slots.flatMap(s => s.sectors ?? []).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [slots])
   const active = activeCount(filter, { channels: CHANNELS.length, saleTypes: 2 })
+  const apply = (f: SlotFilter) => { setChannels(new Set(f.channels?.length ? f.channels : CHANNELS)); setSaleTypes(new Set(f.saleTypes?.length ? f.saleTypes : ['auction', 'quick_sale']))
+    setSector(f.sector ?? ''); setQ(f.q ?? ''); setMaxPrice(f.maxPrice ? String(f.maxPrice / 100) : ''); setDayparts(new Set(f.dayparts ?? [])); setClosingSoon(!!f.closingWithinHours) }
   const clear = () => { setChannels(new Set(CHANNELS)); setSaleTypes(new Set(['auction', 'quick_sale'])); setQ(''); setSector(''); setMaxPrice(''); setDayparts(new Set()); setClosingSoon(false) }
   const step = (n: number) => setAnchor(addDays(anchor, view === 'day' ? n : view === 'week' ? 7 * n : 0) as string)
   const stepMonth = (n: number) => { const d = new Date(anchor + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); setAnchor(d.toISOString().slice(0, 10)) }
@@ -114,6 +117,8 @@ export function CalendarPage() {
     <div className="cal">
       <details className="cal-side" open={!narrow || undefined}>
         <summary className="btn">Filters{active ? ` (${active})` : ''}</summary>
+        {!guest && <SavedSearches filter={filter} active={active} names={CHANNEL_NAME} onApply={apply} />}
+        {guest && active > 0 && <p className="small muted saved-guest"><a href="/sign-in">Sign in</a> to save this search and get an alert when new slots match.</p>}
         <label className="side-h" htmlFor="cal-q">Search</label>
         <input id="cal-q" className="search cal-search" type="search" placeholder="Outlet, programme or audience" value={q} onChange={e => setQ(e.target.value)} />
         <h3 className="side-h">Channels</h3>

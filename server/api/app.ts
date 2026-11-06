@@ -15,6 +15,7 @@ import { adminDeskRoutes } from './routes-admin-desk.js'
 import { healthRoute } from './routes-health.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { coverRoutes } from './routes-covers.js'
+import { searchRoutes } from './routes-searches.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 import { type StripeConfig, stripeWebhook } from './routes-stripe.js'
 import { dashboardRoutes } from './routes-dashboards.js'
@@ -129,6 +130,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   sellerDeskRoutes(route, deps)
   adminDeskRoutes(route, deps)
   dashboardRoutes(route)
+  searchRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.

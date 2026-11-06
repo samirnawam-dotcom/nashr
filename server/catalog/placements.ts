@@ -92,10 +92,10 @@ export async function generateSlots(db: Db, placementId: string, fromDate: strin
       if (closes <= at) continue
       const r = await db.query(
         `insert into slots (placement_id, air_date, kind, label, starts_at, ends_at, sale_type, starting_price, buy_now_price, reserve_price,
-           auto_accept, currency, closes_at, creative_due_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) on conflict do nothing`,
+           auto_accept, currency, closes_at, creative_due_at, listed_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) on conflict do nothing`,
         [p.id, date, s.kind, s.label, s.startsAt, s.endsAt, p.sale_type, s.price, s.kind === 'single' ? p.buy_now_price : null,
-         s.kind === 'single' ? p.reserve_price : null, p.auto_accept, p.currency, closes, hours(s.startsAt, p.creative_lead_hours)])
+         s.kind === 'single' ? p.reserve_price : null, p.auto_accept, p.currency, closes, hours(s.startsAt, p.creative_lead_hours), at])
       made += r.rowCount ?? 0
     }
   }

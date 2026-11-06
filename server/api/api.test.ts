@@ -375,6 +375,44 @@ describe('admin screens', () => {
   })
 })
 
+describe('saved searches and alerts', () => {
+  const matchesFor = async (who: Who) => (await call(who, 'GET', '/api/notifications')).json().items.filter((n: any) => n.kind === 'search.match')
+
+  test('a buyer saves searches; new matching slots raise one alert per run; nobody else sees or changes them', async () => {
+    const mornings = { name: 'Radio mornings', filter: { channels: ['radio'], dayparts: ['morning'], maxPrice: AED(5_000) } }
+    expect((await call(null, 'POST', '/api/searches', mornings)).statusCode).toBe(401)
+    expect((await call(sellerX, 'POST', '/api/searches', mornings)).statusCode).toBe(403)
+    expect((await call(buyerA, 'POST', '/api/searches', { name: 'Bad', filter: { maxPrice: -5 } })).statusCode).toBe(400)
+    expect((await call(buyerA, 'POST', '/api/searches', { name: 'Bad', filter: { channels: ['cinema'] } })).statusCode).toBe(400)
+    const s = (await call(buyerA, 'POST', '/api/searches', mornings)).json()
+    await call(buyerA, 'POST', '/api/searches', { name: 'TV only', filter: { channels: ['tv'] } })
+    expect((await call(buyerA, 'GET', '/api/searches')).json().map((x: any) => [x.name, x.alerts])).toEqual([['Radio mornings', true], ['TV only', true]])
+    expect((await call(buyerB, 'GET', '/api/searches')).json()).toEqual([])
+    expect((await call(buyerB, 'DELETE', `/api/searches/${s.id}`)).statusCode).toBe(404)
+    expect((await call(buyerB, 'PUT', `/api/searches/${s.id}`, { alerts: false })).statusCode).toBe(404)
+
+    await sweep(now)
+    expect(await matchesFor(buyerA)).toEqual([]) // slots listed before the search was saved never alert
+
+    now = T('2026-11-01T09:00:00Z'); await listSlot(sellerX, 'Skyline Breakfast') // radio, 07:15 Dubai, AED 3,500
+    await sweep(now); await sweep(now)
+    const alerts = await matchesFor(buyerA)
+    expect(alerts).toHaveLength(1) // one alert, not one per run or per slot
+    expect(alerts[0].data).toMatchObject({ searchId: s.id, name: 'Radio mornings', count: 1 })
+    expect(await matchesFor(buyerB)).toEqual([])
+
+    expect((await call(buyerA, 'PUT', `/api/searches/${s.id}`, { alerts: false })).statusCode).toBe(200)
+    now = T('2026-11-01T10:00:00Z'); await listSlot(sellerY, 'Gulf Breakfast')
+    await sweep(now)
+    expect(await matchesFor(buyerA)).toHaveLength(1)
+
+    expect((await call(buyerA, 'DELETE', `/api/searches/${s.id}`)).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/searches')).json().map((x: any) => x.name)).toEqual(['TV only'])
+    for (let i = 0; i < 19; i++) await call(buyerA, 'POST', '/api/searches', { name: `S${i}`, filter: {} })
+    expect((await call(buyerA, 'POST', '/api/searches', { name: 'One too many', filter: {} })).json().error).toMatch('20')
+  })
+})
+
 describe('outlet cover photos', () => {
   const PNG = Buffer.concat([Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'), Buffer.alloc(64, 7)])
   const put = (who: Who | null, url: string, bytes: Buffer, type = 'image/png') =>

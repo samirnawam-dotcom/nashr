@@ -131,3 +131,16 @@
 .cal-clear { margin-top: 14px; width: 100%; justify-content: center; }
 .cal-empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 14px 16px; color: var(--slate); }
 label.side-h { display: block; }
+.saved { margin-bottom: 4px; }
+.saved-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.saved-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.saved-list li.on { border-color: var(--teal, #0f6b6b); box-shadow: inset 3px 0 0 var(--teal, #0f6b6b); }
+.saved-name { display: grid; gap: 1px; text-align: left; background: none; border: 0; padding: 8px 4px 8px 10px; cursor: pointer; font: inherit; color: inherit; min-width: 0; }
+.saved-name b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-name span { font-size: 12px; color: var(--slate); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-bell, .saved-del { width: 32px; height: 32px; display: grid; place-items: center; background: none; border: 0; border-radius: 8px; color: var(--faint, #7d8b8f); cursor: pointer; font-size: 18px; }
+.saved-bell.is-on { color: var(--teal, #0f6b6b); }
+.saved-bell:hover, .saved-del:hover { background: var(--surface-2, #f2f5f4); color: var(--ink); }
+.saved-save { width: 100%; justify-content: center; }
+.saved-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.saved-guest { margin: 0 0 4px; }

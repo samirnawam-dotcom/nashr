@@ -31,6 +31,7 @@ const TEXT: Record<string, (n: N) => string> = {
     partial_refund: 'Nashr decided the dispute: a partial refund to the buyer.', make_good: 'Nashr decided the dispute: the ad runs again.' } as Record<string, string>)[n.data?.outcome] ?? 'Nashr decided the dispute.',
   'prerun.confirm_final_version': () => 'Confirm the final version before air.',
   'prerun.confirm_slot_and_creative': () => 'Confirm the slot and creative before air.',
+  'search.match': n => `${n.data?.count ?? 'New'} new ${n.data?.count === 1 ? 'slot matches' : 'slots match'} your search “${n.data?.name ?? ''}”.`,
   'access.requested': n => `${n.data?.company ?? 'Someone'} requested access.`,
   'quote.requested': n => `Quote requested for ${n.data?.outlet ?? 'an outlet'}.`,
 }
@@ -57,7 +58,7 @@ export function Bell({ role }: { role: string }) {
       {open && <div className="card bell-pop" role="menu">
         {!data.items.length && <p className="muted small">Nothing yet.</p>}
         {data.items.map(n => { const text = (TEXT[n.kind] ?? (() => n.kind))(n)
-          const href = n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '/calendar' : undefined
+          const href = n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
           return <a key={n.id} href={href} className={n.read ? '' : 'unread'} onClick={() => setOpen(false)} role="menuitem">
             <div>{text}</div><div className="small muted">{n.dealRef ? `${n.dealRef} · ` : ''}{new Date(n.at).toLocaleString('en-GB', { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></a> })}
       </div>}
