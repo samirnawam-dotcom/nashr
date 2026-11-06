@@ -10,6 +10,7 @@ import { uploadCreative } from '../fulfilment/creative.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
 import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
 import { MarketError } from '../marketplace/market.js'
+import { dealRating } from './routes-ratings.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const money = { type: 'integer', minimum: 1 }
@@ -99,7 +100,8 @@ export function buyerRoutes(route: RouteFn) {
         items: PROOF_CHECKLIST[d.channel].map(i => ({ key: i.key, label: i.label, value: proof.items[i.key] ?? null })) } : null,
       issue: issues[0] ? { reason: issues[0].reason, note: issues[0].note, offer: issues[0].offer, status: issues[0].status, openedAt: issues[0].opened_at } : null,
       prerun: prerun[0] ? { requestedAt: prerun[0].requested_at, confirmedAt: prerun[0].buyer_confirmed_at } : null,
-      documents: docs.map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at })) }
+      documents: docs.map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at })),
+      rating: await dealRating(db, d.id) }
   })
 
   route('POST', '/api/deals/:id/prerun', BUYER, async ({ db, at, me }, req) => {

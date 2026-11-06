@@ -7,6 +7,7 @@ import { submitProof } from '../fulfilment/proof.js'
 import { reviewCreative } from '../fulfilment/creative.js'
 import { offerFix } from '../fulfilment/issues.js'
 import { createPlacement, generateSlots, overlapWarnings } from '../catalog/placements.js'
+import { dealRating } from './routes-ratings.js'
 
 const SELLER: ['seller'] = ['seller']
 const price = { type: 'integer', minimum: 100, maximum: 100_000_000_00 } // at least AED 1, in fils
@@ -56,7 +57,7 @@ export function sellerRoutes(route: RouteFn) {
 
   route('GET', '/api/seller/deals/:id', SELLER, async ({ db, me }, req) => {
     const d = await ownDeal(db, req.params.id, me.actAs.companyId)
-    return sellerDeal(d, await otherBids(db, d))
+    return { ...sellerDeal(d, await otherBids(db, d)), rating: await dealRating(db, d.id) }
   })
 
   route('POST', '/api/seller/deals/:id/accept', SELLER, async ({ db, at, me }, req) => {

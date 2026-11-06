@@ -375,6 +375,44 @@ describe('admin screens', () => {
   })
 })
 
+describe('publisher ratings', () => {
+  async function releasedDeal(buyer: Who, slot: string, seller: Who) {
+    const deal = (await call(buyer, 'POST', `/api/slots/${slot}/buy-now`, { brief: BRIEF })).json().id
+    await call(seller, 'POST', `/api/seller/deals/${deal}/accept`)
+    await call(buyer, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    return deal
+  }
+
+  test('only the buyer of a released booking rates it, once (and may change it); outlets show the average without naming buyers', async () => {
+    const deal = await releasedDeal(buyerA, slotX, sellerX)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/rating`, { score: 5 })).json().error).toMatch('after the booking is complete')
+    await pool.query(`update deals set status = 'released' where id = $1`, [deal]) // the ad ran and the money was released
+
+    expect((await call(buyerB, 'POST', `/api/deals/${deal}/rating`, { score: 1 })).statusCode).toBe(404)
+    expect((await call(sellerX, 'POST', `/api/deals/${deal}/rating`, { score: 5 })).statusCode).toBe(403)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/rating`, { score: 6 })).statusCode).toBe(400)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/rating`, { score: 4, comment: 'Call me on 050 123 4567' })).json().error).toMatch('not allowed')
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/rating`, { score: 3, comment: 'Aired on time.' })).statusCode).toBe(200)
+    await pool.query(`update deals set status = 'paid_out' where id = $1`, [deal]) // still rateable once the publisher is paid
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/rating`, { score: 5, comment: 'Aired on time, great reach.' })).statusCode).toBe(200) // changed, not added
+    expect((await call(buyerA, 'GET', `/api/deals/${deal}`)).json().rating).toMatchObject({ score: 5, comment: 'Aired on time, great reach.' })
+
+    const outlet = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    const page = (await call(null, 'GET', `/api/outlets/${outlet}`)).json()
+    expect(page.rating).toMatchObject({ average: 5, count: 1 })
+    expect(page.rating.recent[0]).toMatchObject({ score: 5, comment: 'Aired on time, great reach.' })
+    expect(JSON.stringify(page.rating)).not.toMatch(/Northwind|sara@/)
+    expect((await call(null, 'GET', '/api/directory')).json().find((o: any) => o.id === outlet).rating).toMatchObject({ average: 5, count: 1 })
+    expect((await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).json().rating).toMatchObject({ score: 5 })
+
+    // Nashr hides an abusive rating: it leaves the average and the page
+    const id = (await pool.query(`select id from ratings where deal_id = $1`, [deal])).rows[0].id
+    expect((await call(buyerA, 'POST', `/api/admin/ratings/${id}/hidden`, { hidden: true })).statusCode).toBe(403)
+    expect((await call(admin, 'POST', `/api/admin/ratings/${id}/hidden`, { hidden: true })).statusCode).toBe(200)
+    expect((await call(null, 'GET', `/api/outlets/${outlet}`)).json().rating).toMatchObject({ average: null, count: 0, recent: [] })
+  })
+})
+
 describe('saved searches and alerts', () => {
   const matchesFor = async (who: Who) => (await call(who, 'GET', '/api/notifications')).json().items.filter((n: any) => n.kind === 'search.match')
 

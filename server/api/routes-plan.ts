@@ -6,6 +6,7 @@ import { notify } from '../core/notify.js'
 import { audit } from '../core/audit.js'
 import { buyerStatus } from './shapes.js'
 import { coverUrl } from './routes-covers.js'
+import { outletRating } from './routes-ratings.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const OPEN = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1)`
@@ -23,7 +24,9 @@ const OUTLET_SQL = `
   select o.*, c.payouts_enabled and ${OPEN} ? o.market bookable, not (${OPEN} ? o.market) coming_soon,
     (select min(p.starting_price) from placements p where p.outlet_id = o.id and not p.archived) rate_low,
     (select max(coalesce(p.package_price, p.starting_price)) from placements p where p.outlet_id = o.id and not p.archived) rate_high,
-    t.n sales, t.low typical_low, t.high typical_high
+    t.n sales, t.low typical_low, t.high typical_high,
+    (select round(avg(x.score)::numeric, 1)::float from ratings x where x.outlet_id = o.id and not x.hidden) rating_avg,
+    (select count(*)::int from ratings x where x.outlet_id = o.id and not x.hidden) rating_n
   from outlets o left join companies c on c.id = o.company_id
   left join lateral (select count(*)::int n, percentile_disc(0.25) within group (order by d.amount) low, percentile_disc(0.75) within group (order by d.amount) high
     from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id where p.outlet_id = o.id and d.status in ${DONE}) t on true
@@ -42,7 +45,8 @@ export const SLUG_SQL = `lower(trim(both '-' from regexp_replace(o.name, '[^a-zA
 const slugOf = (name: string, id: string) => name.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || id
 
 const outletCard = (r: any) => ({ id: r.id, slug: slugOf(r.name, r.id), name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url, coverUrl: coverUrl(r),
-  tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r) })
+  tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r),
+  rating: { average: r.rating_n ? r.rating_avg : null, count: r.rating_n ?? 0 } })
 
 export function planRoutes(route: RouteFn) {
   // The directory is for buyers, visitors browsing before they sign in, and Nashr; signed-in sellers cannot see it (brief section 6).
@@ -59,7 +63,7 @@ export function planRoutes(route: RouteFn) {
          (select count(*)::int from slots s where s.placement_id = p.id and s.status = 'open' and s.starts_at > $2) open_slots,
          (select min(s.starts_at) from slots s where s.placement_id = p.id and s.status = 'open' and s.starts_at > $2) next_slot
        from placements p where p.outlet_id = $1 and not p.archived order by p.name`, [r.id, at])).rows : []
-    return { ...outletCard(r), website: r.website, description: r.description, completedSales: r.bookable ? r.sales : 0,
+    return { ...outletCard(r), rating: await outletRating(db, r.id), website: r.website, description: r.description, completedSales: r.bookable ? r.sales : 0,
       placements: placements.map(p => ({ id: p.id, name: p.name, saleType: p.sale_type, days: p.days, startsAt: p.starts, endsAt: p.ends,
         breaks: p.breaks.length, startingPrice: p.starting_price, anyBreakPrice: p.any_break_price, packagePrice: p.package_price,
         buyNowPrice: p.buy_now_price, openSlots: p.open_slots, nextSlotAt: p.next_slot })) }

@@ -7,6 +7,7 @@ import { dubai } from '../calendar/layout'
 import './directory.css'
 import { SignInPrompt, rememberPlace, useGuest } from '../guest'
 import { PhotoBand } from '../PhotoBand'
+import { Stars } from '../Stars'
 
 const CHANNELS = ['tv', 'radio', 'print', 'digital', 'podcast']
 const CHANNEL: Record<string, string> = { tv: 'TV', radio: 'Radio', print: 'Print', digital: 'Digital', podcast: 'Podcast' }
@@ -71,6 +72,7 @@ export function DirectoryPage() {
             <div className="row-flex"><Logo o={o} /><div><b>{o.name}</b>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div></div>
             <div className="small muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).join(', ')}` : ''}</div>
             <PriceTag p={o.price} />
+            {o.rating && o.rating.count > 0 && <Stars value={o.rating.average!} count={o.rating.count} />}
             <span className={o.onNashr ? 'badge on' : 'badge'}>{o.comingSoon ? 'Coming soon' : o.onNashr ? 'On Nashr · book slots' : 'Not on Nashr yet · request a quote'}</span>
           </a>)}</div>
         : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>Outlet</th><th>Channel</th><th>Sectors</th><th>Price</th><th /></tr></thead>
@@ -82,7 +84,7 @@ export function DirectoryPage() {
   )
 }
 
-type Profile = Outlet & { website: string | null; description: string | null; completedSales: number; placements: {
+type Profile = Omit<Outlet, 'rating'> & { rating: { average: number | null; count: number; recent: { score: number; comment: string; at: string }[] }; website: string | null; description: string | null; completedSales: number; placements: {
   id: string; name: string; saleType: string; days: number[]; startsAt: string | null; endsAt: string | null; breaks: number
   startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null; buyNowPrice: number | null; openSlots: number; nextSlotAt: string | null }[] }
 
@@ -118,7 +120,8 @@ export function OutletPage({ id }: { id: string }) {
       <div className="profile-cover" aria-hidden><img src={o.coverUrl ?? `/brand/${o.channel}-wide.jpg`} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channel}-wide.jpg` }} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h">
         <Logo o={o} size={64} />
-        <div><h1>{o.name}</h1><p className="muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.audience ? ` · ${o.audience}` : ''}</p></div>
+        <div><h1>{o.name}</h1><p className="muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.audience ? ` · ${o.audience}` : ''}</p>
+          {o.rating.count > 0 && <Stars value={o.rating.average!} count={o.rating.count} size={16} />}</div>
         <div className="spacer" />
         {campaigns.length > 0 && <select className="btn" aria-label="Add to campaign" value="" onChange={e => e.target.value && addToCampaign(e.target.value)}>
           <option value="">Add to campaign…</option>{campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
@@ -150,6 +153,9 @@ export function OutletPage({ id }: { id: string }) {
         </section>}
       </div>
       {o.placements.length > 0 && <>
+        {o.rating.recent.length > 0 && <section className="section reviews"><h2 className="sec-h">What buyers say</h2>
+          <ul className="review-list">{o.rating.recent.map((r, i) => <li key={i} className="card pad"><Stars value={r.score} /><p>“{r.comment}”</p>
+            <span className="small muted">Verified booking · {new Date(r.at).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span></li>)}</ul></section>}
         <h2 className="sec-h">What you can book</h2>
         <div className="table-wrap card"><table className="table"><thead><tr><th>Placement</th><th>When</th><th>Sold as</th><th className="r">From</th><th className="r">Options</th><th>Next open</th></tr></thead>
           <tbody>{o.placements.map(p => <tr key={p.id}>

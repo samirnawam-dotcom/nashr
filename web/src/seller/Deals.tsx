@@ -4,11 +4,12 @@ import { api, upload } from '../api'
 import { DOC_TYPE } from '../documents/Documents'
 import { DealStatus, money, when } from './common'
 import { PhotoBand } from '../PhotoBand'
+import { Stars } from '../Stars'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
   brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
   money: { bid: number; mediaVat: number; fee: number; feeVat: number; youReceive: number; commissionBp: number }
-  otherBids: { id: string; label: string; company: string; amount: number }[] }
+  otherBids: { id: string; label: string; company: string; amount: number }[]; rating?: { score: number; comment: string | null } | null }
 type Detail = { channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
   proofChecklist: { key: string; label: string }[]; adHasRun: boolean
   timeline: { at: string; event: string; status: string; note: string | null }[]
@@ -71,6 +72,7 @@ export function SellerDealPage({ id }: { id: string }) {
       <div className="profile-cover slim" aria-hidden><img src={`/brand/${x.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
       <h1>{d.label}</h1>
       <p className="muted">{when(d.startsAt)} · {d.buyer.company} · <DealStatus s={d.status} /></p>
+      {d.rating && <section className="card pad section rate"><h2>The buyer's rating</h2><Stars value={d.rating.score} size={18} />{d.rating.comment && <p className="rate-comment">“{d.rating.comment}”</p>}</section>}
 
       <div className="card pad">
         <dl className="sum num">

@@ -9,6 +9,7 @@ import { allowExtraRound } from '../fulfilment/creative.js'
 import { inviteStaff } from '../auth/access.js'
 import { FOUNDER_ONLY } from './routes-admin.js'
 import { coverUrl } from './routes-covers.js'
+import { dealRating } from './routes-ratings.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 const LIVE = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')` // paid bookings
@@ -107,7 +108,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       q(`select id, type, number, total, issued_at from documents where deal_id = $1 order by issued_at`),
     ])
     const s = split(d.amount, { commissionBp: d.commission_bp ?? 0, mediaVatBp: d.media_vat_bp ?? d.vat_preview, feeVatBp: d.fee_vat_bp ?? 0 })
-    return { id: d.id, ref: d.ref, status: d.status, kind: d.kind, outlet: d.outlet, channel: d.channel, label: d.label, startsAt: d.starts_at,
+    return { rating: await dealRating(db, d.id), id: d.id, ref: d.ref, status: d.status, kind: d.kind, outlet: d.outlet, channel: d.channel, label: d.label, startsAt: d.starts_at,
       creativeDueAt: d.creative_due_at, buyer: { id: d.buyer_id, name: d.buyer }, seller: { id: d.seller_id, name: d.seller }, brief: d.brief,
       nextDeadlineAt: d.next_deadline_at, extraCreativeRounds: d.extra_creative_rounds, ratesFrozen: d.commission_bp != null,
       money: { price: d.amount, mediaVat: s.mediaVat, buyerPays: s.buyerPays, commissionBp: d.commission_bp, fee: s.fee, feeVat: s.feeVat, payout: s.payout, held: 0 - await balance(db, 'held', d.currency, d.id) },

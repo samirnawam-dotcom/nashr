@@ -20,6 +20,7 @@ const BookingsPage = L(load_bookings_Bookings, 'BookingsPage')
 const load_campaigns_Campaigns = () => import('./campaigns/Campaigns')
 const CampaignPage = L(load_campaigns_Campaigns, 'CampaignPage')
 const CampaignsPage = L(load_campaigns_Campaigns, 'CampaignsPage')
+const MediaPlanPage = L(() => import('./campaigns/MediaPlan'), 'MediaPlanPage')
 const load_documents_Documents = () => import('./documents/Documents')
 const DocumentPage = L(load_documents_Documents, 'DocumentPage')
 const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
@@ -71,6 +72,7 @@ const BUYER: Routes = [
   [/^\/calendar/, () => <CalendarPage />],
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
+  [/^\/campaigns\/([\w-]+)\/plan$/, id => <MediaPlanPage id={id} />],
   [/^\/campaigns\/([\w-]+)$/, id => <CampaignPage id={id} />],
   [/^\/campaigns/, () => <CampaignsPage />],
   [/^\/bookings\/([\w-]+)$/, id => <BookingPage id={id} />],

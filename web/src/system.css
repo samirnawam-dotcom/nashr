@@ -359,3 +359,21 @@ main.legal .table-wrap { margin: 8px 0; }
 .bell-pop a.unread { font-weight: 600; background: #f3f9f8; }
 .bell-pop a.unread::before { content: ""; position: absolute; left: 6px; top: 16px; width: 6px; height: 6px; border-radius: 50%; background: var(--teal, #0f6b6b); }
 .bell-pop .muted { color: var(--slate); font-weight: 400; }
+
+/* Ratings: stars always come with the number written out */
+.stars { display: inline-flex; align-items: center; gap: 6px; color: #c98a0c; font-size: 13px; }
+.stars-icons { display: inline-flex; gap: 1px; }
+.stars b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.stars-n { color: var(--slate); }
+.rate { display: grid; gap: 12px; }
+.rate-comment { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.55; }
+.star-input { border: 0; padding: 0; margin: 0; }
+.star-input legend { padding: 0; margin-bottom: 6px; color: var(--slate); }
+.star-row { display: flex; align-items: center; gap: 2px; }
+.star-row label { cursor: pointer; color: #d6dedc; padding: 2px; border-radius: 6px; line-height: 0; }
+.star-row label.on { color: #e5a21b; }
+.star-row label:focus-within { outline: 2px solid var(--teal, #0f6b6b); outline-offset: 1px; }
+.star-word { margin-left: 10px; color: var(--slate); min-width: 9em; }
+.reviews .review-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.review-list li { display: grid; gap: 8px; align-content: start; }
+.review-list p { margin: 0; line-height: 1.55; }

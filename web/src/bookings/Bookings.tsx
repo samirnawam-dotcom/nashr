@@ -1,11 +1,12 @@
 import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
-import { api, upload } from '../api'
+import { api, upload, type Rating } from '../api'
 import { dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
 import { DOC_TYPE } from '../documents/Documents'
 import '../directory/directory.css'
 import { PhotoBand } from '../PhotoBand'
+import { StarInput, Stars } from '../Stars'
 
 type Deal = { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
 
@@ -40,7 +41,7 @@ export function BookingsPage() {
 // Test cards (brief section 11) while payments run against the test provider.
 const CARDS = [['pm_card_4242', 'Visa •••• 4242'], ['pm_card_3155', 'Visa •••• 3155 (bank asks to confirm)'], ['pm_card_0002', 'Visa •••• 0002 (declined)']]
 
-type Detail = Deal & { channel: string; placement: string; creativeDueAt: string
+type Detail = Deal & { channel: string; placement: string; creativeDueAt: string; rating: Rating | null
   timeline: { at: string; event: string; status: string }[]
   creatives: { version: number; status: string; reason: string | null; fileId: string; fileType: string; uploadedAt: string }[]
   proof: { submittedAt: string; note: string | null; items: { key: string; label: string; value: unknown }[] } | null
@@ -110,6 +111,7 @@ export function BookingPage({ id }: { id: string }) {
       <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)}</p></div><Status s={d.status} /></div>
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">
+      {['released', 'complete'].includes(d.status) && <RateBooking id={d.id} outlet={d.outlet} rating={d.rating} onSaved={load} />}
       {d.prerun && !d.prerun.confirmedAt && d.status === 'payment_secured' && <section className="card pad section">
         <h2>Pre-run check</h2><p>Your ad airs soon. Confirm the publisher has the final version of your creative.</p>
         <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/prerun`, {}, 'Thanks. The publisher has been told.')}>Confirm final version</button>
@@ -208,4 +210,32 @@ export function BookingPage({ id }: { id: string }) {
       </aside></div>
     </main>
   )
+}
+
+/** After the booking is complete, the buyer rates the outlet: stars and an optional comment, changeable later. */
+function RateBooking({ id, outlet, rating, onSaved }: { id: string; outlet: string; rating: Rating | null; onSaved: () => void }) {
+  const [edit, setEdit] = useState(!rating), [score, setScore] = useState(rating?.score ?? 0), [comment, setComment] = useState(rating?.comment ?? '')
+  const [busy, setBusy] = useState(false), [error, setError] = useState('')
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setError('')
+    try { await api(`/deals/${id}/rating`, { method: 'POST', body: { score, ...(comment.trim() ? { comment: comment.trim() } : {}) } }); setEdit(false); onSaved() }
+    catch (err: any) { setError(err.message) } finally { setBusy(false) }
+  }
+  if (rating && !edit) return <section className="card pad section rate">
+    <h2>Your rating of {outlet}</h2>
+    <Stars value={rating.score} size={18} />
+    {rating.comment && <p className="rate-comment">“{rating.comment}”</p>}
+    {rating.hidden && <p className="small muted">Nashr has hidden this rating from the outlet page.</p>}
+    <button type="button" className="btn" style={{ justifySelf: 'start' }} onClick={() => setEdit(true)}>Change rating</button>
+  </section>
+  return <form className="card pad section rate" onSubmit={save}>
+    <h2>How was {outlet}?</h2>
+    <p className="small muted">Your rating helps other buyers choose. It shows on the outlet page as a verified booking, without your company's name.</p>
+    <StarInput value={score} onChange={setScore} label="Your rating" />
+    <div className="field"><label htmlFor="rate-c">Comment (optional)</label>
+      <textarea id="rate-c" rows={3} maxLength={500} value={comment} onChange={e => setComment(e.target.value)} placeholder="Did it air as booked? How was working with them?" /></div>
+    {error && <p className="error" role="alert">{error}</p>}
+    <div className="row-flex"><button className="btn primary" disabled={busy || !score}>{rating ? 'Save rating' : 'Submit rating'}</button>
+      {rating && <button type="button" className="btn" onClick={() => setEdit(false)}>Cancel</button>}</div>
+  </form>
 }

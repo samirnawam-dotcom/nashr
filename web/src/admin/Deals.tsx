@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { DEAL_STATUS, DealStatus, Loading, date, money, useAct, useLoad, when } from './common'
 import { DOC_TYPE } from '../documents/Documents'
 import { PhotoBand } from '../PhotoBand'
+import { Stars } from '../Stars'
 
 type Row = { id: string; ref: string; status: string; kind: string; amount: number; currency: string; commission_bp: number | null; next_deadline_at: string | null
   created_at: string; buyer: string; seller: string; outlet: string; label: string; starts_at: string }
@@ -28,7 +29,7 @@ export function AdminDealsPage() {
   )
 }
 
-type File = { id: string; ref: string; status: string; kind: string; outlet: string; channel: string; label: string; startsAt: string; creativeDueAt: string
+type File = { rating: { id: string; score: number; comment: string | null; hidden: boolean } | null; id: string; ref: string; status: string; kind: string; outlet: string; channel: string; label: string; startsAt: string; creativeDueAt: string
   buyer: { id: string; name: string }; seller: { id: string; name: string }; brief: any; nextDeadlineAt: string | null; extraCreativeRounds: number; ratesFrozen: boolean
   money: { price: number; mediaVat: number; buyerPays: number; commissionBp: number | null; fee: number; feeVat: number; payout: number; held: number }
   events: { at: string; event: string; from_status: string | null; to_status: string; actor: string; note: string | null }[]
@@ -57,6 +58,11 @@ export function AdminDealPage({ id }: { id: string }) {
       <div className="profile-h"><div><h1>{d.outlet} · {d.label}</h1>
         <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> buys from <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}
+      {d.rating && <section className="card pad section rate"><h2>Buyer's rating{d.rating.hidden ? ' (hidden from the outlet page)' : ''}</h2><Stars value={d.rating.score} size={18} />
+        {d.rating.comment && <p className="rate-comment">“{d.rating.comment}”</p>}
+        <button className="btn" style={{ justifySelf: 'start' }} disabled={busy}
+          onClick={() => act('POST', `/admin/ratings/${d.rating!.id}/hidden`, { hidden: !d.rating!.hidden }, d.rating!.hidden ? 'Rating shown again.' : 'Rating hidden.')}>
+          {d.rating.hidden ? 'Show on the outlet page' : 'Hide from the outlet page'}</button></section>}
       {d.status === 'disputed' && <section className="card pad section form">
         <h2>Decide this dispute</h2>
         {d.issues.at(-1) && <p><b>{d.issues.at(-1)!.reason.replace(/_/g, ' ')}:</b> {d.issues.at(-1)!.note}

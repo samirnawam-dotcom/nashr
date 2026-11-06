@@ -73,6 +73,7 @@ export function CampaignPage({ id }: { id: string }) {
       <div className="profile-cover slim" aria-hidden><img src="/brand/campaigns-wide.jpg" width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{[c.objective, c.launchDate && `Launches ${dayLabel(c.launchDate)}`].filter(Boolean).join(' · ')}</p></div>
         <div className="spacer" />
+        <a className="btn" href={`/campaigns/${c.id}/plan`}>Media plan (PDF)</a>
         {c.status === 'active' ? <button className="btn" onClick={() => setStatus('completed')}>Mark completed</button> : <button className="btn" onClick={() => setStatus('active')}>Reopen</button>}
         {c.status === 'active' && <a className="btn primary" href="/calendar">Book slots</a>}</div>
       <dl className="kpis">
