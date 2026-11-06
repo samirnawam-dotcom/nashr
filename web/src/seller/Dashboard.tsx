@@ -37,7 +37,7 @@ export function SellerDashboard() {
   const decided = d.decisions.accepted + d.decisions.declined
   return (
     <main className="dash">
-      <div className="dash-head"><h1>{greeting()}, {o.company}</h1><div className="spacer" />
+      <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-seller.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>{greeting()}, {o.company}</h1><div className="spacer" />
         <a className="btn" href="/schedule">Calendar</a><a className="btn primary" href="/listings/new">Add a placement</a></div>
       {done < STEPS.length && <section className="card pad section" style={{ maxWidth: 560 }}>
         <h2>Get ready to sell · {done} of {STEPS.length}</h2>

@@ -29,7 +29,7 @@ export function AdminOverview() {
     <main className="dash">
       <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? 'Ledger reconciles with the payment provider.'
         : <>Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider ({money(o.reconcile.providerCash)}). <a href="/funds">Open Funds</a></>}</p>
-      <div className="dash-head"><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
+      <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-admin.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
         <div className="spacer" /><a className="btn" href="/reports">Reports</a><a className="btn" href="/deals">All deals</a></div>
 
       <section className="dash-lead">

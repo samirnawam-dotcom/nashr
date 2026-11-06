@@ -273,3 +273,20 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
   .profile-cover { height: 120px; }
   .cal-range { width: 100%; }
 }
+
+/* Dashboard photo header: the greeting and the day's actions over a graded photo */
+.photo-head { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--radius-xl, 18px); background: var(--night, #06262a);
+  color: #fff; min-height: 132px; padding: 26px 28px; align-items: flex-end; }
+.photo-head > .dash-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.photo-head::after { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, rgba(6, 38, 42, .95) 0%, rgba(6, 38, 42, .74) 48%, rgba(6, 38, 42, .38) 100%); }
+.photo-head h1 { color: #fff; }
+.photo-head .muted { color: #c3d8d4; }
+.photo-head .btn:not(.primary) { background: rgba(232, 243, 241, .1); border-color: rgba(232, 243, 241, .28); color: #fff; box-shadow: none; }
+.photo-head .btn:not(.primary):hover { background: rgba(232, 243, 241, .18); color: #fff; }
+@media (max-width: 700px) {
+  .photo-head { padding: 20px; min-height: 0; }
+  .photo-head::after { background: linear-gradient(180deg, rgba(6, 38, 42, .7), rgba(6, 38, 42, .92)); }
+  .photo-head h1 { width: 100%; }
+  .photo-head .spacer { display: none; }
+}

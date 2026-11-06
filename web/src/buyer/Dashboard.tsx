@@ -27,7 +27,7 @@ export function BuyerDashboard() {
   const live = d.bids.leading + d.bids.outbid
   return (
     <main className="dash">
-      <div className="dash-head"><h1>{greeting()}, {company}</h1><div className="spacer" />
+      <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-buyer.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>{greeting()}, {company}</h1><div className="spacer" />
         <a className="btn" href="/campaigns">Campaigns</a><a className="btn primary" href="/calendar">Find slots</a></div>
 
       <section className="dash-lead">
