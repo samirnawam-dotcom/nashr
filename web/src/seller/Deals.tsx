@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
 import { DOC_TYPE } from '../documents/Documents'
 import { DealStatus, money, when } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
   brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
@@ -27,7 +28,7 @@ export function SellerDealsPage() {
   const shown = (deals ?? []).filter(d => !set.length || set.includes(d.status))
   return (
     <main>
-      <div className="page-h"><h1>Deals</h1></div>
+      <PhotoBand img="/brand/bookings-wide.jpg" title="Deals" sub="Every sale from acceptance to proof and payout." />
       <div className="toolbar"><div className="seg" role="group" aria-label="Filter">{FILTERS.map(([k, l]) => <button key={k} className={f === k ? 'on' : ''} onClick={() => setF(k)}>{l}</button>)}</div></div>
       {error && <p className="error">{error}</p>}
       {deals && !shown.length && <p className="muted empty">No deals here.</p>}
@@ -67,6 +68,7 @@ export function SellerDealPage({ id }: { id: string }) {
   return (
     <main className="narrow">
       <p className="small"><a href="/deals">Deals</a> › Order {d.ref}</p>
+      <div className="profile-cover slim" aria-hidden><img src={`/brand/${x.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
       <h1>{d.label}</h1>
       <p className="muted">{when(d.startsAt)} · {d.buyer.company} · <DealStatus s={d.status} /></p>
 

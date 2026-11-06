@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { DealStatus, TaskList, money, when, type Task } from './common'
 import { Delta, Hero, Meter, RankedBars, StatTile, WeekColumns, compact } from '../charts'
+import { PhotoBand } from '../PhotoBand'
 
 type Overview = { company: string; todo: number; money: { available: number; held: number; owed: number }
   onboarding: { outlet: boolean; payouts: boolean; tax: boolean; placement: boolean; live: boolean }
@@ -102,6 +103,6 @@ export function SellerDashboard() {
 export function InboxPage() {
   const [tasks, setTasks] = useState<Task[] | null>(null), [error, setError] = useState('')
   useEffect(() => { api<Task[]>('/seller/inbox').then(setTasks, e => setError(e.message)) }, [])
-  return <main><div className="page-h"><h1>Inbox</h1><span className="muted small">Everything waiting on you, soonest deadline first.</span></div>
+  return <main><PhotoBand img="/brand/radio-wide.jpg" title="Inbox" sub="Everything waiting on you, soonest deadline first." />
     {error && <p className="error">{error}</p>}{tasks && <TaskList tasks={tasks} />}</main>
 }

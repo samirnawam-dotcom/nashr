@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { addDays, todayInDubai } from '../calendar/layout'
 import { money } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type Placement = { id: string; outlet: string; outletId: string; name: string; saleType: string; days: number[]; startsAt: string | null; endsAt: string | null
   breaks: { label: string; at?: string; seconds?: number }[]; startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null
@@ -21,8 +22,9 @@ export function ListingsPage() {
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
   return (
     <main>
-      <div className="page-h"><h1>Listings</h1><span className="muted small">What you sell repeatedly. Each airing becomes slots on the calendar.</span><div className="spacer" />
-        <a className="btn primary" href="/listings/new">Add placement</a></div>
+      <PhotoBand img="/brand/podcast-wide.jpg" title="Listings" sub="What you sell repeatedly. Each airing becomes slots on the calendar.">
+        <a className="btn primary" href="/listings/new">Add placement</a>
+      </PhotoBand>
       {!p.company.payoutsEnabled && <p className="warn">Slots go on sale once your payout account is verified. <a href="/profile">Connect it</a></p>}
       {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
       {!p.placements.length ? <p className="muted empty">No placements yet.</p>

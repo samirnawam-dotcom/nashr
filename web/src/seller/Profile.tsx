@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { PhotoBand } from '../PhotoBand'
 
 type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null }
 type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean }; outlets: Outlet[] }
@@ -17,7 +18,7 @@ export function ProfilePage() {
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
   return (
     <main className="narrow">
-      <h1>Profile</h1>
+      <PhotoBand img="/brand/print-wide.jpg" title="Profile" sub="Your payout account, tax details and outlet as buyers see it." />
       {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
       <section className="card pad section">
         <h2>Payout account</h2>

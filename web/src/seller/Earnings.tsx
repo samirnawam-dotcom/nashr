@@ -4,6 +4,7 @@ import { api } from '../api'
 import { dayLabel } from '../format'
 import { dubai, todayInDubai } from '../calendar/layout'
 import { DealStatus, money } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type E = { available: number; owed: number; payouts: { at: string; amount: number; currency: string; ref: string | null }[]
   deals: { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; price: number; mediaVat: number; fee: number; feeVat: number; payout: number; held: boolean }[] }
@@ -16,7 +17,7 @@ export function EarningsPage() {
   const paid = e.payouts.reduce((n, p) => n + p.amount, 0)
   return (
     <main>
-      <div className="page-h"><h1>Earnings</h1><span className="muted small">Money is held while a booking runs and released to you when the buyer approves proof.</span></div>
+      <PhotoBand img="/brand/digital-wide.jpg" title="Earnings" sub="Money is held while a booking runs and released to you when the buyer approves proof." />
       <dl className="kpis">
         <div className="card"><dt>Held for bookings in progress</dt><dd className="num">{money(held)}</dd></div>
         <div className="card"><dt>Released, to be paid out</dt><dd className="num">{money(e.available)}</dd></div>

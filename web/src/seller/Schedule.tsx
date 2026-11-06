@@ -4,6 +4,7 @@ import { api } from '../api'
 import { dayLabel, time } from '../format'
 import { addDays, dubai, todayInDubai, weekOf } from '../calendar/layout'
 import { DealStatus, SLOT_STATUS, money, when } from './common'
+import { PhotoBand } from '../PhotoBand'
 
 type SSlot = { id: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
@@ -18,7 +19,8 @@ export function SchedulePage() {
   const rows = [...new Set((slots ?? []).map(s => `${s.outlet} · ${s.placement}`))].sort()
   return (
     <main>
-      <div className="page-h"><h1>Calendar</h1><div className="spacer" />
+      <PhotoBand img="/brand/tv-wide.jpg" title="Calendar" sub="Your slots by week, with bids, bookings and what is still on sale. Dubai time." />
+      <div className="page-h"><div className="spacer" />
         <div className="row-flex"><button className="btn" aria-label="Previous week" onClick={() => setAnchor(addDays(anchor, -7))}>‹</button>
           <button className="btn" onClick={() => setAnchor(todayInDubai())}>This week</button>
           <button className="btn" aria-label="Next week" onClick={() => setAnchor(addDays(anchor, 7))}>›</button>
