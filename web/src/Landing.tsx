@@ -11,10 +11,10 @@ const STEPS = [3500, 3605, 3714, 3826, 3941]
 const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
 
 const LANES = [
-  { who: 'Skyline FM', kind: 'Radio', slots: [{ l: 4, w: 22, t: 'Morning Markets', s: '4 breaks', c: 'hot' }, { l: 72, w: 20, t: 'Drive Home', s: 'quick sale' }] },
-  { who: 'Dubai One', kind: 'TV', slots: [{ l: 33, w: 16, t: 'Market Open', s: 'booked', c: 'booked' }, { l: 78, w: 18, t: 'Evening', s: '2 spots' }] },
+  { who: 'Skyline FM', kind: 'Radio', slots: [{ l: 2, w: 31, t: 'Morning', s: '4 breaks', c: 'hot' }, { l: 66, w: 32, t: 'Drive', s: 'quick sale' }] },
+  { who: 'Dubai One', kind: 'TV', slots: [{ l: 30, w: 28, t: 'News', s: 'booked', c: 'booked' }, { l: 67, w: 31, t: 'Evening', s: '2 spots' }] },
   { who: 'Gulf News', kind: 'Print', slots: [{ l: 1, w: 97, t: 'Full page, business section', s: 'all day, from AED 20,000' }] },
-  { who: 'The Majlis', kind: 'Podcast', slots: [{ l: 2, w: 28, t: 'Weekly episode', s: 'pre-roll and mid-roll' }] },
+  { who: 'The Majlis', kind: 'Podcast', slots: [{ l: 2, w: 42, t: 'Weekly episode', s: 'pre-roll and mid-roll' }] },
 ]
 
 const CHANNELS = [

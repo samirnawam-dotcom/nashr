@@ -28,13 +28,14 @@
 .lp .grain { position: absolute; inset: 0; opacity: .14; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
-.lp .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 64px; align-items: center; padding-block: 72px 64px; }
+.lp .hero-grid { display: grid; grid-template-columns: minmax(0, .94fr) minmax(0, 1.06fr); gap: clamp(40px, 5vw, 80px); align-items: center; padding-block: clamp(48px, 7vh, 88px) clamp(40px, 6vh, 72px); }
+@media (min-width: 1500px) { .lp .hero .wrap { max-width: 1340px; } }
 .lp .kicker { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--on-dim); margin-bottom: 26px;
   padding: 6px 14px 6px 10px; border-radius: 999px; background: rgba(232, 243, 241, .05); border: 1px solid rgba(232, 243, 241, .1); }
 .lp .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 4px rgba(229, 162, 27, .2), 0 0 12px rgba(229, 162, 27, .8); animation: lp-pulse 2.4s ease-in-out infinite; }
-.lp .hero h1 { font-size: clamp(44px, 5.6vw, 78px); font-weight: 800; letter-spacing: -.045em; line-height: .98; color: #fff; max-width: 12ch; }
-.lp .hero .ar { font: 500 clamp(19px, 1.8vw, 23px)/1.6 "IBM Plex Sans Arabic", sans-serif; color: #c9b27a; margin-top: 22px; text-align: left; max-width: 34ch; }
-.lp .lede { font-size: 18px; line-height: 1.6; color: #b9d0cc; max-width: 48ch; margin: 22px 0 34px; }
+.lp .hero h1 { font-size: clamp(40px, 4.3vw, 70px); font-weight: 800; letter-spacing: -.042em; line-height: 1; color: #fff; max-width: 14ch; }
+.lp .hero .ar { font: 500 clamp(16px, 1.25vw, 19px)/1.7 "IBM Plex Sans Arabic", sans-serif; color: #bfa978; margin-top: 18px; text-align: left; max-width: 48ch; text-wrap: balance; }
+.lp .lede { font-size: 17.5px; line-height: 1.6; color: #b9d0cc; max-width: 46ch; margin: 20px 0 32px; }
 .lp .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
 .lp .fine { font-size: 14px; color: #84a5a1; margin-top: 20px; }
 .lp .fine .text-link { color: #d8e8e5; }
@@ -50,22 +51,24 @@
 .lp .board-h b { font: 600 15px var(--display); color: #fff; margin-right: 6px; }
 .lp .live { display: inline-flex; align-items: center; gap: 7px; color: var(--signal); font-weight: 600; }
 .lp .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 10px var(--signal); animation: lp-pulse 1.6s ease-in-out infinite; }
-.lp .board-body { padding: 6px 22px 4px; --gut: 96px; }
+.lp .board-body { padding: 10px 22px 4px; --gut: 92px; }
 .lp .axis { display: grid; grid-template-columns: var(--gut) 1fr; font-size: 11px; color: #6f918d; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
 .lp .ticks { display: flex; justify-content: space-between; }
-.lp .lanes { position: relative; display: grid; gap: 8px; }
+.lp .lanes { position: relative; display: grid; gap: 8px; isolation: isolate; }
+.lp .lane { position: relative; z-index: 1; }
 .lp .lane { display: grid; grid-template-columns: var(--gut) 1fr; align-items: center; }
 .lp .lane .who { font: 600 13px/1.25 var(--display); color: #fff; }
 .lp .lane .who small { display: block; font: 400 11.5px "IBM Plex Sans", sans-serif; color: #7fa29e; }
 .lp .track { position: relative; height: 48px; border-radius: 10px; background: rgba(232, 243, 241, .04); box-shadow: inset 0 0 0 1px rgba(232, 243, 241, .05); }
 .lp .slot { position: absolute; top: 5px; bottom: 5px; border-radius: 7px; padding: 5px 9px; font-size: 11px; line-height: 1.25; color: #cfe3e0; overflow: hidden; white-space: nowrap;
-  background: linear-gradient(180deg, rgba(31, 128, 124, .55), rgba(19, 100, 98, .45)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 2px 0 0 #5fb3ad; }
+  background: linear-gradient(180deg, #1a6764, #155855); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 2px 0 0 #5fb3ad; }
 .lp .slot b { display: block; font: 600 12px var(--display); color: #fff; text-overflow: ellipsis; overflow: hidden; }
-.lp .slot.hot { background: linear-gradient(180deg, rgba(229, 162, 27, .3), rgba(229, 162, 27, .16)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 2px 0 0 var(--signal); }
-.lp .slot.booked { background: rgba(232, 243, 241, .06); box-shadow: inset 2px 0 0 #6f918d; color: #8fb0ab; }
+.lp .slot.hot { background: linear-gradient(180deg, #4d5530, #354a34); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), inset 2px 0 0 var(--signal); }
+.lp .slot.booked { background: #17393c; box-shadow: inset 2px 0 0 #6f918d; color: #8fb0ab; }
 .lp .slot.booked b { color: #b9cfcb; }
-.lp .playhead { position: absolute; top: -6px; bottom: -6px; width: 2px; left: calc(var(--gut) + 30%); border-radius: 2px; background: var(--signal); box-shadow: 0 0 14px rgba(229, 162, 27, .9); pointer-events: none; }
-.lp .playhead::before { content: "Now"; position: absolute; top: -18px; left: -12px; font: 700 10px var(--display); color: var(--signal); }
+.lp .playhead { position: absolute; z-index: 0; top: -6px; bottom: -6px; width: 2px; left: calc(var(--gut) + 30%); border-radius: 2px; background: var(--signal); box-shadow: 0 0 14px rgba(229, 162, 27, .9); pointer-events: none; }
+.lp .playhead::before { content: "Now"; position: absolute; top: -27px; left: 50%; transform: translateX(-50%); font: 700 10px/1 var(--display); letter-spacing: .02em;
+  color: #1c1300; background: var(--signal); padding: 4px 7px; border-radius: 999px; box-shadow: 0 0 0 3px #0b3438; }
 .lp .bidcard { margin: 18px 14px 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-radius: 14px;
   background: #fff; color: var(--ink); box-shadow: 0 1px 0 rgba(255, 255, 255, .6) inset, 0 12px 28px -12px rgba(0, 0, 0, .5); }
 .lp .bidcard > div:first-child { display: grid; gap: 2px; }
@@ -239,8 +242,14 @@
   .lp .foot-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 560px) {
-  .lp .hero h1 { font-size: 42px; }
-  .lp .lede { font-size: 16.5px; }
+  .lp .hero-grid { padding-block: 32px 40px; }
+  .lp .kicker { font-size: 13px; margin-bottom: 18px; }
+  .lp .hero .ar { font-size: 15.5px; margin-top: 12px; }
+  .lp .board-body { --gut: 74px; padding-inline: 14px; }
+  .lp .slot { padding: 5px 7px; }
+  .lp .slot b { font-size: 11px; }
+  .lp .hero h1 { font-size: 37px; }
+  .lp .lede { font-size: 16px; margin: 16px 0 24px; }
   .lp .cta-row .btn { flex: 1 1 100%; }
   .lp .board-body { --gut: 66px; padding-inline: 14px; }
   .lp .slot { font-size: 10px; padding: 4px 6px; } .lp .slot b { font-size: 11px; }
