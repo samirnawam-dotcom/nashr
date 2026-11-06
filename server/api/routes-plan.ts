@@ -5,6 +5,7 @@ import { containsContactDetails } from '../core/contact.js'
 import { notify } from '../core/notify.js'
 import { audit } from '../core/audit.js'
 import { buyerStatus } from './shapes.js'
+import { coverUrl } from './routes-covers.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const OPEN = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1)`
@@ -40,7 +41,7 @@ function price(r: any) {
 export const SLUG_SQL = `lower(trim(both '-' from regexp_replace(o.name, '[^a-zA-Z0-9]+', '-', 'g')))`
 const slugOf = (name: string, id: string) => name.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || id
 
-const outletCard = (r: any) => ({ id: r.id, slug: slugOf(r.name, r.id), name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url,
+const outletCard = (r: any) => ({ id: r.id, slug: slugOf(r.name, r.id), name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: r.logo_url, coverUrl: coverUrl(r),
   tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r) })
 
 export function planRoutes(route: RouteFn) {

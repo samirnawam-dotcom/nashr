@@ -14,6 +14,7 @@ import { sellerDeskRoutes } from './routes-seller-desk.js'
 import { adminDeskRoutes } from './routes-admin-desk.js'
 import { healthRoute } from './routes-health.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
+import { coverRoutes } from './routes-covers.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 import { type StripeConfig, stripeWebhook } from './routes-stripe.js'
 import { dashboardRoutes } from './routes-dashboards.js'
@@ -30,6 +31,11 @@ export const cookie = (req: FastifyRequest) =>
 
 /** Not yours and not found look the same, so nobody can probe other companies' records (SPEC 5.5). */
 export class NotFound extends Error {}
+/** The only routes that take raw bytes instead of JSON: private files, and outlet cover photos. */
+const isUpload = (method: string, url: string) => {
+  const path = url.split('?')[0]
+  return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/cover$/.test(path))
+}
 
 // ponytail: in-memory, per process. Move to Postgres or a shared store when running more than one instance.
 const hits = new Map<string, { n: number; reset: number }>()
@@ -54,7 +60,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   const fail = (statusCode: number, message: string) => Object.assign(new Error(message), { statusCode })
   // Raw bytes only for file uploads, only from a signed-in user, checked before a single byte is read (security review F2).
   app.addContentTypeParser('*', { bodyLimit: MAX_UPLOAD }, async (req: any, payload: any) => {
-    if (req.method !== 'POST' || req.url.split('?')[0] !== '/api/files') throw fail(415, 'Send JSON.')
+    if (!isUpload(req.method, req.url)) throw fail(415, 'Send JSON.')
     if (!(await session(pool, cookie(req), clock()))) throw fail(401, 'Please sign in.')
     const chunks: Buffer[] = []; let size = 0
     for await (const c of payload) { if ((size += c.length) > MAX_UPLOAD) throw fail(413, 'The file is too large.'); chunks.push(c) }
@@ -71,7 +77,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
       return reply.code(403).send({ error: 'Requests must come from Nashr.' })
     const type = String(req.headers['content-type'] ?? '')
     const hasBody = Number(req.headers['content-length'] ?? 0) > 0 || req.headers['transfer-encoding'] !== undefined
-    if (hasBody && req.url.split('?')[0] !== '/api/files' && !type.startsWith('application/json')) return reply.code(415).send({ error: 'Send JSON.' })
+    if (hasBody && !isUpload(req.method, req.url) && !type.startsWith('application/json')) return reply.code(415).send({ error: 'Send JSON.' })
   })
 
   // Security headers on every API response; the web app's own headers (CSP for scripts and fonts) are set at the edge (docs/runbook.md).
@@ -127,7 +133,9 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.
   route('GET', '/api/config', 'public', async () => ({ stripePublishableKey: deps.stripe?.publishableKey ?? null }))
-  sharedRoutes(route, deps.storage ?? new DiskStorage())
+  const storage = deps.storage ?? new DiskStorage()
+  sharedRoutes(route, storage)
+  coverRoutes(route, storage)
   return app
 }
 

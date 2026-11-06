@@ -8,6 +8,7 @@ import type { PaymentProvider } from '../payments/provider.js'
 import { allowExtraRound } from '../fulfilment/creative.js'
 import { inviteStaff } from '../auth/access.js'
 import { FOUNDER_ONLY } from './routes-admin.js'
+import { coverUrl } from './routes-covers.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 const LIVE = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')` // paid bookings
@@ -204,7 +205,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   route('GET', '/api/admin/outlets', STAFF, async ({ db }) => (await db.query(
     `select o.*, c.name company from outlets o left join companies c on c.id = o.company_id order by o.company_id is not null, o.name`)).rows
     .map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, company: o.company, tier: o.tier, audience: o.audience,
-      website: o.website, description: o.description, estLow: o.est_low, estHigh: o.est_high, onNashr: !!o.company_id })))
+      website: o.website, description: o.description, estLow: o.est_low, estHigh: o.est_high, onNashr: !!o.company_id, coverUrl: coverUrl(o) })))
 
   const outletBody = { type: 'object', additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] },

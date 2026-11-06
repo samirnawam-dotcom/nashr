@@ -67,7 +67,7 @@ export function DirectoryPage() {
       {outlets && !shown.length && <p className="muted empty">No outlets match. Clear the filters to see everything.</p>}
       {view === 'grid'
         ? <div className="outlet-grid">{shown.map(o => <a key={o.id} className="card outlet-card" href={`/directory/${outletSlug(o)}`}>
-            <img className="outlet-cover" src={`/brand/${o.channel}-card.jpg`} width={800} height={250} alt="" loading="lazy" decoding="async" />
+            <img className="outlet-cover" src={o.coverUrl ?? `/brand/${o.channel}-card.jpg`} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channel}-card.jpg` }} width={800} height={250} alt="" loading="lazy" decoding="async" />
             <div className="row-flex"><Logo o={o} /><div><b>{o.name}</b>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div></div>
             <div className="small muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).join(', ')}` : ''}</div>
             <PriceTag p={o.price} />
@@ -115,7 +115,7 @@ export function OutletPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/directory">Directory</a> › {o.name}</p>
-      <div className="profile-cover" aria-hidden><img src={`/brand/${o.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
+      <div className="profile-cover" aria-hidden><img src={o.coverUrl ?? `/brand/${o.channel}-wide.jpg`} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channel}-wide.jpg` }} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h">
         <Logo o={o} size={64} />
         <div><h1>{o.name}</h1><p className="muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.audience ? ` · ${o.audience}` : ''}</p></div>

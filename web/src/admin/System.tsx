@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Loading, csv, date, money, useAct, useLoad, when } from './common'
 import { PhotoBand } from '../PhotoBand'
+import { CoverPicker } from '../CoverPicker'
 
 type S = { key: string; value: unknown; founderOnly: boolean; history: { value: unknown; from: string; by: string }[] }
 // What each setting means, in the owner's words (SPEC 11, 12). Unlisted keys show their raw name.
@@ -94,7 +95,7 @@ export function AuditPage() {
 
 type Q = { id: string; message: string; status: string; createdAt: string; outlet: string; outletId: string; buyer: string }
 type O = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; company: string | null; tier: string | null; audience: string | null
-  website: string | null; description: string | null; estLow: number | null; estHigh: number | null; onNashr: boolean }
+  website: string | null; description: string | null; estLow: number | null; estHigh: number | null; onNashr: boolean; coverUrl: string | null }
 
 export function DirectoryAdminPage() {
   const quotes = useLoad<Q[]>('/admin/quotes'), outlets = useLoad<O[]>('/admin/outlets')
@@ -126,6 +127,7 @@ export function DirectoryAdminPage() {
             website: o.website ?? '', estLow: o.estLow ? String(o.estLow / 100) : '', estHigh: o.estHigh ? String(o.estHigh / 100) : '' })}>Edit</button>}</td></tr>)}</tbody></table></div>}
         <section className="card pad form">
           <h3>{f.id ? `Edit ${f.name}` : 'Add an outlet not on Nashr'}</h3>
+          {f.id && (() => { const cur = outlets.data?.find(x => x.id === f.id); return cur && <CoverPicker key={cur.id} url={cur.coverUrl} channel={cur.channel} endpoint={`/admin/outlets/${cur.id}/cover`} onChange={() => outlets.load()} /> })()}
           <div className="field"><label htmlFor="on">Name</label><input id="on" value={f.name} onChange={set('name')} /></div>
           {!f.id && <div className="field"><label htmlFor="oc">Channel</label><select id="oc" value={f.channel} onChange={set('channel')}>{['print', 'digital', 'radio', 'tv', 'podcast'].map(c => <option key={c}>{c}</option>)}</select></div>}
           <div className="field"><label htmlFor="os">Sectors (comma-separated)</label><input id="os" value={f.sectors} onChange={set('sectors')} /></div>

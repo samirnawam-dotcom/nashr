@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { PhotoBand } from '../PhotoBand'
+import { CoverPicker } from '../CoverPicker'
 
 type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null }
 type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean }; outlets: Outlet[] }
@@ -51,6 +52,7 @@ function OutletForm({ o, busy, onSave }: { o?: Outlet; busy: boolean; onSave: (b
   const id = o?.id ?? 'new'
   return <section className="card pad section form">
     <h2>{o ? o.name : 'New outlet'}</h2>
+    {o && <CoverPicker url={o.coverUrl ?? null} channel={o.channel} endpoint={`/seller/outlets/${o.id}/cover`} />}
     <div className="grid2">
       <div className="field"><label htmlFor={`n-${id}`}>Name</label><input id={`n-${id}`} value={f.name} onChange={set('name')} /></div>
       <div className="field"><label htmlFor={`a-${id}`}>Name in Arabic</label><input id={`a-${id}`} dir="rtl" lang="ar" value={f.nameAr} onChange={set('nameAr')} /></div>

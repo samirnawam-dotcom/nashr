@@ -375,6 +375,46 @@ describe('admin screens', () => {
   })
 })
 
+describe('outlet cover photos', () => {
+  const PNG = Buffer.concat([Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'), Buffer.alloc(64, 7)])
+  const put = (who: Who | null, url: string, bytes: Buffer, type = 'image/png') =>
+    app.inject({ method: 'PUT', url, payload: bytes, headers: { ...(who ? { cookie: who.cookie } : {}), 'content-type': type } })
+
+  test('a publisher sets and removes its own cover; visitors see it everywhere; nobody else can change it', async () => {
+    const mine = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    expect((await put(sellerX, `/api/seller/outlets/${mine}/cover`, Buffer.from('%PDF-1.4 renamed'), 'image/png')).json().error).toMatch('JPEG or PNG')
+    expect((await put(sellerX, `/api/seller/outlets/${mine}/cover`, Buffer.concat([PNG, Buffer.alloc(3 * 1024 * 1024)]))).statusCode).toBe(413)
+    expect((await put(sellerY, `/api/seller/outlets/${mine}/cover`, PNG)).statusCode).toBe(404)
+    expect((await put(null, `/api/seller/outlets/${mine}/cover`, PNG)).statusCode).toBe(401)
+    expect((await put(admin, `/api/admin/outlets/${mine}/cover`, PNG)).json().error).toMatch('not on Nashr')
+
+    const { coverUrl } = (await put(sellerX, `/api/seller/outlets/${mine}/cover`, PNG)).json()
+    expect(coverUrl).toMatch(new RegExp(`^/api/outlets/${mine}/cover\\?v=`))
+    const img = await app.inject({ method: 'GET', url: coverUrl }) // a visitor, not signed in
+    expect(img.statusCode).toBe(200)
+    expect(img.headers).toMatchObject({ 'content-type': 'image/png', 'x-content-type-options': 'nosniff' })
+    expect(img.rawPayload.equals(PNG)).toBe(true)
+    expect((await call(null, 'GET', `/api/outlets/${mine}`)).json().coverUrl).toBe(coverUrl)
+    expect((await call(null, 'GET', '/api/directory')).json().find((o: any) => o.id === mine).coverUrl).toBe(coverUrl)
+    expect((await call(sellerX, 'GET', '/api/seller/profile')).json().outlets[0].coverUrl).toBe(coverUrl)
+
+    expect((await call(sellerY, 'DELETE', `/api/seller/outlets/${mine}/cover`)).statusCode).toBe(404)
+    expect((await call(sellerX, 'DELETE', `/api/seller/outlets/${mine}/cover`)).statusCode).toBe(200)
+    expect((await call(null, 'GET', `/api/outlets/${mine}`)).json().coverUrl).toBeNull()
+    expect((await app.inject({ method: 'GET', url: coverUrl })).statusCode).toBe(404)
+  })
+
+  test('Nashr sets covers for outlets not on Nashr; buyers and publishers cannot', async () => {
+    const off = (await call(admin, 'POST', '/api/admin/outlets', { name: 'Time Out Dubai', channel: 'digital', estLow: AED(5_000), estHigh: AED(8_000) })).json().id
+    expect((await put(buyerA, `/api/admin/outlets/${off}/cover`, PNG)).statusCode).toBe(403)
+    expect((await put(sellerX, `/api/seller/outlets/${off}/cover`, PNG)).statusCode).toBe(404)
+    const { coverUrl } = (await put(admin, `/api/admin/outlets/${off}/cover`, PNG)).json()
+    expect((await call(admin, 'GET', '/api/admin/outlets')).json().find((o: any) => o.id === off).coverUrl).toBe(coverUrl)
+    expect((await call(admin, 'DELETE', `/api/admin/outlets/${off}/cover`)).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === off).coverUrl).toBeNull()
+  })
+})
+
 describe('brief scenarios closed in phase F', () => {
   /** Move the clock; sessions last 12 hours, so everyone signs in again. */
   async function jump(iso: string) {

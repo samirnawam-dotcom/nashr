@@ -11,6 +11,7 @@ import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
 import { REJECT_REASONS } from '../fulfilment/creative.js'
 import { uploadMediaInvoice, payoutStatement } from '../documents/documents.js'
 import { containsContactDetails } from '../core/contact.js'
+import { coverUrl } from './routes-covers.js'
 
 const SELLER: ['seller'] = ['seller']
 const HELD = `('secured', 'in_review', 'issue_open', 'disputed')`
@@ -184,7 +185,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     return {
       company: { name: c.name, trn: c.trn, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled },
       outlets: outlets.map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, description: o.description,
-        website: o.website, audience: o.audience })),
+        website: o.website, audience: o.audience, coverUrl: coverUrl(o) })),
       placements: placements.map(p => ({ id: p.id, outlet: p.outlet, outletId: p.outlet_id, name: p.name, saleType: p.sale_type, days: p.days,
         startsAt: p.starts_at_local, endsAt: p.ends_at_local, breaks: p.breaks, startingPrice: p.starting_price, anyBreakPrice: p.any_break_price,
         packagePrice: p.package_price, buyNowPrice: p.buy_now_price, reservePrice: p.reserve_price, creativeLeadHours: p.creative_lead_hours,

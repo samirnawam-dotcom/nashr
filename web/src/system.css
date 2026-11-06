@@ -326,3 +326,13 @@ main.legal .table-wrap { margin: 8px 0; }
   .auth-hero .auth-mark, .auth-hero p, .auth-hero .auth-channels { display: none; }
   .auth-hero h2 { font-size: 24px; margin-top: 28px; max-width: 20ch; }
 }
+
+/* Cover photo picker: a preview of the outlet's cover at its real shape, then the actions */
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.cover-picker { display: grid; gap: 10px; }
+.cover-preview { position: relative; aspect-ratio: 16 / 5; border-radius: 14px; overflow: hidden; background: var(--night, #06262a); max-width: 640px; }
+.cover-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-default { position: absolute; left: 10px; bottom: 10px; font-size: 12px; color: #fff; background: rgba(6, 38, 42, .7); padding: 3px 9px; border-radius: 999px; }
+.cover-picker label.btn { position: relative; cursor: pointer; }
+.cover-picker label.btn:focus-within { outline: 2px solid var(--teal, #0f6b6b); outline-offset: 2px; }
+.cover-picker label.btn.disabled { opacity: .45; cursor: not-allowed; }

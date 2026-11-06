@@ -28,7 +28,7 @@ export async function upload(file: File): Promise<{ id: string; name: string; si
 }
 
 export type Price = { level: 'typical' | 'rate' | 'estimate'; label: string; from: number; to: number; currency: string } | null
-export type Outlet = { id: string; slug?: string; name: string; nameAr: string | null; channel: string; sectors: string[]; logoUrl: string | null
+export type Outlet = { id: string; slug?: string; name: string; nameAr: string | null; channel: string; sectors: string[]; logoUrl: string | null; coverUrl?: string | null
   tier: string | null; audience: string | null; market: string; comingSoon: boolean; onNashr: boolean; price: Price }
 export type Campaign = { id: string; name: string; budget: number; launchDate: string | null; objective: string | null; audience: string | null
   message: string | null; status: 'active' | 'completed'; committed: number; pending: number; planned: number; remaining: number }
