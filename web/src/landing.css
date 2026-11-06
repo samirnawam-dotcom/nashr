@@ -199,7 +199,7 @@
 .lp .closing-photo { position: absolute; inset: 0; z-index: -2; }
 .lp .closing-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 60%; opacity: .7; }
 .lp .closing-photo::after { content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(6, 38, 42, .96) 0%, rgba(6, 38, 42, .82) 45%, rgba(6, 38, 42, .35) 100%), linear-gradient(0deg, rgba(6, 38, 42, .7), transparent 40%); }
+  background: linear-gradient(90deg, rgba(6, 38, 42, .9) 0%, rgba(6, 38, 42, .66) 42%, rgba(6, 38, 42, .18) 100%), linear-gradient(0deg, rgba(6, 38, 42, .55), transparent 40%); }
 .lp .closing-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 40px; align-items: center; padding-block: 96px; }
 .lp .closing h2 { font-size: clamp(30px, 3.4vw, 48px); font-weight: 650; letter-spacing: -.03em; line-height: 1.05; color: #fff; max-width: 16ch; }
 .lp .closing p { color: #a9c4c0; font-size: 17px; line-height: 1.6; max-width: 50ch; margin: 18px 0 30px; }
@@ -266,9 +266,13 @@
 @media (prefers-reduced-motion: reduce) { .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; } }
 
 /* Background video: the control room behind the hero, the printing press behind the closing band */
-.lp .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; opacity: .55; }
+.lp .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; opacity: 1; filter: saturate(1.05) contrast(1.05); }
+/* Dark only where the text sits: a band behind the headline on the left, a fade into the next section at the bottom */
 .lp .hero-shade { position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(6, 38, 42, .96) 0%, rgba(6, 38, 42, .86) 38%, rgba(6, 38, 42, .55) 70%, rgba(6, 38, 42, .7) 100%),
-    linear-gradient(0deg, rgba(6, 38, 42, .95) 0%, rgba(6, 38, 42, 0) 30%); }
-.lp .closing-photo video, .lp .closing-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; opacity: .6; }
-@media (max-width: 700px) { .lp .hero-video { opacity: .35; } .lp .hero-shade { background: linear-gradient(180deg, rgba(6, 38, 42, .85), rgba(6, 38, 42, .95)); } }
+  background: linear-gradient(90deg, rgba(6, 38, 42, .88) 0%, rgba(6, 38, 42, .72) 30%, rgba(6, 38, 42, .28) 58%, rgba(6, 38, 42, .12) 100%),
+    linear-gradient(0deg, rgba(6, 38, 42, .92) 0%, rgba(6, 38, 42, 0) 26%),
+    linear-gradient(180deg, rgba(6, 38, 42, .55) 0%, rgba(6, 38, 42, 0) 18%); }
+.lp .hero:has(.hero-video) .glow, .lp .hero:has(.hero-video) .grid-lines { opacity: .35; }
+.lp .hero:has(.hero-video) .hero-copy { text-shadow: 0 2px 24px rgba(6, 38, 42, .6); }
+.lp .closing-photo video, .lp .closing-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; opacity: .9; }
+@media (max-width: 700px) { .lp .hero-video { opacity: .7; } .lp .hero-shade { background: linear-gradient(180deg, rgba(6, 38, 42, .7), rgba(6, 38, 42, .9)); } }
