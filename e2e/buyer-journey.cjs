@@ -7,7 +7,8 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   const errors = []; p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
   await p.goto(BASE + '/#/sign-in')
   await p.fill('#email', 'demo@northwind.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
-  await p.waitForSelector('.cal-head')
+  await p.waitForSelector('.dash-lead') // the buyer dashboard is home
+  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cal-head')
   await p.click('[aria-label="Next"]'); await p.click('[aria-label="Next"]'); await p.waitForTimeout(700) // week of 16 Nov: everything open
   out && await p.screenshot({ path: out + '/6-week2.png' })
   await p.click('.seg button:has-text("Day")'); await p.waitForTimeout(700)
@@ -27,7 +28,8 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   const seller = await b.newContext(); const sp = await seller.newPage()
   await sp.request.post(BASE + '/api/auth/login', { data: { email: 'sales@skyline.ae', password: 'nashr-demo-2026' } })
   const deals = await (await sp.request.get(BASE + '/api/seller/deals')).json()
-  const req = deals.find(d => d.status === 'awaiting_seller')
+  // this buyer's newest request (the demo data has other buyers' requests waiting too)
+  const req = deals.find(d => d.status === 'awaiting_seller' && d.buyer.company === 'Northwind Fintech') // newest first
   console.log('seller sees:', req.buyer.company, req.money.youReceive, 'below reserve:', req.belowReserve)
   console.log('accept:', (await sp.request.post(`${BASE}/api/seller/deals/${req.id}/accept`)).status())
   // Buyer pays from Bookings

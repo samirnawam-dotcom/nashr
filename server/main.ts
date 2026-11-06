@@ -20,6 +20,7 @@ function provider(): PaymentProvider {
 
 await migrate()
 const p = provider()
+if (p instanceof FakeProvider) p.prime('AED', Number((await pool.query(`select coalesce(sum(case when debit = 'cash' then amount else -amount end), 0) n from ledger_entries where 'cash' in (debit, credit) and currency = 'AED'`)).rows[0].n))
 const app = buildApp({ provider: p, log: process.env.LOG_REQUESTS === '1' || undefined, stripe: sk ? { publishableKey: pk, webhookSecret: whsec } : undefined })
 await app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' })
 

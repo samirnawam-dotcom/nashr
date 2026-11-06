@@ -5,6 +5,7 @@ import { hashPassword } from './auth/crypto.js'
 import { createPlacement, generateSlots } from './catalog/placements.js'
 import { accept, placeBid, requestBuyNow, showInterest } from './marketplace/market.js'
 import { localDay } from './core/market.js'
+import { seedHistory } from './seed-history.js'
 
 if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed demo data in production.')
 
@@ -107,6 +108,9 @@ if (buyNow) await tx(async c => {
   await accept(c, deal.id, 'seller:seed', now)
 })
 
+// Twelve weeks of past activity, so every dashboard has a history to show.
+const booked = await seedHistory({ now, demoBuyer: buyer, rivals, campaignId: campaign })
+
 // Nashr staff. Staff sign in with an authenticator code; this fixed key is for development only.
 const DEMO_TOTP = 'JBSWY3DPEHPK3PXP'
 const nashr = (await pool.query(`insert into companies (name, type) values ('Nashr', 'nashr') returning id`)).rows[0].id
@@ -119,5 +123,5 @@ await pool.query(`insert into access_requests (name, email, phone, role, company
 await pool.query(`insert into quote_requests (outlet_id, buyer_id, message, created_at) select id, $1, 'Full page in the first week of December, banking section.', now() from outlets where name = 'Arabian Business'`, [buyer])
 
 const n = (await pool.query(`select count(*)::int n from slots`)).rows[0].n
-console.log(`Seeded ${n} slots from ${from}. Sign in as demo@northwind.ae (buyer), sales@skyline.ae (seller) or ops@nashr.ae / omar@nashr.ae (staff), password ${PASSWORD}.\nStaff authenticator key (development only): ${DEMO_TOTP}`)
+console.log(`Seeded ${n} slots from ${from} and ${booked} past bookings. Sign in as demo@northwind.ae (buyer), sales@skyline.ae (seller) or ops@nashr.ae / omar@nashr.ae (staff), password ${PASSWORD}.\nStaff authenticator key (development only): ${DEMO_TOTP}`)
 await pool.end()

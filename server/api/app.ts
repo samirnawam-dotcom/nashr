@@ -16,6 +16,7 @@ import { healthRoute } from './routes-health.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 import { type StripeConfig, stripeWebhook } from './routes-stripe.js'
+import { dashboardRoutes } from './routes-dashboards.js'
 
 export type Ctx = { db: pg.PoolClient; at: Date; me: Session & { actAs: { companyId: string; role: string } }; provider: PaymentProvider }
 type Role = 'buyer' | 'seller' | 'admin' | 'founder' | 'guest' // 'guest': also readable without signing in (me is null)
@@ -121,6 +122,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   planRoutes(route)
   sellerDeskRoutes(route, deps)
   adminDeskRoutes(route, deps)
+  dashboardRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.

@@ -39,6 +39,8 @@ const ListingsPage = L(load_seller_Listings, 'ListingsPage')
 const NewPlacementPage = L(load_seller_Listings, 'NewPlacementPage')
 const load_seller_Profile = () => import('./seller/Profile')
 const ProfilePage = L(load_seller_Profile, 'ProfilePage')
+const load_buyer_Dashboard = () => import('./buyer/Dashboard')
+const BuyerDashboard = L(load_buyer_Dashboard, 'BuyerDashboard')
 const load_Athena = () => import('./Athena')
 const AthenaPage = L(load_Athena, 'AthenaPage')
 const load_admin_Overview = () => import('./admin/Overview')
@@ -65,6 +67,7 @@ export type Me = { role: string; company: { name: string; type: string }; viewin
 // One page per path; ids are the last segment.
 type Routes = [RegExp, (id: string) => React.ReactNode][]
 const BUYER: Routes = [
+  [/^\/dashboard/, () => <BuyerDashboard />],
   [/^\/calendar/, () => <CalendarPage />],
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
@@ -121,11 +124,12 @@ const NAV: Record<string, string[][]> = {
   admin: [['/admin', 'Overview'], ['/access', 'Access'], ['/accounts', 'Accounts'], ['/deals', 'Deals'], ['/disputes', 'Disputes'], ['/funds', 'Funds'],
     ['/payouts', 'Payouts'], ['/directory', 'Directory'], ['/reports', 'Reports'], ['/audit', 'Audit'], ['/settings', 'Settings']],
   guest: [['/', 'Home'], ['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/sign-in', 'Sign in']],
-  buyer: [['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/campaigns', 'Campaigns'], ['/bookings', 'Bookings'], ['/athena', 'Athena']],
+  buyer: [['/dashboard', 'Dashboard'], ['/calendar', 'Calendar'], ['/directory', 'Directory'], ['/campaigns', 'Campaigns'], ['/bookings', 'Bookings'], ['/athena', 'Athena']],
   seller: [['/home', 'Dashboard'], ['/schedule', 'Calendar'], ['/inbox', 'Inbox'], ['/deals', 'Deals'], ['/earnings', 'Earnings'], ['/listings', 'Listings'], ['/profile', 'Profile']],
 }
 
 const ICON: Record<string, string> = {
+  '/dashboard': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
   '/calendar': 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   '/schedule': 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   '/directory': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', '/campaigns': 'M5 21V4M5 4h11l-2 4 2 4H5',
@@ -176,7 +180,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   }
 
   const seller = me.role === 'seller', staff = me.role === 'admin' || me.role === 'founder'
-  const home = staff ? '/admin' : seller ? '/home' : '/calendar'
+  const home = staff ? '/admin' : seller ? '/home' : '/dashboard'
   const path = hash === '/' ? home : hash
   if (path === '/sign-in' || path === '/request-access') { queueMicrotask(() => navigate(home, true)); return null }
 

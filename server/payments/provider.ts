@@ -24,6 +24,8 @@ export class FakeProvider implements PaymentProvider {
   private seen = new Map<string, any>() // idempotency key → result, like Stripe
   private n = 0
   readonly charges = new Map<string, { amount: number; currency: string; status: string }>()
+  // Ids are unique per instance: the demo seed and the server each run their own fake provider on one database.
+  private tag = Math.random().toString(36).slice(2, 8)
 
   private once<T>(key: string, fn: () => T): T {
     if (!this.seen.has(key)) this.seen.set(key, fn())
@@ -35,7 +37,7 @@ export class FakeProvider implements PaymentProvider {
 
   async charge(a: { amount: number; currency: string; paymentMethod: string; idempotencyKey: string }) {
     return this.once(a.idempotencyKey, (): ChargeResult => {
-      const id = `ch_${++this.n}`
+      const id = `ch_${this.tag}_${++this.n}`
       if (a.paymentMethod.endsWith('0002')) return { id, status: 'failed', failure: 'Your card was declined.' }
       const status = a.paymentMethod.endsWith('3155') ? 'requires_action' : 'succeeded'
       this.charges.set(id, { amount: a.amount, currency: a.currency, status })
@@ -52,11 +54,15 @@ export class FakeProvider implements PaymentProvider {
   }
 
   async refund(a: { chargeId: string; amount: number; idempotencyKey: string }) {
-    return this.once(a.idempotencyKey, () => { this.add(this.charges.get(a.chargeId)!.currency, -a.amount); return { id: `re_${++this.n}` } })
+    // Charges made by another process (the demo seed) are not in memory: they are in AED.
+    return this.once(a.idempotencyKey, () => { this.add(this.charges.get(a.chargeId)?.currency ?? 'AED', -a.amount); return { id: `re_${this.tag}_${++this.n}` } })
   }
 
+  /** Demo servers: start from the ledger's cash, since the fake balance lives in memory and the seed ran in another process. */
+  prime(currency: string, amount: number) { this.bal.set(currency, amount) }
+
   async transfer(a: { amount: number; currency: string; destination: string; idempotencyKey: string }) {
-    return this.once(a.idempotencyKey, () => { this.add(a.currency, -a.amount); return { id: `tr_${++this.n}` } })
+    return this.once(a.idempotencyKey, () => { this.add(a.currency, -a.amount); return { id: `tr_${this.tag}_${++this.n}` } })
   }
 
   async balance(currency: string) { return this.bal.get(currency) ?? 0 }

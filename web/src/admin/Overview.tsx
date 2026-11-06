@@ -1,44 +1,77 @@
 import { useState } from 'react'
 import { DEAL_STATUS, Loading, date, money, useAct, useLoad } from './common'
+import { CHANNEL, Delta, Funnel, Hero, RankedBars, StatTile, WeekColumns, compact } from '../charts'
 
 type O = { access_pending: number; quotes_open: number; disputes: number; issues: number; failed_ops: number; pending_ops: number; gmv_month: number
   bookings_month: number; publishers_live: number; buyers: number; revenue: number; held: number
   reconcile: { ledgerCash: number; providerCash: number; ok: boolean }; byStatus: Record<string, number> }
 
+type Weeks = { week: string; value: number }[]
+type Dash = {
+  gmv: { weeks: Weeks; last30: number; prev30: number }; commission: { weeks: Weeks; last30: number; prev30: number }; takeRate: number | null
+  funnel: { label: string; value: number }[]; byChannel: { channel: string; value: number; count: number }[]
+  topPublishers: { label: string; value: number; count: number }[]; topBuyers: { label: string; value: number; count: number }[]
+  live: { openSlots: number; withBids: number; bids7d: number; activeBuyers: number }
+  money: { held: number; owedToPublishers: number; revenue: number; vat: number; fees: number }
+}
+
 export function AdminOverview() {
-  const { data: o, error } = useLoad<O>('/admin/overview')
-  if (!o) return <Loading error={error} />
+  const { data: o, error } = useLoad<O>('/admin/overview'), { data: d } = useLoad<Dash>('/admin/dashboard')
+  if (!o || !d) return <Loading error={error} />
   const attention = [
     [o.access_pending, 'Access requests to review', '/access', false], [o.disputes, 'Disputes to decide', '/disputes', true],
     [o.issues, 'Issues waiting on publishers', '/disputes', false], [o.failed_ops, 'Failed payouts or refunds', '/payouts', true],
     [o.quotes_open, 'Quote requests', '/directory', false],
   ] as const
-  const total = Object.values(o.byStatus).reduce((x, y) => x + y, 0)
-  const COLORS: Record<string, string> = { awaiting_seller: 'var(--signal)', awaiting_payment: 'var(--teal-4)', secured: 'var(--teal)', in_review: 'var(--studio-2)',
-    issue_open: 'var(--amber)', disputed: 'var(--red)', released: 'var(--green)', paid_out: '#2f9e62' }
+  const ORDER = ['awaiting_seller', 'awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out']
+  const statuses = ORDER.filter(s => o.byStatus[s]).map(s => ({ label: DEAL_STATUS[s]?.[0] ?? s, value: o.byStatus[s], href: `/deals?status=${s}` }))
   return (
-    <main>
+    <main className="dash">
       <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? 'Ledger reconciles with the payment provider.'
         : <>Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider ({money(o.reconcile.providerCash)}). <a href="/funds">Open Funds</a></>}</p>
-      <div className="page-h"><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span></div>
-      <dl className="figures">
-        <div><dt>Bookings paid this month</dt><dd className="num">{o.bookings_month}</dd></div>
-        <div><dt>Booked value this month</dt><dd className="num">{money(o.gmv_month)}</dd><small>excl. VAT</small></div>
-        <div><dt>Held for bookings</dt><dd className="num">{money(o.held)}</dd></div>
-        <div><dt>Nashr commission earned</dt><dd className="num">{money(o.revenue)}</dd></div>
-        <div><dt>Publishers live</dt><dd className="num">{o.publishers_live}</dd><small>{o.buyers} buyers</small></div>
-      </dl>
-      <div className="grid2">
-        <section><h2 className="sec-h">Needs attention</h2>
-          <ul className="attn-list card">{attention.map(([n, label, href, hot]) => <li key={label} className={n ? (hot ? 'hot' : 'has') : 'none'}>
+      <div className="dash-head"><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
+        <div className="spacer" /><a className="btn" href="/reports">Reports</a><a className="btn" href="/deals">All deals</a></div>
+
+      <section className="dash-lead">
+        <Hero label="Booked value, last 30 days" value={money(d.gmv.last30)}>
+          <Delta now={d.gmv.last30} before={d.gmv.prev30} />
+          <span className="stat-sub">Price of bookings paid, excluding VAT.</span>
+          <dl className="kv" style={{ marginTop: 8 }}>
+            <dt>Commission earned (30 days)</dt><dd>{money(d.commission.last30)}</dd>
+            <dt>Take rate (90 days)</dt><dd>{d.takeRate == null ? '—' : `${(d.takeRate * 100).toFixed(1)}%`}</dd>
+            <dt>Publishers live</dt><dd>{o.publishers_live}</dd>
+            <dt>Buyer companies</dt><dd>{o.buyers}</dd>
+          </dl>
+        </Hero>
+        <WeekColumns weeks={d.gmv.weeks} title="Booked value by week (excluding VAT)" valueName="Booked value" />
+      </section>
+
+      <div className="stats">
+        <StatTile label="Commission, last 30 days" value={compact(d.commission.last30)} delta={<Delta now={d.commission.last30} before={d.commission.prev30} />} spark={d.commission.weeks.map(w => w.value)} href="/reports" />
+        <StatTile label="Held for bookings" value={compact(d.money.held)} sub="Paid by buyers, not yet released" href="/funds" />
+        <StatTile label="Open slots with bids" value={`${d.live.withBids} of ${d.live.openSlots}`} sub={`${d.live.bids7d} bids this week`} />
+        <StatTile label="Active buyers" value={String(d.live.activeBuyers)} sub="bid in the last 30 days" />
+      </div>
+
+      <div className="dash-grid">
+        <section className="panel span-4"><div className="panel-h"><h2>Needs attention</h2></div>
+          <ul className="attn-list">{attention.map(([n, label, href, hot]) => <li key={label} className={n ? (hot ? 'hot' : 'has') : 'none'}>
             <a href={href}><b className="num">{n}</b><span>{label}</span>{n > 0 && <span className="btn task-act">Open</span>}</a></li>)}</ul></section>
-        <section><h2 className="sec-h">Deals by status</h2>
-          {total === 0 ? <p className="muted">No deals yet.</p> : <div className="card pad">
-            <div className="stack" role="img" aria-label="Deals by status">{Object.entries(o.byStatus).map(([s, n]) =>
-              <span key={s} style={{ flex: n, background: COLORS[s] ?? 'var(--faint)' }} title={`${DEAL_STATUS[s]?.[0] ?? s}: ${n}`} />)}</div>
-            <ul className="stack-key">{Object.entries(o.byStatus).map(([s, n]) => <li key={s}><a href={`/deals?status=${s}`}>
-              <i style={{ background: COLORS[s] ?? 'var(--faint)' }} />{DEAL_STATUS[s]?.[0] ?? s}<b className="num">{n}</b></a></li>)}</ul></div>}
-        </section>
+        <section className="panel span-4"><Funnel title="Bookings opened in the last 30 days" steps={d.funnel} /></section>
+        <section className="panel span-4"><div className="panel-h"><h2>Money position</h2><div className="spacer" /><a href="/funds">Funds</a></div>
+          <dl className="kv">
+            <dt>Held for bookings</dt><dd>{money(d.money.held)}</dd>
+            <dt>Owed to publishers</dt><dd>{money(d.money.owedToPublishers)}</dd>
+            <dt>VAT on commission</dt><dd>{money(d.money.vat)}</dd>
+            <dt>Card processing fees</dt><dd>{money(d.money.fees)}</dd>
+            <dt className="total">Commission earned (all time)</dt><dd className="total">{money(d.money.revenue)}</dd>
+          </dl></section>
+
+        <section className="panel span-4"><RankedBars title="Booked value by channel (90 days)" items={d.byChannel.map(c => ({ label: CHANNEL[c.channel] ?? c.channel, sub: `${c.count} bookings`, value: c.value }))} /></section>
+        <section className="panel span-4"><RankedBars title="Top publishers (90 days)" items={d.topPublishers.map(p => ({ label: p.label, sub: `${p.count} bookings`, value: p.value }))} /></section>
+        <section className="panel span-4"><RankedBars title="Top buyers (90 days)" items={d.topBuyers.map(p => ({ label: p.label, sub: `${p.count} bookings`, value: p.value }))} /></section>
+
+        <section className="panel"><RankedBars title="All deals by status" format={v => String(v)} empty="No deals yet." items={statuses} /></section>
       </div>
     </main>
   )

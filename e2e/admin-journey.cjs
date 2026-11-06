@@ -46,7 +46,7 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   await p.waitForSelector('text=Invite link'); await shot('a5-access')
   // View a publisher's account read-only
   await p.click('.nav >> text=Accounts'); await p.click('td:has-text("Skyline FM")'); await p.waitForSelector('text=Payout account'); await shot('a6-account')
-  await p.click('button:has-text("View as this account")'); await p.waitForSelector('.viewbar'); await p.waitForSelector('.kpis'); await shot('a7-view-as')
+  await p.click('button:has-text("View as this account")'); await p.waitForSelector('.viewbar'); await p.waitForSelector('.dash-lead'); await shot('a7-view-as')
   await p.click('button:has-text("Stop viewing")'); await p.waitForSelector('text=Payout account')
   // Money, reports, settings, audit, directory
   await p.click('.nav >> text=Funds'); await p.waitForSelector('.kpis'); await shot('a8-funds')
