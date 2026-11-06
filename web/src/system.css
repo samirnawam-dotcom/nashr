@@ -189,6 +189,11 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 /* Sign-in and access: the control-room panel beside the form */
 .auth { background: var(--surface); }
 .auth-hero { background: radial-gradient(90% 70% at 15% 10%, #0f4a4e 0%, transparent 65%), radial-gradient(60% 50% at 90% 100%, rgba(229, 162, 27, .18) 0%, transparent 70%), var(--night); }
+.auth-hero { isolation: isolate; }
+.auth-hero > * { position: relative; }
+.auth-hero > .auth-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; opacity: .55; }
+.auth-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(6, 38, 42, .55) 0%, rgba(6, 38, 42, .82) 55%, rgba(6, 38, 42, .96) 100%); }
 .auth-hero h2 { font: 700 clamp(28px, 2.8vw, 40px)/1.08 var(--display); letter-spacing: -.03em; color: #fff; }
 .auth-form h1 { font-size: 30px; }
 .auth-form form { gap: 18px; }

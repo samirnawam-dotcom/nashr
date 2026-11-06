@@ -79,11 +79,15 @@
 .lp .flash { animation: lp-flash .6s ease-out; }
 
 /* the channel strip: a rate card under the hero */
-.lp .channels { list-style: none; margin: 0 auto; padding-block: 26px 34px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-top: 1px solid rgba(214, 236, 233, .09); }
-.lp .channels li { display: grid; gap: 3px; padding-right: 18px; }
-.lp .channels li + li { padding-left: 18px; border-left: 1px solid rgba(214, 236, 233, .09); }
-.lp .channels b { font: 600 16px var(--display); color: #fff; }
-.lp .channels span { font-size: 13.5px; color: #84a5a1; }
+.lp .channels { list-style: none; margin: 0 auto; padding-block: 8px 40px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.lp .channels li { position: relative; aspect-ratio: 4 / 5; border-radius: 16px; overflow: hidden; background: var(--night-2);
+  box-shadow: inset 0 0 0 1px rgba(214, 236, 233, .1); isolation: isolate; }
+.lp .channels img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.lp .channels li::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(6, 38, 42, 0) 38%, rgba(6, 38, 42, .62) 66%, rgba(6, 38, 42, .94) 100%); }
+.lp .channels div { position: absolute; inset: auto 0 0; display: grid; gap: 4px; padding: 16px 16px 18px; }
+.lp .channels b { font: 650 19px/1.1 var(--display); letter-spacing: -.02em; color: #fff; }
+.lp .channels span { font-size: 13.5px; line-height: 1.4; color: #c3d8d4; }
 
 /* ------------------------------------------------------------------ the product, framed */
 .lp .product { background: linear-gradient(180deg, var(--night) 0, var(--night) 420px, var(--paper) 420px); padding-bottom: 24px; }
@@ -209,10 +213,12 @@
 @keyframes lp-flash { from { box-shadow: 0 0 0 4px rgba(229, 162, 27, .45), 0 12px 28px -12px rgba(0, 0, 0, .5); } }
 
 @media (max-width: 1000px) {
+  .lp .channels { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 30%; overflow-x: auto; scroll-snap-type: x mandatory;
+    scroll-padding-inline: max(24px, env(safe-area-inset-left)); overscroll-behavior-x: contain; scrollbar-width: none; }
+  .lp .channels::-webkit-scrollbar { display: none; }
+  .lp .channels li { scroll-snap-align: start; }
   .lp .hero-grid, .lp .held-section, .lp .faq-grid, .lp .closing-grid, .lp .product-head { grid-template-columns: 1fr; gap: 36px; }
   .lp .hero-grid { padding-block: 44px 48px; }
-  .lp .channels { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 18px; }
-  .lp .channels li:nth-child(4) { border-left: 0; padding-left: 0; }
   .lp .steps { grid-template-columns: 1fr; gap: 26px; }
   .lp .steps li { padding: 0 0 0 58px; }
   .lp .steps li::after { top: 46px; left: 18px; right: auto; bottom: -22px; width: 2px; height: auto; }
@@ -229,9 +235,7 @@
   .lp .board-body { --gut: 66px; padding-inline: 14px; }
   .lp .slot { font-size: 10px; padding: 4px 6px; } .lp .slot b { font-size: 11px; }
   .lp .bidcard .amt { font-size: 24px; }
-  .lp .channels { grid-template-columns: 1fr 1fr; }
-  .lp .channels li:nth-child(odd) { border-left: 0; padding-left: 0; }
-  .lp .channels li:nth-child(4) { border-left: 1px solid rgba(214, 236, 233, .09); padding-left: 18px; }
+  .lp .channels { grid-auto-columns: 64%; padding-bottom: 32px; }
   .lp .block { padding-block: 64px; }
   .lp .tile { padding: 22px; min-height: 0; }
   .lp .thread { grid-template-columns: 1fr 1fr; }

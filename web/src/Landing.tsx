@@ -17,6 +17,14 @@ const LANES = [
   { who: 'The Majlis', kind: 'Podcast', slots: [{ l: 2, w: 28, t: 'Weekly episode', s: 'pre-roll and mid-roll' }] },
 ]
 
+const CHANNELS = [
+  { k: 'radio', name: 'Radio', line: 'Single breaks, any break, packages' },
+  { k: 'tv', name: 'TV', line: 'Spots by programme and time' },
+  { k: 'print', name: 'Print', line: 'Pages by edition and section' },
+  { k: 'digital', name: 'Digital', line: 'Homepage takeovers by day' },
+  { k: 'podcast', name: 'Podcasts', line: 'Pre-roll, mid-roll, post-roll' },
+]
+
 export function Landing() {
   const head = useRef<HTMLDivElement>(null), card = useRef<HTMLDivElement>(null), steps = useRef<HTMLOListElement>(null)
   const [i, setI] = useState(2), [hours, setHours] = useState(6)
@@ -85,11 +93,10 @@ export function Landing() {
         </div>
 
         <ul className="wrap channels" aria-label="What you can book">
-          <li><b>Radio</b><span>Single breaks, any break, packages</span></li>
-          <li><b>TV</b><span>Spots by programme and time</span></li>
-          <li><b>Print</b><span>Pages by edition and section</span></li>
-          <li><b>Digital</b><span>Homepage takeovers by day</span></li>
-          <li><b>Podcasts</b><span>Pre-roll, mid-roll, post-roll</span></li>
+          {CHANNELS.map(c => <li key={c.k}>
+            <img src={`/brand/${c.k}.jpg`} width={640} height={800} alt="" loading="lazy" decoding="async" />
+            <div><b>{c.name}</b><span>{c.line}</span></div>
+          </li>)}
         </ul>
       </section>
 

@@ -7,6 +7,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="auth">
       <section className="auth-hero" aria-label="About Nashr">
+        <img className="auth-photo" src="/brand/studio.jpg" width={1080} height={1440} alt="" decoding="async" />
         <a className="logo" href="/" aria-label="Nashr home"><span className="latin">Nashr</span></a>
         <div className="auth-mark" lang="ar" aria-hidden>نشر</div>
         <h2>Book UAE airtime and pages in one place.</h2>
