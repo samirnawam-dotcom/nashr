@@ -94,6 +94,22 @@ describe('invite-only access (scenario 14)', () => {
     expect((await call(null, 'POST', '/api/auth/login', { email: 'huda@brandco.ae', password: 'wrong password!!' })).json().error).toBe('Email or password is not right.')
     expect((await call(null, 'POST', '/api/auth/login', { email: 'omar@nashr.ae', password: PASS })).json().error).toMatch('authenticator')
   })
+
+  test('for testing, STAFF_TWO_STEP=off lets staff sign in and accept invites with a password only; the wrong password still fails', async () => {
+    process.env.STAFF_TWO_STEP = 'off'
+    try {
+      expect((await call(null, 'POST', '/api/auth/login', { email: 'omar@nashr.ae', password: 'wrong password!!' })).json().error).toBe('Email or password is not right.')
+      const r = await call(null, 'POST', '/api/auth/login', { email: 'omar@nashr.ae', password: PASS })
+      expect(r.statusCode).toBe(200)
+      const cookie = String(r.headers['set-cookie']).split(';')[0]
+      expect((await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } })).json().role).toBe('founder')
+      const link = (await call(founder, 'POST', '/api/admin/staff', { email: 'ops2@nashr.ae', name: 'Ops', role: 'admin' })).json().inviteLink
+      const accepted = (await call(null, 'POST', '/api/auth/invite', { token: link.split('#')[1], password: PASS })).json()
+      expect(accepted.needsTotp).toBe(false)
+      expect((await call(null, 'POST', '/api/auth/login', { email: 'ops2@nashr.ae', password: PASS })).statusCode).toBe(200)
+    } finally { delete process.env.STAFF_TWO_STEP }
+    expect((await call(null, 'POST', '/api/auth/login', { email: 'omar@nashr.ae', password: PASS })).json().error).toMatch('authenticator') // back on by default
+  })
 })
 
 describe('who can see what (SPEC 5.5, scenario 15)', () => {

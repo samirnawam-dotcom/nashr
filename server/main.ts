@@ -30,6 +30,7 @@ const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(
 for (const [name, job] of jobs) run(name, job) // once now, so /api/health is green from the start
 const timers = jobs.map(([name, job]) => setInterval(() => run(name, job), 60_000))
 console.log(`Nashr API on :${process.env.PORT ?? 3000}`)
+if (process.env.STAFF_TWO_STEP === 'off') console.warn('WARNING: STAFF_TWO_STEP=off. Admin and founder accounts sign in with a password only. For testing; remove it before launch.')
 
 // Deploys send SIGTERM: stop taking requests, let the jobs' transactions finish, close the pool.
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => {

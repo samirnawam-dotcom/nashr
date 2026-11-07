@@ -68,7 +68,7 @@ export async function acceptInvite(db: Db, a: { token: string; password: string;
   const inv = (await db.query(`select i.*, u.role, u.totp_secret from invites i join users u on u.id = i.user_id where token_hash = $1 for update of i`, [sha256(a.token)])).rows[0]
   if (!inv || inv.used_at || inv.expires_at <= at) throw new MarketError('This invite link has expired. Ask Nashr for a new one.')
   if ((a.password ?? '').length < 12) throw new MarketError('Use a password of at least 12 characters.')
-  if (STAFF.includes(inv.role)) {
+  if (STAFF.includes(inv.role) && staffTwoStep()) {
     if (!inv.totp_secret) {
       const secret = newTotpSecret()
       await db.query(`update users set totp_secret = $2 where id = $1`, [inv.user_id, secret])
@@ -76,11 +76,17 @@ export async function acceptInvite(db: Db, a: { token: string; password: string;
     }
     if (!a.totpCode || !checkTotp(inv.totp_secret, a.totpCode, at)) throw new MarketError('The code from your authenticator app is not right.')
   }
-  await db.query(`update users set password_hash = $2, status = 'active', totp_enabled = $3 where id = $1`, [inv.user_id, hashPassword(a.password), STAFF.includes(inv.role)])
+  await db.query(`update users set password_hash = $2, status = 'active', totp_enabled = $3 where id = $1`, [inv.user_id, hashPassword(a.password), STAFF.includes(inv.role) && staffTwoStep()])
   await db.query(`update invites set used_at = $2 where token_hash = $1`, [inv.token_hash, at])
   await audit(db, `user:${inv.user_id}`, 'invite.accepted', 'user', inv.user_id, null, at)
   return { needsTotp: false as const }
 }
+
+/**
+ * Staff two-step login (authenticator code) is on unless STAFF_TWO_STEP=off. Turning it off is for testing only: staff
+ * then sign in with email and password. Turn it back on (remove the setting) before real money moves.
+ */
+export const staffTwoStep = () => process.env.STAFF_TWO_STEP !== 'off'
 
 const DUMMY_HASH = hashPassword('not a real password, only spends the same time')
 
@@ -91,7 +97,7 @@ export async function login(db: Db, a: { email: string; password: string; totpCo
   // unknown emails still pay for one password hash, so the response time does not reveal who has an account
   const ok = verifyPassword(a.password ?? '', u?.password_hash ?? DUMMY_HASH)
   if (!u || u.status !== 'active' || !ok) throw fail()
-  if (STAFF.includes(u.role)) {
+  if (STAFF.includes(u.role) && staffTwoStep()) {
     const step = u.totp_enabled && a.totpCode ? totpStep(u.totp_secret, a.totpCode, at) : null
     if (step === null || (u.totp_last_step != null && step <= Number(u.totp_last_step))) throw new MarketError('Enter the code from your authenticator app.')
     await db.query(`update users set totp_last_step = $2 where id = $1`, [u.id, step]) // each code signs in once
