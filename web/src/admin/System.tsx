@@ -49,7 +49,7 @@ export function SettingsPage({ isFounder }: { isFounder: boolean }) {
   )
 }
 
-type U = { id: string; name: string; email: string; role: string; status: string; twoFactor: boolean; createdAt: string }
+type U = { id: string; name: string; email: string; role: string; status: string; twoFactor: boolean; twoStepOff?: boolean; createdAt: string }
 function Staff({ isFounder }: { isFounder: boolean }) {
   const { data, load } = useLoad<U[]>('/admin/staff')
   const { act, busy, msg } = useAct(load)
@@ -57,7 +57,7 @@ function Staff({ isFounder }: { isFounder: boolean }) {
   return <section className="section">
     <h2 className="sec-h">Nashr team</h2>
     <div className="table-wrap card"><table className="table"><tbody>{(data ?? []).map(u => <tr key={u.id}><td><b>{u.name}</b><div className="small muted">{u.email}</div></td><td>{u.role}</td>
-      <td className="small">{u.status}{u.twoFactor ? ' · authenticator on' : ''}</td><td className="small num">{date(u.createdAt)}</td></tr>)}</tbody></table></div>
+      <td className="small">{u.status}{u.twoFactor ? ' · authenticator on' : u.twoStepOff ? ' · authenticator off (switched off for testing)' : ''}</td><td className="small num">{date(u.createdAt)}</td></tr>)}</tbody></table></div>
     <div className="card pad form section" style={{ maxWidth: 560 }}>
       <h3>Invite a team member</h3>
       <div className="field"><label htmlFor="sn">Name</label><input id="sn" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /></div>

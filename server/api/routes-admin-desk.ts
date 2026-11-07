@@ -10,6 +10,7 @@ import { inviteStaff } from '../auth/access.js'
 import { FOUNDER_ONLY } from './routes-admin.js'
 import { coverUrl } from './routes-covers.js'
 import { dealRating } from './routes-ratings.js'
+import { staffTwoStep } from '../auth/access.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 const LIVE = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')` // paid bookings
@@ -60,7 +61,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     return { id: c.id, name: c.name, type: c.type, trn: c.trn, vatRegistered: c.vat_registered, payoutsEnabled: c.payouts_enabled,
       invoiceMode: c.invoice_mode, providerAccount: c.provider_account, createdAt: c.created_at,
       balance: c.type === 'publisher' ? { payable: await liability(db, `seller_payable:${c.id}`), owed: await balance(db, `seller_receivable:${c.id}`, 'AED') } : null,
-      users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled, createdAt: u.created_at })),
+      users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled && staffTwoStep(), createdAt: u.created_at })),
       outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel, sectors: o.sectors })),
       deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, createdAt: d.created_at, label: d.label, outlet: d.outlet })),
       commissionHistory: commission.map(h => ({ bp: h.value, from: h.valid_from, by: h.changed_by })) }
@@ -80,7 +81,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
 
   route('GET', '/api/admin/staff', STAFF, async ({ db }) => (await db.query(
     `select id, name, email, role, status, totp_enabled, created_at from users where role in ('admin', 'founder') order by created_at`)).rows
-    .map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status, twoFactor: u.totp_enabled, createdAt: u.created_at })))
+    .map(u => ({ id: u.id, name: u.name, email: u.email, role: u.role, status: u.status, twoFactor: u.totp_enabled && staffTwoStep(), twoStepOff: !staffTwoStep(), createdAt: u.created_at })))
 
   // Only the founder adds another founder.
   route('POST', '/api/admin/staff', STAFF, async ({ db, at, me }, req, reply) => {
