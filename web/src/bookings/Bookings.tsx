@@ -8,6 +8,7 @@ import '../directory/directory.css'
 import { PhotoBand } from '../PhotoBand'
 import { StarInput, Stars } from '../Stars'
 import { isAr, ltr, t } from '../i18n'
+import { tm } from '../i18n-server'
 
 type Deal = { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
 
@@ -99,7 +100,7 @@ export function BookingPage({ id }: { id: string }) {
     try {
       const r = await api(path, { method: 'POST', body: body ?? {} })
       if (done) setNote(done)
-      if (r?.status === 'failed') setError(`${r.failure} ${t('Update your card and try again.')}`)
+      if (r?.status === 'failed') setError(`${tm(r.failure)} ${t('Update your card and try again.')}`)
       if (r?.status === 'requires_action') setNote(t('Your bank needs you to confirm this payment.'))
       await load()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
@@ -121,7 +122,7 @@ export function BookingPage({ id }: { id: string }) {
       {d.proof && <section className="card pad section">
         <h2>{t("Proof the ad ran")}</h2>
         <dl className="facts">{d.proof.items.map(i => <div key={i.key}><dt>{t(i.label[0].toUpperCase() + i.label.slice(1).replace(/^The /, ''))}</dt><dd><ProofValue v={i.value} /></dd></div>)}</dl>
-        {d.proof.note && <p className="small muted">{d.proof.note}</p>}
+        {d.proof.note && <p className="small muted">{tm(d.proof.note)}</p>}
         {d.status === 'proof_ready' && <>
           <p className="small muted">{d.nextDeadlineAt ? t('Approve to release the payment to the publisher. If you do nothing, it is released automatically on {date}.', { date: full(d.nextDeadlineAt) }) : t('Approve to release the payment to the publisher.')}</p>
           {!issue ? <div className="row-flex">
@@ -158,7 +159,7 @@ export function BookingPage({ id }: { id: string }) {
         <h2>{t("Creative")}</h2>
         <p className="small muted">{t("Due {date} (Dubai time). Technical fixes don't count as a change round.", { date: full(d.creativeDueAt) })}</p>
         {d.creatives.length > 0 && <div className="table-wrap"><table className="table"><tbody>{d.creatives.map(c => <tr key={c.version}>
-          <td className="num">{ltr(`v${c.version}`)}</td><td>{CREATIVE[c.status] ?? c.status}{c.reason && <div className="small muted">{c.reason}</div>}</td>
+          <td className="num">{ltr(`v${c.version}`)}</td><td>{CREATIVE[c.status] ?? c.status}{c.reason && <div className="small muted">{tm(c.reason)}</div>}</td>
           <td className="small num">{full(c.uploadedAt)}</td><td className="r"><a className="small" href={`/api/files/${c.fileId}`}>{t("Download")}</a></td></tr>)}</tbody></table></div>}
         {['accepted_pay_now', 'payment_secured'].includes(d.status) && new Date(d.creativeDueAt) > new Date()
           && !d.creatives.some(c => c.status === 'approved' || c.status === 'pending') && <div className="field">
@@ -187,9 +188,9 @@ export function BookingPage({ id }: { id: string }) {
           <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>{t('Pay {amount}', { amount: money(d.total, d.currency) })}</button>
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">{t("Waiting for the publisher's decision. You'll be asked to pay once they accept.")}</p>}
-        {d.reason && ['not_selected', 'lapsed', 'cancelled', 'refunded'].includes(d.status) && <p className="muted">{t('Reason: {reason}', { reason: d.reason })}</p>}
+        {d.reason && ['not_selected', 'lapsed', 'cancelled', 'refunded'].includes(d.status) && <p className="muted">{t('Reason: {reason}', { reason: tm(d.reason) })}</p>}
         {d.status === 'payment_secured' && !terms && <button className="btn" disabled={busy} onClick={() => api(`/deals/${d.id}/cancel-preview`).then(setTerms, e => setError(e.message))}>{t("Cancel booking…")}</button>}
-        {terms && d.status === 'payment_secured' && (!terms.allowed ? <p className="warn">{terms.reason}</p> : <div className="form">
+        {terms && d.status === 'payment_secured' && (!terms.allowed ? <p className="warn">{tm(terms.reason)}</p> : <div className="form">
           <p><b>{t('If you cancel now')}</b>{terms.free ? ` ${t('(inside the free cancellation window)')}` : ''}:</p>
           <dl className="sum num">
             <div><dt>{t("You paid")}</dt><dd>{money(terms.paid!, d.currency)}</dd></div>

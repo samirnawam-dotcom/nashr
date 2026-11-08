@@ -5,6 +5,7 @@ import { DOC_TYPE } from '../documents/Documents'
 import { PhotoBand } from '../PhotoBand'
 import { Stars } from '../Stars'
 import { ltr, t } from '../i18n'
+import { tm } from '../i18n-server'
 
 type Row = { id: string; ref: string; status: string; kind: string; amount: number; currency: string; commission_bp: number | null; next_deadline_at: string | null
   created_at: string; buyer: string; seller: string; outlet: string; label: string; starts_at: string }
@@ -88,14 +89,14 @@ export function AdminDealPage({ id }: { id: string }) {
       <div className="tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>)}</div>
       {tab === 'timeline' && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("When")}</th><th>{t("Event")}</th><th>{t("Status")}</th><th>{t("Who")}</th><th>{t("Note")}</th></tr></thead>
         <tbody>{d.events.map((e, i) => <tr key={i}><td className="small num">{when(e.at)}</td><td>{t(e.event.replace(/_/g, ' '))}</td>
-          <td className="small">{e.from_status ? `${st(e.from_status)} ← ` : ''}{st(e.to_status)}</td><td className="mono">{e.actor}</td><td className="small">{e.note}</td></tr>)}</tbody></table></div>}
+          <td className="small">{e.from_status ? `${st(e.from_status)} ← ` : ''}{st(e.to_status)}</td><td className="mono">{e.actor}</td><td className="small">{tm(e.note)}</td></tr>)}</tbody></table></div>}
       {tab === 'money' && <>
         <div className="table-wrap card"><table className="table"><thead><tr><th>{t("When")}</th><th>{t("From (credit)")}</th><th>{t("To (debit)")}</th><th className="r">{t("Amount")}</th><th>{t("Reference")}</th></tr></thead>
           <tbody>{d.ledger.map((l, i) => <tr key={i}><td className="small num">{when(l.at)}</td><td className="mono">{l.credit}</td><td className="mono">{l.debit}</td>
-            <td className="r num">{money(l.amount, l.currency)}</td><td className="small">{l.ref}</td></tr>)}</tbody></table></div>
+            <td className="r num">{money(l.amount, l.currency)}</td><td className="small">{tm(l.ref)}</td></tr>)}</tbody></table></div>
         <h2 className="sec-h">{t("Payments, refunds and transfers")}</h2>
         <div className="table-wrap card"><table className="table"><tbody>{d.moneyOps.map(m => <tr key={m.ref}><td className="num">{m.ref}</td><td>{t(m.kind)}</td><td className="r num">{money(m.amount, m.currency)}</td>
-          <td className={m.status === 'failed' ? 'outbid' : ''}>{t(m.status)}{m.failure && <div className="small">{m.failure}</div>}</td><td className="small num">{when(m.created_at)}</td></tr>)}</tbody></table></div>
+          <td className={m.status === 'failed' ? 'outbid' : ''}>{t(m.status)}{m.failure && <div className="small">{tm(m.failure)}</div>}</td><td className="small num">{when(m.created_at)}</td></tr>)}</tbody></table></div>
       </>}
       {tab === 'fulfilment' && <div className="grid2">
         <section className="card pad"><h2 style={{ fontSize: 16, marginBottom: 12 }}>{t("Creative")}</h2>

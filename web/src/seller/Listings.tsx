@@ -5,6 +5,7 @@ import { addDays, todayInDubai } from '../calendar/layout'
 import { money } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { ltr, sep, t } from '../i18n'
+import { tm } from '../i18n-server'
 
 type Placement = { id: string; outlet: string; outletId: string; name: string; saleType: string; days: number[]; startsAt: string | null; endsAt: string | null
   breaks: { label: string; at?: string; seconds?: number }[]; startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null
@@ -70,7 +71,7 @@ export function NewPlacementPage() {
   }
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   if (warnings.length) return <main className="narrow"><h1>{t("Placement saved")}</h1>
-    {warnings.map(w => <p key={w} className="warn">{w} {t("Check the times if that's not intended.")}</p>)}<a className="btn primary" href="/listings">{t("Go to listings")}</a></main>
+    {warnings.map(w => <p key={w} className="warn">{tm(w)} {t("Check the times if that's not intended.")}</p>)}<a className="btn primary" href="/listings">{t("Go to listings")}</a></main>
   if (!p.outlets.length) return <main className="narrow"><h1>{t("Add placement")}</h1><p>{t('Add your outlet first.')} <a href="/profile">{t("Outlet profile")}</a></p></main>
   const slotted = breaks.length > 0
   return (

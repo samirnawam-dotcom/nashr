@@ -6,6 +6,7 @@ import { DealStatus, money, when } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { Stars } from '../Stars'
 import { ltr, sep, t } from '../i18n'
+import { tm } from '../i18n-server'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
   brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
@@ -188,7 +189,7 @@ export function SellerDealPage({ id }: { id: string }) {
         <ul className="timeline">{x.documents.map(doc => <li key={doc.id}><span className="num small">{doc.number}</span><span><a href={`/documents/${doc.id}`}>{DOC_TYPE[doc.type]}</a> · {money(doc.total, doc.currency)}</span></li>)}</ul></section>}
 
       <section className="card pad section"><h2>{t("Timeline")}</h2>
-        <ol className="timeline">{x.timeline.map((e, i) => <li key={i}><span className="small muted num">{when(e.at)}</span><span>{t(EVENT[e.event] ?? e.event)}{e.note && <span className="muted"> · {e.note}</span>}</span></li>)}</ol></section>
+        <ol className="timeline">{x.timeline.map((e, i) => <li key={i}><span className="small muted num">{when(e.at)}</span><span>{t(EVENT[e.event] ?? e.event)}{e.note && <span className="muted"> · {tm(e.note)}</span>}</span></li>)}</ol></section>
       {msg}
     </main>
   )

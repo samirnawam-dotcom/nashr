@@ -1,3 +1,4 @@
+import { tm } from './i18n-server'
 // Thin wrapper over the API. The server decides everything; the screens only show what it returns.
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message) } }
 
@@ -8,7 +9,7 @@ export async function api<T = any>(path: string, init?: { method?: string; body?
     body: init?.body ? JSON.stringify(init.body) : undefined,
   })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new ApiError(data.error ?? 'Something went wrong.', r.status)
+  if (!r.ok) throw new ApiError(tm(data.error ?? 'Something went wrong.'), r.status)
   return data
 }
 
@@ -23,7 +24,7 @@ export async function upload(file: File): Promise<{ id: string; name: string; si
   const r = await fetch('/api/files', { method: 'POST', credentials: 'same-origin', body: file,
     headers: { 'content-type': file.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(file.name) } })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new ApiError(data.error ?? 'Upload failed.', r.status)
+  if (!r.ok) throw new ApiError(tm(data.error ?? 'Upload failed.'), r.status)
   return data
 }
 

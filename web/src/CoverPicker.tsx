@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ApiError } from './api'
 import { t } from './i18n'
+import { tm } from './i18n-server'
 
 const W = 1600, H = 500, MIN_WIDTH = 1000
 const CHANNEL_NAME: Record<string, string> = { tv: 'TV', radio: 'radio', print: 'print', digital: 'digital', podcast: 'podcast' }
@@ -25,7 +26,7 @@ export function CoverPicker({ url, channel, endpoint, onChange }: { url: string 
       const blob = await toCover(img)
       const r = await fetch(`/api${endpoint}`, { method: 'PUT', credentials: 'same-origin', body: blob, headers: { 'content-type': 'image/jpeg' } })
       const data = await r.json().catch(() => ({}))
-      if (!r.ok) throw new ApiError(data.error ?? t('The photo could not be uploaded.'), r.status)
+      if (!r.ok) throw new ApiError(data.error ? tm(data.error) : t('The photo could not be uploaded.'), r.status)
       done(data.coverUrl, t('Cover photo saved. Buyers see it now.'))
     } catch (e: any) { setError(e instanceof ApiError ? e.message : t('This photo could not be read. Try another JPEG or PNG.')) }
     finally { setBusy(false); if (input.current) input.current.value = '' }
@@ -34,7 +35,7 @@ export function CoverPicker({ url, channel, endpoint, onChange }: { url: string 
     setBusy(true); setError(''); setNote('')
     try {
       const r = await fetch(`/api${endpoint}`, { method: 'DELETE', credentials: 'same-origin' })
-      if (!r.ok) throw new ApiError((await r.json().catch(() => ({}))).error ?? t('The photo could not be removed.'), r.status)
+      if (!r.ok) throw new ApiError(tm((await r.json().catch(() => ({}))).error) || t('The photo could not be removed.'), r.status)
       done(null, t('Cover photo removed. The {channel} photo shows instead.', { channel: t(CHANNEL_NAME[channel] ?? channel) }))
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }

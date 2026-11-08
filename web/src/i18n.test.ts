@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { AR } from './i18n-ar'
+import { SERVER_AR } from './i18n-server'
 
 const SRC = new URL('.', import.meta.url).pathname
 const files = (dir: string): string[] => readdirSync(dir).flatMap(f => { const p = join(dir, f); return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(f) && !/\.test\./.test(f) ? [p] : [] })
@@ -41,5 +42,34 @@ describe('Arabic', () => {
     expect(missing).toEqual([])
     const bad = Object.entries(AR).filter(([en, ar]) => [...en.matchAll(/\{\w+\}/g)].map(m => m[0]).sort().join() !== [...ar.matchAll(/\{\w+\}/g)].map(m => m[0]).sort().join())
     expect(bad).toEqual([])
+  })
+
+  test('every message the server can send has Arabic, with the same number of values', () => {
+    const SERVER = join(SRC, '../../server')
+    // A string or template literal; a template's ${…} becomes {} (a value the server fills in).
+    const LIT = /'((?:\\.|[^'\\])*)'|"((?:\\.|[^"\\])*)"|`((?:\\.|\$\{(?:[^{}]|\{[^{}]*\})*\}|[^`\\$]|\$(?!\{))*)`/g
+    const lits = (expr: string) => [...expr.matchAll(LIT)].map(m => m[3] != null ? m[3].replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, '{}') : (m[1] ?? m[2]).replace(/\\(['"])/g, '$1'))
+    /** The text of a call's arguments, from just after "(" to its matching ")". */
+    const args = (s: string, i: number) => { let depth = 1, j = i
+      while (depth && j < s.length) { const c = s[j]
+        if (`'"\``.includes(c)) { const m = s.slice(j).match(/^('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|\$\{(?:[^{}]|\{[^{}]*\})*\}|[^`\\$]|\$(?!\{))*`)/); j += m ? m[0].length : 1; continue }
+        if (c === '(') depth++; else if (c === ')') depth--; j++ }
+      return s.slice(i, j - 1) }
+    const prose = (x: string) => / /.test(x) && /[A-Za-z]{3}/.test(x) && !/^(select|insert|update|delete|with) /i.test(x)
+    const found = new Set<string>()
+    for (const f of files(SERVER).filter(f => !/seed|\/test\//.test(f))) {
+      const s = readFileSync(f, 'utf8')
+      // Errors, brief checks and timeline notes: every literal in the call.
+      for (const m of s.matchAll(/new (?:MarketError|StripeError)\(|\bfail\(\s*\d+\s*,|\bout\.push\(|\btransition\(/g))
+        lits(args(s, m.index! + m[0].length)).filter(prose).forEach(x => found.add(x))
+      // Values the screens show: error bodies, reasons, card failures, ledger references, receipt and invoice lines and notes.
+      for (const m of s.matchAll(/\b(?:error|reason|failure|ref|description|note):\s*(?=['"`])/g))
+        lits(s.slice(m.index! + m[0].length).match(/^('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|\$\{(?:[^{}]|\{[^{}]*\})*\}|[^`\\$]|\$(?!\{))*`)/)![0]).filter(prose).forEach(x => found.add(x))
+    }
+    found.add('This overlaps {} on {} of the same days.'); found.add('Corrected proof') // built in a .map() and inside SQL
+    expect(found.size).toBeGreaterThan(100)
+    expect([...found].filter(k => !(k in SERVER_AR) && !(k in AR))).toEqual([])
+    const values = (k: string) => (k.match(/\{\}/g) ?? []).length
+    expect(Object.entries(SERVER_AR).filter(([k, v]) => new Set(v.match(/\{\d\}/g) ?? []).size !== values(k))).toEqual([])
   })
 })

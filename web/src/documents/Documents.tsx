@@ -6,6 +6,7 @@ import { dubai } from '../calendar/layout'
 import '../directory/directory.css'
 import { PhotoBand } from '../PhotoBand'
 import { isAr, ltr, t } from '../i18n'
+import { tm } from '../i18n-server'
 
 export const DOC_TYPE: Record<string, string> = { receipt: t('Payment receipt'), media_invoice: t('Tax invoice (media)'), commission_invoice: t('Commission invoice'), credit_note: t('Credit note') }
 type Row = { id: string; type: string; number: string; total: number; currency: string; issuedAt: string; dealId: string | null; dealRef: string | null }
@@ -51,13 +52,13 @@ export function DocumentPage({ id }: { id: string }) {
           <div><div className="small muted">{t("To")}</div><b>{d.recipient.name}</b>{d.recipient.trn && <div className="small">{t('TRN')} {ltr(d.recipient.trn)}</div>}</div>
         </div>
         <table><thead><tr><th>{t("Description")}</th><th style={{ textAlign: isAr ? 'left' : 'right' }}>{t('Amount')}</th></tr></thead>
-          <tbody>{d.items.map((i, n) => <tr key={n}><td>{i.description}</td><td className="num" style={{ textAlign: isAr ? 'left' : 'right' }}>{money(i.amount ?? (i.unitPrice ?? 0) * (i.quantity ?? 1), d.currency)}</td></tr>)}</tbody></table>
+          <tbody>{d.items.map((i, n) => <tr key={n}><td>{tm(i.description)}</td><td className="num" style={{ textAlign: isAr ? 'left' : 'right' }}>{money(i.amount ?? (i.unitPrice ?? 0) * (i.quantity ?? 1), d.currency)}</td></tr>)}</tbody></table>
         <dl className="sum num" style={{ maxWidth: 320, marginInlineStart: 'auto' }}>
           <div><dt>{t("Subtotal")}</dt><dd>{money(d.subtotal, d.currency)}</dd></div>
           {(d.taxDocument || d.vat > 0) && <div><dt>{t('VAT {rate}%', { rate: d.vatBp / 100 })}</dt><dd>{money(d.vat, d.currency)}</dd></div>}
           <div className="total"><dt>{t("Total")}</dt><dd>{money(d.total, d.currency)}</dd></div>
         </dl>
-        {d.note && <p className="small muted">{d.note}</p>}
+        {d.note && <p className="small muted">{tm(d.note)}</p>}
         {d.type === 'receipt' && <p className="small muted">{t("Payment received by Nashr on behalf of the publisher. This is not a tax invoice; the publisher's tax invoice is issued separately.")}</p>}
       </article>
     </main>
