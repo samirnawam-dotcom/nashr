@@ -8,6 +8,9 @@ import { isAr } from './i18n'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  "Tell us a little more, so we can help the first time.": "أخبرنا بالمزيد قليلًا، لنساعدك من المرة الأولى.",
+  "You have 10 open requests. Nashr will answer those first.": "لديك 10 طلبات مفتوحة. ستجيب نشر عنها أولًا.",
+  "Write the answer.": "اكتب الإجابة.",
   "Nashr is signed in as this user. The person must do this step themselves.": "نشر مسجّلة الدخول باسم هذا المستخدم. يجب أن يقوم الشخص بهذه الخطوة بنفسه.",
   "Write why you are signing in as this user.": "اكتب سبب تسجيل الدخول باسم هذا المستخدم.",
   "You can sign in only as an active buyer or publisher user.": "يمكنك الدخول فقط باسم مستخدم مشترٍ أو ناشر نشط.",

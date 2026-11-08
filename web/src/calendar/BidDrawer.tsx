@@ -87,6 +87,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         {s.buyNowPrice && <div><dt>{t("Buy now")}</dt><dd className="num">{money(s.buyNowPrice)}<small>{t("Request to book: the publisher must accept")}</small></dd></div>}
       </dl>
 
+      {s.saleType === 'auction' && !s.available && !guest && s.youLead && new Date(s.closesAt).getTime() <= now && <p className="ok">{t('You won this slot.')} <a href="/bookings">{t('See it in Bookings')}</a></p>}
       {s.available && guest && <SignInPrompt to={s.saleType === 'auction' ? 'bid on this slot' : 'book this slot'} />}
       {s.available && !guest && <>
         {s.saleType === 'auction' ? <section className="form">

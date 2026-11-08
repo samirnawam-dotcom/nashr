@@ -18,6 +18,7 @@ import { coverRoutes } from './routes-covers.js'
 import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
+import { supportRoutes } from './routes-support.js'
 import { insightRoutes } from './routes-insights.js'
 import { liveRoute } from './routes-live.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
@@ -145,6 +146,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   ratingRoutes(route)
   messageRoutes(route)
   insightRoutes(route)
+  supportRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   liveRoute(app, clock)
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })

@@ -4,6 +4,7 @@ import { closesIn, dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
 import { CHANNEL, Delta, Hero, Meter, RankedBars, StatTile, WeekColumns, compact } from '../charts'
 import { isAr, t } from '../i18n'
+import { useLive } from '../live'
 
 type Weeks = { week: string; value: number }[]
 type D = {
@@ -14,6 +15,7 @@ type D = {
   byChannel: { channel: string; value: number; count: number }[]
   upcoming: { dealId: string; outlet: string; channel: string; label: string; startsAt: string; status: string }[]
   outlets: number; bookings: number
+  wins: { dealId: string; outlet: string; label: string; amount: number; status: 'awaiting_seller' | 'awaiting_payment'; dueAt: string | null }[]
 }
 
 const TASK: Record<string, [string, string]> = { pay: [t('Pay'), t('Pay to secure the booking')], creative: [t('Ad'), t('Send your creative')], proof: [t('Proof'), t('Review the proof')], issue: [t('Issue'), t('Answer the publisher')] }
@@ -24,12 +26,22 @@ const greeting = () => { const h = (new Date().getUTCHours() + 4) % 24; return h
 export function BuyerDashboard() {
   const [d, setD] = useState<D | null>(null), [campaigns, setCampaigns] = useState<Campaign[]>([]), [error, setError] = useState(''), [company, setCompany] = useState('')
   useEffect(() => { api<{ company: { name: string } }>('/me').then(m => setCompany(m.company.name), () => {}); api<D>('/buyer/dashboard').then(setD, e => setError(e.message)); api<Campaign[]>('/campaigns').then(c => setCampaigns(c.filter(x => x.status === 'active')), () => {}) }, [])
+  // New wins and acceptances arrive on the bell: reload the dashboard with them.
+  useLive('notification', () => api<D>('/buyer/dashboard').then(setD, () => {}))
   if (!d) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   const live = d.bids.leading + d.bids.outbid
   return (
     <main className="dash">
       <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-buyer.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>{greeting()}, {company}</h1><div className="spacer" />
         <a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/calendar">{t("Find slots")}</a></div>
+
+      {d.wins.length > 0 && <section className="wins" aria-label={t('Auctions you won')}>{d.wins.map(w => <a key={w.dealId} className="win" href={`/bookings/${w.dealId}`}>
+        <span className="win-mark" aria-hidden>✓</span>
+        <span className="win-text"><b>{t('You won {slot}', { slot: `${w.outlet} · ${w.label}` })}</b>
+          <span>{w.status === 'awaiting_payment'
+            ? t('The publisher confirmed. Pay {amount} by {when} to secure it.', { amount: money(w.amount), when: w.dueAt ? when(w.dueAt) : '' })
+            : t('{amount} with VAT. The publisher confirms by {when}; you pay only then.', { amount: money(w.amount), when: w.dueAt ? when(w.dueAt) : '' })}</span></span>
+        <span className={`btn ${w.status === 'awaiting_payment' ? 'primary' : ''}`}>{w.status === 'awaiting_payment' ? t('Pay now') : t('View booking')}</span></a>)}</section>}
 
       <section className="dash-lead">
         <Hero label={t("Held for you now")} value={money(d.heldNow)}>

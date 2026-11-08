@@ -29,7 +29,8 @@ export function EarningsPage() {
       <SalesInsights />
       <div className="toolbar"><h2 className="sec-h" style={{ margin: 0 }}>{t("Bookings")}</h2><div className="spacer" />
         <label className="small muted" htmlFor="m">{t("Monthly statement")}</label><input id="m" className="search" style={{ minWidth: 0 }} type="month" value={month} onChange={x => setMonth(x.target.value)} />
-        <a className="btn primary" href={`/earnings/statement/${month}`}>{t("View statement")}</a><a className="btn" href={`/api/seller/statement/${month}`}>{t("Download CSV")}</a></div>
+        <a className="btn primary" href={`/earnings/statement/${month}`}>{t("View statement")}</a><a className="btn" href={`/api/seller/statement/${month}`}>{t("Download CSV")}</a>
+        <a className="btn" href="/documents">{t("Receipts and invoices")}</a></div>
       {!e.deals.length ? <p className="muted empty">{t("No paid bookings yet.")}</p>
         : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th className="r">{t("Your VAT")}</th><th className="r">{t("Commission")}</th><th className="r">{t("You receive")}</th><th>{t("Status")}</th></tr></thead>
           <tbody>{e.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>

@@ -303,7 +303,7 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 .profile-cover.slim + .profile-h { padding-left: 0; }
 
 /* Wide tables scroll inside their own card, never the page. On phones they keep a readable width and pin the first column. */
-.table-wrap { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.table-wrap { position: relative; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; } /* relative: keeps visually hidden headers inside the scroller */
 .table-wrap.card { overflow-y: hidden; }
 .table-wrap > .table { min-width: 100%; margin: 0; }
 .table-wrap { margin-top: 16px; }
@@ -671,3 +671,28 @@ a.avatar { text-decoration: none; }
 @media (max-width: 720px) { .viewbar { padding: 8px 16px; flex-wrap: wrap; gap: 8px; } }
 .sign-in-as { display: grid; gap: 6px; margin-top: 10px; text-align: start; max-width: 420px; margin-inline-start: auto; }
 .sign-in-as textarea { width: 100%; }
+
+/* An auction just won: the one moment on the dashboard that should feel like good news, with the next step beside it. */
+.wins { display: grid; gap: 10px; margin: 0 0 20px; }
+.win { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 18px; border-radius: var(--radius-lg, 14px);
+  background: var(--green-1); border: 1px solid rgba(23, 115, 74, .18); color: var(--ink); text-decoration: none; }
+.win-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: #fff; font-weight: 700; }
+.win-text { display: grid; gap: 2px; } .win-text span { font-size: 14px; color: var(--ink-2, var(--muted)); }
+@media (prefers-reduced-motion: no-preference) { .win { animation: win-in .35s ease-out both; } }
+@keyframes win-in { from { opacity: 0; transform: translateY(-6px); } }
+@media (max-width: 720px) { .win { grid-template-columns: auto minmax(0, 1fr); } .win .btn { grid-column: 1 / -1; justify-self: start; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.doc .addr { white-space: pre-line; color: var(--ink-2, inherit); }
+
+/* Help: questions open in place; a question to Nashr and its answer read as a short exchange. */
+.help-qa details { border-top: 1px solid var(--line, #e5e7eb); padding: 10px 0; }
+.help-qa details:first-of-type { border-top: 0; }
+.help-qa summary { cursor: pointer; font-weight: 600; list-style-position: inside; }
+.help-qa details p { margin: 8px 0 0; max-width: 68ch; color: var(--ink-2, inherit); }
+.support-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.support-list > li { padding: 14px 0; border-top: 1px solid var(--line, #e5e7eb); }
+.support-list > li:first-child { border-top: 0; }
+.support-msg { white-space: pre-line; margin: 6px 0 0; max-width: 72ch; }
+.support-reply { margin-top: 10px; padding: 10px 14px; border-inline-start: 3px solid var(--green); background: var(--green-1); border-radius: 0 var(--radius) var(--radius) 0; }
+.support-reply p { margin: 4px 0 0; white-space: pre-line; }
+.support-list textarea { width: 100%; }

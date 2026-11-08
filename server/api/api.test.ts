@@ -303,6 +303,18 @@ describe('buyer screens', () => {
     const inv = (await call(buyerA, 'GET', `/api/documents/${page.documents[2].id}`)).json()
     expect(inv).toMatchObject({ type: 'media_invoice', onBehalf: true, taxDocument: true, issuer: { name: 'Skyline FM' }, total: AED(5_775) })
     expect((await call(buyerB, 'GET', `/api/documents/${inv.id}`)).statusCode).toBe(404)
+    // the same document as a PDF, for the same readers only
+    const pdf = await call(buyerA, 'GET', `/api/documents/${inv.id}/pdf`)
+    expect(pdf.headers['content-type']).toBe('application/pdf')
+    expect(pdf.body.startsWith('%PDF-1.4')).toBe(true)
+    expect(pdf.body).toContain('(Tax invoice)')
+    expect(pdf.body).toContain('(AED 5,775.00)')
+    expect((await call(buyerB, 'GET', `/api/documents/${inv.id}/pdf`)).statusCode).toBe(404)
+    // the registered address is the company's to keep, and goes on documents issued from now on
+    expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '', address: 'Level 9, Gate Building, DIFC, Dubai' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/buyer/company')).json()).toMatchObject({ address: 'Level 9, Gate Building, DIFC, Dubai' })
+    expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '' })).statusCode).toBe(200) // an older client sending only the TRN keeps it
+    expect((await call(buyerA, 'GET', '/api/buyer/company')).json()).toMatchObject({ address: 'Level 9, Gate Building, DIFC, Dubai' })
   })
 })
 
@@ -1357,3 +1369,25 @@ describe('Nashr steps in: interventions, voided bids, chargebacks', () => {
     expect((await pool.query(`select 1 from notifications where kind = 'chargeback.opened' and deal_id = $1`, [d])).rowCount).toBeGreaterThan(0)
   })
 })
+
+describe('help and Contact Nashr', () => {
+  test('the help page reads the live rules', async () => {
+    expect((await call(null, 'GET', '/api/help/rules')).json()).toMatchObject({ seller_window_hours: expect.any(Number), payment_window_hours: expect.any(Number) })
+  })
+
+  test('a question reaches staff; the answer reaches the company; nobody else sees it', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    expect((await call(buyerA, 'POST', '/api/support', { topic: 'booking', message: 'short' })).json().error).toMatch('more')
+    expect((await call(buyerB, 'POST', '/api/support', { topic: 'booking', dealId: deal, message: 'Not my booking but asking anyway' })).statusCode).toBe(404) // another company's booking looks like no booking
+    const r = (await call(buyerA, 'POST', '/api/support', { topic: 'booking', dealId: deal, message: 'Can the publisher move this to the evening break?' })).json()
+    expect(r).toMatchObject({ status: 'open', dealId: deal })
+    expect((await pool.query(`select count(*)::int n from notifications where kind = 'support.new'`)).rows[0].n).toBeGreaterThan(0)
+    expect((await call(buyerB, 'GET', '/api/support')).json()).toEqual([])
+    expect((await call(buyerA, 'GET', '/api/admin/support')).statusCode).toBe(403)
+    expect((await call(admin, 'GET', '/api/admin/support?status=open')).json()).toEqual([expect.objectContaining({ id: r.id, company: 'Northwind Fintech' })])
+    expect((await call(admin, 'POST', `/api/admin/support/${r.id}/reply`, { reply: 'Yes, ask them in Messages; we have told them too.' })).json()).toMatchObject({ status: 'answered' })
+    expect((await call(buyerA, 'GET', '/api/support')).json()[0]).toMatchObject({ status: 'answered', reply: expect.stringContaining('Messages') })
+    expect((await pool.query(`select count(*)::int n from notifications where company_id = $1 and kind = 'support.replied'`, [buyerA.companyId])).rows[0].n).toBe(1)
+  })
+})
+

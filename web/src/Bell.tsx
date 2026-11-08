@@ -16,6 +16,8 @@ const TEXT: Record<string, (n: N) => string> = {
   'deal.refunded': () => t('A refund was issued.'),
   'deal.released': () => t('Payment was released.'),
   'access.staff_signed_in': n => t("Nashr's team signed in to your account as {user} to help. Reason: {reason}", { user: n.data?.user ?? '', reason: n.data?.reason ?? '' }),
+  'support.new': n => t('New question from {company}.', { company: n.data?.company ?? '' }),
+  'support.replied': () => t('Nashr answered your question.'),
   'bid.won': n => t('You won {slot} at {amount}. The publisher confirms next, then you pay.', { slot: `${n.data?.outlet} · ${n.data?.label}`, amount: money(n.data?.amount ?? 0) }),
   'bid.closed_lost': n => t('Bidding closed on {slot}. Another bid was higher; if the publisher passes on it, you may be offered the slot.', { slot: `${n.data?.outlet} · ${n.data?.label}` }),
   'deal.opened': n => n.data?.kind === 'buy_now' ? t('New buy-now request.') : t('New booking to decide on.'),
@@ -87,7 +89,7 @@ export function Bell({ role }: { role: string }) {
       {open && <div className="card bell-pop" role="menu">
         {!data.items.length && <p className="muted small">{t('Nothing yet.')}</p>}
         {data.items.map(n => { const text = (TEXT[n.kind] ?? (() => n.kind))(n)
-          const href = n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
+          const href = n.kind === 'support.new' ? '/support' : n.kind === 'support.replied' ? '/help' : n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
           return <a key={n.id} href={href} className={n.read ? '' : 'unread'} onClick={() => setOpen(false)} role="menuitem">
             <div>{text}</div><div className="small muted">{n.dealRef ? `${n.dealRef} · ` : ''}{new Date(n.at).toLocaleString(locale, { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></a> })}
       </div>}

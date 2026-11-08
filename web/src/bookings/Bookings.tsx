@@ -112,7 +112,7 @@ export function BookingPage({ id }: { id: string }) {
     <main className="booking">
       <p className="small"><a href="/bookings">{t(t("Bookings"))}</a> {isAr ? '‹' : '›'} {t('Order {ref}', { ref: d.ref })}</p>
       <div className="profile-cover slim" aria-hidden><img src={`/brand/${d.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
-      <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)}</p></div><Status s={d.status} /></div>
+      <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)} · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p></div><Status s={d.status} /></div>
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">
       {['released', 'complete'].includes(d.status) && <RateBooking id={d.id} outlet={d.outlet} rating={d.rating} onSaved={load} />}

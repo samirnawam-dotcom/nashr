@@ -8,7 +8,7 @@ type S = { key: string; value: unknown; founderOnly: boolean; history: { value: 
 // What each setting means, in the owner's words (SPEC 11, 12). Unlisted keys show their raw name.
 const LABEL: Record<string, [string, string?]> = {
   default_commission_bp: ['Default commission', 'basis points: 1200 = 12%'], media_vat_bp: ['VAT on media', 'basis points'], nashr_vat_registered: ['Nashr is VAT-registered', 'true / false'],
-  nashr_vat_bp: ['VAT on Nashr commission', 'basis points'], nashr_legal_name: ['Nashr legal name on documents'], nashr_trn: ["Nashr's TRN", 'null until registered'],
+  nashr_vat_bp: ['VAT on Nashr commission', 'basis points'], nashr_legal_name: ['Nashr legal name on documents'], nashr_address: ['Nashr registered address on documents', 'as on the trade licence'], nashr_trn: ["Nashr's TRN", 'null until registered'],
   seller_window_hours: ['Publisher decision window', 'hours'], payment_window_hours: ['Payment window', 'hours, capped by the creative deadline'],
   min_step_bp: ['Minimum bid step', 'basis points: 300 = 3%'], max_choice_rounds: ['Next-bid choices before relisting'], review_working_days: ['Buyer proof review', 'working days'],
   proof_due_working_days: ['Proof due after the run', 'working days'], max_creative_rounds: ['Creative change rounds'], issue_response_hours: ['Publisher response to an issue', 'hours'],

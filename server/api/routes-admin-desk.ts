@@ -33,6 +33,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
         (select count(*)::int from deals d where d.status in ('secured', 'in_review', 'issue_open', 'disputed')
           and exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'charge' and m.status = 'succeeded' and m.created_at < $1::timestamptz - interval '60 days')) held_60,
         (select count(*)::int from quote_requests where status = 'open') quotes_open,
+        (select count(*)::int from support_requests where status = 'open') support_open,
         (select count(*)::int from deals where status = 'disputed') disputes,
         (select count(*)::int from deals where status = 'issue_open') issues,
         (select count(*)::int from money_ops where status = 'failed') failed_ops,

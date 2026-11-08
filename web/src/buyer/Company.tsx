@@ -9,17 +9,17 @@ import { CompanyProfileEditor } from '../CompanyCard'
 
 const date = (iso: string) => dayLabel(dubai(iso).date, { day: 'numeric', month: 'short', year: 'numeric' })
 
-type C = { name: string; trn: string | null; team: { name: string; email: string; status: string; since: string }[] }
+type C = { name: string; trn: string | null; address: string | null; team: { name: string; email: string; status: string; since: string }[] }
 
 /** The buyer's company: the TRN that goes on its tax invoices, and who in the company uses Nashr. */
 export function CompanyPage() {
-  const [c, setC] = useState<C | null>(null), [trn, setTrn] = useState(''), [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
-  useEffect(() => { api<C>('/buyer/company').then(x => { setC(x); setTrn(x.trn ?? '') }, e => setError(e.message)) }, [])
+  const [c, setC] = useState<C | null>(null), [trn, setTrn] = useState(''), [address, setAddress] = useState(''), [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
+  useEffect(() => { api<C>('/buyer/company').then(x => { setC(x); setTrn(x.trn ?? ''); setAddress(x.address ?? '') }, e => setError(e.message)) }, [])
   if (!c) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}</main>
-  const valid = trn === '' || /^\d{15}$/.test(trn), changed = trn !== (c.trn ?? '')
+  const valid = trn === '' || /^\d{15}$/.test(trn), changed = trn !== (c.trn ?? '') || address.trim() !== (c.address ?? '')
   async function save(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(''); setNote('')
-    try { await api('/buyer/company', { method: 'PUT', body: { trn } }); setC({ ...c!, trn: trn || null }); setNote(trn ? t('TRN saved. It appears on tax invoices from now on.') : t('TRN removed.')) }
+    try { await api('/buyer/company', { method: 'PUT', body: { trn, address: address.trim() } }); setC({ ...c!, trn: trn || null, address: address.trim() || null }); setNote(t('Saved. New invoices and receipts carry these details.')) }
     catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
@@ -27,15 +27,18 @@ export function CompanyPage() {
       <PhotoBand img="/brand/dash-buyer.jpg" title={c.name} sub={t('Your company on Nashr: tax details and the people who book.')} />
       <CompanyProfileEditor audience="publishers" />
       <section className="card pad section form">
-        <h2>{t('Tax details')}</h2>
+        <h2>{t('Invoice details')}</h2>
         <p className="muted">{t('Publishers put your TRN on the tax invoices they send you, so you can reclaim the VAT. Leave it empty if your company is not VAT-registered.')}</p>
         <form className="form" onSubmit={save}>
           <div className="field"><label htmlFor="trn">{t('TRN (15 digits)')}</label>
             <input id="trn" inputMode="numeric" autoComplete="off" maxLength={15} value={trn} aria-invalid={!valid} aria-describedby="trn-help"
               onChange={e => { setTrn(e.target.value.replace(/\D/g, '')); setNote('') }} />
             <span id="trn-help" className={`small ${valid ? 'muted' : 'error'}`}>{valid ? t('{n} of 15 digits', { n: trn.length }) : t('A TRN has 15 digits.')}</span></div>
+          <div className="field"><label htmlFor="addr">{t('Registered address')}</label>
+            <textarea id="addr" rows={3} maxLength={300} value={address} aria-describedby="addr-help" onChange={e => { setAddress(e.target.value); setNote('') }} />
+            <span id="addr-help" className="small muted">{t('As on your trade licence. It is printed on the invoices and receipts you receive.')}</span></div>
           <div className="row-flex"><button className="btn primary" disabled={busy || !valid || !changed}>{t('Save')}</button>
-            {changed && <button type="button" className="btn" onClick={() => setTrn(c.trn ?? '')}>{t('Undo')}</button>}</div>
+            {changed && <button type="button" className="btn" onClick={() => { setTrn(c.trn ?? ''); setAddress(c.address ?? '') }}>{t('Undo')}</button>}</div>
           {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
         </form>
       </section>

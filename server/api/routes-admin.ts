@@ -9,7 +9,7 @@ import { decideDispute, intervene } from '../payments/payments.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 // Financial settings are the founder's (brief section 2).
-export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|nashr_trn|nashr_legal_name|media_vat_bp|processing_fee|cancel_fee_bp|free_cancel_hours|review_working_days|proof_due_working_days|media_invoice_timing|open_markets)/
+export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|nashr_trn|nashr_legal_name|nashr_address|media_vat_bp|processing_fee|cancel_fee_bp|free_cancel_hours|review_working_days|proof_due_working_days|media_invoice_timing|open_markets)/
 
 export function adminRoutes(route: RouteFn) {
   route('GET', '/api/admin/access-requests', STAFF, async ({ db }) =>

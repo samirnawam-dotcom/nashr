@@ -19,7 +19,7 @@ export async function scorecard(db: Db, from: string, to: string): Promise<Measu
         (select min(at) from deal_events e where e.deal_id = d.id and e.event = 'report_issue') issue_at,
         (select min(at) from deal_events e where e.deal_id = d.id and e.event in ('escalate', 'chargeback')) dispute_at,
         (select min(at) from deal_events e where e.deal_id = d.id and e.to_status = 'released') released_at,
-        (select min(created_at) from money_ops m where m.deal_id = d.id and m.kind = 'payout') payout_at
+        (select min(created_at) from money_ops m where m.deal_id = d.id and m.kind = 'transfer') payout_at
       from deals d where (d.created_at at time zone 'Asia/Dubai')::date between $1::date and $2::date)
     select
       count(*) filter (where pay_at is not null)::int paid,

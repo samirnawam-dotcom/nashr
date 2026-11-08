@@ -1,3 +1,4 @@
+import { documentPdf, titleOf } from '../documents/render.js'
 import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
 import { MarketError } from '../marketplace/market.js'
@@ -58,17 +59,27 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
                      where $1 in (x.recipient_id, x.issuer_id) or (x.type = 'order' and d.seller_id = $1) order by x.issued_at desc limit 500`, [me.actAs.companyId])).rows
       .map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at, dealId: x.deal_id, dealRef: x.ref })))
 
-  route('GET', '/api/documents/:id', ALL, async ({ db, me }, req) => {
+  /** One document as its reader may see it, or not found. */
+  async function readDocument(db: any, me: any, id: string) {
     const staff = ['admin', 'founder'].includes(me.actAs.role)
     const x = (await db.query(`select x.*, d.ref, r.number related_number from documents x left join deals d on d.id = x.deal_id
                                left join documents r on r.id = x.related_id
-                               where x.id = $1 and ($3 or $2 in (x.recipient_id, x.issuer_id) or (x.type = 'order' and d.seller_id = $2))`, [req.params.id, me.actAs.companyId, staff])).rows[0]
+                               where x.id = $1 and ($3 or $2 in (x.recipient_id, x.issuer_id) or (x.type = 'order' and d.seller_id = $2))`, [id, me.actAs.companyId, staff])).rows[0]
     if (!x) throw new NotFound()
-    const party = (p: any) => ({ name: p.name, trn: p.trn ?? null })
+    const party = (p: any) => ({ name: p.name, trn: p.trn ?? null, address: p.address ?? null })
     return { id: x.id, type: x.type, number: x.number, dealRef: x.ref, relatedNumber: x.related_number, onBehalf: x.on_behalf, taxDocument: x.tax_document,
       issuer: party(x.lines.issuer), recipient: party(x.lines.recipient), items: x.lines.items, note: x.lines.note,
-      currency: x.currency, subtotal: x.subtotal, vatBp: x.vat_bp, vat: x.vat, total: x.total, issuedAt: x.issued_at,
+      currency: x.currency, subtotal: Number(x.subtotal), vatBp: x.vat_bp, vat: Number(x.vat), total: Number(x.total), issuedAt: x.issued_at,
       fileId: x.file_key ? x.file_key.replace(/^files\//, '') : null }
+  }
+
+  route('GET', '/api/documents/:id', ALL, async ({ db, me }, req) => readDocument(db, me, req.params.id))
+
+  // The same document as a PDF to download, file it or send it on (an uploaded invoice is the publisher's own file instead).
+  route('GET', '/api/documents/:id/pdf', ALL, async ({ db, me }, req, reply) => {
+    const d = await readDocument(db, me, req.params.id)
+    return reply.type('application/pdf').header('content-disposition', `attachment; filename="${titleOf(d).replace(/ /g, '-')}-${d.number}.pdf"`)
+      .header('cache-control', 'private, no-store').send(documentPdf(d))
   })
 
   // The bell.

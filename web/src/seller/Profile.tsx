@@ -10,13 +10,13 @@ import { INDUSTRIES } from '../calendar/BidDrawer'
 
 type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null; logoUrl: string | null
   audiences: string[]; blockedIndustries: string[]; blockedAdvertisers: string[]; reach: number | null }
-type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean; rateCard: { fileId: string; name: string } | null }; outlets: Outlet[] }
+type P = { company: { name: string; trn: string | null; address: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean; rateCard: { fileId: string; name: string } | null }; outlets: Outlet[] }
 const CHANNELS = [['radio', 'Radio'], ['tv', 'TV'], ['print', 'Print'], ['digital', 'Digital'], ['podcast', 'Podcast']]
 
 export function ProfilePage() {
   const [p, setP] = useState<P | null>(null), [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
-  const [tax, setTax] = useState({ trn: '', vatRegistered: false, invoiceMode: 'generate' })
-  const load = () => api<P>('/seller/profile').then(x => { setP(x); setTax({ trn: x.company.trn ?? '', vatRegistered: x.company.vatRegistered, invoiceMode: x.company.invoiceMode }) }, e => setError(e.message))
+  const [tax, setTax] = useState({ trn: '', vatRegistered: false, invoiceMode: 'generate', address: '' })
+  const load = () => api<P>('/seller/profile').then(x => { setP(x); setTax({ trn: x.company.trn ?? '', vatRegistered: x.company.vatRegistered, invoiceMode: x.company.invoiceMode, address: x.company.address ?? '' }) }, e => setError(e.message))
   useEffect(() => { load() }, [])
   async function act(method: string, path: string, body: object, done: string) {
     setBusy(true); setError(''); setNote('')
@@ -39,6 +39,9 @@ export function ProfilePage() {
         <div className="field"><label htmlFor="trn">{t("TRN (15 digits)")}</label><input id="trn" inputMode="numeric" maxLength={15} value={tax.trn} onChange={e => setTax({ ...tax, trn: e.target.value.replace(/\D/g, '') })} /></div>
         <div className="field"><label htmlFor="im">{t("Tax invoices to buyers")}</label><select id="im" value={tax.invoiceMode} onChange={e => setTax({ ...tax, invoiceMode: e.target.value })}>
           <option value="generate">{t("Nashr issues them in our name and TRN")}</option><option value="upload">{t("We upload our own")}</option></select></div>
+        <div className="field"><label htmlFor="addr">{t('Registered address')}</label>
+          <textarea id="addr" rows={3} maxLength={300} value={tax.address} aria-describedby="addr-help" onChange={e => setTax({ ...tax, address: e.target.value })} />
+          <span id="addr-help" className="small muted">{t('As on your trade licence. It is printed on the tax invoices issued in your name.')}</span></div>
         <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy} onClick={() => act('PUT', '/seller/company', { ...tax, trn: tax.trn || undefined }, t("Tax details saved."))}>{t("Save")}</button>
       </section>
       <CompanyProfileEditor audience="buyers" />

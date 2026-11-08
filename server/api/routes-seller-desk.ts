@@ -210,7 +210,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
 
   // Listings and profile.
   route('GET', '/api/seller/profile', SELLER, async ({ db, me, at }) => {
-    const c = (await db.query(`select c.name, c.trn, c.vat_registered, c.invoice_mode, c.payouts_enabled, f.id rate_card_id, f.name rate_card_name
+    const c = (await db.query(`select c.name, c.trn, c.address, c.vat_registered, c.invoice_mode, c.payouts_enabled, f.id rate_card_id, f.name rate_card_name
       from companies c left join files f on f.id = c.rate_card_file where c.id = $1`, [me.actAs.companyId])).rows[0]
     const outlets = (await db.query(`select * from outlets where company_id = $1 order by name`, [me.actAs.companyId])).rows
     const placements = (await db.query(`select p.*, o.name outlet,
@@ -220,7 +220,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     return {
       // the placement form works out the earliest closing time from these (SPEC 12.1 "deadlines must fit")
       windows: { sellerHours: await setting<number>(db, 'seller_window_hours', at), paymentHours: await setting<number>(db, 'payment_window_hours', at) },
-      company: { name: c.name, trn: c.trn, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled,
+      company: { name: c.name, trn: c.trn, address: c.address, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled,
         rateCard: c.rate_card_id ? { fileId: c.rate_card_id, name: c.rate_card_name } : null },
       outlets: outlets.map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, description: o.description,
         website: o.website, audience: o.audience, coverUrl: coverUrl(o), logoUrl: logoUrl(o), audiences: o.audiences, blockedIndustries: o.blocked_industries,
@@ -272,11 +272,12 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   route('PUT', '/api/seller/company', SELLER, async ({ db, at, me }, req) => {
     const b = req.body
     if (b.vatRegistered && !b.trn) throw new MarketError('A VAT-registered publisher needs its TRN on invoices.')
-    await db.query(`update companies set trn = $2, vat_registered = $3, invoice_mode = $4 where id = $1`, [me.actAs.companyId, b.trn || null, b.vatRegistered, b.invoiceMode])
+    await db.query(`update companies set trn = $2, vat_registered = $3, invoice_mode = $4, address = case when $5 then $6 else address end where id = $1`,
+      [me.actAs.companyId, b.trn || null, b.vatRegistered, b.invoiceMode, 'address' in b, b.address?.trim() || null])
     await audit(db, `seller:${me.actAs.companyId}`, 'company.tax_updated', 'company', me.actAs.companyId, b, at)
     return { ok: true }
   }, { type: 'object', required: ['vatRegistered', 'invoiceMode'], additionalProperties: false, properties: {
-    trn: { type: 'string', pattern: '^(\\d{15})?$' }, vatRegistered: { type: 'boolean' }, invoiceMode: { enum: ['generate', 'upload'] } } })
+    trn: { type: 'string', pattern: '^(\\d{15})?$' }, vatRegistered: { type: 'boolean' }, invoiceMode: { enum: ['generate', 'upload'] }, address: { type: 'string', maxLength: 300 } } })
 
   // ponytail: payout onboarding is the provider's hosted flow (Stripe Connect, B5). With the test provider it verifies at once.
   // Real provider: open (or continue) the publisher's onboarding on the provider's own pages; we come back to the profile.

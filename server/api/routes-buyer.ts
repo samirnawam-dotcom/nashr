@@ -105,15 +105,17 @@ export function buyerRoutes(route: RouteFn) {
 
   // The buyer's company: its name and TRN go on the receipts and tax invoices it receives (SPEC 11.2: TRN at onboarding).
   route('GET', '/api/buyer/company', BUYER, async ({ db, me }) => {
-    const c = (await db.query(`select name, trn from companies where id = $1`, [me.actAs.companyId])).rows[0]
+    const c = (await db.query(`select name, trn, address from companies where id = $1`, [me.actAs.companyId])).rows[0]
     const team = (await db.query(`select name, email, status, created_at from users where company_id = $1 order by created_at`, [me.actAs.companyId])).rows
-    return { name: c.name, trn: c.trn, team: team.map(u => ({ name: u.name, email: u.email, status: u.status, since: u.created_at })) }
+    return { name: c.name, trn: c.trn, address: c.address, team: team.map(u => ({ name: u.name, email: u.email, status: u.status, since: u.created_at })) }
   })
   route('PUT', '/api/buyer/company', BUYER, async ({ db, at, me }, req) => {
-    await db.query(`update companies set trn = $2 where id = $1`, [me.actAs.companyId, req.body.trn || null])
-    await audit(db, `buyer:${me.actAs.companyId}`, 'company.tax_updated', 'company', me.actAs.companyId, { trn: req.body.trn || null }, at)
+    // the address is optional here: an older client may send only the TRN
+    await db.query(`update companies set trn = $2, address = case when $3 then $4 else address end where id = $1`,
+      [me.actAs.companyId, req.body.trn || null, 'address' in req.body, req.body.address?.trim() || null])
+    await audit(db, `buyer:${me.actAs.companyId}`, 'company.tax_updated', 'company', me.actAs.companyId, { trn: req.body.trn || null, address: req.body.address }, at)
     return { ok: true }
-  }, { type: 'object', required: ['trn'], additionalProperties: false, properties: { trn: { type: 'string', pattern: '^(\\d{15})?$' } } })
+  }, { type: 'object', required: ['trn'], additionalProperties: false, properties: { trn: { type: 'string', pattern: '^(\\d{15})?$' }, address: { type: 'string', maxLength: 300 } } })
 
   route('POST', '/api/slots/:id/interest', BUYER, async ({ db, at, me }, req) => {
     const b = await showInterest(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body?.amount, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)

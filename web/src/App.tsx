@@ -30,6 +30,8 @@ const MediaPlanPage = L(() => import('./campaigns/MediaPlan'), 'MediaPlanPage')
 const load_documents_Documents = () => import('./documents/Documents')
 const DocumentPage = L(load_documents_Documents, 'DocumentPage')
 const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
+const HelpPage = L(() => import('./Help'), 'HelpPage')
+const SupportPage = L(() => import('./admin/Support'), 'SupportPage')
 const load_seller_Dashboard = () => import('./seller/Dashboard')
 const InboxPage = L(load_seller_Dashboard, 'InboxPage')
 const SellerDashboard = L(load_seller_Dashboard, 'SellerDashboard')
@@ -99,6 +101,7 @@ const BUYER: Routes = [
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <DocumentsPage />],
   [/^\/athena/, () => <AthenaPage />],
+  [/^\/help/, () => <HelpPage role="buyer" />],
   [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="buyer" />],
   [/^\/messages/, () => <MessagesPage role="buyer" />],
   [/^\/company/, () => <CompanyPage />],
@@ -120,6 +123,8 @@ const SELLER: Routes = [
   [/^\/listings/, () => <ListingsPage />],
   [/^\/profile/, () => <ProfilePage />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
+  [/^\/documents/, () => <DocumentsPage seller />],
+  [/^\/help/, () => <HelpPage role="seller" />],
 ]
 const ADMIN = (founder: boolean): Routes => [
   [/^\/admin/, () => <AdminOverview />],
@@ -131,6 +136,7 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/slots\/([\w-]+)$/, id => <AdminSlotPage id={id} />],
   [/^\/deals/, () => <AdminDealsPage />],
   [/^\/disputes/, () => <DisputesPage />],
+  [/^\/support/, () => <SupportPage />],
   [/^\/funds/, () => <FundsPage />],
   [/^\/payouts/, () => <PayoutsPage />],
   [/^\/directory/, () => <DirectoryAdminPage />],
@@ -146,6 +152,7 @@ const LEGAL: Routes = [[/^\/terms$/, () => <TermsPage />], [/^\/privacy$/, () =>
   [/^\/insights\/([\w-]+)$/, id => <ArticlePage id={id} />], [/^\/insights$/, () => <InsightsPage />]]
 // Visitors can browse the calendar and the directory; everything else asks them to sign in.
 const GUEST: Routes = [...LEGAL,
+  [/^\/help/, () => <HelpPage role="guest" />],
   [/^\/calendar/, () => <CalendarPage />],
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
@@ -155,11 +162,11 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/funds', t('Funds')],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/settings', t('Settings')]],
-  guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/sign-in', t('Sign in')]],
-  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')]],
-  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/messages', t('Messages')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')]],
+  guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
+  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
+  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/messages', t('Messages')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')], ['/help', t('Help')]],
 }
 // The phone's bottom bar: the five places people go most.
 const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/schedule', '/inbox', '/deals', '/messages'] 
@@ -178,6 +185,8 @@ const ICON: Record<string, string> = {
   '/earnings': 'M4 19h16M7 15V9M12 15V5M17 15v-4', '/listings': 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
   '/profile': 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0', '/admin': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
   '/access': 'M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21a8 8 0 0 1 12-6.9M19 14v6M16 17h6', '/accounts': 'M3 21V8l9-5 9 5v13M9 21v-6h6v6M3 21h18',
+  '/help': 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+  '/support': 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   '/disputes': 'M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   '/funds': 'M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18', '/payouts': 'M4 8h14l-3-3M20 16H6l3 3',
   '/audiences': 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-5-5.9',

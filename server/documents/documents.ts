@@ -25,9 +25,10 @@ async function nextNumber(db: Db, type: string, issuerId: string | null, at: Dat
 }
 
 async function parties(db: Db, issuerId: string | null, recipientId: string, at: Date) {
-  const party = async (id: string) => one(db, `select id, name, trn, vat_registered from companies where id = $1`, [id])
+  const party = async (id: string) => one(db, `select id, name, trn, vat_registered, address from companies where id = $1`, [id])
   const issuer = issuerId ? await party(issuerId)
-    : { id: null, name: await setting(db, 'nashr_legal_name', at), trn: await setting(db, 'nashr_trn', at), vat_registered: await setting(db, 'nashr_vat_registered', at) }
+    : { id: null, name: await setting(db, 'nashr_legal_name', at), trn: await setting(db, 'nashr_trn', at), vat_registered: await setting(db, 'nashr_vat_registered', at),
+        address: await setting(db, 'nashr_address', at) }
   return { issuer, recipient: await party(recipientId) }
 }
 
