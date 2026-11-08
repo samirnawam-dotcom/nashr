@@ -6,6 +6,7 @@ import { DEAL_STATUS, DealStatus } from '../seller/common'
 import '../directory/directory.css'
 import '../seller/seller.css'
 import './admin.css'
+import { t } from '../i18n'
 
 export { money, DealStatus, DEAL_STATUS }
 export const when = (iso: string | null) => iso ? `${dayLabel(dubai(iso).date, { day: 'numeric', month: 'short', year: 'numeric' })} · ${time(iso)}` : '—'
@@ -30,7 +31,7 @@ export function useAct(after: () => unknown) {
   return { act, busy, msg }
 }
 
-export const Loading = ({ error }: { error: string }) => <main>{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}</main>
+export const Loading = ({ error }: { error: string }) => <main>{error ? <p className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}</main>
 
 /** Download rows as CSV from the browser (reports, audit). */
 export function csv(name: string, rows: Record<string, unknown>[]) {

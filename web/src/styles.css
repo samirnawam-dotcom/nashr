@@ -64,6 +64,7 @@ main { padding: 32px; max-width: 1440px; margin: 0 auto; }
 a { color: var(--teal); }
 
 .topbar.staff { gap: 20px; } .topbar.staff .nav { gap: 16px; font-size: 14px; }
+@media (max-width: 900px) { .topbar.staff { gap: 8px; } } /* phone bar: same spacing as buyers and publishers, so it fits a 390px screen */
 
 /* Quality floor: visible keyboard focus, reduced motion, readable small text */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: none; box-shadow: var(--focus); border-radius: 6px; }

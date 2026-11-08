@@ -514,3 +514,17 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 :root[dir="rtl"] .plan-table th.r, :root[dir="rtl"] .plan-table td.r { text-align: left; }
 /* Arabic money ("120,900 درهم") is wider than "AED 120,900": keep the headline figure on one line. */
 :root[dir="rtl"] .hero-value { white-space: nowrap; font-size: clamp(32px, 3.3vw, 46px); }
+/* Codes, ids, references and JSON stay left to right inside Arabic pages. */
+:root[dir="rtl"] .mono, :root[dir="rtl"] pre.json { direction: ltr; unicode-bidi: isolate; }
+:root[dir="rtl"] td.mono, :root[dir="rtl"] span.mono { text-align: right; }
+/* Phones: filter button rows scroll sideways instead of widening the page; the guest bar's main button is a little narrower so the bar fits 390px. */
+@media (max-width: 600px) {
+  .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .guest-actions .btn.signal, .guest-actions a.btn.signal { padding: 0 12px; }
+}
+/* Form fields may shrink below their label's length; side-by-side fields wrap. */
+.form > * { min-width: 0; }
+.form .row-flex { flex-wrap: wrap; }
+.form .row-flex > .field { flex: 1 1 160px; min-width: 0; }
+.field select, .field input, .field textarea { min-width: 0; max-width: 100%; }
+.grid2 > * { min-width: 0; }

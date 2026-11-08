@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DEAL_STATUS, Loading, date, money, useAct, useLoad } from './common'
 import { CHANNEL, Delta, Funnel, Hero, RankedBars, StatTile, WeekColumns, compact } from '../charts'
 import { PhotoBand } from '../PhotoBand'
+import { locale, ltr, t } from '../i18n'
 
 type O = { access_pending: number; quotes_open: number; disputes: number; issues: number; failed_ops: number; pending_ops: number; gmv_month: number
   bookings_month: number; publishers_live: number; buyers: number; revenue: number; held: number
@@ -20,65 +21,66 @@ export function AdminOverview() {
   const { data: o, error } = useLoad<O>('/admin/overview'), { data: d } = useLoad<Dash>('/admin/dashboard')
   if (!o || !d) return <Loading error={error} />
   const attention = [
-    [o.access_pending, 'Access requests to review', '/access', false], [o.disputes, 'Disputes to decide', '/disputes', true],
-    [o.issues, 'Issues waiting on publishers', '/disputes', false], [o.failed_ops, 'Failed payouts or refunds', '/payouts', true],
-    [o.quotes_open, 'Quote requests', '/directory', false],
+    [o.access_pending, t("Access requests to review"), '/access', false], [o.disputes, t("Disputes to decide"), '/disputes', true],
+    [o.issues, t("Issues waiting on publishers"), '/disputes', false], [o.failed_ops, t("Failed payouts or refunds"), '/payouts', true],
+    [o.quotes_open, t("Quote requests"), '/directory', false],
   ] as const
   const ORDER = ['awaiting_seller', 'awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out']
-  const statuses = ORDER.filter(s => o.byStatus[s]).map(s => ({ label: DEAL_STATUS[s]?.[0] ?? s, value: o.byStatus[s], href: `/deals?status=${s}` }))
+  const statuses = ORDER.filter(s => o.byStatus[s]).map(s => ({ label: t(DEAL_STATUS[s]?.[0] ?? s), value: o.byStatus[s], href: `/deals?status=${s}` }))
   return (
     <main className="dash">
-      <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? 'Ledger reconciles with the payment provider.'
-        : <>Ledger cash {money(o.reconcile.ledgerCash)} does not match the payment provider ({money(o.reconcile.providerCash)}). <a href="/funds">Open Funds</a></>}</p>
-      <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-admin.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>Overview</h1><span className="muted">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
-        <div className="spacer" /><a className="btn" href="/reports">Reports</a><a className="btn" href="/deals">All deals</a></div>
+      <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? t("Ledger reconciles with the payment provider.")
+        : <>{t('Ledger cash {ledger} does not match the payment provider ({provider}).', { ledger: money(o.reconcile.ledgerCash), provider: money(o.reconcile.providerCash) })} <a href="/funds">{t('Open Funds')}</a></>}</p>
+      <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-admin.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>{t("Overview")}</h1><span className="muted">{new Date().toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
+        <div className="spacer" /><a className="btn" href="/reports">{t("Reports")}</a><a className="btn" href="/deals">{t("All deals")}</a></div>
 
       <section className="dash-lead">
-        <Hero label="Booked value, last 30 days" value={money(d.gmv.last30)}>
+        <Hero label={t("Booked value, last 30 days")} value={money(d.gmv.last30)}>
           <Delta now={d.gmv.last30} before={d.gmv.prev30} />
-          <span className="stat-sub">Price of bookings paid, excluding VAT.</span>
+          <span className="stat-sub">{t("Price of bookings paid, excluding VAT.")}</span>
           <dl className="kv" style={{ marginTop: 8 }}>
-            <dt>Commission earned (30 days)</dt><dd>{money(d.commission.last30)}</dd>
-            <dt>Take rate (90 days)</dt><dd>{d.takeRate == null ? '—' : `${(d.takeRate * 100).toFixed(1)}%`}</dd>
-            <dt>Publishers live</dt><dd>{o.publishers_live}</dd>
-            <dt>Buyer companies</dt><dd>{o.buyers}</dd>
+            <dt>{t("Commission earned (30 days)")}</dt><dd>{money(d.commission.last30)}</dd>
+            <dt>{t("Take rate (90 days)")}</dt><dd>{d.takeRate == null ? '—' : ltr(`${(d.takeRate * 100).toFixed(1)}%`)}</dd>
+            <dt>{t("Publishers live")}</dt><dd>{o.publishers_live}</dd>
+            <dt>{t("Buyer companies")}</dt><dd>{o.buyers}</dd>
           </dl>
         </Hero>
-        <WeekColumns weeks={d.gmv.weeks} title="Booked value by week (excluding VAT)" valueName="Booked value" />
+        <WeekColumns weeks={d.gmv.weeks} title={t("Booked value by week (excluding VAT)")} valueName={t("Booked value")} />
       </section>
 
       <div className="stats">
-        <StatTile label="Commission, last 30 days" value={compact(d.commission.last30)} delta={<Delta now={d.commission.last30} before={d.commission.prev30} />} spark={d.commission.weeks.map(w => w.value)} href="/reports" />
-        <StatTile label="Held for bookings" value={compact(d.money.held)} sub="Paid by buyers, not yet released" href="/funds" />
-        <StatTile label="Open slots with bids" value={`${d.live.withBids} of ${d.live.openSlots}`} sub={`${d.live.bids7d} bids this week`} />
-        <StatTile label="Active buyers" value={String(d.live.activeBuyers)} sub="bid in the last 30 days" />
+        <StatTile label={t("Commission, last 30 days")} value={compact(d.commission.last30)} delta={<Delta now={d.commission.last30} before={d.commission.prev30} />} spark={d.commission.weeks.map(w => w.value)} href="/reports" />
+        <StatTile label={t("Held for bookings")} value={compact(d.money.held)} sub={t("Paid by buyers, not yet released")} href="/funds" />
+        <StatTile label={t("Open slots with bids")} value={t('{n} of {total}', { n: d.live.withBids, total: d.live.openSlots })} sub={t('{n} bids this week', { n: d.live.bids7d })} />
+        <StatTile label={t("Active buyers")} value={String(d.live.activeBuyers)} sub={t("bid in the last 30 days")} />
       </div>
 
       <div className="dash-grid">
-        <section className="panel span-4"><div className="panel-h"><h2>Needs attention</h2></div>
+        <section className="panel span-4"><div className="panel-h"><h2>{t("Needs attention")}</h2></div>
           <ul className="attn-list">{attention.map(([n, label, href, hot]) => <li key={label} className={n ? (hot ? 'hot' : 'has') : 'none'}>
-            <a href={href}><b className="num">{n}</b><span>{label}</span>{n > 0 && <span className="btn task-act">Open</span>}</a></li>)}</ul></section>
-        <section className="panel span-4"><Funnel title="Bookings opened in the last 30 days" steps={d.funnel} /></section>
-        <section className="panel span-4"><div className="panel-h"><h2>Money position</h2><div className="spacer" /><a href="/funds">Funds</a></div>
+            <a href={href}><b className="num">{n}</b><span>{t(label)}</span>{n > 0 && <span className="btn task-act">{t('Open')}</span>}</a></li>)}</ul></section>
+        <section className="panel span-4"><Funnel title={t("Bookings opened in the last 30 days")} steps={d.funnel.map(f => ({ ...f, label: t(f.label) }))} /></section>
+        <section className="panel span-4"><div className="panel-h"><h2>{t("Money position")}</h2><div className="spacer" /><a href="/funds">{t("Funds")}</a></div>
           <dl className="kv">
-            <dt>Held for bookings</dt><dd>{money(d.money.held)}</dd>
-            <dt>Owed to publishers</dt><dd>{money(d.money.owedToPublishers)}</dd>
-            <dt>VAT on commission</dt><dd>{money(d.money.vat)}</dd>
-            <dt>Card processing fees</dt><dd>{money(d.money.fees)}</dd>
-            <dt className="total">Commission earned (all time)</dt><dd className="total">{money(d.money.revenue)}</dd>
+            <dt>{t("Held for bookings")}</dt><dd>{money(d.money.held)}</dd>
+            <dt>{t("Owed to publishers")}</dt><dd>{money(d.money.owedToPublishers)}</dd>
+            <dt>{t("VAT on commission")}</dt><dd>{money(d.money.vat)}</dd>
+            <dt>{t("Card processing fees")}</dt><dd>{money(d.money.fees)}</dd>
+            <dt className="total">{t("Commission earned (all time)")}</dt><dd className="total">{money(d.money.revenue)}</dd>
           </dl></section>
 
-        <section className="panel span-4"><RankedBars title="Booked value by channel (90 days)" items={d.byChannel.map(c => ({ label: CHANNEL[c.channel] ?? c.channel, sub: `${c.count} bookings`, value: c.value }))} /></section>
-        <section className="panel span-4"><RankedBars title="Top publishers (90 days)" items={d.topPublishers.map(p => ({ label: p.label, sub: `${p.count} bookings`, value: p.value }))} /></section>
-        <section className="panel span-4"><RankedBars title="Top buyers (90 days)" items={d.topBuyers.map(p => ({ label: p.label, sub: `${p.count} bookings`, value: p.value }))} /></section>
+        <section className="panel span-4"><RankedBars title={t("Booked value by channel (90 days)")} items={d.byChannel.map(c => ({ label: CHANNEL[c.channel] ?? c.channel, sub: t(c.count === 1 ? '1 booking' : '{n} bookings', { n: c.count }), value: c.value }))} /></section>
+        <section className="panel span-4"><RankedBars title={t("Top publishers (90 days)")} items={d.topPublishers.map(p => ({ label: p.label, sub: t(p.count === 1 ? '1 booking' : '{n} bookings', { n: p.count }), value: p.value }))} /></section>
+        <section className="panel span-4"><RankedBars title={t("Top buyers (90 days)")} items={d.topBuyers.map(p => ({ label: p.label, sub: t(p.count === 1 ? '1 booking' : '{n} bookings', { n: p.count }), value: p.value }))} /></section>
 
-        <section className="panel"><RankedBars title="All deals by status" format={v => String(v)} empty="No deals yet." items={statuses} /></section>
+        <section className="panel"><RankedBars title={t("All deals by status")} format={v => String(v)} empty={t("No deals yet.")} items={statuses} /></section>
       </div>
     </main>
   )
 }
 
 type AR = { id: string; name: string; email: string; phone: string; role: string; company: string; company_type: string; status: string; reason: string | null; created_at: string }
+const ACCESS_STATUS: Record<string, string> = { pending: 'Pending', info: 'More information asked', approved: 'Approved', rejected: 'Rejected' }
 const TYPE: Record<string, string> = { brand: 'Brand', agency: 'Agency', media_outlet: 'Media outlet' }
 
 export function AccessPage() {
@@ -88,19 +90,19 @@ export function AccessPage() {
   if (!data) return <Loading error={error} />
   return (
     <main>
-      <PhotoBand img="/brand/dash-buyer.jpg" title="Access requests" sub="Nashr is invite-only. Approving creates the company and an invite link (valid 7 days)." />
+      <PhotoBand img="/brand/dash-buyer.jpg" title={t("Access requests")} sub={t("Nashr is invite-only. Approving creates the company and an invite link (valid 7 days).")} />
       {msg}
-      {!data.length ? <p className="muted empty">No requests.</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>Person</th><th>Company</th><th>Received</th><th>Status</th><th style={{ width: 360 }} /></tr></thead>
+      {!data.length ? <p className="muted empty">{t("No requests.")}</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Person")}</th><th>{t("Company")}</th><th>{t("Received")}</th><th>{t("Status")}</th><th style={{ width: 360 }} /></tr></thead>
         <tbody>{data.map(r => <tr key={r.id}>
-          <td><b>{r.name}</b><div className="small muted">{r.role} · {r.email} · {r.phone}</div></td>
-          <td>{r.company}<div className="small muted">{TYPE[r.company_type]}</div></td><td className="small num">{date(r.created_at)}</td>
-          <td className="small">{r.status}{r.reason && <div className="muted">{r.reason}</div>}</td>
-          <td>{links[r.id] ? <div className="small">Invite link (send it to {r.email}):<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + links[r.id]} onFocus={e => e.target.select()} /></div>
+          <td><b>{r.name}</b><div className="small muted">{r.role} · <bdi>{r.email}</bdi> · <bdi>{r.phone}</bdi></div></td>
+          <td>{r.company}<div className="small muted">{t(TYPE[r.company_type] ?? r.company_type)}</div></td><td className="small num">{date(r.created_at)}</td>
+          <td className="small">{t(ACCESS_STATUS[r.status] ?? r.status)}{r.reason && <div className="muted">{r.reason}</div>}</td>
+          <td>{links[r.id] ? <div className="small">{t('Invite link (send it to {email}):', { email: r.email })}<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + links[r.id]} onFocus={e => e.target.select()} /></div>
             : ['pending', 'info'].includes(r.status) && <div className="form" style={{ gap: 6 }}>
-            <div className="row-flex"><button className="btn primary" disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/approve`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return `${r.company} approved.` })}>Approve</button>
-              <input className="search" style={{ minWidth: 0, flex: 1 }} aria-label={`Reason for ${r.name}`} placeholder="Reason (for reject or more info)" value={reason[r.id] ?? ''} onChange={e => setReason({ ...reason, [r.id]: e.target.value })} /></div>
-            <div className="row-flex"><button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'info', reason: reason[r.id] }, 'Asked for more information.')}>Ask for info</button>
-              <button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'rejected', reason: reason[r.id] }, 'Rejected.')}>Reject</button></div>
+            <div className="row-flex"><button className="btn primary" disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/approve`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return t('{name} approved.', { name: r.company }) })}>{t("Approve")}</button>
+              <input className="search" style={{ minWidth: 0, flex: 1 }} aria-label={t('Reason for {name}', { name: r.name })} placeholder={t("Reason (for reject or more info)")} value={reason[r.id] ?? ''} onChange={e => setReason({ ...reason, [r.id]: e.target.value })} /></div>
+            <div className="row-flex"><button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'info', reason: reason[r.id] }, t("Asked for more information."))}>{t("Ask for info")}</button>
+              <button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'rejected', reason: reason[r.id] }, t("Rejected."))}>{t("Reject")}</button></div>
           </div>}</td></tr>)}</tbody></table></div>}
     </main>
   )

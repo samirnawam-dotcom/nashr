@@ -1,5 +1,6 @@
 import { AR_BUYER } from './i18n-ar-buyer'
 import { AR_SELLER } from './i18n-ar-seller'
+import { AR_ADMIN } from './i18n-ar-admin'
 
 /*
  * Arabic for every string marked with t(). Modern Standard Arabic in a plain business register, the way UAE media
@@ -148,4 +149,4 @@ export const AR: Record<string, string> = {
   'Nothing on sale this day. Try the next day or the week view.': 'لا شيء معروض للبيع في هذا اليوم. جرّب اليوم التالي أو عرض الأسبوع.', 'Close': 'إغلاق',
   'Morning (5–12)': 'الصباح (5–12)', 'Afternoon (12–17)': 'الظهيرة (12–17)', 'Evening (17–24)': 'المساء (17–24)', 'All day (pages, takeovers)': 'طوال اليوم (صفحات، استحواذات)',
 }
-Object.assign(AR, AR_BUYER, AR_SELLER)
+Object.assign(AR, AR_BUYER, AR_SELLER, AR_ADMIN)
