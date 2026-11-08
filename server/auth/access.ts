@@ -42,6 +42,16 @@ export async function approveAccess(db: Db, requestId: string, actor: string, at
   return { companyId: company.id as string, userId: user.id as string, inviteToken: await issueInvite(db, user.id, at) }
 }
 
+/** The applicant lost the link or it expired: a fresh one replaces any unused link (only while they have not signed up yet). */
+export async function reissueAccessInvite(db: Db, requestId: string, actor: string, at: Date) {
+  const r = await one(db, `select * from access_requests where id = $1`, [requestId])
+  const user = (await db.query(`select id from users where lower(email) = lower($1) and status = 'invited' and role in ('buyer', 'seller')`, [r.email])).rows[0]
+  if (r.status !== 'approved' || !user) throw new MarketError('This person has already set their password, or the request was not approved.')
+  await db.query(`update invites set used_at = $2 where user_id = $1 and used_at is null`, [user.id, at])
+  await audit(db, actor, 'access.invite_reissued', 'access_request', r.id, null, at)
+  return issueInvite(db, user.id, at)
+}
+
 export async function decideAccess(db: Db, requestId: string, decision: 'rejected' | 'info', reason: string, actor: string, at: Date) {
   if (!reason?.trim()) throw new MarketError(decision === 'rejected' ? 'A reason is required to reject.' : 'Say what information you need.')
   const r = await db.query(`update access_requests set status = $2, reason = $3, decided_at = $4, decided_by = $5

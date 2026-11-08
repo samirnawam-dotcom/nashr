@@ -29,6 +29,15 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
     ...(await q(`select 'choose' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.name outlet, null buyer, s.top_amount amount, false below_reserve, s.choice_deadline_at due, null kind
                  from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                  where o.company_id = $1 and s.status = 'awaiting_choice' and s.choice_deadline_at > $2`)),
+    ...(await q(`select 'interest' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.name outlet,
+                 (select case when count(*) = 1 then max(c.name) end from bids b join companies c on c.id = b.buyer_id
+                   where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') buyer,
+                 (select count(*)::int from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') interested,
+                 (select max(b.amount) from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') amount,
+                 false below_reserve, s.closes_at due, 'interest' kind
+                 from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+                 where o.company_id = $1 and s.status = 'open' and s.sale_type = 'quick_sale' and s.closes_at > $2
+                 and exists (select 1 from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active')`)),
     ...(await q(`select 'creative' type, ${cols}, s.creative_due_at due, null kind ${base} and d.status in ('awaiting_payment', 'secured') and $2::timestamptz is not null
                  and (select c.status from creatives c where c.deal_id = d.id order by c.version desc limit 1) = 'pending'`)),
     ...(await q(`select 'creative_missing' type, ${cols}, s.creative_due_at due, null kind ${base} and d.status = 'secured' and s.creative_due_at <= $2
@@ -44,7 +53,7 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
   ]
   return rows.sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity)).map(r => ({
     type: r.type, dealId: r.deal_id, ref: r.ref, slotId: r.slot_id, outlet: r.outlet, label: r.label, startsAt: r.starts_at,
-    buyer: r.buyer, amount: r.amount, dueAt: r.due, kind: r.kind, belowReserve: r.type === 'decide' && r.below_reserve }))
+    buyer: r.buyer, amount: r.amount, dueAt: r.due, kind: r.kind, belowReserve: r.type === 'decide' && r.below_reserve, ...(r.type === 'interest' ? { interested: r.interested } : {}) }))
 }
 
 export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvider }) {
@@ -72,18 +81,20 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   })
 
   // One slot for the seller's calendar panel: bids by company (buyers' contact details never), deals, reserve.
-  route('GET', '/api/seller/slots/:id', SELLER, async ({ db, me }, req) => {
+  route('GET', '/api/seller/slots/:id', SELLER, async ({ db, me, at }, req) => {
     const s = (await db.query(`select s.*, p.name placement, o.name outlet, o.channel from slots s join placements p on p.id = s.placement_id
         join outlets o on o.id = p.outlet_id where s.id = $1 and o.company_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
     if (!s) throw new NotFound()
-    const bids = (await db.query(`select b.id, b.kind, b.amount, b.status, b.created_at, c.name from bids b join companies c on c.id = b.buyer_id
-        where b.slot_id = $1 order by b.amount desc, b.seq`, [s.id])).rows
+    const bids = (await db.query(`select b.id, b.kind, b.amount, b.status, b.created_at, b.brief, c.name from bids b join companies c on c.id = b.buyer_id
+        where b.slot_id = $1 and b.status <> 'withdrawn' order by b.amount desc, b.seq`, [s.id])).rows
     const deals = (await db.query(`select id, ref, status, amount, kind from deals where slot_id = $1 order by created_at desc`, [s.id])).rows
     return { id: s.id, outlet: s.outlet, channel: s.channel, placement: s.placement, label: s.label, kind: s.kind, saleType: s.sale_type, status: s.status,
       startsAt: s.starts_at, endsAt: s.ends_at, closesAt: s.closes_at, creativeDueAt: s.creative_due_at, choiceDeadlineAt: s.choice_deadline_at,
       startingPrice: s.starting_price, buyNowPrice: s.buy_now_price, reservePrice: s.reserve_price, topBid: s.top_amount,
       bids: bids.map(b => ({ id: b.id, kind: b.kind, amount: b.amount, status: b.status, at: b.created_at, company: b.name,
-        choosable: s.status === 'awaiting_choice' && ['active', 'outbid'].includes(b.status) })),
+        choosable: s.status === 'awaiting_choice' && ['active', 'outbid'].includes(b.status),
+        acceptable: s.status === 'open' && s.sale_type === 'quick_sale' && b.kind === 'interest' && b.status === 'active' && new Date(s.closes_at) > at,
+        brief: b.brief ? { advertiser: b.brief.advertiser ?? null, industry: b.brief.industry ?? null, message: b.brief.message ?? null, language: b.brief.language ?? null, notes: b.brief.notes ?? null } : null })),
       deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, kind: d.kind })) }
   })
 

@@ -49,6 +49,7 @@ export const ChannelMark = ({ c, label }: { c: string; label?: boolean }) => <sp
 export function status(s: Slot) {
   if (!s.available) return <span className="muted">{t('Not available')}</span>
   if (s.youLead) return <span className="dot lead">{t('You lead')}</span>
+  if (s.youBid && s.saleType === 'quick_sale') return <span className="dot soon">{t('Interest sent')}</span>
   if (s.youBid && s.topBid) return <span className="dot outbid">{t('Outbid')}</span>
   const soon = s.saleType === 'auction' && closesIn(s.closesAt)
   if (soon) return <span className="on-air">{soon}</span>

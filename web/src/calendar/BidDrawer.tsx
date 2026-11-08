@@ -106,7 +106,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         <footer className="drawer-f">
           {s.saleType === 'auction'
             ? <button className="btn primary" disabled={busy || new Date() >= closes} onClick={() => send(`/slots/${s.id}/bids`, { amount: toFils(amount), ...(auto && max ? { maxAmount: toFils(max) } : {}) }, t('Your bid is in.'))}>{t('Place bid {amount}', { amount: money(toFils(amount) || 0) })}</button>
-            : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('The publisher has your interest.'))}>{t("Show interest")}</button>}
+            : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
           {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>
       </>}

@@ -43,7 +43,7 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
   const [secret, setSecret] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false), [done, setDone] = useState(false)
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setError('')
-    if (password !== confirm) return setError('The passwords do not match.')
+    if (password !== confirm) return setError(t('The passwords do not match.'))
     setBusy(true)
     try {
       const r = await api('/auth/invite', { method: 'POST', body: { token, password, ...(code ? { totpCode: code } : {}) } })

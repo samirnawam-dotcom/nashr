@@ -22,11 +22,11 @@ export const due = (iso: string | null) => {
 export { money }
 
 export type Task = { type: string; dealId: string | null; ref: string | null; slotId: string; outlet: string; label: string; startsAt: string
-  buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null; belowReserve?: boolean }
-const ACTION: Record<string, string> = { decide: 'Decide', choose: 'Choose a bid', creative: 'Review', creative_missing: 'Decide', proof: 'Send proof',
+  buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null; belowReserve?: boolean; interested?: number }
+const ACTION: Record<string, string> = { interest: 'Review', decide: 'Decide', choose: 'Choose a bid', creative: 'Review', creative_missing: 'Decide', proof: 'Send proof',
   issue: 'Respond', prerun: 'Confirm', invoice: 'Upload' }
 const urgent = (iso: string | null) => !!iso && new Date(iso).getTime() - Date.now() < 24 * 3_600_000
-const TASK: Record<string, string> = { decide: 'Accept or decline', choose: 'Choose the next bid', creative: 'Review creative', creative_missing: 'Creative not received',
+const TASK: Record<string, string> = { interest: 'Buyer interested', decide: 'Accept or decline', choose: 'Choose the next bid', creative: 'Review creative', creative_missing: 'Creative not received',
   proof: 'Send proof', issue: 'Respond to an issue', prerun: 'Confirm the pre-run check', invoice: 'Upload your invoice' }
 
 export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
@@ -34,11 +34,11 @@ export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
   return <ul className="tasks card">{tasks.slice(0, limit).map((task, i) => (
     <li key={i} className={urgent(task.dueAt) ? 'urgent' : ''}><a href={task.dealId ? `/deals/${task.dealId}` : `/slots/${task.slotId}`}>
       <span className={`task-k ${task.type}`}>{t(TASK[task.type] ?? task.type)}</span>
-      <span className="task-body"><span><b>{task.outlet}</b>{sep}{task.label}</span><span className="muted small">{when(task.startsAt)}{task.buyer ? `${sep}${task.buyer}` : ''}</span>
+      <span className="task-body"><span><b>{task.outlet}</b>{sep}{task.label}</span><span className="muted small">{when(task.startsAt)}{task.buyer ? `${sep}${task.buyer}` : task.interested ? `${sep}${t('{n} buyers interested', { n: task.interested })}` : ''}</span>
         {task.kind === 'buy_now' && <span className="badge on">{t("This buyer will pay now")}</span>}
         {task.belowReserve && <span className="badge" style={{ color: 'var(--amber)' }}>{t("Below your reserve")}</span>}</span>
       <span className="num">{task.amount ? money(task.amount) : ''}</span>
       <span className={`small ${urgent(task.dueAt) ? 'soon' : 'muted'}`}>{due(task.dueAt)}</span>
-      <span className={`btn ${task.type === 'decide' || task.type === 'proof' ? 'primary' : ''} task-act`}>{t(ACTION[task.type] ?? 'Open')}</span>
+      <span className={`btn ${['decide', 'proof', 'interest'].includes(task.type) ? 'primary' : ''} task-act`}>{t(ACTION[task.type] ?? 'Open')}</span>
     </a></li>))}</ul>
 }

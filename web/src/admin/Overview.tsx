@@ -79,7 +79,7 @@ export function AdminOverview() {
   )
 }
 
-type AR = { id: string; name: string; email: string; phone: string; role: string; company: string; company_type: string; status: string; reason: string | null; created_at: string }
+type AR = { id: string; name: string; email: string; phone: string; role: string; company: string; company_type: string; status: string; reason: string | null; created_at: string; invite_pending?: boolean }
 const ACCESS_STATUS: Record<string, string> = { pending: 'Pending', info: 'More information asked', approved: 'Approved', rejected: 'Rejected' }
 const TYPE: Record<string, string> = { brand: 'Brand', agency: 'Agency', media_outlet: 'Media outlet' }
 
@@ -98,6 +98,8 @@ export function AccessPage() {
           <td>{r.company}<div className="small muted">{t(TYPE[r.company_type] ?? r.company_type)}</div></td><td className="small num">{date(r.created_at)}</td>
           <td className="small">{t(ACCESS_STATUS[r.status] ?? r.status)}{r.reason && <div className="muted">{r.reason}</div>}</td>
           <td>{links[r.id] ? <div className="small">{t('Invite link (send it to {email}):', { email: r.email })}<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + links[r.id]} onFocus={e => e.target.select()} /></div>
+            : r.status === 'approved' && r.invite_pending ? <div className="small"><span className="muted">{t('Not signed up yet.')}</span>{' '}
+              <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/invite`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return t('New invite link for {email}. The old link no longer works.', { email: r.email }) })}>{t('New invite link')}</button></div>
             : ['pending', 'info'].includes(r.status) && <div className="form" style={{ gap: 6 }}>
             <div className="row-flex"><button className="btn primary" disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/approve`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return t('{name} approved.', { name: r.company }) })}>{t("Approve")}</button>
               <input className="search" style={{ minWidth: 0, flex: 1 }} aria-label={t('Reason for {name}', { name: r.name })} placeholder={t("Reason (for reject or more info)")} value={reason[r.id] ?? ''} onChange={e => setReason({ ...reason, [r.id]: e.target.value })} /></div>

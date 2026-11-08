@@ -1,7 +1,7 @@
 import { pool, tx } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { ON_DEADLINE, transition } from './deals.js'
-import { afterNoGo, closeAuction, relist } from './market.js'
+import { afterNoGo, closeAuction, expireInterests, relist } from './market.js'
 import { onTimerEvent } from '../payments/payments.js'
 import { escalateIssue } from '../fulfilment/issues.js'
 import { requestPreRunChecks } from '../fulfilment/prerun.js'
@@ -52,6 +52,10 @@ export async function sweep(at: Date, batch = 100) {
       const slot = (await c.query(`select id from slots where status = 'open' and sale_type = 'auction' and closes_at <= $1
                                    order by closes_at limit 1 for update skip locked`, [at])).rows[0]
       if (slot) { await closeAuction(c, slot.id, at); return 1 }
+      const quick = (await c.query(`select s.id from slots s where s.status = 'open' and s.sale_type = 'quick_sale' and s.closes_at <= $1
+                                    and exists (select 1 from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active')
+                                    order by s.closes_at limit 1 for update skip locked`, [at])).rows[0]
+      if (quick) { await expireInterests(c, quick.id, at); return 1 }
       const choice = (await c.query(`select id from slots where status = 'awaiting_choice' and choice_deadline_at <= $1
                                      order by choice_deadline_at limit 1 for update skip locked`, [at])).rows[0]
       if (choice) { await relist(c, choice.id, at); return 1 }

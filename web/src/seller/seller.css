@@ -60,3 +60,4 @@
 .wk-day .wk-ev { position: absolute; }
 .wk-ev:focus-visible { box-shadow: var(--focus); z-index: 2; }
 .wk-ev:hover { z-index: 2; box-shadow: var(--shadow-2); }
+.brief-mini { display: grid; gap: 2px; margin-top: 6px; max-width: 52ch; line-height: 1.45; }

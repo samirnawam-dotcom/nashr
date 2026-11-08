@@ -6,7 +6,7 @@ import { addDays, dubai, monthGrid, todayInDubai, weekOf } from '../calendar/lay
 import { DealStatus, SLOT_STATUS, money, when } from './common'
 import { Bolt, Gavel, useLatest, useNarrow } from '../calendar/CalendarPage'
 import { DateNav, FilterFold, GROUPS, groupOf, OpsList, OpsMonth, StatusChips, statusesOf, useAddress, type OpsDay } from '../calendar/ops'
-import { ltr, t } from '../i18n'
+import { ltr, sep, t } from '../i18n'
 import { tm } from '../i18n-server'
 
 type SSlot = { id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
@@ -129,7 +129,8 @@ function WeekGrid({ days, slots, onOpen }: { days: string[]; slots: SSlot[]; onO
 }
 
 type Panel = SSlot & { creativeDueAt: string; choiceDeadlineAt: string | null
-  bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean }[]
+  bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean; acceptable?: boolean
+    brief: { advertiser: string | null; industry: string | null; message: string | null; language: string | null; notes: string | null } | null }[]
   deals: { id: string; ref: string; status: string; amount: number; kind: string }[] }
 const KIND: Record<string, string> = { bid: 'Bid', auto: 'Auto-bid', buy_now: t("Buy now"), interest: 'Interest' }
 
@@ -155,9 +156,14 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
       <div><dt>{t("Creative due")}</dt><dd className="num small">{when(s.creativeDueAt)}</dd></div>
     </dl>
     <section><h3 style={{ fontSize: 15, marginBottom: 8 }}>{t("Bids and requests")}</h3>
+      {s.bids.some(b => b.acceptable) && <p className="small">{t('Accept one buyer by {when} to book it. The others are told the slot has gone. Unanswered interest lapses then.', { when: when(s.closesAt) })}</p>}
       {!s.bids.length ? <p className="muted small">{t("None yet.")}</p> : <div className="table-wrap"><table className="table"><tbody>{s.bids.map(b => <tr key={b.id}>
-        <td>{b.company}<div className="small muted">{t(KIND[b.kind])} · {t(b.status.replace('_', ' '))}</div></td><td className="r num">{money(b.amount)}</td>
-        <td className="r">{b.choosable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/choose`, { bidId: b.id })}>{t("Choose")}</button>}</td></tr>)}</tbody></table></div>}
+        <td>{b.company}<div className="small muted">{t(KIND[b.kind])} · {t(b.status.replace('_', ' '))}</div>
+          {b.acceptable && b.brief && <div className="small brief-mini">{b.brief.advertiser && <div><b>{b.brief.advertiser}</b>{b.brief.industry ? `${sep}${t(b.brief.industry)}` : ''}</div>}
+            {b.brief.message && <div className="muted">“{b.brief.message}”</div>}{b.brief.notes && <div className="muted">{b.brief.notes}</div>}</div>}</td>
+        <td className="r num">{money(b.amount)}</td>
+        <td className="r">{b.choosable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/choose`, { bidId: b.id })}>{t("Choose")}</button>}
+          {b.acceptable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/accept-interest`, { bidId: b.id })}>{t("Accept")}</button>}</td></tr>)}</tbody></table></div>}
     </section>
     {s.deals.length > 0 && <section><h3 style={{ fontSize: 15, marginBottom: 8 }}>{t("Bookings")}</h3>
       <ul className="timeline">{s.deals.map(d => <li key={d.id}><a href={`/deals/${d.id}`} className="num">{d.ref}</a><span><DealStatus s={d.status} /> · {money(d.amount)}</span></li>)}</ul></section>}

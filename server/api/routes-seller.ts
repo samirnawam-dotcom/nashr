@@ -1,7 +1,7 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { sellerDeal, sellerSlot } from './shapes.js'
-import { accept, chooseBid, decline } from '../marketplace/market.js'
+import { accept, acceptInterest, chooseBid, decline, MarketError } from '../marketplace/market.js'
 import { cancelBySeller, creativeMissed } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
 import { reviewCreative } from '../fulfilment/creative.js'
@@ -83,6 +83,14 @@ export function sellerRoutes(route: RouteFn) {
   route('POST', '/api/seller/slots/:id/choose', SELLER, async ({ db, at, me }, req) => {
     await ownSlot(db, req.params.id, me.actAs.companyId)
     return sellerDeal(await ownDeal(db, (await chooseBid(db, req.params.id, req.body.bidId, `seller:${me.actAs.companyId}`, at)).id, me.actAs.companyId))
+  }, { type: 'object', required: ['bidId'], properties: { bidId: { type: 'string', format: 'uuid' } } })
+
+  // Quick sale: the publisher accepts one buyer's interest; that opens the booking already accepted, the buyer pays next.
+  route('POST', '/api/seller/slots/:id/accept-interest', SELLER, async ({ db, at, me }, req) => {
+    await ownSlot(db, req.params.id, me.actAs.companyId)
+    const bid = (await db.query(`select id from bids where id = $1 and slot_id = $2`, [req.body.bidId, req.params.id])).rows[0]
+    if (!bid) throw new MarketError('This interest can no longer be accepted.')
+    return sellerDeal(await ownDeal(db, (await acceptInterest(db, bid.id, `seller:${me.actAs.companyId}`, at)).id, me.actAs.companyId))
   }, { type: 'object', required: ['bidId'], properties: { bidId: { type: 'string', format: 'uuid' } } })
 
   route('POST', '/api/seller/deals/:id/creative-review', SELLER, async ({ db, at, me }, req) => {

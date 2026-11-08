@@ -39,22 +39,23 @@ export function ProfilePage() {
       </section>
       <RateCard card={p.company.rateCard} onChange={load} />
       {p.outlets.map(o => <OutletForm key={o.id} o={o} busy={busy} onSave={b => act('PUT', `/seller/outlets/${o.id}`, b, t('{name} saved.', { name: o.name }))} />)}
-      <OutletForm busy={busy} onSave={b => act('POST', '/seller/outlets', b, t("Outlet added."))} />
+      <OutletForm key={p.outlets.length} first={!p.outlets.length} busy={busy} onSave={b => act('POST', '/seller/outlets', b, t("Outlet added."))} />
     </main>
   )
 }
 
-function OutletForm({ o, busy, onSave }: { o?: Outlet; busy: boolean; onSave: (b: object) => void }) {
+function OutletForm({ o, first, busy, onSave }: { o?: Outlet; first?: boolean; busy: boolean; onSave: (b: object) => void }) {
   const [f, setF] = useState({ name: o?.name ?? '', nameAr: o?.nameAr ?? '', channel: o?.channel ?? 'radio', sectors: o?.sectors.join(', ') ?? '',
     description: o?.description ?? '', website: o?.website ?? '', audience: o?.audience ?? '' })
-  const [open, setOpen] = useState(!!o)
+  const [open, setOpen] = useState(!!o || !!first) // a new publisher starts with the form open
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value })
   if (!open) return <button className="btn section" onClick={() => setOpen(true)}>{t("Add another outlet")}</button>
   const body = { name: f.name, ...(o ? {} : { channel: f.channel }), sectors: f.sectors.split(',').map(s => s.trim()).filter(Boolean),
     ...(f.nameAr ? { nameAr: f.nameAr } : {}), ...(f.description ? { description: f.description } : {}), ...(f.website ? { website: f.website } : {}), ...(f.audience ? { audience: f.audience } : {}) }
   const id = o?.id ?? 'new'
   return <section className="card pad section form">
-    <h2>{o ? o.name : t('New outlet')}</h2>
+    <h2>{o ? o.name : first ? t('Your outlet') : t('New outlet')}</h2>
+    {first && <p className="small muted">{t('The station, channel, publication or show buyers book with. You can add more later.')}</p>}
     {o && <LogoPicker name={o.name} url={o.logoUrl ?? null} endpoint={`/seller/outlets/${o.id}/logo`} />}
     {o && <CoverPicker url={o.coverUrl ?? null} channel={o.channel} endpoint={`/seller/outlets/${o.id}/cover`} />}
     <div className="grid2">

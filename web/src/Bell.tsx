@@ -13,6 +13,9 @@ const TEXT: Record<string, (n: N) => string> = {
   'deal.refunded': () => t('A refund was issued.'),
   'deal.released': () => t('Payment was released.'),
   'deal.opened': n => n.data?.kind === 'buy_now' ? t('New buy-now request.') : t('New booking to decide on.'),
+  'interest.received': n => t('A buyer is interested in {slot}. Accept to book it.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
+  'interest.not_selected': n => t('The publisher booked {slot} with another buyer.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
+  'interest.expired': n => t('The publisher did not take up your interest in {slot} before it closed.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'bid.outbid': n => t('You were outbid on {slot}.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'creative.sent': () => t('New creative to review.'),
   'creative.approved': () => t('Your creative was approved.'),
@@ -60,7 +63,7 @@ export function Bell({ role }: { role: string }) {
       {open && <div className="card bell-pop" role="menu">
         {!data.items.length && <p className="muted small">{t('Nothing yet.')}</p>}
         {data.items.map(n => { const text = (TEXT[n.kind] ?? (() => n.kind))(n)
-          const href = n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
+          const href = n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind === 'bid.outbid' || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
           return <a key={n.id} href={href} className={n.read ? '' : 'unread'} onClick={() => setOpen(false)} role="menuitem">
             <div>{text}</div><div className="small muted">{n.dealRef ? `${n.dealRef} · ` : ''}{new Date(n.at).toLocaleString(locale, { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></a> })}
       </div>}

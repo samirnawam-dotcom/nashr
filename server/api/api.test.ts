@@ -96,6 +96,18 @@ describe('invite-only access (scenario 14)', () => {
     expect((await call(null, 'POST', '/api/auth/login', { email: 'omar@nashr.ae', password: PASS })).json().error).toMatch('authenticator')
   })
 
+  test('a lost invite link can be replaced until the person signs up; the old link stops working', async () => {
+    const id = (await call(null, 'POST', '/api/access-requests', { name: 'Huda', email: 'huda@brandco.ae', phone: '+971501112222', role: 'Buyer', company: 'Brand Co', companyType: 'brand' })).json().id
+    const first = (await call(admin, 'POST', `/api/admin/access-requests/${id}/approve`)).json().inviteLink.split('#')[1]
+    expect((await call(admin, 'GET', '/api/admin/access-requests')).json().find((r: any) => r.id === id).invite_pending).toBe(true)
+    const second = (await call(admin, 'POST', `/api/admin/access-requests/${id}/invite`)).json().inviteLink.split('#')[1]
+    expect((await call(null, 'POST', '/api/auth/invite', { token: first, password: PASS })).json().error).toMatch('expired')
+    expect((await call(null, 'POST', '/api/auth/invite', { token: second, password: PASS })).statusCode).toBe(200)
+    expect((await call(admin, 'GET', '/api/admin/access-requests')).json().find((r: any) => r.id === id).invite_pending).toBe(false)
+    expect((await call(admin, 'POST', `/api/admin/access-requests/${id}/invite`)).json().error).toMatch('already set their password')
+    expect((await call(buyerA, 'POST', `/api/admin/access-requests/${id}/invite`)).statusCode).toBe(403)
+  })
+
   test('for testing, STAFF_TWO_STEP=off lets staff sign in and accept invites with a password only; the wrong password still fails', async () => {
     process.env.STAFF_TWO_STEP = 'off'
     try {
@@ -1005,5 +1017,43 @@ describe('the publisher and Nashr calendars: the same search, scoped', () => {
     expect((await call(sellerX, 'GET', `/api/admin/slots/list?${range}`)).statusCode).toBe(403)
     // the buyer's calendar still hides the publisher's blocked slot
     expect((await call(buyerA, 'GET', `/api/slots/list?${range}`)).json().items.map((x: any) => x.id)).not.toContain(slotX)
+  })
+})
+
+describe('quick sale: interest reaches the publisher, who accepts one buyer', () => {
+  const kinds = async (who: Who) => (await call(who, 'GET', '/api/notifications')).json().items.map((n: any) => n.kind)
+
+  test('the publisher is told, sees it in the inbox with the brief, accepts one buyer; the other is told', async () => {
+    await pool.query(`update slots set sale_type = 'quick_sale' where id = $1`, [slotX])
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { brief: BRIEF })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { amount: AED(3_800), brief: BRIEF })).statusCode).toBe(200) // a new offer replaces the first
+    expect((await call(buyerB, 'POST', `/api/slots/${slotX}/interest`, { brief: BRIEF })).statusCode).toBe(200)
+    expect(await kinds(sellerX)).toContain('interest.received')
+    const tasks = (await call(sellerX, 'GET', '/api/seller/inbox')).json()
+    expect(tasks).toEqual([expect.objectContaining({ type: 'interest', slotId: slotX, interested: 2, amount: AED(3_800), buyer: null })])
+    const panel = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
+    expect(panel.bids).toHaveLength(2)
+    const a = panel.bids.find((b: any) => b.company === 'Northwind Fintech')
+    expect(a).toMatchObject({ acceptable: true, amount: AED(3_800), brief: expect.objectContaining({ advertiser: BRIEF.advertiser }) })
+    // someone else's slot cannot be used to accept
+    expect((await call(sellerY, 'POST', `/api/seller/slots/${slotX}/accept-interest`, { bidId: a.id })).statusCode).toBe(404)
+    const deal = (await call(sellerX, 'POST', `/api/seller/slots/${slotX}/accept-interest`, { bidId: a.id })).json()
+    expect(deal).toMatchObject({ status: 'awaiting_payment' })
+    expect((await pool.query(`select kind, amount from deals where id = $1`, [deal.id])).rows[0]).toEqual({ kind: 'quick_sale', amount: AED(3_800) })
+    expect(await kinds(buyerA)).toContain('deal.awaiting_payment')
+    expect(await kinds(buyerB)).toContain('interest.not_selected')
+    expect((await call(sellerX, 'GET', '/api/seller/inbox')).json().filter((t: any) => t.type === 'interest')).toHaveLength(0)
+  })
+
+  test('unanswered interest lapses when bidding closes, and the buyer is told', async () => {
+    await pool.query(`update slots set sale_type = 'quick_sale' where id = $1`, [slotX])
+    await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { brief: BRIEF })
+    now = T('2026-11-04T04:00:00Z'); await sweep(now)
+    buyerA.cookie = await signIn('sara@northwind.ae')
+    expect(await kinds(buyerA)).toContain('interest.expired')
+    sellerX.cookie = await signIn('sales@skyline.ae')
+    expect((await call(sellerX, 'GET', '/api/seller/inbox')).json().filter((t: any) => t.type === 'interest')).toHaveLength(0)
+    const bid = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json().bids[0]
+    expect(bid).toMatchObject({ status: 'not_selected', acceptable: false })
   })
 })

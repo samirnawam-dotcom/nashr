@@ -125,14 +125,29 @@ export async function showInterest(db: Db, a: { slotId: string; buyerId: string;
   await checkCampaign(db, a.campaignId, a.buyerId)
   const amount = a.amount ?? slot.starting_price
   if (amount < slot.starting_price) throw new MarketError(`Offers cannot be below ${aed(slot.starting_price)}.`)
-  return insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief, campaignId: a.campaignId }, at)
+  // a second interest from the same buyer replaces the first (a new offer or brief), so the publisher sees one line per buyer
+  await db.query(`update bids set status = 'withdrawn' where slot_id = $1 and buyer_id = $2 and kind = 'interest' and status = 'active'`, [slot.id, a.buyerId])
+  const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief, campaignId: a.campaignId }, at)
+  // The publisher hears at once: the interest is a request waiting on them (it shows in their inbox until bidding closes).
+  const { outlet, seller } = await one(db, `select o.name outlet, o.company_id seller from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  await notify(db, seller, 'interest.received', null, { slotId: slot.id, outlet, label: slot.label, amount }, at)
+  return bid
+}
+
+/** Bidding closed on a quick sale nobody accepted: the interested buyers are told it did not go ahead. */
+export async function expireInterests(db: Db, slotId: string, at: Date) {
+  const slot = await lockSlot(db, slotId)
+  const gone = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and kind = 'interest' and status = 'active' returning buyer_id`, [slot.id])).rows
+  const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  for (const b of gone) await notify(db, b.buyer_id, 'interest.expired', null, { slotId: slot.id, outlet, label: slot.label }, at)
+  return gone.length
 }
 
 /** The seller accepts one quick-sale interest; everyone else is told the slot has gone. */
 export async function acceptInterest(db: Db, bidId: string, actor: string, at: Date) {
   const bid = await one(db, `select * from bids where id = $1`, [bidId])
   const slot = await lockSlot(db, bid.slot_id)
-  if (slot.status !== 'open' || bid.kind !== 'interest' || bid.status !== 'active') throw new MarketError('This interest can no longer be accepted.')
+  if (slot.status !== 'open' || bid.kind !== 'interest' || bid.status !== 'active' || at >= slot.closes_at) throw new MarketError('This interest can no longer be accepted.')
   const deal = await openDeal(db, slot, bid, 'quick_sale', actor, at)
   return accept(db, deal.id, actor, at)
 }
@@ -180,8 +195,12 @@ export async function accept(db: Db, dealId: string, actor: string, at: Date) {
   await db.query(`update bids set status = 'selected' where id = $1`, [deal.bid_id])
   // Buy-now and quick sale end the sale for everyone else now. After an auction, the other bids stay valid
   // until payment is secured, so the seller can pick another one if this buyer does not pay (SPEC 11.1 #7).
-  if (deal.kind === 'buy_now' || deal.kind === 'quick_sale')
-    await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid')`, [slot.id])
+  if (deal.kind === 'buy_now' || deal.kind === 'quick_sale') {
+    const others = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid') returning buyer_id, kind`, [slot.id])).rows
+    const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+    for (const b of others.filter(b => b.kind === 'interest' && b.buyer_id !== deal.buyer_id))
+      await notify(db, b.buyer_id, 'interest.not_selected', null, { slotId: slot.id, outlet, label: slot.label }, at)
+  }
   for (const other of (await db.query(`select id from deals where slot_id = $1 and id <> $2 and status = 'awaiting_seller'`, [slot.id, dealId])).rows)
     await transition(db, other.id, 'supersede', 'system', at, 'Another request was accepted')
   await refreshConflicts(db, slot, at)

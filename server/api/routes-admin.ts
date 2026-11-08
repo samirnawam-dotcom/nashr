@@ -2,7 +2,7 @@ import { NotFound, type RouteFn } from './app.js'
 import { audit } from '../core/audit.js'
 import { changeSetting } from '../core/settings.js'
 import { MarketError } from '../marketplace/market.js'
-import { approveAccess, decideAccess } from '../auth/access.js'
+import { approveAccess, decideAccess, reissueAccessInvite } from '../auth/access.js'
 import { decideDispute } from '../payments/payments.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
@@ -11,7 +11,11 @@ export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|nashr
 
 export function adminRoutes(route: RouteFn) {
   route('GET', '/api/admin/access-requests', STAFF, async ({ db }) =>
-    (await db.query(`select * from access_requests order by (status = 'pending') desc, created_at desc`)).rows)
+    (await db.query(`select r.*, exists (select 1 from users u where lower(u.email) = lower(r.email) and u.status = 'invited') invite_pending
+                     from access_requests r order by (r.status = 'pending') desc, r.created_at desc`)).rows)
+
+  route('POST', '/api/admin/access-requests/:id/invite', STAFF, async ({ db, at, me }, req) =>
+    ({ inviteLink: `/invite#${await reissueAccessInvite(db, req.params.id, `admin:${me.userId}`, at)}` }))
 
   route('POST', '/api/admin/access-requests/:id/approve', STAFF, async ({ db, at, me }, req) => {
     const r = await approveAccess(db, req.params.id, `admin:${me.userId}`, at)

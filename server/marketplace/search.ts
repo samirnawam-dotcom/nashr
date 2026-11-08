@@ -53,7 +53,7 @@ export function where(q: Query, now: Date) {
 /** A slot row with its bid count and whether this buyer has bid, in one pass rather than a query per row. */
 const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.sectors, o.audience, o.logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
   (select d.id from deals d where d.slot_id = s.id order by d.created_at desc limit 1) deal_id`
-const BID_COUNTS = (me: string) => `left join lateral (select count(*) n, bool_or(b.buyer_id = ${me}) mine from bids b where b.slot_id = s.id) bc on true`
+const BID_COUNTS = (me: string) => `left join lateral (select count(*) n, bool_or(b.buyer_id = ${me}) mine from bids b where b.slot_id = s.id and b.status <> 'withdrawn') bc on true`
 
 /** Matching slots in air-time order (the panel of one programme, and the old range read). */
 export async function slots(db: Db, q: Query, now: Date, limit = 5000) {

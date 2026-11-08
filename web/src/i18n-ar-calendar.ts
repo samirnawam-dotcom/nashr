@@ -19,5 +19,16 @@ export const AR_CALENDAR: Record<string, string> = {
   'Dubai time. Prices exclude VAT. A booked or decided slot opens its deal.': 'بتوقيت دبي. الأسعار دون الضريبة. المساحة المحجوزة أو التي بُتّ فيها تفتح صفقتها.',
   'No slots match.': 'لا مساحات مطابقة.', 'Reserve': 'السعر الأدنى', 'Bidding closes': 'إغلاق المزايدة', 'Your slots, bids and bookings. Dubai time.': 'مساحاتك ومزايداتها وحجوزاتها. بتوقيت دبي.',
   'Search outlets and programmes': 'ابحث في المنصات والبرامج', 'All outlets': 'كل المنصات', 'Dubai time. Prices exclude VAT.': 'بتوقيت دبي. الأسعار دون الضريبة.',
-  'slot': 'مساحة', 'slots': 'مساحات', 'Waiting for a decision': 'بانتظار القرار', 'Publisher deciding': 'الناشر يقرر', 'Publisher choosing next bid': 'الناشر يختار المزايدة التالية',
+  'slot': 'مساحة', 'slots': 'مساحات',
+  // Getting started: invites and the first outlet
+  'The passwords do not match.': 'كلمتا المرور غير متطابقتين.', 'Not signed up yet.': 'لم يُكمل التسجيل بعد.', 'New invite link': 'رابط دعوة جديد',
+  'New invite link for {email}. The old link no longer works.': 'رابط دعوة جديد لـ {email}. الرابط القديم لم يعد يعمل.',
+  'Your outlet': 'منصتك', 'The station, channel, publication or show buyers book with. You can add more later.': 'المحطة أو القناة أو المطبوعة أو البرنامج الذي يحجز فيه المشترون. يمكنك إضافة المزيد لاحقًا.',
+  // Quick-sale interest: the publisher accepts one buyer
+  'Interest sent': 'أُرسل الاهتمام', 'Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.': 'أُرسل الاهتمام. يقبل الناشر مشتريًا واحدًا قبل إغلاق المزايدة، وستُبلَّغ في الحالتين، ولا تدفع إلا إذا قُبلت.', 'Buyer interested': 'مشترٍ مهتم', '{n} buyers interested': '{n} مشترين مهتمين',
+  'Accept one buyer by {when} to book it. The others are told the slot has gone. Unanswered interest lapses then.': 'اقبل مشتريًا واحدًا قبل {when} لحجزها. يُبلَّغ الآخرون بأن المساحة حُجزت. وينتهي الاهتمام الذي لم يُرد عليه عندها.',
+  'A buyer is interested in {slot}. Accept to book it.': 'مشترٍ مهتم بـ {slot}. اقبل لحجزها.',
+  'The publisher booked {slot} with another buyer.': 'حجز الناشر {slot} لمشترٍ آخر.',
+  'The publisher did not take up your interest in {slot} before it closed.': 'لم يقبل الناشر اهتمامك بـ {slot} قبل الإغلاق.',
+ 'Waiting for a decision': 'بانتظار القرار', 'Publisher deciding': 'الناشر يقرر', 'Publisher choosing next bid': 'الناشر يختار المزايدة التالية',
 }
