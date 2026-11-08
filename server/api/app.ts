@@ -17,6 +17,7 @@ import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
 import { coverRoutes } from './routes-covers.js'
 import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
+import { messageRoutes } from './routes-messages.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 import { type StripeConfig, stripeWebhook } from './routes-stripe.js'
 import { dashboardRoutes } from './routes-dashboards.js'
@@ -33,10 +34,10 @@ export const cookie = (req: FastifyRequest) =>
 
 /** Not yours and not found look the same, so nobody can probe other companies' records (SPEC 5.5). */
 export class NotFound extends Error {}
-/** The only routes that take raw bytes instead of JSON: private files, and outlet cover photos. */
+/** The only routes that take raw bytes instead of JSON: private files, and outlet cover photos and logos. */
 const isUpload = (method: string, url: string) => {
   const path = url.split('?')[0]
-  return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/cover$/.test(path))
+  return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/(cover|logo)$/.test(path))
 }
 
 // ponytail: in-memory, per process. Move to Postgres or a shared store when running more than one instance.
@@ -133,6 +134,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   dashboardRoutes(route)
   searchRoutes(route)
   ratingRoutes(route)
+  messageRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.

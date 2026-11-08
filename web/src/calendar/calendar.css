@@ -144,3 +144,9 @@ label.side-h { display: block; }
 .saved-save { width: 100%; justify-content: center; }
 .saved-form { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .saved-guest { margin: 0 0 4px; }
+/* What the buyer would owe if every bid it leads wins: a quiet planning aid next to the bid, not an alarm. */
+.exposure { display: grid; gap: 6px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+.exposure-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+.exposure-sum div { display: grid; gap: 2px; }
+.exposure-sum dt { font-size: 12px; color: var(--faint); }
+.exposure-sum dd { margin: 0; font-size: 16px; }

@@ -4,6 +4,7 @@ import { api } from '../api'
 import { DealStatus, Loading, date, money, useAct, useLoad } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { ltr, sep, t } from '../i18n'
+import { OutletMark } from '../LogoPicker'
 
 type C = { id: string; name: string; type: string; trn: string | null; vatRegistered: boolean; payoutsEnabled: boolean; invoiceMode: string; createdAt: string
   users: number; suspended: number; gmv: number; commissionBp: number | null }
@@ -30,9 +31,9 @@ export function AccountsPage() {
   )
 }
 
-type Detail = Omit<C, 'users' | 'suspended' | 'gmv' | 'commissionBp'> & { providerAccount: string | null; balance: { payable: number; owed: number } | null
+type Detail = Omit<C, 'users' | 'suspended' | 'gmv' | 'commissionBp'> & { providerAccount: string | null; rateCard: { fileId: string; name: string } | null; balance: { payable: number; owed: number } | null
   users: { id: string; name: string; email: string; phone: string | null; role: string; status: string; twoFactor: boolean; createdAt: string }[]
-  outlets: { id: string; name: string; channel: string; sectors: string[] }[]
+  outlets: { id: string; name: string; channel: string; sectors: string[]; logoUrl: string | null }[]
   deals: { id: string; ref: string; status: string; amount: number; createdAt: string; label: string; outlet: string }[]
   commissionHistory: { bp: number; from: string; by: string }[] }
 
@@ -56,6 +57,7 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
           <dt>{t("VAT")}</dt><dd>{c.vatRegistered ? `${t('Registered')} · ${t('TRN {trn}', { trn: c.trn ?? t('missing') })}` : t('Not registered')}</dd>
           <dt>{t("Tax invoices")}</dt><dd>{c.invoiceMode === 'generate' ? t('Nashr issues them on their behalf') : t('They upload their own')}</dd>
           <dt>{t("Released, not yet paid out")}</dt><dd className="num">{money(c.balance!.payable)}</dd>
+          <dt>{t('Rate card')}</dt><dd>{c.rateCard ? <a href={`/api/files/${c.rateCard.fileId}`}><bdi>{c.rateCard.name}</bdi></a> : <span className="muted">{t('Not shared yet')}</span>}</dd>
           <dt>{t("Owed to Nashr")}</dt><dd className="num">{money(c.balance!.owed)}</dd>
           <dt>{t("Commission")}</dt><dd>{c.commissionHistory.length ? t('{pct} (own rate)', { pct: ltr(`${c.commissionHistory[0].bp / 100}%`) }) : t('Default rate')}
             {c.commissionHistory.length > 1 && <div className="small muted">{c.commissionHistory.slice(1).map(h => t('{pct} from {date}', { pct: ltr(`${h.bp / 100}%`), date: date(h.from) })).join(' · ')}</div>}</dd>
@@ -72,7 +74,7 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
           <td className="r">{u.status === 'active' && <button className="btn" disabled={busy} onClick={() => confirm(t('Suspend {name}? They are signed out at once.', { name: u.name })) && act('POST', `/admin/users/${u.id}/status`, { status: 'suspended' }, t('{name} suspended.', { name: u.name }))}>{t("Suspend")}</button>}
             {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, t('{name} restored.', { name: u.name }))}>{t("Restore")}</button>}</td></tr>)}</tbody></table></div></section>
       {c.outlets.length > 0 && <section className="card pad section"><h2>{t("Outlets")}</h2>
-        <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{t(o.channel)}</span><span><b>{o.name}</b> · <span className="small muted">{o.sectors.map(s => t(s)).join(sep)}</span></span></li>)}</ul></section>}
+        <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{t(o.channel)}</span><span className="row-flex"><OutletMark name={o.name} url={o.logoUrl} size={28} /><b>{o.name}</b> · <span className="small muted">{o.sectors.map(s => t(s)).join(sep)}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>{t("Recent deals")}</h2>
         {!c.deals.length ? <p className="muted">{t("None yet.")}</p> : <div className="table-wrap"><table className="table"><tbody>{c.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
           <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="r num">{money(d.amount)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}</section>

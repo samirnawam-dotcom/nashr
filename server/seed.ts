@@ -111,6 +111,29 @@ if (buyNow) await tx(async c => {
 // Twelve weeks of past activity, so every dashboard has a history to show.
 const booked = await seedHistory({ now, demoBuyer: buyer, rivals, campaignId: campaign })
 
+// A couple of conversations on paid bookings, so the Messages pages show how buyer and publisher talk (only after payment).
+const paid = `select d.id, d.buyer_id, d.seller_id from deals d where d.status in ('secured', 'in_review') and`
+const forBuyer = (await pool.query(`${paid} d.buyer_id = $1 order by d.created_at desc limit 1`, [buyer])).rows
+// Skyline FM (the demo publisher): an open conversation if it has a paid booking in progress, else the record on its latest finished deal.
+const forSeller = (await pool.query(`select d.id, d.buyer_id, d.seller_id from deals d where d.status in ('secured', 'in_review', 'released')
+  and d.seller_id = (select id from companies where name = 'Skyline FM') and d.id <> all($1::uuid[])
+  order by d.status <> 'released' desc, d.buyer_id = $2 desc, d.created_at desc limit 1`, [forBuyer.map(d => d.id), buyer])).rows
+const talk = [...forBuyer, ...forSeller]
+const SCRIPTS = [
+  [['b', 'Hi, our creative is a 30-second spot in Arabic and English. Is a bilingual read fine for this break?'],
+   ['s', 'Yes, bilingual works well in this slot. Please keep it to 30 seconds including the tag line.'],
+   ['b', 'Great. Can the spot run as the first ad in the break?'], ['s', 'We can place it first. Our traffic team will confirm the running order the day before.']],
+  [['s', 'Thanks for booking. We received your brief; the final file is due two days before air.'], ['b', 'Noted. We will send the final version on Sunday morning.']],
+]
+for (const [i, d] of talk.entries()) {
+  const lines = SCRIPTS[i] ?? []
+  for (const [j, [who, body]] of lines.entries())
+    await pool.query(`insert into messages (deal_id, company_id, body, created_at) values ($1, $2, $3, $4)`,
+      [d.id, who === 'b' ? d.buyer_id : d.seller_id, body, new Date(now.getTime() - (lines.length - j) * 47 * 60_000)])
+  // the buyer has read everything; the publisher has the last buyer message still to read
+  await pool.query(`insert into message_reads (deal_id, company_id, read_at) values ($1, $2, $3)`, [d.id, d.buyer_id, now])
+}
+
 // Nashr staff. Staff sign in with an authenticator code; this fixed key is for development only.
 const DEMO_TOTP = 'JBSWY3DPEHPK3PXP'
 const nashr = (await pool.query(`insert into companies (name, type) values ('Nashr', 'nashr') returning id`)).rows[0].id

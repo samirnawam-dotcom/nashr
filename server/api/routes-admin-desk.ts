@@ -8,7 +8,7 @@ import type { PaymentProvider } from '../payments/provider.js'
 import { allowExtraRound } from '../fulfilment/creative.js'
 import { inviteStaff } from '../auth/access.js'
 import { FOUNDER_ONLY } from './routes-admin.js'
-import { coverUrl } from './routes-covers.js'
+import { coverUrl, logoUrl } from './routes-covers.js'
 import { dealRating } from './routes-ratings.js'
 import { staffTwoStep } from '../auth/access.js'
 
@@ -54,15 +54,16 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     const c = (await db.query(`select * from companies where id = $1 and type <> 'nashr'`, [req.params.id])).rows[0]
     if (!c) throw new NotFound()
     const users = (await db.query(`select id, name, email, phone, role, status, totp_enabled, created_at from users where company_id = $1 order by created_at`, [c.id])).rows
-    const outlets = (await db.query(`select id, name, channel, sectors from outlets where company_id = $1 order by name`, [c.id])).rows
+    const outlets = (await db.query(`select id, name, channel, sectors, logo_key from outlets where company_id = $1 order by name`, [c.id])).rows
     const deals = (await db.query(`select d.id, d.ref, d.status, d.amount, d.created_at, s.label, o.name outlet from deals d join slots s on s.id = d.slot_id
         join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.buyer_id = $1 or d.seller_id = $1 order by d.created_at desc limit 50`, [c.id])).rows
     const commission = (await db.query(`select value, valid_from, changed_by from settings where key = $1 order by valid_from desc`, [`commission:${c.id}`])).rows
     return { id: c.id, name: c.name, type: c.type, trn: c.trn, vatRegistered: c.vat_registered, payoutsEnabled: c.payouts_enabled,
       invoiceMode: c.invoice_mode, providerAccount: c.provider_account, createdAt: c.created_at,
+      rateCard: c.rate_card_file ? (await db.query(`select id "fileId", name from files where id = $1`, [c.rate_card_file])).rows[0] : null,
       balance: c.type === 'publisher' ? { payable: await liability(db, `seller_payable:${c.id}`), owed: await balance(db, `seller_receivable:${c.id}`, 'AED') } : null,
       users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled && staffTwoStep(), createdAt: u.created_at })),
-      outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel, sectors: o.sectors })),
+      outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel, sectors: o.sectors, logoUrl: logoUrl(o) })),
       deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, createdAt: d.created_at, label: d.label, outlet: d.outlet })),
       commissionHistory: commission.map(h => ({ bp: h.value, from: h.valid_from, by: h.changed_by })) }
   })
@@ -207,7 +208,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   route('GET', '/api/admin/outlets', STAFF, async ({ db }) => (await db.query(
     `select o.*, c.name company from outlets o left join companies c on c.id = o.company_id order by o.company_id is not null, o.name`)).rows
     .map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, company: o.company, tier: o.tier, audience: o.audience,
-      website: o.website, description: o.description, estLow: o.est_low, estHigh: o.est_high, onNashr: !!o.company_id, coverUrl: coverUrl(o) })))
+      website: o.website, description: o.description, estLow: o.est_low, estHigh: o.est_high, onNashr: !!o.company_id, coverUrl: coverUrl(o), logoUrl: logoUrl(o) })))
 
   const outletBody = { type: 'object', additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] },

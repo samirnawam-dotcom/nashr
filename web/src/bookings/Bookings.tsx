@@ -9,8 +9,9 @@ import { PhotoBand } from '../PhotoBand'
 import { StarInput, Stars } from '../Stars'
 import { isAr, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
+import { Thread } from '../messages/Thread'
 
-type Deal = { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
+type Deal = { id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
 
 const STATUS: Record<string, [string, string]> = {
   awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Payment secured', 'lead'],
@@ -51,7 +52,7 @@ type Detail = Deal & { channel: string; placement: string; creativeDueAt: string
   prerun: { requestedAt: string; confirmedAt: string | null } | null
   documents: { id: string; type: string; number: string; total: number; currency: string; issuedAt: string }[] }
 
-const EVENT: Record<string, string> = { opened: t('Request sent'), accept: t('Publisher accepted'), decline: t('Not selected'), expire: t('Publisher did not reply in time'),
+const EVENT: Record<string, string> = { opened: t('Request sent'), withdraw: t('You withdrew the request'), accept: t('Publisher accepted'), decline: t('Not selected'), expire: t('Publisher did not reply in time'),
   supersede: t('Slot went to another buyer'), pay: t('Payment secured'), lapse: t('Payment window passed'), submit_proof: t('Proof sent'), approve: t('You approved the proof'),
   auto_release: t('Released automatically after the review window'), report_issue: t('You reported an issue'), resolve: t('Corrected proof sent'), make_good: t('Make-good agreed'),
   partial_refund: t('Partial refund agreed'), escalate: t('Escalated to Nashr'), release: t('Nashr released the payment'), refund: t('Refunded'), paid_out: t('Publisher paid'),
@@ -82,7 +83,7 @@ function Tracker({ status, timeline }: { status: string; timeline: { at: string;
 export function BookingPage({ id }: { id: string }) {
   const [d, setD] = useState<Detail | null>(null), [card, setCard] = useState(CARDS[0][0])
   const [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
-  const [issue, setIssue] = useState<null | { reason: string; note: string }>(null)
+  const [issue, setIssue] = useState<null | { reason: string; note: string }>(null), [withdrawing, setWithdrawing] = useState(false)
   const [terms, setTerms] = useState<null | { allowed: boolean; reason?: string; free?: boolean; paid?: number; publisherKeeps?: number; processing?: number; refund?: number }>(null)
   const load = () => api<Detail>(`/deals/${id}`).then(setD, e => setError(e.message))
   useEffect(() => { load() }, [id])
@@ -106,6 +107,7 @@ export function BookingPage({ id }: { id: string }) {
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   if (!d) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
+  const order = d.documents.find(x => x.type === 'order')
   return (
     <main className="booking">
       <p className="small"><a href="/bookings">{t(t("Bookings"))}</a> {isAr ? '‹' : '›'} {t('Order {ref}', { ref: d.ref })}</p>
@@ -169,6 +171,8 @@ export function BookingPage({ id }: { id: string }) {
 
 
 
+      {!['not_selected'].includes(d.status) && <div className="section"><Thread dealId={d.id} other={d.outlet} compact side="buyer" /></div>}
+
       <section className="card pad section">
         <h2>{t("Timeline")}</h2>
         <ol className="timeline">{d.timeline.map((e, i) => <li key={i}><span className="small muted num">{full(e.at)}</span><span>{EVENT[e.event] ?? e.event.replace(/_/g, ' ')}</span></li>)}</ol>
@@ -188,6 +192,13 @@ export function BookingPage({ id }: { id: string }) {
           <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>{t('Pay {amount}', { amount: money(d.total, d.currency) })}</button>
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">{t("Waiting for the publisher's decision. You'll be asked to pay once they accept.")}</p>}
+        {d.status === 'awaiting_publisher' && d.kind === 'buy_now' && (!withdrawing
+          ? <button className="btn" disabled={busy} onClick={() => setWithdrawing(true)}>{t('Withdraw request…')}</button>
+          : <div className="form confirm-box"><p>{t('Withdraw your buy-now request? The slot stays on sale, and you can bid or ask again.')}</p>
+            <div className="row-flex"><button className="btn primary" disabled={busy} onClick={async () => { await act(`/deals/${d.id}/withdraw`, {}, t('Request withdrawn.')); setWithdrawing(false) }}>{t('Withdraw request')}</button>
+              <button className="btn" onClick={() => setWithdrawing(false)}>{t('Keep the request')}</button></div></div>)}
+        {order && <a className="btn order-link" href={`/documents/${order.id}`}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" /></svg>
+          {t('View order {ref}', { ref: d.ref })}</a>}
         {d.reason && ['not_selected', 'lapsed', 'cancelled', 'refunded'].includes(d.status) && <p className="muted">{t('Reason: {reason}', { reason: tm(d.reason) })}</p>}
         {d.status === 'payment_secured' && !terms && <button className="btn" disabled={busy} onClick={() => api(`/deals/${d.id}/cancel-preview`).then(setTerms, e => setError(e.message))}>{t("Cancel booking…")}</button>}
         {terms && d.status === 'payment_secured' && (!terms.allowed ? <p className="warn">{tm(terms.reason)}</p> : <div className="form">
@@ -205,7 +216,7 @@ export function BookingPage({ id }: { id: string }) {
       </div>
 
       {d.documents.length > 0 && <section className="card pad section">
-        <h2>{t("Receipts and invoices")}</h2>
+        <h2>{t("Order, receipts and invoices")}</h2>
         <ul className="timeline">{d.documents.map(x => <li key={x.id}><span className="num small">{x.number}</span>
           <span><a href={`/documents/${x.id}`}>{DOC_TYPE[x.type]}</a> · <span className="num">{money(x.total, x.currency)}</span></span></li>)}</ul>
       </section>}

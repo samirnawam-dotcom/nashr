@@ -33,8 +33,18 @@ async function paidDeal(label = 'Break 2', placement = p.placement) {
   return d.id as string
 }
 const docs = async (dealId?: string) => (await pool.query(
-  `select type, number, issuer_id, on_behalf, tax_document, subtotal, vat, total, lines from documents where $1::uuid is null or deal_id = $1 order by issued_at, ctid`,
+  `select type, number, issuer_id, on_behalf, tax_document, subtotal, vat, total, lines from documents where ($1::uuid is null or deal_id = $1) and type <> 'order' order by issued_at, ctid`,
   [dealId ?? null])).rows
+
+test('on acceptance: the Order, from Nashr to the buyer, numbered as the order and not a tax document', async () => {
+  const id = await paidDeal()
+  const order = (await pool.query(`select x.type, x.number, x.issuer_id, x.recipient_id, x.tax_document, x.subtotal, x.vat, x.total, x.lines, d.ref, d.buyer_id
+    from documents x join deals d on d.id = x.deal_id where x.deal_id = $1 and x.type = 'order'`, [id])).rows
+  expect(order).toHaveLength(1)
+  expect(order[0]).toMatchObject({ number: order[0].ref, issuer_id: null, recipient_id: order[0].buyer_id, tax_document: false,
+    subtotal: AED(76_000), vat: AED(3_800), total: AED(79_800) })
+  expect(order[0].lines.note).toMatch('not a tax invoice')
+})
 
 test('on payment: a receipt from Nashr and the publisher\'s tax invoice, issued on its behalf with both TRNs', async () => {
   const id = await paidDeal()

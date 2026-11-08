@@ -7,13 +7,14 @@ import { MarketError } from '../marketplace/market.js'
 /*
  * Documents per the owner's invoice plan (SPEC 11.2 as changed in 12.1). Stored as structured data first; a PDF is a
  * rendering of a row, never the record. Rows are never changed: corrections are credit notes.
+ *   order               Nashr → buyer       the confirmed booking, when the publisher accepts; the publisher sees it too (not a tax document)
  *   receipt             Nashr → buyer       payment received on the publisher's behalf (not a tax document)
  *   media_invoice       publisher → buyer   the publisher's tax invoice for the media: generated in its name and TRN, or uploaded
  *   commission_invoice  Nashr → publisher   Nashr's fee (+ VAT once Nashr is VAT-registered), paid by deduction from the payout
  *   credit_note         issuer → recipient  cancels (part of) an invoice
  */
 
-const PREFIX: Record<string, string> = { receipt: 'RCT', media_invoice: 'INV', commission_invoice: 'NCI', credit_note: 'CN' }
+const PREFIX: Record<string, string> = { order: 'ORD', receipt: 'RCT', media_invoice: 'INV', commission_invoice: 'NCI', credit_note: 'CN' }
 
 /** Gapless sequence per document type, issuer and year: the series row lock serialises numbering. */
 async function nextNumber(db: Db, type: string, issuerId: string | null, at: Date) {
@@ -46,6 +47,16 @@ async function issue(db: Db, d: Doc, at: Date) {
 const describe = (db: Db, dealId: string) => one(db,
   `select d.*, s.label, s.air_date::text air_date, o.name outlet, c.invoice_mode from deals d join slots s on s.id = d.slot_id
    join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies c on c.id = d.seller_id where d.id = $1`, [dealId])
+
+/** The Order: what was agreed, for both sides, when the publisher accepts. Prices excl. VAT, plus the media VAT the buyer will pay. */
+export async function issueOrder(db: Db, dealId: string, at: Date) {
+  const d = await describe(db, dealId)
+  const s = split(d.amount, { commissionBp: 0, mediaVatBp: d.media_vat_bp ?? 0, feeVatBp: 0 })
+  return issue(db, { type: 'order', issuerId: null, recipientId: d.buyer_id, dealId, tax: false, currency: d.currency, subtotal: d.amount,
+    vatBp: d.media_vat_bp ?? 0, vat: s.mediaVat, number: d.ref,
+    items: [{ description: `${d.outlet} · ${d.label} · ${d.air_date}`, quantity: 1, unitPrice: d.amount }],
+    note: "Booking confirmed by the publisher, arranged by Nashr as the publisher's agent. Pay by the deadline to secure the slot. This is not a tax invoice." }, at)
+}
 
 export async function issueReceipt(db: Db, dealId: string, amount: number, paymentRef: string, at: Date) {
   const d = await describe(db, dealId)
@@ -101,13 +112,28 @@ export async function reissueAfterRefund(db: Db, dealId: string, keptPrice: numb
 }
 
 /** Monthly payout statement for a publisher (CSV, not a tax document). */
-export async function payoutStatement(db: Db, sellerId: string, month: string) {
-  const acct = `seller_payable:${sellerId}`
+/** A publisher's month (SPEC 11.2 #6, not a tax document): what was released to it, paid to its bank and deducted, with the balance before and after. */
+export async function statement(db: Db, sellerId: string, month: string) {
+  const acct = `seller_payable:${sellerId}`, first = `${month}-01`
+  const opening = (await db.query(`select coalesce(sum(case when credit = $1 then amount else -amount end), 0)::bigint n from ledger_entries
+    where (debit = $1 or credit = $1) and (at at time zone 'Asia/Dubai') < $2::date`, [acct, first])).rows[0].n
   const { rows } = await db.query(
-    `select l.at, d.ref, l.debit, l.credit, l.amount, l.currency from ledger_entries l left join deals d on d.id = l.deal_id
+    `select l.at, d.ref, d.id deal_id, o.name outlet, s.label, l.debit, l.credit, l.amount, l.currency from ledger_entries l left join deals d on d.id = l.deal_id
+     left join slots s on s.id = d.slot_id left join placements p on p.id = s.placement_id left join outlets o on o.id = p.outlet_id
      where (l.debit = $1 or l.credit = $1) and to_char(l.at at time zone 'Asia/Dubai', 'YYYY-MM') = $2 order by l.id`, [acct, month])
-  const kind = (r: any) => r.credit === acct ? 'Released to you' : r.credit === 'cash' ? 'Paid to your bank account' : 'Deducted (refund costs)'
+  const kind = (r: any) => r.credit === acct ? 'released' : r.credit === 'cash' ? 'paid' : 'deducted'
+  const lines = rows.map(r => ({ at: r.at, ref: r.ref as string | null, dealId: r.deal_id as string | null, what: r.outlet ? `${r.outlet} · ${r.label}` : null,
+    kind: kind(r), amount: r.credit === acct ? Number(r.amount) : -Number(r.amount), currency: r.currency as string }))
+  const total = (k: string) => lines.filter(l => l.kind === k).reduce((n, l) => n + l.amount, 0)
+  const company = await one(db, `select name, trn from companies where id = $1`, [sellerId])
+  return { month, company: { name: company.name, trn: company.trn }, issuer: await setting(db, 'nashr_legal_name', new Date()), opening: Number(opening),
+    released: total('released'), paid: total('paid'), deducted: total('deducted'), closing: Number(opening) + lines.reduce((n, l) => n + l.amount, 0), lines }
+}
+
+export async function payoutStatement(db: Db, sellerId: string, month: string) {
+  const st = await statement(db, sellerId, month)
+  const label = { released: 'Released to you', paid: 'Paid to your bank account', deducted: 'Deducted (refund costs)' } as Record<string, string>
   const money = (n: number) => (n / 100).toFixed(2)
   return ['Date,Order,Type,Amount,Currency',
-    ...rows.map(r => [r.at.toISOString().slice(0, 10), r.ref ?? '', kind(r), money(r.credit === acct ? r.amount : -r.amount), r.currency].join(','))].join('\n')
+    ...st.lines.map(l => [l.at.toISOString().slice(0, 10), l.ref ?? '', label[l.kind], money(l.amount), l.currency].join(','))].join('\n')
 }

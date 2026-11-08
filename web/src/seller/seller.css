@@ -37,3 +37,26 @@
 @media (max-width: 900px) { .dash-cols { grid-template-columns: 1fr; } }
 
 }
+/* Week view: days across, hours down (Google Calendar's layout). Chips keep the programme view's status colours. */
+.wk { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.wk-inner { min-width: 860px; }
+.wk-head, .wk-allday { display: grid; grid-template-columns: 64px repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+.wk-allday { max-height: 260px; overflow-y: auto; }
+.wk-head span { padding: 10px 8px; font-size: 13px; font-weight: 600; color: var(--slate); border-inline-start: 1px solid var(--line); }
+.wk-head span:first-child { border: 0; }
+.wk-head span.today { color: var(--teal); }
+.wk-allday > span { padding: 8px 6px; align-self: center; }
+.wk-allday > div { padding: 4px; border-inline-start: 1px solid var(--line); display: grid; gap: 4px; align-content: start; }
+.wk-body { position: relative; display: grid; grid-template-columns: 64px repeat(7, minmax(0, 1fr));
+  background-image: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour)); }
+.wk-hours { position: relative; }
+.wk-hours span { position: absolute; inset-inline-end: 8px; transform: translateY(-50%); font-size: 11px; color: var(--faint); }
+.wk-hours span:first-child { transform: none; }
+.wk-day { position: relative; border-inline-start: 1px solid var(--line); }
+.wk-day.today { background: rgba(15, 107, 107, .035); }
+.wk-ev { display: grid; align-content: start; gap: 0; overflow: hidden; font-size: 11.5px; line-height: 1.25; padding: 2px 6px; margin: 0; text-align: start; }
+.wk-l1, .wk-l2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-allday .wk-ev { padding: 4px 6px; }
+.wk-day .wk-ev { position: absolute; }
+.wk-ev:focus-visible { box-shadow: var(--focus); z-index: 2; }
+.wk-ev:hover { z-index: 2; box-shadow: var(--shadow-2); }

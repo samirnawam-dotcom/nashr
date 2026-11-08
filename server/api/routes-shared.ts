@@ -41,14 +41,14 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
   const ALL: ['buyer', 'seller', 'admin'] = ['buyer', 'seller', 'admin']
   route('GET', '/api/documents', ['buyer', 'seller'], async ({ db, me }) =>
     (await db.query(`select x.id, x.type, x.number, x.total, x.currency, x.issued_at, x.deal_id, d.ref from documents x left join deals d on d.id = x.deal_id
-                     where $1 in (x.recipient_id, x.issuer_id) order by x.issued_at desc limit 500`, [me.actAs.companyId])).rows
+                     where $1 in (x.recipient_id, x.issuer_id) or (x.type = 'order' and d.seller_id = $1) order by x.issued_at desc limit 500`, [me.actAs.companyId])).rows
       .map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at, dealId: x.deal_id, dealRef: x.ref })))
 
   route('GET', '/api/documents/:id', ALL, async ({ db, me }, req) => {
     const staff = ['admin', 'founder'].includes(me.actAs.role)
     const x = (await db.query(`select x.*, d.ref, r.number related_number from documents x left join deals d on d.id = x.deal_id
                                left join documents r on r.id = x.related_id
-                               where x.id = $1 and ($3 or $2 in (x.recipient_id, x.issuer_id))`, [req.params.id, me.actAs.companyId, staff])).rows[0]
+                               where x.id = $1 and ($3 or $2 in (x.recipient_id, x.issuer_id) or (x.type = 'order' and d.seller_id = $2))`, [req.params.id, me.actAs.companyId, staff])).rows[0]
     if (!x) throw new NotFound()
     const party = (p: any) => ({ name: p.name, trn: p.trn ?? null })
     return { id: x.id, type: x.type, number: x.number, dealRef: x.ref, relatedNumber: x.related_number, onBehalf: x.on_behalf, taxDocument: x.tax_document,

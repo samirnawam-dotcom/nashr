@@ -32,6 +32,7 @@ const TEXT: Record<string, (n: N) => string> = {
     partial_refund: t('Nashr decided the dispute: a partial refund to the buyer.'), make_good: t('Nashr decided the dispute: the ad runs again.') } as Record<string, string>)[n.data?.outcome] ?? t('Nashr decided the dispute.'),
   'prerun.confirm_final_version': () => t('Confirm the final version before air.'),
   'prerun.confirm_slot_and_creative': () => t('Confirm the slot and creative before air.'),
+  'message.new': n => n.data?.from === 'seller' ? t('New message from the publisher.') : t('New message from the buyer.'),
   'search.match': n => t(n.data?.count === 1 ? '1 new slot matches your search “{name}”.' : '{n} new slots match your search “{name}”.', { n: n.data?.count ?? '', name: n.data?.name ?? '' }),
   'access.requested': n => t('{company} requested access.', { company: n.data?.company ?? t('Someone') }),
   'quote.requested': n => t('Quote requested for {outlet}.', { outlet: n.data?.outlet ?? t('an outlet') }),
@@ -59,7 +60,7 @@ export function Bell({ role }: { role: string }) {
       {open && <div className="card bell-pop" role="menu">
         {!data.items.length && <p className="muted small">{t('Nothing yet.')}</p>}
         {data.items.map(n => { const text = (TEXT[n.kind] ?? (() => n.kind))(n)
-          const href = n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
+          const href = n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'bid.outbid' ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
           return <a key={n.id} href={href} className={n.read ? '' : 'unread'} onClick={() => setOpen(false)} role="menuitem">
             <div>{text}</div><div className="small muted">{n.dealRef ? `${n.dealRef} · ` : ''}{new Date(n.at).toLocaleString(locale, { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></a> })}
       </div>}

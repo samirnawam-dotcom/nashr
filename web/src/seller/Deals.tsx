@@ -7,6 +7,7 @@ import { PhotoBand } from '../PhotoBand'
 import { Stars } from '../Stars'
 import { ltr, sep, t } from '../i18n'
 import { tm } from '../i18n-server'
+import { Thread } from '../messages/Thread'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
   brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
@@ -46,7 +47,7 @@ export function SellerDealsPage() {
   )
 }
 
-const EVENT: Record<string, string> = { opened: 'Request received', accept: 'You accepted', decline: 'You declined', expire: 'Expired without a decision', supersede: 'Another request was accepted',
+const EVENT: Record<string, string> = { opened: 'Request received', withdraw: 'The buyer withdrew the request', accept: 'You accepted', decline: 'You declined', expire: 'Expired without a decision', supersede: 'Another request was accepted',
   pay: 'Buyer paid', lapse: 'Buyer did not pay in time', submit_proof: 'You sent proof', approve: 'Buyer approved', auto_release: 'Released automatically', report_issue: 'Buyer reported an issue',
   resolve: 'Corrected proof accepted', make_good: 'Make-good agreed', partial_refund: 'Partial refund agreed', escalate: 'Escalated to Nashr', release: 'Nashr released', refund: 'Refunded',
   paid_out: 'Paid to your bank', cancel_by_buyer: 'Buyer cancelled', cancel_by_seller: 'You cancelled', creative_missed: 'Released: creative not received', proof_missed: 'Refunded: proof not sent in time' }
@@ -187,6 +188,8 @@ export function SellerDealPage({ id }: { id: string }) {
 
       {x.documents.length > 0 && <section className="card pad section"><h2>{t("Documents")}</h2>
         <ul className="timeline">{x.documents.map(doc => <li key={doc.id}><span className="num small">{doc.number}</span><span><a href={`/documents/${doc.id}`}>{DOC_TYPE[doc.type]}</a> · {money(doc.total, doc.currency)}</span></li>)}</ul></section>}
+
+      {!['declined', 'lapsed'].includes(d.status) && <div className="section"><Thread dealId={d.id} other={d.buyer.company} compact side="seller" /></div>}
 
       <section className="card pad section"><h2>{t("Timeline")}</h2>
         <ol className="timeline">{x.timeline.map((e, i) => <li key={i}><span className="small muted num">{when(e.at)}</span><span>{t(EVENT[e.event] ?? e.event)}{e.note && <span className="muted"> · {tm(e.note)}</span>}</span></li>)}</ol></section>

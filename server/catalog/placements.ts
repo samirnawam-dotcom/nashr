@@ -101,3 +101,34 @@ export async function generateSlots(db: Db, placementId: string, fromDate: strin
   }
   return made
 }
+
+export type PlacementEdit = Pick<PlacementInput, 'name' | 'startingPrice' | 'anyBreakPrice' | 'packagePrice' | 'buyNowPrice' | 'reservePrice' | 'autoAccept'
+  | 'creativeLeadHours' | 'closeLeadHours'>
+
+/**
+ * Change a placement's name, prices, auto-accept and deadlines. Future slots nobody has bid on take the new terms at once;
+ * a slot with a bid keeps the terms the buyer bid on (brief section 15). Days, times and breaks stay as they are: those make new slots.
+ */
+export async function updatePlacement(db: Db, placementId: string, sellerId: string, e: PlacementEdit, actor: string, at: Date) {
+  const p = (await db.query(`select p.* from placements p join outlets o on o.id = p.outlet_id where p.id = $1 and o.company_id = $2 for update`, [placementId, sellerId])).rows[0]
+  if (!p) throw new MarketError('This placement is not yours.')
+  await checkDeadlines(db, e, at)
+  if (e.reservePrice && e.buyNowPrice && e.reservePrice > e.buyNowPrice) throw new MarketError('The reserve cannot be above the buy-now price.')
+  if (e.autoAccept && !e.reservePrice) throw new MarketError('Set a reserve price to accept bids automatically.')
+  await db.query(`update placements set name = $2, starting_price = $3, any_break_price = $4, package_price = $5, buy_now_price = $6, reserve_price = $7,
+      auto_accept = $8, creative_lead_hours = $9, close_lead_hours = $10 where id = $1`,
+    [p.id, e.name, e.startingPrice, e.anyBreakPrice ?? null, e.packagePrice ?? null, e.buyNowPrice ?? null, e.reservePrice ?? null, e.autoAccept ?? false,
+     e.creativeLeadHours, e.closeLeadHours])
+  // Only open, unbid, future slots change; their closing time must still be ahead of now.
+  const r = await db.query(`update slots s set
+      starting_price = case s.kind when 'any' then coalesce($2::bigint, s.starting_price) when 'package' then coalesce($3::bigint, s.starting_price) else $4::bigint end,
+      buy_now_price = case when s.kind = 'single' then $5::bigint end, reserve_price = case when s.kind = 'single' then $6::bigint end,
+      auto_accept = $7::boolean, closes_at = s.starts_at - make_interval(hours => $8::int), creative_due_at = s.starts_at - make_interval(hours => $9::int),
+      label = case when s.kind = 'single' and jsonb_array_length($11::jsonb) = 0 then $12::text else s.label end
+    where s.placement_id = $1 and s.status = 'open' and s.starts_at - make_interval(hours => $8::int) > $10::timestamptz
+      and not exists (select 1 from bids b where b.slot_id = s.id)`,
+    [p.id, e.anyBreakPrice ?? null, e.packagePrice ?? null, e.startingPrice, e.buyNowPrice ?? null, e.reservePrice ?? null, e.autoAccept ?? false,
+     e.closeLeadHours, e.creativeLeadHours, at, JSON.stringify(p.breaks ?? []), e.name])
+  await audit(db, actor, 'placement.updated', 'placement', p.id, { ...e, slotsUpdated: r.rowCount }, at)
+  return { slotsUpdated: r.rowCount ?? 0 }
+}

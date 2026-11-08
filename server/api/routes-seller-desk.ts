@@ -9,9 +9,9 @@ import { generateSlots } from '../catalog/placements.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
 import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
 import { REJECT_REASONS } from '../fulfilment/creative.js'
-import { uploadMediaInvoice, payoutStatement } from '../documents/documents.js'
+import { uploadMediaInvoice, payoutStatement, statement } from '../documents/documents.js'
 import { containsContactDetails } from '../core/contact.js'
-import { coverUrl } from './routes-covers.js'
+import { coverUrl, logoUrl } from './routes-covers.js'
 
 const SELLER: ['seller'] = ['seller']
 const HELD = `('secured', 'in_review', 'issue_open', 'disputed')`
@@ -112,7 +112,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
       q(`select reason, note, evidence, offer, status, opened_at from issues where deal_id = $1 order by opened_at desc limit 1`),
       q(`select requested_at, seller_confirmed_at from prerun_checks where deal_id = $1`),
       q(`select id, type, number, total, currency, issued_at from documents where deal_id = $1 and (issuer_id = (select seller_id from deals where id = $1)
-           or recipient_id = (select seller_id from deals where id = $1) or (type = 'media_invoice' and on_behalf)) order by issued_at`),
+           or recipient_id = (select seller_id from deals where id = $1) or (type = 'media_invoice' and on_behalf) or type = 'order') order by issued_at`),
     ])
     const p = proofs[0], i = issues[0]
     return {
@@ -173,23 +173,43 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     return reply.type('text/csv').header('content-disposition', `attachment; filename="nashr-statement-${req.params.month}.csv"`)
       .send(await payoutStatement(db, me.actAs.companyId, req.params.month))
   })
+  route('GET', '/api/seller/statements/:month', SELLER, async ({ db, me }, req) => {
+    if (!/^\d{4}-\d{2}$/.test(req.params.month)) throw new NotFound()
+    return statement(db, me.actAs.companyId, req.params.month)
+  })
+
+  // The rate card the publisher shares at onboarding (SPEC 12.1): any file it uploaded; the Nashr team reads it on the account page.
+  route('PUT', '/api/seller/rate-card', SELLER, async ({ db, at, me }, req) => {
+    const f = (await db.query(`select id, name from files where id = $1 and company_id = $2`, [req.body.fileId, me.actAs.companyId])).rows[0]
+    if (!f) throw new MarketError('Upload the file first.')
+    await db.query(`update companies set rate_card_file = $2 where id = $1`, [me.actAs.companyId, f.id])
+    await audit(db, `seller:${me.actAs.companyId}`, 'company.rate_card_set', 'company', me.actAs.companyId, { file: f.id }, at)
+    return { fileId: f.id, name: f.name }
+  }, { type: 'object', required: ['fileId'], additionalProperties: false, properties: { fileId: { type: 'string', format: 'uuid' } } })
+  route('DELETE', '/api/seller/rate-card', SELLER, async ({ db, at, me }) => {
+    await db.query(`update companies set rate_card_file = null where id = $1`, [me.actAs.companyId])
+    await audit(db, `seller:${me.actAs.companyId}`, 'company.rate_card_removed', 'company', me.actAs.companyId, null, at)
+    return { ok: true }
+  })
 
   // Listings and profile.
   route('GET', '/api/seller/profile', SELLER, async ({ db, me }) => {
-    const c = (await db.query(`select name, trn, vat_registered, invoice_mode, payouts_enabled from companies where id = $1`, [me.actAs.companyId])).rows[0]
+    const c = (await db.query(`select c.name, c.trn, c.vat_registered, c.invoice_mode, c.payouts_enabled, f.id rate_card_id, f.name rate_card_name
+      from companies c left join files f on f.id = c.rate_card_file where c.id = $1`, [me.actAs.companyId])).rows[0]
     const outlets = (await db.query(`select * from outlets where company_id = $1 order by name`, [me.actAs.companyId])).rows
     const placements = (await db.query(`select p.*, o.name outlet,
         (select count(*)::int from slots s where s.placement_id = p.id and s.status = 'open' and s.starts_at > now()) open_slots,
         (select max(s.air_date)::text from slots s where s.placement_id = p.id) listed_until
         from placements p join outlets o on o.id = p.outlet_id where o.company_id = $1 order by p.archived, o.name, p.name`, [me.actAs.companyId])).rows
     return {
-      company: { name: c.name, trn: c.trn, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled },
+      company: { name: c.name, trn: c.trn, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled,
+        rateCard: c.rate_card_id ? { fileId: c.rate_card_id, name: c.rate_card_name } : null },
       outlets: outlets.map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, description: o.description,
-        website: o.website, audience: o.audience, coverUrl: coverUrl(o) })),
+        website: o.website, audience: o.audience, coverUrl: coverUrl(o), logoUrl: logoUrl(o) })),
       placements: placements.map(p => ({ id: p.id, outlet: p.outlet, outletId: p.outlet_id, name: p.name, saleType: p.sale_type, days: p.days,
         startsAt: p.starts_at_local, endsAt: p.ends_at_local, breaks: p.breaks, startingPrice: p.starting_price, anyBreakPrice: p.any_break_price,
         packagePrice: p.package_price, buyNowPrice: p.buy_now_price, reservePrice: p.reserve_price, creativeLeadHours: p.creative_lead_hours,
-        closeLeadHours: p.close_lead_hours, archived: p.archived, openSlots: p.open_slots, listedUntil: p.listed_until })),
+        closeLeadHours: p.close_lead_hours, autoAccept: p.auto_accept, archived: p.archived, openSlots: p.open_slots, listedUntil: p.listed_until })),
     }
   })
 

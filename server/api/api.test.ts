@@ -202,7 +202,7 @@ test('a booking end to end through the API: request, accept, pay; fees frozen fr
   expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json()).toMatchObject({ status: 'succeeded' })
   expect((await call(buyerA, 'GET', `/api/deals/${deal}`)).json().status).toBe('payment_secured')
   const docs = (await pool.query(`select type from documents where deal_id = $1 order by ctid`, [deal])).rows.map(r => r.type)
-  expect(docs).toEqual(['receipt', 'media_invoice'])
+  expect(docs).toEqual(['order', 'receipt', 'media_invoice'])
 })
 
 describe('buyer screens', () => {
@@ -262,8 +262,8 @@ describe('buyer screens', () => {
     expect(page).toMatchObject({ status: 'payment_secured', channel: 'radio', creatives: [{ version: 1, status: 'pending', fileId: f.id }],
       timeline: [{ event: 'opened' }, { event: 'accept' }, { event: 'pay' }], proof: null })
     expect(JSON.stringify(page.timeline)).not.toMatch(/seller:|buyer:/)
-    expect(page.documents.map((d: any) => d.type)).toEqual(['receipt', 'media_invoice'])
-    const inv = (await call(buyerA, 'GET', `/api/documents/${page.documents[1].id}`)).json()
+    expect(page.documents.map((d: any) => d.type)).toEqual(['order', 'receipt', 'media_invoice'])
+    const inv = (await call(buyerA, 'GET', `/api/documents/${page.documents[2].id}`)).json()
     expect(inv).toMatchObject({ type: 'media_invoice', onBehalf: true, taxDocument: true, issuer: { name: 'Skyline FM' }, total: AED(5_775) })
     expect((await call(buyerB, 'GET', `/api/documents/${inv.id}`)).statusCode).toBe(404)
   })
@@ -810,5 +810,109 @@ describe('Stripe (task B5) against an in-memory Stripe', () => {
   test('the webhook is off without a secret, and the fake provider keeps its test cards', async () => {
     expect((await app.inject({ method: 'POST', url: '/api/stripe/webhook', payload: '{}', headers: { 'content-type': 'application/json' } })).statusCode).toBe(404)
     expect((await call(null, 'GET', '/api/config')).json()).toEqual({ stripePublishableKey: null })
+  })
+})
+
+describe('messages between buyer and publisher', () => {
+  test('both sides talk once the booking is paid, until the deal is finished; contact details are refused, off-platform wording is flagged, outsiders see nothing', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    const url = `/api/deals/${deal.id}/messages`
+    // Owner rule (no side agreements): nothing before payment, not even after the publisher accepts
+    expect((await call(buyerA, 'POST', url, { body: 'Hello?' })).json().error).toMatch('once the booking is paid')
+    expect((await call(buyerA, 'GET', url)).json()).toMatchObject({ open: false, canWrite: false, messages: [] })
+    expect((await call(sellerX, 'POST', `/api/seller/deals/${deal.id}/accept`)).statusCode).toBe(200)
+    expect((await call(sellerX, 'POST', url, { body: 'Thanks for booking' })).json().error).toMatch('once the booking is paid')
+    expect((await call(buyerA, 'POST', `/api/deals/${deal.id}/pay`, { paymentMethod: 'pm_card_4242' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', url, { body: 'Can the spot run after the news?' })).statusCode).toBe(200)
+    // The publisher is told, sees one unread conversation, and opening it marks it read
+    expect((await pool.query(`select count(*)::int n from notifications where company_id = $1 and kind = 'message.new'`, [sellerX.companyId])).rows[0].n).toBe(1)
+    expect((await call(sellerX, 'GET', '/api/messages/unread')).json().count).toBe(1)
+    const list = (await call(sellerX, 'GET', '/api/messages')).json()
+    expect(list[0]).toMatchObject({ dealId: deal.id, with: 'Northwind Fintech', unread: 1, last: { body: 'Can the spot run after the news?', mine: false } })
+    const seen = (await call(sellerX, 'GET', url)).json()
+    expect(seen.messages).toMatchObject([{ mine: false, company: 'Northwind Fintech', body: 'Can the spot run after the news?' }])
+    expect(seen.messages[0].flagged).toBeUndefined() // only the team sees flags
+    expect((await call(sellerX, 'GET', '/api/messages/unread')).json().count).toBe(0)
+    // Contact details never get through, in Latin or Arabic-Indic digits
+    expect((await call(sellerX, 'POST', url, { body: 'Call 050 123 4567' })).json().error).toMatch('not allowed')
+    expect((await call(sellerX, 'POST', url, { body: 'رقمي ٠٥٠١٢٣٤٥٦٧' })).statusCode).toBe(400)
+    expect((await call(sellerX, 'POST', url, { body: 'sara at northwind dot ae' })).statusCode).toBe(400)
+    // Suggesting WhatsApp goes through, flagged for the team
+    expect((await call(sellerX, 'POST', url, { body: 'Yes. Easier on WhatsApp though?' })).statusCode).toBe(200)
+    const team = (await call(admin, 'GET', `/api/admin/deals/${deal.id}/messages`)).json()
+    expect(team.map((m: any) => m.flagged)).toEqual([false, true])
+    // Another buyer or publisher: not found
+    expect((await call(buyerB, 'GET', url)).statusCode).toBe(404)
+    expect((await call(sellerY, 'POST', url, { body: 'hi' })).statusCode).toBe(404)
+    // A finished deal closes the conversation; it stays readable as a record
+    await pool.query(`update deals set status = 'released' where id = $1`, [deal.id])
+    expect((await call(buyerA, 'POST', url, { body: 'One more thing' })).json().error).toMatch('finished')
+    expect((await call(buyerA, 'GET', url)).json()).toMatchObject({ open: true, canWrite: false, messages: [{}, {}] })
+  })
+})
+
+describe('buyer and publisher tools', () => {
+  const PNG = Buffer.concat([Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'), Buffer.alloc(64, 7)])
+  const put = (who: Who, url: string, bytes: Buffer, type: string) =>
+    app.inject({ method: 'PUT', url, payload: bytes, headers: { cookie: who.cookie, 'content-type': type } })
+
+  test('a buyer withdraws an unanswered buy-now request; only that, and only its own', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    expect((await call(buyerB, 'POST', `/api/deals/${deal.id}/withdraw`)).statusCode).toBe(404)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal.id}/withdraw`)).json().status).toBe('cancelled')
+    expect((await pool.query(`select b.status from bids b join deals d on d.bid_id = b.id where d.id = $1`, [deal.id])).rows[0].status).toBe('withdrawn')
+    expect((await call(buyerA, 'POST', `/api/deals/${deal.id}/withdraw`)).json().error).toMatch('Only a buy-now request')
+    // the slot is still on sale, and the buyer may ask again
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).statusCode).toBe(200)
+  })
+
+  test("a buyer keeps its TRN for tax invoices; sees its team; what it's committed to if everything wins", async () => {
+    expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '12345' })).statusCode).toBe(400)
+    expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '100200300400500' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/buyer/company')).json()).toMatchObject({ name: 'Northwind Fintech', trn: '100200300400500', team: [{ email: 'sara@northwind.ae' }] })
+    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    await call(buyerA, 'POST', `/api/slots/${slotY}/buy-now`, { brief: BRIEF })
+    expect((await call(buyerA, 'GET', '/api/buyer/exposure')).json()).toMatchObject({ leading: { count: 1, amount: AED(3_600) },
+      requests: { count: 1, amount: AED(5_500) }, total: AED(9_100) })
+  })
+
+  test('a publisher edits a placement: unbid future slots take the new terms, a slot with a bid keeps its own', async () => {
+    const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+    await tx(c => generateSlots(c, placement, '2026-11-16', 5, now))
+    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    const edit = { name: 'Morning Markets', startingPrice: AED(3_900), buyNowPrice: AED(6_000), reservePrice: AED(4_500), autoAccept: true, creativeLeadHours: 48, closeLeadHours: 120 }
+    expect((await call(sellerY, 'PUT', `/api/seller/placements/${placement}`, edit)).statusCode).toBe(404)
+    expect((await call(sellerX, 'PUT', `/api/seller/placements/${placement}`, { ...edit, closeLeadHours: 48 })).json().error).toMatch('Bidding must close')
+    expect((await call(sellerX, 'PUT', `/api/seller/placements/${placement}`, { ...edit, reservePrice: undefined })).json().error).toMatch('reserve price')
+    const r = (await call(sellerX, 'PUT', `/api/seller/placements/${placement}`, edit)).json()
+    expect(r, JSON.stringify(r)).toHaveProperty('slotsUpdated', 5)
+    const slots = (await pool.query(`select id, starting_price, buy_now_price, reserve_price, auto_accept from slots where placement_id = $1`, [placement])).rows
+    expect(slots.find(s => s.id === slotX)).toMatchObject({ starting_price: AED(3_500), buy_now_price: AED(5_500) })
+    expect(slots.filter(s => s.id !== slotX).every(s => s.starting_price === AED(3_900) && s.reserve_price === AED(4_500) && s.auto_accept)).toBe(true)
+    expect((await call(sellerX, 'GET', '/api/seller/profile')).json().placements[0]).toMatchObject({ startingPrice: AED(3_900), autoAccept: true })
+  })
+
+  test('a publisher uploads a logo and a rate card; visitors see the logo, the team opens the rate card', async () => {
+    const mine = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
+    const { logoUrl } = (await put(sellerX, `/api/seller/outlets/${mine}/logo`, PNG, 'image/png')).json()
+    expect(logoUrl).toMatch(new RegExp(`^/api/outlets/${mine}/logo\\?v=`))
+    expect((await app.inject({ method: 'GET', url: logoUrl })).statusCode).toBe(200)
+    expect((await call(null, 'GET', '/api/directory')).json().find((o: any) => o.id === mine).logoUrl).toBe(logoUrl)
+    expect((await put(sellerY, `/api/seller/outlets/${mine}/logo`, PNG, 'image/png')).statusCode).toBe(404)
+
+    const file = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('%PDF-1.4 rate card'),
+      headers: { cookie: sellerX.cookie, 'content-type': 'application/pdf', 'x-file-name': 'rates.pdf' } })).json()
+    expect((await call(sellerY, 'PUT', '/api/seller/rate-card', { fileId: file.id })).json().error).toMatch('Upload the file first')
+    expect((await call(sellerX, 'PUT', '/api/seller/rate-card', { fileId: file.id })).json()).toMatchObject({ name: 'rates.pdf' })
+    expect((await call(sellerX, 'GET', '/api/seller/profile')).json().company.rateCard).toMatchObject({ fileId: file.id, name: 'rates.pdf' })
+    expect((await call(admin, 'GET', `/api/admin/companies/${sellerX.companyId}`)).json().rateCard).toMatchObject({ fileId: file.id })
+    expect((await call(admin, 'GET', `/api/files/${file.id}`)).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', `/api/files/${file.id}`)).statusCode).toBe(404)
+  })
+
+  test('the monthly payout statement: opening balance, what was released, paid and deducted, closing balance', async () => {
+    const st = (await call(sellerX, 'GET', '/api/seller/statements/2026-11')).json()
+    expect(st).toMatchObject({ month: '2026-11', company: { name: 'Skyline FM' }, opening: 0, closing: 0, lines: [] })
+    expect((await call(sellerX, 'GET', '/api/seller/statements/nope')).statusCode).toBe(404)
   })
 })

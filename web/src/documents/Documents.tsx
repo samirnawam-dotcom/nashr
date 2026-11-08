@@ -8,7 +8,7 @@ import { PhotoBand } from '../PhotoBand'
 import { isAr, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 
-export const DOC_TYPE: Record<string, string> = { receipt: t('Payment receipt'), media_invoice: t('Tax invoice (media)'), commission_invoice: t('Commission invoice'), credit_note: t('Credit note') }
+export const DOC_TYPE: Record<string, string> = { order: t('Order'), receipt: t('Payment receipt'), media_invoice: t('Tax invoice (media)'), commission_invoice: t('Commission invoice'), credit_note: t('Credit note') }
 type Row = { id: string; type: string; number: string; total: number; currency: string; issuedAt: string; dealId: string | null; dealRef: string | null }
 
 export function DocumentsPage() {

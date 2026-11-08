@@ -1,8 +1,9 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { buyerDeal, buyerSlot } from './shapes.js'
-import { placeBid, requestBuyNow, showInterest } from '../marketplace/market.js'
+import { placeBid, requestBuyNow, showInterest, withdrawBuyNow } from '../marketplace/market.js'
 import { minNextBid } from '../core/money.js'
+import { audit } from '../core/audit.js'
 import { setting } from '../core/settings.js'
 import { approve, buyerCancelTerms, cancelByBuyer, confirmPayment } from '../payments/payments.js'
 import { reportIssue, respondToOffer } from '../fulfilment/issues.js'
@@ -70,6 +71,32 @@ export function buyerRoutes(route: RouteFn) {
   route('POST', '/api/slots/:id/buy-now', BUYER, async ({ db, at, me }, req) =>
     buyerDeal(await requestBuyNow(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)),
     { type: 'object', additionalProperties: false, properties: { brief, campaignId } })
+
+  // What the buyer would owe if every bid it leads wins and every request is accepted (SPEC G13: a warning, never a block).
+  route('GET', '/api/buyer/exposure', BUYER, async ({ db, me }) => {
+    const b = me.actAs.companyId
+    const leading = (await db.query(`select count(*)::int n, coalesce(sum(top_amount), 0)::bigint amount from slots
+      where top_buyer_id = $1 and status = 'open'`, [b])).rows[0]
+    const requests = (await db.query(`select count(*)::int n, coalesce(sum(amount), 0)::bigint amount from deals where buyer_id = $1 and status = 'awaiting_seller'`, [b])).rows[0]
+    const toPay = (await db.query(`select count(*)::int n, coalesce(sum(amount), 0)::bigint amount from deals where buyer_id = $1 and status = 'awaiting_payment'`, [b])).rows[0]
+    return { leading: { count: leading.n, amount: Number(leading.amount) }, requests: { count: requests.n, amount: Number(requests.amount) },
+      toPay: { count: toPay.n, amount: Number(toPay.amount) }, total: Number(leading.amount) + Number(requests.amount) + Number(toPay.amount) }
+  })
+
+  route('POST', '/api/deals/:id/withdraw', BUYER, async ({ db, at, me }, req) =>
+    buyerDeal(await withdrawBuyNow(db, req.params.id, me.actAs.companyId, at)))
+
+  // The buyer's company: its name and TRN go on the receipts and tax invoices it receives (SPEC 11.2: TRN at onboarding).
+  route('GET', '/api/buyer/company', BUYER, async ({ db, me }) => {
+    const c = (await db.query(`select name, trn from companies where id = $1`, [me.actAs.companyId])).rows[0]
+    const team = (await db.query(`select name, email, status, created_at from users where company_id = $1 order by created_at`, [me.actAs.companyId])).rows
+    return { name: c.name, trn: c.trn, team: team.map(u => ({ name: u.name, email: u.email, status: u.status, since: u.created_at })) }
+  })
+  route('PUT', '/api/buyer/company', BUYER, async ({ db, at, me }, req) => {
+    await db.query(`update companies set trn = $2 where id = $1`, [me.actAs.companyId, req.body.trn || null])
+    await audit(db, `buyer:${me.actAs.companyId}`, 'company.tax_updated', 'company', me.actAs.companyId, { trn: req.body.trn || null }, at)
+    return { ok: true }
+  }, { type: 'object', required: ['trn'], additionalProperties: false, properties: { trn: { type: 'string', pattern: '^(\\d{15})?$' } } })
 
   route('POST', '/api/slots/:id/interest', BUYER, async ({ db, at, me }, req) => {
     const b = await showInterest(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body?.amount, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)

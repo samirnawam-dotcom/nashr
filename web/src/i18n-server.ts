@@ -76,6 +76,17 @@ export const SERVER_AR: Record<string, string> = {
   'The buyer did not supply the creative': 'لم يسلّم المشتري المادة الإعلانية', 'Corrected proof': 'إثبات مصحّح', 'card cost kept from refund': 'رسوم البطاقة مقتطعة من الاسترداد',
   'card cost recoverable from seller': 'رسوم البطاقة مستحقة على الناشر', 'deducted from payout': 'مخصومة من التحويل', 'fee {}': 'رسوم {1}',
   // Receipts and invoices
+  '{} · {} · {}': '{1} · {2} · {3}',
+  "Booking confirmed by the publisher, arranged by Nashr as the publisher's agent. Pay by the deadline to secure the slot. This is not a tax invoice.": 'حجز أكّده الناشر، رتّبته نشر بصفتها وكيلًا عن الناشر. ادفع قبل الموعد لتأمين المساحة. هذه ليست فاتورة ضريبية.',
+  // Slot names the server writes for packages
+  'Any break': 'أي فاصل', 'All {} breaks': 'الفواصل الـ{1} كلها',
+  // Withdrawing a request; editing a placement
+  'Only a buy-now request the publisher has not answered can be withdrawn.': 'لا يمكن سحب إلا طلب شراء فوري لم يردّ عليه الناشر.', 'Withdrawn by the buyer': 'سحبه المشتري',
+  'This placement is not yours.': 'هذه المساحة الإعلانية ليست لك.', 'Set a reserve price to accept bids automatically.': 'حدّد سعرًا أدنى لقبول المزايدات تلقائيًا.',
+  'The reserve cannot be above the buy-now price.': 'لا يمكن أن يتجاوز السعر الأدنى سعر الشراء الفوري.',
+  // Messages
+  'Write a message first.': 'اكتب رسالة أولًا.', 'Messages open once the booking is paid.': 'تُفتح الرسائل بعد دفع الحجز.',
+  'This deal is finished, so the conversation is closed.': 'انتهت الصفقة، لذا أُغلقت المحادثة.',
   'Payment for Order {}: {} · {} · {}': 'دفعة الطلب {1}: {2} · {3} · {4}', '{} · {} · {} · Order {}': '{1} · {2} · {3} · الطلب {4}', 'Order {}': 'الطلب {1}', 'Nashr commission ({}%) on Order {}': 'عمولة نشر ({1}%) على الطلب {2}',
   'Credit for invoice {}': 'إشعار دائن للفاتورة {1}', 'Received by Nashr on behalf of {}. This is not a tax invoice.': 'استلمتها نشر نيابة عن {1}. هذه ليست فاتورة ضريبية.',
   'Issued by Nashr on behalf of {}.': 'أصدرتها نشر نيابة عن {1}.', 'Paid by deduction from your payout.': 'سُدّدت بالخصم من تحويلك.',

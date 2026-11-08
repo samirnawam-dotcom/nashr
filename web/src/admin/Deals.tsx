@@ -1,11 +1,13 @@
 import { navigate } from '../nav'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DEAL_STATUS, DealStatus, Loading, date, money, useAct, useLoad, when } from './common'
 import { DOC_TYPE } from '../documents/Documents'
 import { PhotoBand } from '../PhotoBand'
 import { Stars } from '../Stars'
 import { ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
+import { api } from '../api'
+import { Bubbles, type Msg } from '../messages/Thread'
 
 type Row = { id: string; ref: string; status: string; kind: string; amount: number; currency: string; commission_bp: number | null; next_deadline_at: string | null
   created_at: string; buyer: string; seller: string; outlet: string; label: string; starts_at: string }
@@ -50,12 +52,15 @@ const OUTCOMES = [['release', t("Release to the publisher")], ['refund', t("Refu
 export function AdminDealPage({ id }: { id: string }) {
   const { data: d, error, load } = useLoad<File>(`/admin/deals/${id}`)
   const { act, busy, msg } = useAct(load)
+  const [msgs, setMsgs] = useState<Msg[] | null>(null)
+  useEffect(() => { api<Msg[]>(`/admin/deals/${id}/messages`).then(setMsgs, () => {}) }, [id])
   const [tab, setTab] = useState('timeline'), [outcome, setOutcome] = useState(''), [amount, setAmount] = useState('')
   if (!d) return <Loading error={error} />
   // What Nashr actually earned, from the ledger (a partial refund lowers it below the full-price commission).
   const earned = d.ledger.reduce((n, l) => n + (l.credit === 'nashr_revenue' ? l.amount : l.debit === 'nashr_revenue' ? -l.amount : 0), 0)
   const pendingRefunds = d.moneyOps.filter(m => m.kind === 'refund' && m.status === 'pending').reduce((n, m) => n + m.amount, 0)
-  const tabs = [['timeline', t("Timeline")], ['money', t("Money")], ['fulfilment', t("Creative and proof")], ['documents', t("Documents")]]
+  const flagged = msgs?.filter(m => m.flagged).length ?? 0
+  const tabs = [['timeline', t("Timeline")], ['money', t("Money")], ['fulfilment', t("Creative and proof")], ['messages', msgs ? `${t('Messages')} (${msgs.length})` : t('Messages')], ['documents', t("Documents")]]
   return (
     <main className="narrow wide">
       <p className="small"><a href="/deals">{t("Deals")}</a> › {d.ref}</p>
@@ -112,6 +117,10 @@ export function AdminDealPage({ id }: { id: string }) {
         </section>
         {d.brief && <section className="card pad"><h2 style={{ fontSize: 16, marginBottom: 12 }}>{t("Booking brief")}</h2><pre className="json">{JSON.stringify(d.brief, null, 2)}</pre></section>}
       </div>}
+      {tab === 'messages' && <section className="card pad">
+        {flagged > 0 && <p className="warn">{t('{n} flagged: wording that suggests moving the conversation off Nashr. Emails and phone numbers are always refused.', { n: flagged })}</p>}
+        {!msgs?.length ? <p className="muted">{t('No messages on this booking.')}</p> : <div className="thread-list staff-thread"><Bubbles messages={msgs} staff /></div>}
+      </section>}
       {tab === 'documents' && (!d.documents.length ? <p className="muted">{t("No documents yet.")}</p> : <div className="table-wrap card"><table className="table"><tbody>{d.documents.map(x => <tr key={x.id} onClick={() => (navigate(`/documents/${x.id}`))}>
         <td className="num">{x.number}</td><td>{DOC_TYPE[x.type]}</td><td className="r num">{money(x.total)}</td><td className="small num">{when(x.issued_at)}</td></tr>)}</tbody></table></div>)}
     </main>

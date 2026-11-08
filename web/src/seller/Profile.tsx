@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api'
+import { api, upload } from '../api'
 import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
 import { t } from '../i18n'
+import { LogoPicker } from '../LogoPicker'
 
-type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null }
-type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean }; outlets: Outlet[] }
+type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null; logoUrl: string | null }
+type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean; rateCard: { fileId: string; name: string } | null }; outlets: Outlet[] }
 const CHANNELS = [['radio', 'Radio'], ['tv', 'TV'], ['print', 'Print'], ['digital', 'Digital'], ['podcast', 'Podcast']]
 
 export function ProfilePage() {
@@ -36,6 +37,7 @@ export function ProfilePage() {
           <option value="generate">{t("Nashr issues them in our name and TRN")}</option><option value="upload">{t("We upload our own")}</option></select></div>
         <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy} onClick={() => act('PUT', '/seller/company', { ...tax, trn: tax.trn || undefined }, t("Tax details saved."))}>{t("Save")}</button>
       </section>
+      <RateCard card={p.company.rateCard} onChange={load} />
       {p.outlets.map(o => <OutletForm key={o.id} o={o} busy={busy} onSave={b => act('PUT', `/seller/outlets/${o.id}`, b, t('{name} saved.', { name: o.name }))} />)}
       <OutletForm busy={busy} onSave={b => act('POST', '/seller/outlets', b, t("Outlet added."))} />
     </main>
@@ -53,6 +55,7 @@ function OutletForm({ o, busy, onSave }: { o?: Outlet; busy: boolean; onSave: (b
   const id = o?.id ?? 'new'
   return <section className="card pad section form">
     <h2>{o ? o.name : t('New outlet')}</h2>
+    {o && <LogoPicker name={o.name} url={o.logoUrl ?? null} endpoint={`/seller/outlets/${o.id}/logo`} />}
     {o && <CoverPicker url={o.coverUrl ?? null} channel={o.channel} endpoint={`/seller/outlets/${o.id}/cover`} />}
     <div className="grid2">
       <div className="field"><label htmlFor={`n-${id}`}>{t("Name")}</label><input dir="auto" id={`n-${id}`} value={f.name} onChange={set('name')} /></div>
@@ -65,5 +68,30 @@ function OutletForm({ o, busy, onSave }: { o?: Outlet; busy: boolean; onSave: (b
     <div className="field"><label htmlFor={`w-${id}`}>{t("Website")}</label><input dir="auto" id={`w-${id}`} placeholder="https://" value={f.website} onChange={set('website')} /></div>
     <span className="small muted">{t("Buyers see this in the directory. Emails and phone numbers are not allowed.")}</span>
     <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy || !f.name} onClick={() => onSave(body)}>{o ? t("Save") : t('Add outlet')}</button>
+  </section>
+}
+
+/** The rate card the publisher shares with Nashr: any file (PDF, spreadsheet or image), replaceable at any time. Buyers don't see it. */
+function RateCard({ card, onChange }: { card: { fileId: string; name: string } | null; onChange: () => void }) {
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [note, setNote] = useState('')
+  async function pick(file: File) {
+    setBusy(true); setError(''); setNote('')
+    try { const f = await upload(file); await api('/seller/rate-card', { method: 'PUT', body: { fileId: f.id } }); setNote(t('Rate card saved. Nashr uses it to set up your placements.')); onChange() }
+    catch (e: any) { setError(e.message) } finally { setBusy(false) }
+  }
+  async function remove() {
+    setBusy(true); setError(''); setNote('')
+    try { await api('/seller/rate-card', { method: 'DELETE' }); setNote(t('Rate card removed.')); onChange() } catch (e: any) { setError(e.message) } finally { setBusy(false) }
+  }
+  return <section className="card pad section">
+    <h2>{t('Rate card')}</h2>
+    <p className="muted">{t('Share your current rate card so Nashr can help set up your placements and prices. Only Nashr sees it.')}</p>
+    {card ? <div className="file-row"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><path d="M7 3h7l5 5v13H7zM14 3v5h5" /></svg>
+      <a href={`/api/files/${card.fileId}`}><bdi>{card.name}</bdi></a><span className="spacer" />
+      <label className={`btn ${busy ? 'disabled' : ''}`}><input type="file" className="visually-hidden" disabled={busy} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg" onChange={e => e.target.files?.[0] && pick(e.target.files[0])} />{t('Replace')}</label>
+      <button className="btn" disabled={busy} onClick={remove}>{t('Remove')}</button></div>
+    : <label className={`dropzone ${busy ? 'disabled' : ''}`}><input type="file" className="visually-hidden" disabled={busy} accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg" onChange={e => e.target.files?.[0] && pick(e.target.files[0])} />
+        <b>{busy ? t('Uploading…') : t('Upload your rate card')}</b><span className="small muted">{t('PDF, spreadsheet or image')}</span></label>}
+    {error && <p className="error small" role="alert">{error}</p>}{note && <p className="ok small" role="status">{note}</p>}
   </section>
 }

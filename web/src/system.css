@@ -528,3 +528,37 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 .form .row-flex > .field { flex: 1 1 160px; min-width: 0; }
 .field select, .field input, .field textarea { min-width: 0; max-width: 100%; }
 .grid2 > * { min-width: 0; }
+/* A list of people: initials, name and detail. */
+.team { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
+.team li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.team li:last-child { border-bottom: 0; }
+.team li > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.confirm-box { margin-top: 8px; padding: 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+.order-link { display: inline-flex; align-items: center; gap: 8px; justify-self: start; margin-top: 4px; }
+/* An on/off switch: a real checkbox, drawn as a track and knob. */
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track { position: relative; flex: none; width: 40px; height: 24px; border-radius: 999px; background: var(--line-3); transition: background-color .15s var(--ease); }
+.switch-track span { position: absolute; top: 3px; inset-inline-start: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-1); transition: transform .15s var(--ease); }
+.switch input:checked + .switch-track { background: var(--teal); }
+.switch input:checked + .switch-track span { transform: translateX(16px); }
+:root[dir="rtl"] .switch input:checked + .switch-track span { transform: translateX(-16px); }
+.switch input:focus-visible + .switch-track { box-shadow: var(--focus); }
+.switch input:disabled + .switch-track { opacity: .45; }
+.switch:has(input:disabled) { cursor: not-allowed; }
+.grid2 > .span-2 { grid-column: 1 / -1; }
+.auto-accept { padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+/* A short explanation before a form: what will happen when it is saved. */
+.notice { padding: 12px 14px; border-radius: var(--radius); background: var(--teal-1); color: var(--ink); border: 1px solid var(--teal-2); line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .switch-track, .switch-track span { transition: none; } }
+/* Logo picker: the mark as buyers see it, beside what to upload. */
+.logo-picker { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 16px; align-items: center; }
+.logo-picker .logo-img { border-radius: 18px; }
+.logo-picker-body { display: grid; gap: 6px; justify-items: start; }
+.logo-picker-body .error, .logo-picker-body .ok { margin: 0; }
+/* A file the publisher shared, or the place to drop one. */
+.file-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.dropzone { display: grid; gap: 4px; justify-items: center; padding: 22px; border: 1.5px dashed var(--line-3); border-radius: var(--radius-lg); background: var(--surface-2); cursor: pointer; text-align: center; }
+.dropzone:hover { border-color: var(--teal); background: var(--teal-1); }
+.dropzone:focus-within { box-shadow: var(--focus); }
+.dropzone.disabled { opacity: .6; cursor: progress; }

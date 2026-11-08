@@ -6,7 +6,7 @@ import { cancelBySeller, creativeMissed } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
 import { reviewCreative } from '../fulfilment/creative.js'
 import { offerFix } from '../fulfilment/issues.js'
-import { createPlacement, generateSlots, overlapWarnings } from '../catalog/placements.js'
+import { createPlacement, generateSlots, overlapWarnings, updatePlacement } from '../catalog/placements.js'
 import { dealRating } from './routes-ratings.js'
 
 const SELLER: ['seller'] = ['seller']
@@ -115,4 +115,10 @@ export function sellerRoutes(route: RouteFn) {
     const id = await createPlacement(db, req.body, `seller:${me.actAs.companyId}`, at)
     return { id, warnings, slots: req.body.listDays ? await generateSlots(db, id, req.body.listFrom, req.body.listDays, at) : 0 }
   }, PLACEMENT)
+
+  route('PUT', '/api/seller/placements/:id', SELLER, async ({ db, at, me }, req) =>
+    updatePlacement(db, req.params.id, me.actAs.companyId, req.body, `seller:${me.actAs.companyId}`, at),
+  { type: 'object', additionalProperties: false, required: ['name', 'startingPrice', 'creativeLeadHours', 'closeLeadHours'],
+    properties: { name: PLACEMENT.properties.name, startingPrice: price, anyBreakPrice: price, packagePrice: price, buyNowPrice: price, reservePrice: price,
+      autoAccept: { type: 'boolean' }, creativeLeadHours: PLACEMENT.properties.creativeLeadHours, closeLeadHours: PLACEMENT.properties.closeLeadHours } })
 }

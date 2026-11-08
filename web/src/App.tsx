@@ -11,6 +11,8 @@ import { PrivacyPage, RefundsPage, TermsPage } from './Legal'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
 import { LangSwitch, t } from './i18n'
+import { useUnread } from './messages/unread'
+import './messages/messages.css'
 
 
 // Screens behind sign-in load only when opened, so visitors download just the public pages (faster landing page).
@@ -43,6 +45,10 @@ const load_seller_Profile = () => import('./seller/Profile')
 const ProfilePage = L(load_seller_Profile, 'ProfilePage')
 const load_buyer_Dashboard = () => import('./buyer/Dashboard')
 const BuyerDashboard = L(load_buyer_Dashboard, 'BuyerDashboard')
+const MessagesPage = L(() => import('./messages/Messages'), 'MessagesPage')
+const CompanyPage = L(() => import('./buyer/Company'), 'CompanyPage')
+const EditPlacementPage = L(load_seller_Listings, 'EditPlacementPage')
+const StatementPage = L(() => import('./seller/Statement'), 'StatementPage')
 const load_Athena = () => import('./Athena')
 const AthenaPage = L(load_Athena, 'AthenaPage')
 const load_admin_Overview = () => import('./admin/Overview')
@@ -81,6 +87,9 @@ const BUYER: Routes = [
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <DocumentsPage />],
   [/^\/athena/, () => <AthenaPage />],
+  [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="buyer" />],
+  [/^\/messages/, () => <MessagesPage role="buyer" />],
+  [/^\/company/, () => <CompanyPage />],
 ]
 const SELLER: Routes = [
   [/^\/home/, () => <SellerDashboard />],
@@ -89,7 +98,11 @@ const SELLER: Routes = [
   [/^\/slots\/([\w-]+)$/, id => <SlotPage id={id} />],
   [/^\/deals\/([\w-]+)$/, id => <SellerDealPage id={id} />],
   [/^\/deals/, () => <SellerDealsPage />],
+  [/^\/earnings\/statement\/(\d{4}-\d{2})$/, m => <StatementPage month={m} />],
   [/^\/earnings/, () => <EarningsPage />],
+  [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="seller" />],
+  [/^\/messages/, () => <MessagesPage role="seller" />],
+  [/^\/listings\/([\w-]+)\/edit$/, id => <EditPlacementPage id={id} />],
   [/^\/listings\/new$/, () => <NewPlacementPage />],
   [/^\/listings/, () => <ListingsPage />],
   [/^\/profile/, () => <ProfilePage />],
@@ -127,8 +140,11 @@ const NAV: Record<string, string[][]> = {
   admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/sign-in', t('Sign in')]],
-  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/athena', t('Athena')]],
-  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')]],
+  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')]],
+  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/messages', t('Messages')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')]],
+}
+// The phone's bottom bar: the five places people go most.
+const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/schedule', '/inbox', '/deals', '/messages'] 
 }
 
 const ICON: Record<string, string> = {
@@ -138,7 +154,8 @@ const ICON: Record<string, string> = {
   '/directory': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', '/campaigns': 'M5 21V4M5 4h11l-2 4 2 4H5',
   '/bookings': 'M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM10 7v12', '/home': 'M4 11 12 4l8 7M6 10v10h12V10',
   '/': 'M4 11 12 4l8 7M6 10v10h12V10', '/sign-in': 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4',
-  '/inbox': 'M4 13h5l1 3h4l1-3h5M5 5h14l1 8v6H4v-6z', '/deals': 'M5 7h14M5 12h14M5 17h9',
+  '/inbox': 'M4 13h5l1 3h4l1-3h5M5 5h14l1 8v6H4v-6z', '/messages': 'M4 5h16v11H9l-5 4zM8 9h8M8 12h5',
+  '/company': 'M4 21V5l8-2v18M12 7h8v14M7 8h2M7 12h2M7 16h2M15 11h2M15 15h2M2 21h20', '/deals': 'M5 7h14M5 12h14M5 17h9',
   '/athena': 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18',
   '/earnings': 'M4 19h16M7 15V9M12 15V5M17 15v-4', '/listings': 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
   '/profile': 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0', '/admin': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
@@ -149,8 +166,9 @@ const ICON: Record<string, string> = {
   '/settings': 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4',
 }
 // Where the sidebar starts a new group, per role (sentence-case labels; the groups are real sections of the work).
-const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: { '/earnings': t('Your business') }, buyer: { '/campaigns': t('Plan and book') } }
+const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: { '/earnings': t('Your business') }, buyer: { '/campaigns': t('Plan and book'), '/company': t('Your company') } }
 const ROLE: Record<string, string> = { buyer: t('Buyer'), seller: t('Publisher'), admin: t('Nashr operations'), founder: t('Nashr founder') }
+const Badge = ({ n }: { n: number }) => <span className="nav-badge" aria-label={t('{n} unread', { n })}>{n > 99 ? '99+' : n}</span>
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
 
 /** The bilingual wordmark (placeholder until the brand files arrive): Latin in Geist, Arabic in Kufi. */
@@ -164,6 +182,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   useEffect(() => { scrollTo(0, 0) }, [hash]) // a new page starts at the top
   const load = () => api<Me>('/me').then(setMe, () => setMe(null))
   useEffect(() => { if (initialMe === undefined) load() }, [])
+  const unread = useUnread(!!me && (me.role === 'buyer' || me.role === 'seller'), full)
   // Screens behind sign-in stay out of search results; public pages set their own metadata.
   useEffect(() => { if (me && !/^\/(calendar|directory|terms|privacy|refunds)/.test(hash)) applyMeta({ title: 'Nashr', description: PAGES['/'].description, noindex: true }) }, [me, hash])
   // After signing in, go back to where the visitor was, if that page is theirs to see; otherwise to their home.
@@ -209,7 +228,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-            <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}</a></Fragment>)}</nav>
+            <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a></Fragment>)}</nav>
         <div className="side-foot">
           <div className="side-me"><span className="avatar" aria-hidden>{initials}</span>
             <span className="who"><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role}</span></span><span className="spacer" /><Bell role={me.role} /></div>
@@ -224,7 +243,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}</a>)}
+          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a>)}
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
         <LangSwitch className="on-dark topbar-lang" />
@@ -233,8 +252,8 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
       </header>
       {hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>
-      {!staff && <nav className="tabbar" aria-label={t("Main")}>{nav.slice(0, 4).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
-        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}</a>)}</nav>}
+      {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
+        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a>)}</nav>}
     </div>
   )
 }

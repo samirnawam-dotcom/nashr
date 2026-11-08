@@ -29,7 +29,9 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
     if (!active.some(x => x.id === campaignId)) setCampaignId('') }, () => {}) }, [])
 
   const load = () => api<Detail>(`/slots/${slotId}`).then(d => { setS(d); setAmount(String(d.minNextBid / 100)) }, e => setError(e.message))
-  useEffect(() => { load() }, [slotId])
+  // What the buyer is already committed to if every bid it leads wins and every request is accepted (a warning, never a block).
+  const [exposure, setExposure] = useState<{ total: number; leading: { count: number }; requests: { count: number }; toPay: { count: number } } | null>(null)
+  useEffect(() => { load(); if (!guest) api('/buyer/exposure').then(setExposure, () => {}) }, [slotId])
 
   async function send(path: string, body: object, message: string) {
     setBusy(true); setError('')
@@ -68,7 +70,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           <label className="check"><input type="checkbox" checked={auto} onChange={e => setAuto(e.target.checked)} /> {t("Auto-bid")}</label>
           {auto && <div className="field"><label htmlFor="max">{t("Maximum bid")}</label><div className="money-input"><span aria-hidden>{t("AED")}</span><input id="max" inputMode="decimal" value={max} onChange={e => setMax(e.target.value)} /></div>
             <span className="small muted">{t("We raise your bid in 3% steps when you're outbid, up to this maximum.")}</span></div>}
-          {s.yourMax ? <p className="small muted">Your current maximum: {money(s.yourMax)}</p> : null}
+          {s.yourMax ? <p className="small muted">{t('Your current maximum: {amount}', { amount: money(s.yourMax) })}</p> : null}
         </section> : <section className="form">
           <div className="field"><label htmlFor="offer">{t("Your offer (AED, optional, not below the asking price)")}</label><input id="offer" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
         </section>}
@@ -89,8 +91,15 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
 
         {campaigns.length > 0 && <div className="field"><label htmlFor="camp">{t("Campaign")}</label>
           <select id="camp" value={campaignId} onChange={e => setCampaignId(e.target.value)}><option value="">{t("No campaign")}</option>
-            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name} · {money(c.remaining)} left</option>)}</select></div>}
+            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name} · {t('{amount} left', { amount: money(c.remaining) })}</option>)}</select></div>}
 
+        {exposure && s.saleType === 'auction' && (() => {
+          const bid = toFils(amount) || 0, mine = s.youLead && s.topBid ? s.topBid : 0, withThis = exposure.total - mine + bid
+          const n = exposure.leading.count + exposure.requests.count + exposure.toPay.count
+          return <div className="exposure" role="note">
+            <span className="small muted">{n ? t('If everything you lead or requested goes through') : t('Nothing else you lead or requested yet')}</span>
+            <dl className="exposure-sum num"><div><dt>{t('Now')}</dt><dd>{money(exposure.total)}</dd></div><div><dt>{t('With this bid')}</dt><dd><b>{money(withThis)}</b></dd></div></dl>
+            <span className="small muted">{t('Excluding VAT. Bids are binding, so plan within your budget.')}</span></div> })()}
         {error && <p className="error" role="alert">{error}</p>}
         {done && <p className="ok" role="status">{done}</p>}
         <p className="small muted">{t("You'll be asked to pay once the publisher accepts. Nothing is charged now.")}</p>

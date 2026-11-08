@@ -5,6 +5,7 @@ import { minNextBid } from '../core/money.js'
 import { openDeal, transition } from './deals.js'
 import { briefProblems } from '../fulfilment/brief.js'
 import { notify } from '../core/notify.js'
+import { issueOrder } from '../documents/documents.js'
 
 export class MarketError extends Error {}
 
@@ -102,6 +103,19 @@ export async function requestBuyNow(db: Db, a: { slotId: string; buyerId: string
   return openDeal(db, slot, bid, 'buy_now', `buyer:${a.buyerId}`, at)
 }
 
+/**
+ * A buyer takes back a buy-now request the publisher hasn't answered (brief: buy-now requests may be withdrawn; ordinary bids are binding).
+ * The auction carries on as if the request had never been made.
+ */
+export async function withdrawBuyNow(db: Db, dealId: string, buyerId: string, at: Date) {
+  const d = (await db.query(`select id, kind, status, bid_id from deals where id = $1 and buyer_id = $2 for update`, [dealId, buyerId])).rows[0]
+  if (!d) throw new MarketError('This booking is not yours.')
+  if (d.kind !== 'buy_now' || d.status !== 'awaiting_seller') throw new MarketError('Only a buy-now request the publisher has not answered can be withdrawn.')
+  const deal = await transition(db, dealId, 'withdraw', `buyer:${buyerId}`, at, 'Withdrawn by the buyer')
+  await db.query(`update bids set status = 'withdrawn' where id = $1`, [d.bid_id])
+  return deal
+}
+
 /** Quick sale: a buyer shows interest (optionally an offer, never below the floor). */
 export async function showInterest(db: Db, a: { slotId: string; buyerId: string; amount?: number; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
@@ -171,6 +185,7 @@ export async function accept(db: Db, dealId: string, actor: string, at: Date) {
   for (const other of (await db.query(`select id from deals where slot_id = $1 and id <> $2 and status = 'awaiting_seller'`, [slot.id, dealId])).rows)
     await transition(db, other.id, 'supersede', 'system', at, 'Another request was accepted')
   await refreshConflicts(db, slot, at)
+  await issueOrder(db, dealId, at)
   return deal
 }
 

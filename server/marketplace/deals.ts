@@ -6,7 +6,7 @@ import { addWorkingDays, type Market } from '../core/market.js'
 
 // The booking state machine (SPEC 5.2). No other code writes deals.status.
 export const TRANSITIONS: Record<string, Record<string, string>> = {
-  awaiting_seller: { accept: 'awaiting_payment', decline: 'declined', expire: 'declined', supersede: 'declined' },
+  awaiting_seller: { accept: 'awaiting_payment', decline: 'declined', expire: 'declined', supersede: 'declined', withdraw: 'cancelled' },
   awaiting_payment: { pay: 'secured', lapse: 'lapsed' },
   secured: { submit_proof: 'in_review', cancel_by_buyer: 'cancelled', cancel_by_seller: 'cancelled', creative_missed: 'cancelled', proof_missed: 'refunded' },
   in_review: { approve: 'released', auto_release: 'released', report_issue: 'issue_open' },
