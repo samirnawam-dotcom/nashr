@@ -20,5 +20,5 @@ test('print editions without a time go in the all-day lane', () => {
 
 test('overlapping events share the width; separate ones use the full width', () => {
   const l = layoutDay([{ id: 'a', start: 0, end: 60 }, { id: 'b', start: 30, end: 90 }, { id: 'c', start: 70, end: 80 }, { id: 'd', start: 120, end: 150 }])
-  expect(Object.fromEntries(l)).toEqual({ a: { col: 0, cols: 2 }, b: { col: 1, cols: 2 }, c: { col: 0, cols: 2 }, d: { col: 0, cols: 1 } })
+  expect(Object.fromEntries(l)).toEqual({ a: { col: 0, cols: 2, cluster: 0 }, b: { col: 1, cols: 2, cluster: 0 }, c: { col: 0, cols: 2, cluster: 0 }, d: { col: 0, cols: 1, cluster: 1 } })
 })

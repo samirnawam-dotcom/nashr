@@ -30,9 +30,11 @@ export const isAllDay = (s: { startsAt: string; endsAt: string | null }) => !s.e
 /** Overlapping events share the width: each gets a column and the number of columns in its cluster. */
 export function layoutDay<T extends { id: string; start: number; end: number }>(events: T[]) {
   const sorted = [...events].sort((a, b) => a.start - b.start || b.end - a.end)
-  const out = new Map<string, { col: number; cols: number }>()
-  let cluster: { e: T; col: number }[] = [], clusterEnd = -1
-  const flush = () => { const cols = Math.max(0, ...cluster.map(c => c.col)) + 1; cluster.forEach(c => out.set(c.e.id, { col: c.col, cols })); cluster = [] }
+  const out = new Map<string, { col: number; cols: number; cluster: number }>()
+  let cluster: { e: T; col: number }[] = [], clusterEnd = -1, n = 0
+  // `cluster` numbers each run of overlapping events, so a crowded run can be folded into "+N more"
+  const flush = () => { if (!cluster.length) return; const cols = Math.max(0, ...cluster.map(c => c.col)) + 1, id = n++
+    cluster.forEach(c => out.set(c.e.id, { col: c.col, cols, cluster: id })); cluster = [] }
   for (const e of sorted) {
     if (e.start >= clusterEnd) { flush(); clusterEnd = -1 }
     const used = new Set(cluster.filter(c => c.e.end > e.start).map(c => c.col))

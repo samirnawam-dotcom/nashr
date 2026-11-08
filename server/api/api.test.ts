@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest'
+import { matches } from '../shared/slot-filter.js'
 import { pool, tx } from '../core/db.js'
 import { buildApp, resetRateLimits } from './app.js'
 import { FakeProvider } from '../payments/provider.js'
@@ -914,5 +915,70 @@ describe('buyer and publisher tools', () => {
     const st = (await call(sellerX, 'GET', '/api/seller/statements/2026-11')).json()
     expect(st).toMatchObject({ month: '2026-11', company: { name: 'Skyline FM' }, opening: 0, closing: 0, lines: [] })
     expect((await call(sellerX, 'GET', '/api/seller/statements/nope')).statusCode).toBe(404)
+  })
+})
+
+describe('the calendar at scale: filters, pages and summaries in SQL', () => {
+  async function catalogue() {
+    // Three more outlets on different channels, times and prices, so every filter has something to keep and something to drop.
+    await pool.query(`update outlets set sectors = '{Banking,Retail}', audience = 'Business commuters' where company_id = $1`, [sellerX.companyId])
+    const add = async (name: string, channel: string, startsAt: string | undefined, endsAt: string | undefined, price: number, saleType: 'auction' | 'quick_sale', sectors: string) => {
+      const outlet = (await pool.query(`insert into outlets (company_id, name, channel, sectors) values ($1, $2, $3, $4) returning id`, [sellerY.companyId, name, channel, sectors])).rows[0].id
+      const placement = await tx(c => createPlacement(c, { outletId: outlet, name: `${name} slot`, saleType, days: [1, 2, 3, 4, 5, 6, 7], startsAt, endsAt,
+        startingPrice: AED(price), creativeLeadHours: 48, closeLeadHours: 120 }, 'seller', now))
+      await tx(c => generateSlots(c, placement, '2026-11-09', 7, now))
+    }
+    await add('Evening TV', 'tv', '19:00', '20:00', 9_000, 'auction', '{Automotive}')
+    await add('Daily Paper', 'print', undefined, undefined, 12_000, 'quick_sale', '{Real estate,Banking}')
+    await add('Lunch Podcast', 'podcast', '13:00', '13:30', 1_200, 'quick_sale', '{Retail}')
+  }
+  const range = 'from=2026-11-09T00:00:00%2B04:00&to=2026-11-16T00:00:00%2B04:00'
+
+  test('every filter in SQL keeps exactly what the shared rule keeps (the one saved-search alerts use)', async () => {
+    await catalogue()
+    const all = (await call(buyerA, 'GET', `/api/slots?${range}`)).json()
+    expect(all.length).toBeGreaterThan(20)
+    const cases: [string, any][] = [
+      ['ch=tv,print', { channels: ['tv', 'print'] }], ['sale=quick_sale', { saleTypes: ['quick_sale'] }], ['sector=banking', { sector: 'banking' }],
+      [`max=${AED(5_000)}`, { maxPrice: AED(5_000) }], ['dp=morning', { dayparts: ['morning'] }], ['dp=allday,evening', { dayparts: ['allday', 'evening'] }],
+      ['dp=afternoon', { dayparts: ['afternoon'] }], ['q=business%20markets', { q: 'business markets' }], ['q=paper', { q: 'paper' }],
+      [`ch=radio,podcast&sale=quick_sale&max=${AED(2_000)}`, { channels: ['radio', 'podcast'], saleTypes: ['quick_sale'], maxPrice: AED(2_000) }],
+    ]
+    for (const [qs, f] of cases) {
+      const sql = (await call(buyerA, 'GET', `/api/slots?${range}&${qs}`)).json().map((s: any) => s.id).sort()
+      const js = all.filter((s: any) => matches(f, s, now.getTime())).map((s: any) => s.id).sort()
+      expect(sql, qs).toEqual(js)
+      expect(js.length, `${qs} should keep some and drop some`).toBeGreaterThan(0)
+      expect(js.length, qs).toBeLessThan(all.length)
+    }
+  })
+
+  test('the list pages and sorts on the server; programmes, days and outlets summarise', async () => {
+    await catalogue()
+    const first = (await call(buyerA, 'GET', `/api/slots/list?${range}&open=1&sort=price_asc&limit=5`)).json()
+    const next = (await call(buyerA, 'GET', `/api/slots/list?${range}&open=1&sort=price_asc&limit=5&offset=5`)).json()
+    expect(first.total).toBeGreaterThan(10)
+    expect(first.items).toHaveLength(5)
+    const prices = [...first.items, ...next.items].map((s: any) => s.topBid ?? s.startingPrice)
+    expect(prices).toEqual([...prices].sort((a, b) => a - b))
+    expect(new Set([...first.items, ...next.items].map((s: any) => s.id)).size).toBe(10) // no overlap between pages
+    expect((await call(buyerA, 'GET', `/api/slots/list?${range}&open=1&limit=1000`)).json().items.length).toBeLessThanOrEqual(100) // capped
+
+    const progs = (await call(buyerA, 'GET', `/api/slots/programmes?${range}&open=1`)).json()
+    const tv = progs.find((p: any) => p.outlet === 'Evening TV')
+    expect(tv).toMatchObject({ channel: 'tv', allDay: false, slots: 1, fromPrice: AED(9_000), saleTypes: ['auction'] })
+    expect(progs.find((p: any) => p.outlet === 'Daily Paper').allDay).toBe(true)
+    const inside = (await call(buyerA, 'GET', `/api/slots?${range}&placement=${tv.placementId}&date=${tv.date}`)).json()
+    expect(inside.map((s: any) => s.outlet)).toEqual(['Evening TV'])
+
+    const days = (await call(buyerA, 'GET', `/api/slots/days?${range}&open=1`)).json()
+    expect(days.every((d: any) => d.slots > 0 && d.outlets > 0 && d.fromPrice > 0 && d.channels.length > 0)).toBe(true)
+    const outlets = (await call(buyerA, 'GET', `/api/slots/outlets?${range}&open=1&sort=price&limit=2`)).json()
+    expect(outlets.total).toBe(5)
+    expect(outlets.items.map((o: any) => o.outlet)).toEqual(['Lunch Podcast', 'Gulf Radio']) // a tie on price goes by name
+    expect(outlets.items[0].days.length).toBe(7)
+    expect((await call(buyerA, 'GET', `/api/slots/outlets?${range}&open=1&sort=price&limit=2&offset=4`)).json().items.map((o: any) => o.outlet)).toEqual(['Daily Paper'])
+    // a guest sees the same calendar, without anything about bids of their own
+    expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).json().items.every((s: any) => s.youBid === false && s.youLead === false)).toBe(true)
   })
 })

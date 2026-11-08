@@ -7,7 +7,7 @@ import { SignInPrompt, useGuest } from '../guest'
 import { t } from '../i18n'
 
 type Detail = Slot & { minNextBid: number; yourMax: number | null; briefOnFile: boolean; creativeDueAt: string }
-const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other']
+export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other']
 const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign'
 const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Date(s.startsAt).getTime()) / 1000)
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)

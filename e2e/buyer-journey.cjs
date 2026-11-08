@@ -8,20 +8,25 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   await p.goto(BASE + '/#/sign-in')
   await p.fill('#email', 'demo@northwind.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.dash-lead') // the buyer dashboard is home
-  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cal-head')
-  await p.click('[aria-label="Next"]'); await p.click('[aria-label="Next"]'); await p.waitForTimeout(700) // week of 16 Nov: everything open
+  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cv-head')
+  // The week of 16 Nov (everything open): week grid, then the day, then the list filtered to radio auctions
+  await p.goto(BASE + '/calendar?view=week&date=2026-11-16'); await p.waitForSelector('.cv-block')
   out && await p.screenshot({ path: out + '/6-week2.png' })
-  await p.click('.seg button:has-text("Day")'); await p.waitForTimeout(700)
+  await p.click('.cv-views button:has-text("Day")'); await p.waitForSelector('.cv-col')
   out && await p.screenshot({ path: out + '/7-day.png' })
+  const picks = await p.evaluate(async () => (await (await fetch('/api/slots/list?from=2026-11-16T00:00:00%2B04:00&to=2026-11-23T00:00:00%2B04:00&open=1&sale=auction&ch=radio&limit=100')).json())
+    .items.filter(s => s.kind === 'single' && s.buyNowPrice && !s.youBid).slice(0, 2).map(s => s.id))
+  await p.goto(BASE + '/calendar?view=list&date=2026-11-16&sale=auction&ch=radio'); await p.waitForSelector('.cv-table tbody tr')
+  const row = async id => { while (!(await p.locator(`tr[data-slot="${id}"]`).count())) { await p.click('.cv-more-row .btn'); await p.waitForTimeout(400) } return `tr[data-slot="${id}"] .cv-act` }
   // Bid on a break with a full brief
-  await p.click('.ev.single >> nth=0'); await p.waitForSelector('.drawer h2')
+  await p.click(await row(picks[0])); await p.waitForSelector('.drawer h2')
   await p.fill('#adv', 'Northwind Business Cards'); await p.fill('#msg', 'Business cards for growing companies. Apply in minutes.')
   await p.check('text=Auto-bid'); await p.fill('#max', '6000')
   out && await p.screenshot({ path: out + '/8-drawer-brief.png' })
   await p.click('.drawer-f .btn.primary'); await p.waitForSelector('.drawer .ok, .drawer .error')
   console.log('bid:', await p.locator('.drawer .ok, .drawer .error').first().textContent())
   // Buy-now request on the next break
-  await p.click('[aria-label="Close"]'); await p.click('.ev.single >> nth=1'); await p.waitForSelector('.drawer h2')
+  await p.click('[aria-label="Close"]'); await p.click(await row(picks[1])); await p.waitForSelector('.drawer h2')
   await p.click('.drawer-f .btn:has-text("Request at")'); await p.waitForSelector('.drawer .ok, .drawer .error')
   console.log('buy-now:', await p.locator('.drawer .ok, .drawer .error').first().textContent())
   // The seller accepts through the API in their own session

@@ -12,6 +12,8 @@ import { confirmPreRun } from '../fulfilment/prerun.js'
 import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
 import { MarketError } from '../marketplace/market.js'
 import { dealRating } from './routes-ratings.js'
+import { byDay, byOutlet, grid, listSlots, parseQuery, programmes, slots as searchSlots } from '../marketplace/search.js'
+import { logoUrl } from './routes-covers.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const money = { type: 'integer', minimum: 1 }
@@ -39,22 +41,29 @@ export async function ownDeal(db: pg.PoolClient, id: string, buyerId: string) {
 export function buyerRoutes(route: RouteFn) {
   // The calendar: every bookable slot from every outlet (brief section 5). Sellers use their own calendar instead.
   // Guests can browse the calendar too (signing in is only needed to act); they get no per-buyer fields.
-  route('GET', '/api/slots', [...BUYER, 'admin', 'guest'], async ({ db, me }, req) => {
-    const company = me?.actAs.companyId ?? null
-    const from = req.query.from ?? new Date().toISOString(), to = req.query.to ?? new Date(Date.now() + 35 * 86_400_000).toISOString()
-    const { rows } = await db.query(
-      `select s.*, p.name placement, o.name outlet, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids,
-         exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = $3) mine
-       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
-       where s.starts_at >= $1 and s.starts_at < $2 and s.status <> 'blocked' and ${OPEN_MARKET} order by s.starts_at`, [from, to, company])
-    return rows.map(r => buyerSlot(r, company))
+  // The calendar (scales to 1000+ outlets): filters, sorting, pages and summaries run in SQL; see marketplace/search.ts.
+  const range = (r: any) => ({ from: r.from ?? new Date().toISOString(), to: r.to ?? new Date(Date.now() + 35 * 86_400_000).toISOString() })
+  const query = (me: any, r: any) => { const { from, to } = range(r); return parseQuery(r, me?.actAs.companyId ?? null, from, to) }
+  route('GET', '/api/slots', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) =>
+    (await searchSlots(db, query(me, req.query), at)).map(r => buyerSlot(r, me?.actAs.companyId ?? null)))
+  route('GET', '/api/slots/list', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
+    const { total, rows } = await listSlots(db, query(me, req.query), req.query.sort ?? 'time', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
+    return { total, items: rows.map(r => buyerSlot(r, me?.actAs.companyId ?? null)) }
+  })
+  route('GET', '/api/slots/programmes', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => programmes(db, query(me, req.query), at))
+  route('GET', '/api/slots/grid', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => grid(db, query(me, req.query), req.query.by === 'channel' ? 'channel' : 'day', at))
+  route('GET', '/api/slots/days', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => byDay(db, query(me, req.query), at))
+  route('GET', '/api/slots/outlets', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
+    const { total, rows } = await byOutlet(db, query(me, req.query), req.query.sort ?? 'name', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
+    return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: logoUrl({ id: r.outlet_id, logo_key: r.logo_key }),
+      slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice) })) })) }
   })
 
   // One slot for the bid drawer: the server says what the next bid must be, the screen never works it out.
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
     const r = (await db.query(
-      `select s.*, p.name placement, o.name outlet, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
+      `select s.*, p.name placement, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, bool_or(brief is not null) has_brief from bids where slot_id = $1 and buyer_id = $2`,
