@@ -6,7 +6,7 @@ export function messageRoutes(route: RouteFn) {
   route('GET', '/api/deals/:id/messages', ['buyer', 'seller'], async ({ db, at, me }, req) => {
     const d = await dealFor(db, req.params.id, me.actAs.companyId)
     if (!d) throw new NotFound()
-    if (me.actAs.companyId === me.companyId) await markRead(db, d.id, me.actAs.companyId, at) // an admin viewing as the company doesn't mark it read
+    if (me.actAs.companyId === me.companyId && !me.signedInAs) await markRead(db, d.id, me.actAs.companyId, at) // an admin viewing as the company doesn't mark it read
     return { open: hasThread(d.status), canWrite: canWrite(d.status), messages: await thread(db, d.id, me.actAs.companyId) }
   })
   route('POST', '/api/deals/:id/messages', ['buyer', 'seller'], async ({ db, at, me }, req) => {

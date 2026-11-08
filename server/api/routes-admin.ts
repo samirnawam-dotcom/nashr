@@ -1,9 +1,10 @@
 import { NotFound, type RouteFn } from './app.js'
 import { audit } from '../core/audit.js'
+import { notify } from '../core/notify.js'
 import { changeSetting } from '../core/settings.js'
 import { MarketError, voidBid } from '../marketplace/market.js'
 import { sendCsv } from './csv.js'
-import { approveAccess, decideAccess, reissueAccessInvite } from '../auth/access.js'
+import { SIGN_IN_AS_MINUTES, approveAccess, decideAccess, reissueAccessInvite } from '../auth/access.js'
 import { decideDispute, intervene } from '../payments/payments.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
@@ -118,6 +119,30 @@ export function adminRoutes(route: RouteFn) {
     await db.query(`update sessions set view_as_company_id = $2 where token_hash = $1`, [me.tokenHash, c.id])
     await audit(db, `admin:${me.userId}`, 'view_as.started', 'company', c.id, { name: c.name }, at)
     return { viewing: c.name, viewOnly: true }
+  })
+
+  // Sign in as a buyer or publisher user to help them: full access as that person for an hour, with a written reason.
+  // The company is told on its bell; every change is logged under the staff member's name (see app.ts).
+  route('POST', '/api/admin/users/:id/sign-in-as', STAFF, async ({ db, at, me }, req) => {
+    const reason = String(req.body.reason ?? '').trim()
+    if (reason.length < 5) throw new MarketError('Write why you are signing in as this user.')
+    const u = (await db.query(`select u.id, u.name, u.company_id, c.name company from users u join companies c on c.id = u.company_id
+                               where u.id = $1 and u.role in ('buyer', 'seller') and u.status = 'active'`, [req.params.id])).rows[0]
+    if (!u) throw new MarketError('You can sign in only as an active buyer or publisher user.')
+    const until = new Date(at.getTime() + SIGN_IN_AS_MINUTES * 60_000)
+    await db.query(`update sessions set view_as_company_id = null, act_as_user_id = $2, act_as_until = $3, act_as_reason = $4 where token_hash = $1`,
+      [me.tokenHash, u.id, until, reason])
+    await audit(db, `admin:${me.userId}`, 'sign_in_as.started', 'user', u.id, { name: u.name, company: u.company, reason, until }, at)
+    await notify(db, u.company_id, 'access.staff_signed_in', null, { user: u.name, reason }, at)
+    return { user: u.name, company: u.company, until }
+  }, { type: 'object', required: ['reason'], additionalProperties: false, properties: { reason: { type: 'string', maxLength: 500 } } })
+
+  // Back to Nashr: the route is reached while acting as the user, so it is open to their roles and checks the session itself.
+  route('DELETE', '/api/admin/sign-in-as', ['buyer', 'seller'], async ({ db, at, me }) => {
+    if (!me.signedInAs) throw new MarketError('You are not signed in as another user.')
+    await db.query(`update sessions set act_as_user_id = null, act_as_until = null, act_as_reason = null where token_hash = $1`, [me.tokenHash])
+    await audit(db, `admin:${me.signedInAs.staffId}`, 'sign_in_as.ended', 'user', me.userId, null, at)
+    return { companyId: me.companyId }
   })
 
   route('DELETE', '/api/admin/view-as', STAFF, async ({ db, at, me }) => {

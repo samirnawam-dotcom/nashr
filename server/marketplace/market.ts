@@ -224,6 +224,11 @@ export async function closeAuction(db: Db, slotId: string, at: Date) {
   await db.query(`update slots set status = 'awaiting_seller', round = 1 where id = $1`, [slot.id])
   const bid = await one(db, `select * from bids where id = $1`, [slot.top_bid_id])
   const deal = await openDeal(db, slot, bid, 'auction', 'system', at)
+  // The winner hears at once; the others learn bidding closed (they may still be offered the slot if the publisher passes).
+  const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  await notify(db, bid.buyer_id, 'bid.won', deal.id, { slotId: slot.id, outlet, label: slot.label, amount: bid.amount }, at)
+  for (const b of (await db.query(`select distinct buyer_id from bids where slot_id = $1 and buyer_id <> $2 and status <> 'withdrawn'`, [slot.id, bid.buyer_id])).rows)
+    await notify(db, b.buyer_id, 'bid.closed_lost', null, { slotId: slot.id, outlet, label: slot.label, amount: bid.amount }, at)
   if (slot.auto_accept && slot.reserve_price && bid.amount >= slot.reserve_price) return accept(db, deal.id, 'system:auto-accept', at)
   return deal
 }

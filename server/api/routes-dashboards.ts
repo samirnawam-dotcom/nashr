@@ -80,6 +80,10 @@ export function dashboardRoutes(route: RouteFn) {
       byChannel: byChannel.map(r => ({ channel: r.channel, value: Number(r.v), count: r.n })),
       upcoming: upcoming.map(d => ({ dealId: d.id, outlet: d.outlet, channel: d.channel, label: d.label, startsAt: d.starts_at, status: d.status })),
       outlets, bookings: deals.filter(d => PAID_LIST.includes(d.status)).length,
+      // Auctions won in the last week that still need a step: the publisher's confirmation, then payment.
+      wins: deals.filter(d => d.kind === 'auction' && ['awaiting_seller', 'awaiting_payment'].includes(d.status) && +at - +d.created_at < 7 * 86_400_000)
+        .sort((a, b) => +b.created_at - +a.created_at).slice(0, 3)
+        .map(d => ({ dealId: d.id, outlet: d.outlet, label: d.label, amount: total(d), status: d.status, dueAt: d.next_deadline_at })),
     }
   })
 

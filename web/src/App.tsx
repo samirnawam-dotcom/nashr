@@ -12,6 +12,7 @@ import { PrivacyPage, RefundsPage, TermsPage } from './Legal'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
 import { LangSwitch, t } from './i18n'
+import { time } from './format'
 import { useUnread } from './messages/unread'
 import { resetLive } from './live'
 import './messages/messages.css'
@@ -79,7 +80,8 @@ const AuditPage = L(load_admin_System, 'AuditPage')
 const DirectoryAdminPage = L(load_admin_System, 'DirectoryAdminPage')
 const SettingsPage = L(load_admin_System, 'SettingsPage')
 
-export type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null }
+export type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null
+  signedInAs: { user: string; staff: string; until: string; companyId: string } | null }
 
 // One page per path; ids are the last segment.
 type Routes = [RegExp, (id: string) => React.ReactNode][]
@@ -255,6 +257,8 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         </div>
       </aside>
       <div className="shell-main">
+      {me.signedInAs && <div className="viewbar acting" role="status">{t('{staff}, you are signed in as {user} of {company} until {time}. Every change is logged under your name.', { staff: me.signedInAs.staff, user: me.signedInAs.user, company: me.company.name, time: time(me.signedInAs.until) })}
+        <button className="btn" onClick={async () => { const r = await api<{ companyId: string }>('/admin/sign-in-as', { method: 'DELETE' }); location.href = `/accounts/${r.companyId}` }}>{t('Back to Nashr')}</button></div>}
       {me.viewingAs && <div className="viewbar" role="status">{t('Viewing {name} as Nashr, read only. Every page you open is logged.', { name: me.company.name })}
         <button className="btn" onClick={async () => { await api('/admin/view-as', { method: 'DELETE' }); navigate(`/accounts/${me.viewingAs}`); location.reload() }}>{t("Stop viewing")}</button></div>}
       <header className={`topbar ${staff ? 'staff' : ''} ${menu ? 'open' : ''}`}>

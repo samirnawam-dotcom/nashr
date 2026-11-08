@@ -198,6 +198,29 @@ describe('admin', () => {
     expect((await call(admin, 'GET', `/api/seller/deals/${deal}`)).statusCode).toBe(403)
   })
 
+  test('sign in as a publisher user: acts as them for an hour, logged under the admin, own steps blocked, told on the bell', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const seller = (await pool.query(`select id from users where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+    expect((await call(admin, 'POST', `/api/admin/users/${seller}/sign-in-as`, { reason: 'x' })).json().error).toMatch('why')
+    expect((await call(admin, 'POST', `/api/admin/users/${(await pool.query(`select id from users where email = 'ops@nashr.ae'`)).rows[0].id}/sign-in-as`, { reason: 'Testing the staff guard' })).json().error).toMatch('buyer or publisher')
+    expect((await call(buyerA, 'POST', `/api/admin/users/${seller}/sign-in-as`, { reason: 'Not staff, must fail' })).statusCode).toBe(403)
+    expect((await call(admin, 'POST', `/api/admin/users/${seller}/sign-in-as`, { reason: 'Helping them accept a booking' })).statusCode).toBe(200)
+    expect((await call(admin, 'GET', '/api/me')).json()).toMatchObject({ role: 'seller', company: { name: 'Skyline FM' }, signedInAs: { staff: expect.any(String) } })
+    expect((await call(admin, 'POST', `/api/seller/deals/${deal}/accept`)).statusCode).toBe(200) // a real action, as the publisher
+    expect((await call(admin, 'GET', '/api/admin/overview')).statusCode).toBe(403) // staff pages wait until they are back
+    expect((await call(admin, 'PUT', '/api/me/password', { current: PASS, password: 'a brand new long password' })).json().error).toMatch('themselves')
+    const logged = (await pool.query(`select actor, action from audit_log where entity_id = $1 and action like 'sign_in_as.%' order by id`, [seller])).rows
+    expect(logged.map(r => r.action)).toEqual(['sign_in_as.started', 'sign_in_as.action'])
+    expect(logged.every(r => r.actor.startsWith('admin:'))).toBe(true)
+    expect((await pool.query(`select count(*)::int n from notifications where company_id = $1 and kind = 'access.staff_signed_in'`, [sellerX.companyId])).rows[0].n).toBe(1)
+    expect((await call(admin, 'DELETE', '/api/admin/sign-in-as')).json()).toEqual({ companyId: sellerX.companyId })
+    expect((await call(admin, 'GET', '/api/admin/overview')).statusCode).toBe(200)
+    // the hour runs out: the session is the admin again
+    await call(admin, 'POST', `/api/admin/users/${seller}/sign-in-as`, { reason: 'Second visit to check' })
+    await pool.query(`update sessions set act_as_until = act_as_until - interval '61 minutes' where act_as_user_id = $1`, [seller])
+    expect((await call(admin, 'GET', '/api/me')).json()).toMatchObject({ role: 'admin', signedInAs: null })
+  })
+
   test('financial settings are the founder\'s; commission per publisher is a setting with history', async () => {
     expect((await call(admin, 'PUT', '/api/admin/settings/nashr_vat_registered', { value: true })).statusCode).toBe(403)
     expect((await call(admin, 'PUT', '/api/admin/settings/seller_window_hours', { value: 36 })).statusCode).toBe(200)

@@ -2,6 +2,7 @@ import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
 import { audit } from '../core/audit.js'
 import { checklistFor } from '../fulfilment/proof.js'
+import { met, scorecard } from './scorecard.js'
 import { split } from '../core/money.js'
 import { balance } from '../payments/ledger.js'
 import { reconcile } from '../payments/payments.js'
@@ -202,7 +203,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     const agg = `count(*)::int bookings, sum(d.amount)::bigint gmv, sum(round(d.amount * coalesce(d.commission_bp, 0) / 10000.0))::bigint commission`
     const q = async (sql: string) => (await db.query(sql, [from, to])).rows
     const outstanding = await sumLike(db, 'seller_receivable:')
-    return { from, to, sellersStillOwe: outstanding,
+    return { from, to, sellersStillOwe: outstanding, scorecard: (await scorecard(db, from, to)).map(m => ({ ...m, met: met(m) })),
       byMonth: await q(`select to_char(d.created_at at time zone 'Asia/Dubai', 'YYYY-MM') as month, ${agg} ${base} group by 1 order by 1`),
       byChannel: await q(`select o.channel, ${agg} ${base} group by 1 order by gmv desc`),
       byOutlet: await q(`select o.name outlet, o.channel, ${agg} ${base} group by 1, 2 order by gmv desc limit 50`),

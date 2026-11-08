@@ -648,3 +648,26 @@ a.avatar { text-decoration: none; }
 @keyframes bell-in { from { opacity: 0; transform: translateY(8px); } }
 @media (max-width: 720px) { .bell-toast-wrap { inset-inline: 16px; inset-block-end: 80px; max-width: none; } }
 .bid-countdown { margin: 4px 0; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--warn, #9a5b00); }
+
+/* Pilot scorecard: one line per target, the verdict in words and a mark, never colour alone. */
+.scorecard { list-style: none; margin: 0; padding: 0; }
+.scorecard li { display: grid; grid-template-columns: minmax(0, 1fr) 90px 110px 110px 92px; gap: 12px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line, #e5e7eb); }
+.scorecard li:first-child { border-top: 0; }
+.sc-value { font-size: 18px; font-weight: 700; text-align: end; }
+.sc-met { justify-self: end; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.sc-met.yes { color: var(--green); background: var(--green-1); }
+.sc-met.no { color: var(--red); background: var(--red-1); }
+.sc-met.na { color: var(--muted, #6b7280); background: var(--surface-2, #f3f4f6); }
+@media (max-width: 720px) {
+  .scorecard li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .sc-name { grid-column: 1 / -1; font-weight: 600; }
+  .sc-value { text-align: start; } .sc-of, .sc-target { grid-column: 1; } .sc-met { grid-row: 2; grid-column: 2; }
+}
+
+/* Nashr inside someone's account: always visible, so staff never forget whose account they are acting in. */
+.viewbar { background: var(--amber); color: #fff; padding: 8px 32px; display: flex; gap: 16px; align-items: center; font-size: 14px; }
+.viewbar .btn { padding: 4px 10px; flex: none; }
+.viewbar.acting { background: var(--red); }
+@media (max-width: 720px) { .viewbar { padding: 8px 16px; flex-wrap: wrap; gap: 8px; } }
+.sign-in-as { display: grid; gap: 6px; margin-top: 10px; text-align: start; max-width: 420px; margin-inline-start: auto; }
+.sign-in-as textarea { width: 100%; }

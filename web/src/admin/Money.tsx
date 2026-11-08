@@ -59,8 +59,29 @@ export function PayoutsPage() {
 
 type Agg = { bookings: number; gmv: number; commission: number }
 type Losses = { refunds: number; refunded: number; from_buyers: number; charged_to_sellers: number; recovered_from_sellers: number }
-type R = { from: string; to: string; sellersStillOwe: number; refundLosses: Losses; byMonth: (Agg & { month: string })[]; byChannel: (Agg & { channel: string })[]; byOutlet: (Agg & { outlet: string; channel: string })[]; bySaleType: (Agg & { kind: string })[] }
+type R = { from: string; to: string; sellersStillOwe: number; scorecard: Measure[]; refundLosses: Losses; byMonth: (Agg & { month: string })[]; byChannel: (Agg & { channel: string })[]; byOutlet: (Agg & { outlet: string; channel: string })[]; bySaleType: (Agg & { kind: string })[] }
 const KIND: Record<string, string> = { auction: 'Auction', buy_now: 'Buy now', quick_sale: 'Quick sale', choice: 'Next bid chosen', fixed: 'Fixed price' }
+
+type Measure = { key: string; value: number | null; done: number; of: number; target: number; better: 'higher' | 'lower'; unit: 'count' | 'share'; met: boolean | null }
+// The pilot plan's targets (docs/pilot-plan.md section 3), in the words the go/no-go review uses.
+const MEASURE: Record<string, string> = {
+  paid_bookings: 'Paid bookings', accepted_24h: 'Requests accepted within 24 hours', paid_48h: 'Payments completed within 48 hours of acceptance',
+  proof_on_time: 'Proof sent on time', issues_to_disputes: 'Paid bookings that became disputes', payouts_same_day: 'Payouts sent on the day of release',
+}
+const pct = (n: number) => ltr(`${Math.round(n * 1000) / 10}%`)
+
+/** One row per pilot target: where it stands, from how many deals, and whether it is met. */
+function Scorecard({ rows }: { rows: Measure[] }) {
+  return <section className="section"><h2 style={{ fontSize: 16, marginBottom: 4 }}>{t('Pilot scorecard')}</h2>
+    <p className="small muted" style={{ marginBottom: 10 }}>{t('The targets from the pilot plan, for deals booked in this period.')}</p>
+    <ul className="card scorecard">{rows.map(m => <li key={m.key}>
+      <span className="sc-name">{t(MEASURE[m.key] ?? m.key)}</span>
+      <span className="sc-value num">{m.value == null ? '—' : m.unit === 'count' ? m.value : pct(m.value)}</span>
+      <span className="sc-of small muted">{m.unit === 'share' ? (m.of ? t('{done} of {of}', { done: m.done, of: m.of }) : t('Nothing to count yet')) : ''}</span>
+      <span className="sc-target small muted">{t('Target {target}', { target: m.unit === 'count' ? `≥ ${m.target}` : `${m.better === 'higher' ? '≥' : '≤'} ${pct(m.target)}` })}</span>
+      <span className={`sc-met ${m.met == null ? 'na' : m.met ? 'yes' : 'no'}`}>{m.met == null ? t('No data') : m.met ? <>✓ {t('Met')}</> : <>✗ {t('Not met')}</>}</span>
+    </li>)}</ul></section>
+}
 
 export function ReportsPage() {
   const year = new Date().getFullYear()
@@ -77,6 +98,7 @@ export function ReportsPage() {
       <PhotoBand img="/brand/campaigns-wide.jpg" title={t("Reports")} sub={t("Paid bookings, by the date they were booked (Dubai). Values excl. VAT.")} />
       <div className="toolbar"><label className="small muted" htmlFor="f">{t("From")}</label><input id="f" className="search" style={{ minWidth: 0 }} type="date" value={from} onChange={e => setFrom(e.target.value)} />
         <label className="small muted" htmlFor="t">{t("To")}</label><input id="t" className="search" style={{ minWidth: 0 }} type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
+      {data && <Scorecard rows={data.scorecard} />}
       {!data ? <Loading error={error} /> : <div className="grid2 report-grid">
         <Table title={t("By month")} rows={data.byMonth} label={r => r.month} name="month" />
         <Table title={t("By channel")} rows={data.byChannel} label={r => CHANNEL[r.channel] ?? r.channel} name="channel" />

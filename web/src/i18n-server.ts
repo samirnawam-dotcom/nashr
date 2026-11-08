@@ -8,6 +8,10 @@ import { isAr } from './i18n'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  "Nashr is signed in as this user. The person must do this step themselves.": "نشر مسجّلة الدخول باسم هذا المستخدم. يجب أن يقوم الشخص بهذه الخطوة بنفسه.",
+  "Write why you are signing in as this user.": "اكتب سبب تسجيل الدخول باسم هذا المستخدم.",
+  "You can sign in only as an active buyer or publisher user.": "يمكنك الدخول فقط باسم مستخدم مشترٍ أو ناشر نشط.",
+  "You are not signed in as another user.": "أنت لست مسجّل الدخول باسم مستخدم آخر.",
   // Account self-service and Nashr stepping in
   "You are viewing another account. Changes are not allowed.": "أنت تعرض حسابًا آخر. التغييرات غير مسموحة.",
   "A reset link can be issued only for an active buyer or publisher user.": "لا يمكن إصدار رابط إعادة التعيين إلا لمستخدم مشترٍ أو ناشر نشط.",

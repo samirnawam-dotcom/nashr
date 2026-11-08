@@ -119,14 +119,25 @@ export async function login(db: Db, a: { email: string; password: string; totpCo
   return token
 }
 
-export type Session = { tokenHash: string; userId: string; companyId: string; role: string; viewAs: { companyId: string; role: string } | null }
+/** `signedInAs` is set while a staff member is signed in as another user: the session then is that user, and `staffId` is who is really there. */
+export type Session = { tokenHash: string; userId: string; companyId: string; role: string; viewAs: { companyId: string; role: string } | null
+  signedInAs?: { staffId: string; until: Date; reason: string } }
+
+export const STAFF_ROLES = ['admin', 'founder']
+export const SIGN_IN_AS_MINUTES = 60
 
 export async function session(db: Db, token: string | undefined, at: Date): Promise<Session | null> {
   if (!token) return null
-  const s = (await db.query(`select s.token_hash, s.view_as_company_id, u.id, u.company_id, u.role, u.status, v.type view_type
+  const s = (await db.query(`select s.token_hash, s.view_as_company_id, s.act_as_until, s.act_as_reason, u.id, u.company_id, u.role, u.status, v.type view_type,
+        t.id t_id, t.company_id t_company, t.role t_role, t.status t_status
       from sessions s join users u on u.id = s.user_id left join companies v on v.id = s.view_as_company_id
+      left join users t on t.id = s.act_as_user_id
       where s.token_hash = $1 and s.expires_at > $2`, [sha256(token), at])).rows[0]
   if (!s || s.status !== 'active') return null
+  // Signed in as someone else: only staff, only an active buyer or publisher user, only until the time runs out.
+  if (s.t_id && STAFF_ROLES.includes(s.role) && s.t_status === 'active' && ['buyer', 'seller'].includes(s.t_role) && s.act_as_until > at)
+    return { tokenHash: s.token_hash, userId: s.t_id, companyId: s.t_company, role: s.t_role, viewAs: null,
+      signedInAs: { staffId: s.id, until: s.act_as_until, reason: s.act_as_reason } }
   return { tokenHash: s.token_hash, userId: s.id, companyId: s.company_id, role: s.role,
     viewAs: s.view_as_company_id ? { companyId: s.view_as_company_id, role: s.view_type === 'publisher' ? 'seller' : 'buyer' } : null }
 }

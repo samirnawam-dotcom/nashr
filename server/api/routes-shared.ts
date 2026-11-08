@@ -80,6 +80,7 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
   })
 
   route('POST', '/api/notifications/read', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }) => {
+    if (me.signedInAs) return { ok: true } // Nashr helping out: the person still sees what is new
     await db.query(`update notifications set read_at = $2 where company_id = $1 and read_at is null`, [me.actAs.companyId, at])
     return { ok: true }
   })

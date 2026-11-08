@@ -102,6 +102,9 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })
 
+  // Steps only the account holder may take, even when Nashr is signed in as them: their password and email choices, paying by card, bank details.
+  const OWN_STEPS = new Set(['PUT /api/me/password', 'PUT /api/me/account', 'POST /api/deals/:id/pay', 'POST /api/seller/payouts/connect'])
+
   /** Every route goes through here: authentication, role check, read-only enforcement while viewing as, one transaction. */
   function route(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, roles: Role[] | 'public', handler: Handler, schema?: object) {
     app.route({ method, url, schema: schema ? { body: schema } : undefined, handler: async (req, reply) => {
@@ -119,7 +122,11 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
       const effective = (viewing && !url.startsWith('/api/admin/') ? actAs.role : s.role) as Role
       if (!roles.includes(effective) && !(effective === 'founder' && roles.includes('admin')))
         return reply.code(403).send({ error: 'You do not have access to this.' })
+      // Staff signed in as this user: they act as the person, except for what only the person may do; every change is logged under their own name.
+      if (s.signedInAs && OWN_STEPS.has(`${method} ${url}`))
+        return reply.code(403).send({ error: 'Nashr is signed in as this user. The person must do this step themselves.' })
       return tx(async db => {
+        if (s.signedInAs && method !== 'GET') await audit(db, `admin:${s.signedInAs.staffId}`, 'sign_in_as.action', 'user', s.userId, { method, url: req.url, company: s.companyId }, at)
         if (viewing && method === 'GET') await audit(db, `admin:${s.userId}`, 'view_as.page', 'company', actAs.companyId, { url: req.url }, at)
         return handler({ db, at, me: { ...s, actAs }, provider: deps.provider }, req as Req, reply)
       })

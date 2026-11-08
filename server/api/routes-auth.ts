@@ -38,7 +38,9 @@ export function authRoutes(route: RouteFn) {
 
   route('GET', '/api/me', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me }) => {
     const c = (await db.query(`select name, type from companies where id = $1`, [me.actAs.companyId])).rows[0]
-    return { role: me.actAs.role, company: c, viewingAs: me.viewAs ? me.viewAs.companyId : null }
+    const as = me.signedInAs && (await db.query(`select u.name, (select name from users where id = $2) staff from users u where u.id = $1`, [me.userId, me.signedInAs.staffId])).rows[0]
+    return { role: me.actAs.role, company: c, viewingAs: me.viewAs ? me.viewAs.companyId : null,
+      signedInAs: me.signedInAs ? { user: as.name, staff: as.staff, until: me.signedInAs.until, companyId: me.companyId } : null }
   })
 
   // Forgotten password: the same answer whether or not the email has an account (no account probing).

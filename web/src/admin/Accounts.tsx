@@ -44,6 +44,13 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
   const { data: c, error, load } = useLoad<Detail>(`/admin/companies/${id}`)
   const { act, busy, msg } = useAct(load)
   const [rate, setRate] = useState(''), [reset, setReset] = useState<Record<string, string>>({})
+  // Sign in as one user to help them: a reason first; the session then is that user for an hour.
+  const [asUser, setAsUser] = useState<string | null>(null), [why, setWhy] = useState(''), [asError, setAsError] = useState('')
+  async function signInAs(u: { id: string; role: string }) {
+    setAsError('')
+    try { await api(`/admin/users/${u.id}/sign-in-as`, { method: 'POST', body: { reason: why.trim() } }); location.href = u.role === 'seller' ? '/home' : '/dashboard' }
+    catch (e: any) { setAsError(e.message) }
+  }
   if (!c) return <Loading error={error} />
   async function viewAs() { await api(`/admin/view-as/${c!.id}`, { method: 'POST' }); location.href = c!.type === 'publisher' ? '/home' : '/calendar' }
   return (
@@ -78,7 +85,14 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
           <td className="r">{u.status === 'active' && <button className="btn" disabled={busy} onClick={() => confirm(t('Suspend {name}? They are signed out at once.', { name: u.name })) && act('POST', `/admin/users/${u.id}/status`, { status: 'suspended' }, t('{name} suspended.', { name: u.name }))}>{t("Suspend")}</button>}
             {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, t('{name} restored.', { name: u.name }))}>{t("Restore")}</button>}
             {u.status === 'active' && ['buyer', 'seller'].includes(u.role) && <button className={`btn ${u.resetRequested ? 'primary' : ''}`} disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/reset-link`, {},
-              x => { setReset({ ...reset, [u.id]: x.link }); return t('Reset link ready for {name}. Older links no longer work.', { name: u.name }) })}>{t('Password reset link')}</button>}</td></tr>)}</tbody></table></div></section>
+              x => { setReset({ ...reset, [u.id]: x.link }); return t('Reset link ready for {name}. Older links no longer work.', { name: u.name }) })}>{t('Password reset link')}</button>}
+            {u.status === 'active' && ['buyer', 'seller'].includes(u.role) && <button className="btn" aria-expanded={asUser === u.id} onClick={() => { setAsUser(asUser === u.id ? null : u.id); setWhy(''); setAsError('') }}>{t('Sign in as {name}', { name: u.name.split(' ')[0] })}</button>}
+            {asUser === u.id && <div className="sign-in-as">
+              <label htmlFor={`why-${u.id}`} className="small">{t('Why are you signing in as {name}? They see this on their bell.', { name: u.name })}</label>
+              <textarea id={`why-${u.id}`} rows={2} maxLength={500} value={why} onChange={e => setWhy(e.target.value)} />
+              <p className="small muted">{t('For one hour you act as this person. Every change is logged under your name. Their password, email choices, card payments and bank details stay theirs.')}</p>
+              {asError && <p className="error">{asError}</p>}
+              <button className="btn primary" disabled={why.trim().length < 5} onClick={() => signInAs(u)}>{t('Sign in as {name}', { name: u.name.split(' ')[0] })}</button></div>}</td></tr>)}</tbody></table></div></section>
       {c.outlets.length > 0 && <section className="card pad section"><h2>{t("Outlets")}</h2>
         <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{t(o.channel)}</span><span className="row-flex"><OutletMark name={o.name} url={o.logoUrl} size={28} /><b>{o.name}</b> · <span className="small muted">{o.sectors.map(s => t(s)).join(sep)}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>{t("Recent deals")}</h2>
