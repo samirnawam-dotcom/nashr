@@ -7,6 +7,7 @@ import { LANGUAGE } from '../calendar/BidDrawer'
 import { dayLabel, money } from '../format'
 import { ltr, sep, t } from '../i18n'
 import { tm } from '../i18n-server'
+import { AudiencePicker } from '../Audiences'
 
 /*
  * Add placement, as Omar's brief describes it (prototype "Add a placement" + SPEC 12.1): pick a ready-made format for the outlet's
@@ -19,7 +20,7 @@ export type PlacementRow = { id: string; outletId: string; name: string; saleTyp
   breaks: { label: string; at?: string; seconds?: number }[]; startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null
   buyNowPrice: number | null; reservePrice: number | null; autoAccept: boolean; creativeLeadHours: number; closeLeadHours: number
   format: string | null; description: string | null; specs: string | null; language: string | null; unit: 'day' | 'week'; listing: 'rolling' | 'manual'
-  horizonWeeks: number; separation: boolean }
+  horizonWeeks: number; separation: boolean; audiences: string[] }
 type Profile = { windows: { sellerHours: number; paymentHours: number }; company: { payoutsEnabled: boolean }; outlets: Outlet[]; placements: PlacementRow[] }
 type Brk = { label: string; at: string; seconds: string }
 type Format = { key: string; title?: string; name: string; about: string; unit?: 'day' | 'week'; days?: number[]; startsAt?: string; endsAt?: string; breaks?: Brk[]
@@ -76,11 +77,11 @@ function formats(channel: string): Format[] {
 
 type F = { outletId: string; format: string; name: string; description: string; specs: string; language: string; unit: 'day' | 'week'; saleType: 'auction' | 'quick_sale' | 'fixed' | 'fixed'
   days: number[]; startsAt: string; endsAt: string; startingPrice: string; anyBreakPrice: string; packagePrice: string; buyNowPrice: string; reservePrice: string
-  autoAccept: boolean; creativeDays: string; closeDays: string; listing: 'rolling' | 'manual'; horizonWeeks: string; listNowWeeks: string; separation: boolean }
+  autoAccept: boolean; creativeDays: string; closeDays: string; listing: 'rolling' | 'manual'; horizonWeeks: string; listNowWeeks: string; separation: boolean; audiences: string[] }
 
 const blank = (outletId: string): F => ({ outletId, format: '', name: '', description: '', specs: '', language: 'english', unit: 'day', saleType: 'auction', days: WEEKDAYS,
   startsAt: '', endsAt: '', startingPrice: '', anyBreakPrice: '', packagePrice: '', buyNowPrice: '', reservePrice: '', autoAccept: false, creativeDays: '2', closeDays: '6',
-  listing: 'rolling', horizonWeeks: '8', listNowWeeks: '4', separation: false })
+  listing: 'rolling', horizonWeeks: '8', listNowWeeks: '4', separation: false, audiences: [] })
 
 /** The first airing that can still be sold, given when bidding closes (Dubai dates). */
 function firstSellable(days: number[], closeDays: number, from = todayInDubai()) {
@@ -100,7 +101,7 @@ export function NewPlacementPage() {
         language: src.language ?? 'english', unit: src.unit, saleType: src.saleType as F['saleType'], days: src.days, startsAt: src.startsAt?.slice(0, 5) ?? '', endsAt: src.endsAt?.slice(0, 5) ?? '',
         startingPrice: toAed(src.startingPrice), anyBreakPrice: toAed(src.anyBreakPrice), packagePrice: toAed(src.packagePrice), buyNowPrice: toAed(src.buyNowPrice),
         reservePrice: toAed(src.reservePrice), autoAccept: src.autoAccept, creativeDays: String(Math.round(src.creativeLeadHours / 24)), closeDays: String(Math.round(src.closeLeadHours / 24)),
-        listing: src.listing, horizonWeeks: String(src.horizonWeeks), listNowWeeks: '4', separation: src.separation })
+        listing: src.listing, horizonWeeks: String(src.horizonWeeks), listNowWeeks: '4', separation: src.separation, audiences: src.audiences ?? [] })
       setBreaks(src.breaks.map(b => brk(b.label, b.at ?? '', b.seconds ? String(b.seconds) : '')))
     } else setF(v => ({ ...v, outletId: x.outlets[0]?.id ?? '' }))
   }, e => setError(e.message)) }, [])
@@ -154,7 +155,7 @@ export function NewPlacementPage() {
         startingPrice: price, anyBreakPrice: slotted ? aed(f.anyBreakPrice) : undefined, packagePrice: slotted && breaks.length > 1 ? aed(f.packagePrice) : undefined,
         buyNowPrice: auction ? buyNow : undefined, reservePrice: auction ? reserve : undefined, autoAccept: fixed ? f.autoAccept : auction && !!reserve && f.autoAccept,
         creativeLeadHours: creativeH, closeLeadHours: closeH, format: f.format || undefined, description: f.description.trim() || undefined, specs: f.specs.trim() || undefined,
-        language: f.language, listing: f.listing, horizonWeeks: Number(f.horizonWeeks), separation: f.separation,
+        language: f.language, listing: f.listing, horizonWeeks: Number(f.horizonWeeks), separation: f.separation, audiences: f.audiences,
         ...(p!.company.payoutsEnabled && listDays > 0 ? { listFrom: todayInDubai(), listDays } : {}) }
       const r = await api<{ slots: number; warnings: string[] }>('/seller/placements', { method: 'POST', body: JSON.parse(JSON.stringify(body)) })
       setDone({ slots: r.slots, warnings: r.warnings ?? [], first: r.slots ? first : null, name: f.name.trim() }); scrollTo(0, 0)
@@ -187,6 +188,8 @@ export function NewPlacementPage() {
                 {Object.entries(LANGUAGE).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}</select></div>
             </div>
             <span className="small muted">{t('Buyers read this before they bid. Emails and phone numbers are not allowed.')}</span>
+            <div className="field"><span className="small muted">{t("Who it reaches (optional: leave empty to use the outlet's audiences)")}</span>
+              <AudiencePicker idPrefix="pl-aud" value={f.audiences} onChange={v => set('audiences', v)} /></div>
           </section>
 
           <section className="card pad form">

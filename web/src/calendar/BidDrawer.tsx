@@ -8,9 +8,10 @@ import { t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 
 type Detail = Slot & { minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
-  details?: { description: string | null; specs: string | null; language: string | null; unit: string | null }; publisher?: CompanyProfile | null }
+  details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
 export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
-export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other']
+export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government',
+  'Crypto & trading', 'Alcohol & nightlife', 'Lottery & gaming', 'Other']
 const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign'
 const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Date(s.startsAt).getTime()) / 1000)
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
@@ -21,7 +22,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   const [amount, setAmount] = useState(''), [auto, setAuto] = useState(false), [max, setMax] = useState('')
   // The brief goes with every first bid on a slot; the last one is offered again so buyers type it once per campaign.
   const [brief, setBrief] = useState(() => {
-    const blank = { advertiser: '', industry: 'Banking', message: '', language: 'english', landingUrl: '', creativeToFollow: true, notes: '' }
+    const blank = { advertiser: '', industry: 'Banking', message: '', language: 'english', landingUrl: '', creativeToFollow: true, notes: '', disclaimer: '' }
     try { return { ...blank, ...JSON.parse(localStorage.getItem(LAST_BRIEF) ?? '{}') } } catch { return blank }
   })
   const [error, setError] = useState(''), [done, setDone] = useState(''), [warn, setWarn] = useState(''), [busy, setBusy] = useState(false)
@@ -40,7 +41,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   async function send(path: string, body: object, message: string | ((r: any) => string)) {
     setBusy(true); setError(''); setDone(''); setWarn('')
     try {
-      const b = s!.briefOnFile ? {} : { brief: { ...brief, landingUrl: brief.landingUrl || undefined, notes: brief.notes || undefined } }
+      const b = s!.briefOnFile ? {} : { brief: { ...brief, landingUrl: brief.landingUrl || undefined, notes: brief.notes || undefined, disclaimer: brief.disclaimer?.trim() || undefined } }
       const r = await api<any>(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}) } })
       if (r?.beatenByAutoBid) message = () => ''
       if (r?.beatenByAutoBid) setWarn(t("Your bid is in, but another buyer's auto-bid is higher, so you are not leading. The top bid is now {top}. Bid at least {min}, or set a higher maximum.", { top: money(r.topAmount), min: money(r.minNextBid) }))
@@ -62,10 +63,11 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       <div className="row-flex"><SaleType t={s.saleType} /><span className="small">{status(s)}</span></div>
       {s.saleType === 'auction' && <p className="small muted">{t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })}</p>}
 
-      {s.details && (s.details.description || s.details.specs || s.details.language) && <dl className="facts placement-facts">
+      {s.details && (s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">
         {s.details.description && <div><dt>{t('What you get')}</dt><dd>{s.details.description}</dd></div>}
         {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd>{s.details.specs}</dd></div>}
         {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
+        {s.details.notAccepted?.length ? <div><dt>{t('Does not accept')}</dt><dd>{s.details.notAccepted.map(i => t(i)).join(', ')}</dd></div> : null}
         <div><dt>{t('Creative due')}</dt><dd>{dayLabel(dubai(s.creativeDueAt).date, { weekday: 'short', day: 'numeric', month: 'short' })}, {time(s.creativeDueAt)}</dd></div>
       </dl>}
       {s.publisher && <div className="drawer-seller"><span className="small muted">{t('Sold by')}</span><CompanyCard p={s.publisher} compact /></div>}
@@ -108,6 +110,9 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             <option value="english">{t("English")}</option><option value="arabic">{t("Arabic")}</option><option value="bilingual">{t("Bilingual")}</option></select></div>
           {s.channel === 'digital' && <div className="field"><label htmlFor="url">{t("Landing page link")}</label><input id="url" placeholder="https://" value={brief.landingUrl} onChange={e => setBrief({ ...brief, landingUrl: e.target.value })} /></div>}
           <label className="check"><input type="checkbox" checked={brief.creativeToFollow} onChange={e => setBrief({ ...brief, creativeToFollow: e.target.checked })} /> {t("Creative to follow")}</label>
+          <div className="field"><label htmlFor="disc">{t('Required disclaimer or licence number (regulated advertisers, optional)')}</label>
+            <input id="disc" dir="auto" maxLength={500} value={brief.disclaimer ?? ''} onChange={e => setBrief({ ...brief, disclaimer: e.target.value })} placeholder={t('e.g. Licensed by the Central Bank of the UAE')} />
+            <span className="small muted">{t('The publisher must include it and confirm it in their proof.')}</span></div>
           <div className="field"><label htmlFor="notes">{t("Notes for the publisher")}</label><textarea id="notes" rows={2} value={brief.notes} onChange={e => setBrief({ ...brief, notes: e.target.value })} />
             <span className="small muted">{t("Emails and phone numbers are not allowed. Talk to the publisher through Nashr.")}</span></div>
         </section>}

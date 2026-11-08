@@ -288,3 +288,19 @@
 :root[dir="rtl"] .lp .closing-mark { text-align: left; }
 :root[dir="rtl"] .lp .aud li { padding-left: 0; padding-right: 28px; }
 :root[dir="rtl"] .lp .aud li::before { left: auto; right: 0; }
+
+/* Nashr in numbers: real figures from the marketplace, nothing invented */
+.stats-band { padding: 28px 0; background: var(--ink, #0e1d21); color: #fff; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+.stats-row div { display: grid; gap: 4px; }
+.stats-row b { font: 600 clamp(26px, 3.2vw, 38px)/1.05 var(--display, inherit); letter-spacing: -.01em; }
+.stats-row span { font-size: 14px; color: rgba(255, 255, 255, .72); line-height: 1.4; }
+
+/* Start from the audience */
+.reach-aud { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.reach-aud a { display: inline-block; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line-2, rgba(14,29,33,.15)); background: var(--surface, #fff);
+  color: inherit; text-decoration: none; font-weight: 500; }
+.reach-aud a:hover { border-color: var(--teal, #0f6b6b); color: var(--teal, #0f6b6b); }
+.reach-aud a.more { background: transparent; color: var(--teal, #0f6b6b); }
+.reach-ind { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 18px; font-size: 14px; }
+.reach-ind a { color: var(--teal, #0f6b6b); }

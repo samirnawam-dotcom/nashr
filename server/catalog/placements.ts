@@ -22,6 +22,7 @@ export type PlacementInput = {
   unit?: 'day' | 'week'                  // print and digital can be sold a whole week at a time
   listing?: 'rolling' | 'manual'; horizonWeeks?: number   // rolling: always this many weeks on sale, topped up daily (SPEC G15)
   separation?: boolean                   // warn when an advertiser of the same industry is already booked that day
+  audiences?: string[]                   // who it reaches; empty: the outlet's audiences
 }
 
 /**
@@ -68,14 +69,14 @@ export async function createPlacement(db: Db, p: PlacementInput, actor: string, 
   const row = await one(db,
     `insert into placements (outlet_id, name, sale_type, days, starts_at_local, ends_at_local, breaks, starting_price, any_break_price,
        package_price, buy_now_price, reserve_price, auto_accept, creative_lead_hours, close_lead_hours, currency,
-       format, description, specs, language, unit, listing, horizon_weeks, separation)
+       format, description, specs, language, unit, listing, horizon_weeks, separation, audiences)
      select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, case o.market when 'SA' then 'SAR' else 'AED' end,
-       $16, $17, $18, $19, $20, $21, $22, $23
+       $16, $17, $18, $19, $20, $21, $22, $23, $24
      from outlets o where o.id = $1 returning id`,
     [p.outletId, p.name, p.saleType, p.days, p.startsAt ?? null, p.endsAt ?? null, JSON.stringify(p.breaks ?? []), p.startingPrice,
      p.anyBreakPrice ?? null, p.packagePrice ?? null, p.buyNowPrice ?? null, p.reservePrice ?? null, p.autoAccept ?? false,
      p.creativeLeadHours, p.closeLeadHours, p.format ?? null, p.description?.trim() || null, p.specs?.trim() || null, p.language ?? null,
-     p.unit ?? 'day', p.listing ?? 'manual', p.horizonWeeks ?? 8, p.separation ?? false])
+     p.unit ?? 'day', p.listing ?? 'manual', p.horizonWeeks ?? 8, p.separation ?? false, p.audiences ?? []])
   await audit(db, actor, 'placement.created', 'placement', row.id, { name: p.name }, at)
   return row.id
 }
@@ -161,7 +162,7 @@ export async function topUpRolling(db: Db, at: Date, batch = 20) {
 }
 
 export type PlacementEdit = Pick<PlacementInput, 'name' | 'startingPrice' | 'anyBreakPrice' | 'packagePrice' | 'buyNowPrice' | 'reservePrice' | 'autoAccept'
-  | 'creativeLeadHours' | 'closeLeadHours' | 'description' | 'specs' | 'language' | 'listing' | 'horizonWeeks' | 'separation'>
+  | 'creativeLeadHours' | 'closeLeadHours' | 'description' | 'specs' | 'language' | 'listing' | 'horizonWeeks' | 'separation' | 'audiences'>
 
 /**
  * Change a placement's name, prices, auto-accept and deadlines. Future slots nobody has bid on take the new terms at once;
@@ -177,10 +178,10 @@ export async function updatePlacement(db: Db, placementId: string, sellerId: str
   await db.query(`update placements set name = $2, starting_price = $3, any_break_price = $4, package_price = $5, buy_now_price = $6, reserve_price = $7,
       auto_accept = $8, creative_lead_hours = $9, close_lead_hours = $10,
       description = coalesce($11, description), specs = coalesce($12, specs), language = coalesce($13, language), listing = coalesce($14, listing),
-      horizon_weeks = coalesce($15, horizon_weeks), separation = coalesce($16, separation) where id = $1`,
+      horizon_weeks = coalesce($15, horizon_weeks), separation = coalesce($16, separation), audiences = coalesce($17, audiences) where id = $1`,
     [p.id, e.name, e.startingPrice, e.anyBreakPrice ?? null, e.packagePrice ?? null, e.buyNowPrice ?? null, e.reservePrice ?? null, e.autoAccept ?? false,
      e.creativeLeadHours, e.closeLeadHours, e.description == null ? null : e.description.trim(), e.specs == null ? null : e.specs.trim(), e.language ?? null,
-     e.listing ?? null, e.horizonWeeks ?? null, e.separation ?? null])
+     e.listing ?? null, e.horizonWeeks ?? null, e.separation ?? null, e.audiences ?? null])
   // Only open, unbid, future slots change; their closing time must still be ahead of now.
   const r = await db.query(`update slots s set
       starting_price = case s.kind when 'any' then coalesce($2::bigint, s.starting_price) when 'package' then coalesce($3::bigint, s.starting_price) else $4::bigint end,

@@ -1,3 +1,4 @@
+import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
 import { MarketError } from '../marketplace/market.js'
@@ -41,11 +42,15 @@ function price(r: any) {
 }
 
 // The outlet's public address segment: "Gulf News" → /directory/gulf-news (same rule as the web app's outletSlug).
+// Public pages the web app serves (web/src/public): industry pages and Insights articles, listed here for the sitemap.
+const PUBLIC_INDUSTRIES = ['banking', 'real-estate', 'retail', 'automotive', 'technology', 'hospitality', 'health', 'education']
+const ARTICLE_SLUGS = ['auction-fixed-price-or-quick-sale', 'how-payment-protection-works', 'planning-a-ramadan-campaign']
+
 export const SLUG_SQL = `lower(trim(both '-' from regexp_replace(o.name, '[^a-zA-Z0-9]+', '-', 'g')))`
 const slugOf = (name: string, id: string) => name.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || id
 
 const outletCard = (r: any) => ({ id: r.id, slug: slugOf(r.name, r.id), name: r.name, nameAr: r.name_ar, channel: r.channel, sectors: r.sectors, logoUrl: logoUrl(r) ?? r.logo_url, coverUrl: coverUrl(r),
-  tier: r.tier, audience: r.audience, market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r),
+  tier: r.tier, audience: r.audience, audiences: r.audiences ?? [], market: r.market, comingSoon: r.coming_soon, onNashr: !!r.bookable, price: price(r),
   rating: { average: r.rating_n ? r.rating_avg : null, count: r.rating_n ?? 0 } })
 
 export function planRoutes(route: RouteFn) {
@@ -69,13 +74,35 @@ export function planRoutes(route: RouteFn) {
         buyNowPrice: p.buy_now_price, openSlots: p.open_slots, nextSlotAt: p.next_slot })) }
   })
 
+  // Live proof for the landing page, from real records only. A figure appears once it is big enough to mean something
+  // (owner rule: hide data we don't have); below that it is null and the page simply leaves it out.
+  let cached: { at: number; body: unknown } | null = null
+  route('GET', '/api/public/stats', [...BUYER, 'seller', 'admin', 'guest'], async ({ db, at }) => {
+    if (cached && at.getTime() - cached.at < 5 * 60_000 && at.getTime() >= cached.at) return cached.body
+    const r = (await db.query(`select
+        (select count(distinct c.id)::int from companies c join outlets o on o.company_id = c.id where c.type = 'publisher' and c.payouts_enabled) publishers,
+        (select count(*)::int from outlets o join companies c on c.id = o.company_id where c.payouts_enabled and ${OPEN} ? o.market) outlets,
+        (select count(distinct o.channel)::int from outlets o join companies c on c.id = o.company_id where c.payouts_enabled) channels,
+        (select count(*)::int from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+          where s.status = 'open' and s.closes_at > $1 and s.starts_at < $1::timestamptz + interval '30 days' and ${OPEN} ? o.market) open_slots,
+        (select count(*)::int from deals where status in ('released', 'paid_out')) completed,
+        (select coalesce(sum(amount), 0)::bigint from deals where status in ('secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out', 'refunded')) booked`, [at])).rows[0]
+    const show = (v: number, min: number) => v >= min ? v : null
+    const body = { publishers: show(r.publishers, 3), outlets: show(r.outlets, 5), channels: show(r.channels, 3), openSlots: show(r.open_slots, 50),
+      completed: show(r.completed, 10), booked: show(Number(r.booked), 5_000_000) /* AED 50,000 */ }
+    cached = { at: at.getTime(), body }
+    return body
+  })
+
   // For search engines: every public page and every outlet, at the site's own address.
   route('GET', '/api/sitemap.xml', 'public', async ({ db }, req, reply) => {
     const origin = (process.env.SITE_URL ?? `${req.protocol}://${req.headers.host}`).replace(/\/$/, '')
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
     const outlets = (await db.query(`select o.id, o.name from outlets o order by o.name`)).rows
     const urls = [['/', 'daily', '1.0'], ['/calendar', 'hourly', '0.9'], ['/directory', 'daily', '0.9'], ['/request-access', 'monthly', '0.6'],
-      ...outlets.map(o => [`/directory/${slugOf(o.name, o.id)}`, 'weekly', '0.7']), ['/terms', 'yearly', '0.2'], ['/privacy', 'yearly', '0.2'], ['/refunds', 'yearly', '0.2']]
+      ...outlets.map(o => [`/directory/${slugOf(o.name, o.id)}`, 'weekly', '0.7']),
+      ['/audiences', 'weekly', '0.8'], ...AUDIENCE_KEYS.map(k => [`/audiences/${k}`, 'daily', '0.7']), ...PUBLIC_INDUSTRIES.map(k => [`/advertise/${k}`, 'daily', '0.7']),
+      ['/insights', 'weekly', '0.6'], ...ARTICLE_SLUGS.map(k => [`/insights/${k}`, 'monthly', '0.5']), ['/terms', 'yearly', '0.2'], ['/privacy', 'yearly', '0.2'], ['/refunds', 'yearly', '0.2']]
     reply.type('application/xml').header('cache-control', 'public, max-age=3600')
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${
       urls.map(([p, f, pr]) => `  <url><loc>${esc(origin + p)}</loc><changefreq>${f}</changefreq><priority>${pr}</priority></url>`).join('\n')}\n</urlset>\n`

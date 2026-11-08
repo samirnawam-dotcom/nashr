@@ -47,8 +47,9 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
   try {
     step = '1 request access'
     for (const [p, email, company, type] of [[pub, pubEmail, `Palm Radio ${run}`, 'media_outlet'], [buy, buyEmail, `Desert Bank ${run}`, 'brand'], [buy2, buy2Email, `Oasis Retail ${run}`, 'agency']]) {
-      await p.goto(BASE + '/request-access'); await p.fill('#n', 'Test Person'); await p.fill('#e', email); await p.fill('#p', '+971501234567')
-      await p.fill('#c', company); await p.fill('#r', 'Marketing'); await p.selectOption('#t', type); await p.click('button:has-text("Send request")')
+      await p.goto(BASE + '/request-access'); await p.click(type === 'media_outlet' ? '.side-card:has-text("I sell airtime")' : '.side-card:has-text("I want to advertise")')
+      await p.fill('#n', 'Test Person'); await p.fill('#e', email); await p.fill('#p', '+971501234567')
+      await p.fill('#c', company); await p.fill('#r', 'Marketing'); if (type !== 'media_outlet') await p.selectOption('#t', type); await p.click('button:has-text("Send request")')
       await p.waitForSelector('h1:has-text("Request sent")')
     }
     say()

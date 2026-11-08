@@ -582,3 +582,48 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 .co-edit-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .co-preview { padding: 14px; border: 1px dashed var(--line-2); border-radius: var(--radius); background: var(--surface-2); }
 @media (max-width: 760px) { .co-edit-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Audience chips: tick who an outlet or placement reaches */
+.aud-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.aud-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--line-2); border-radius: 999px; font-size: 13px; cursor: pointer; background: var(--surface); }
+.aud-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.aud-chip.on { background: var(--teal-1); border-color: var(--teal-3); color: var(--teal); font-weight: 500; }
+.aud-chip:focus-within { box-shadow: var(--focus); }
+.aud-chip.on::before { content: '✓'; font-size: 11px; }
+
+/* Results: spend by channel */
+.res-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.res-bars li { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.res-bar { height: 10px; border-radius: 6px; background: var(--surface-3); overflow: hidden; }
+.res-bar > span { display: block; height: 100%; border-radius: 6px; background: var(--teal); }
+.ch-fill.ch-radio { background: #0a8c7d; } .ch-fill.ch-tv { background: #3a6fd8; } .ch-fill.ch-print { background: #c47a0a; }
+.ch-fill.ch-digital { background: #9a4fc0; } .ch-fill.ch-podcast { background: #d0456a; }
+@media (max-width: 560px) { .res-bars li { grid-template-columns: 90px minmax(0, 1fr); } .res-bars li > .num { grid-column: 2; } }
+
+/* Audience and industry pages */
+.seg-page, .ins-page { max-width: 1100px; }
+.seg-intro { max-width: 62ch; }
+.seg-sum { font-weight: 500; }
+.seg-grid { list-style: none; padding: 0; margin: 12px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.seg-card { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px; color: inherit; text-decoration: none; }
+.seg-logo { width: 40px; height: 40px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font-weight: 600; font-size: 13px; }
+.seg-logo img { width: 100%; height: 100%; object-fit: cover; }
+.seg-body { display: grid; gap: 4px; min-width: 0; } .seg-body b { overflow-wrap: anywhere; }
+.seg-meta { display: grid; justify-items: end; gap: 2px; text-align: end; }
+.aud-grid { list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.aud-card { display: grid; gap: 6px; padding: 16px; color: inherit; text-decoration: none; height: 100%; }
+.aud-card span { color: var(--slate); font-size: 14px; line-height: 1.45; }
+.aud-card:hover, .seg-card:hover { border-color: var(--teal-4); }
+a.aud-chip { text-decoration: none; color: inherit; }
+/* Insights */
+.ins-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 12px; }
+.ins-card { display: grid; gap: 6px; padding: 18px; color: inherit; text-decoration: none; }
+.ins-card h2 { margin: 0; font-size: 19px; } .ins-card p { margin: 0; color: var(--slate); }
+.ins-article { max-width: 68ch; } .ins-article p { line-height: 1.7; }
+.ins-more { padding-inline-start: 18px; display: grid; gap: 6px; }
+.side-pick { display: grid; gap: 10px; }
+.side-card { display: grid; gap: 4px; text-align: start; padding: 16px 18px; border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--surface); font: inherit; color: inherit; cursor: pointer; }
+.side-card b { font-size: 16px; } .side-card span { color: var(--slate); font-size: 14px; }
+.side-card:hover { border-color: var(--teal); background: var(--teal-1); } .side-card:focus-visible { outline: none; box-shadow: var(--focus); }
+button.text-link { background: none; border: 0; padding: 0; font: inherit; color: var(--teal); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.seg-page .row-flex, .ins-article .row-flex { flex-wrap: wrap; }

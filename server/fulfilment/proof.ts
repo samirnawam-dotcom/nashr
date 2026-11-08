@@ -15,14 +15,19 @@ export const PROOF_CHECKLIST: Record<string, { key: string; label: string }[]> =
   podcast: [{ key: 'episode_link', label: 'the episode link' }, { key: 'ad_time', label: 'the time of the ad in the episode' }, { key: 'audio_clip', label: 'the audio clip' }],
 }
 
-export function missingProof(channel: string, items: Record<string, unknown>) {
-  return PROOF_CHECKLIST[channel].filter(i => !items[i.key]).map(i => i.label)
+/** The channel's proof, plus a confirmation of the regulator's disclaimer when the buyer's brief required one. */
+export function checklistFor(channel: string, brief?: { disclaimer?: string } | null) {
+  return [...PROOF_CHECKLIST[channel], ...(brief?.disclaimer?.trim() ? [{ key: 'disclaimer', label: 'confirmation the required disclaimer was included' }] : [])]
+}
+
+export function missingProof(channel: string, items: Record<string, unknown>, brief?: { disclaimer?: string } | null) {
+  return checklistFor(channel, brief).filter(i => !items[i.key]).map(i => i.label)
 }
 
 export async function checkProof(db: Db, dealId: string, items: Record<string, unknown>) {
-  const { channel } = await one(db, `select o.channel from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
-                                     join outlets o on o.id = p.outlet_id where d.id = $1`, [dealId])
-  const missing = missingProof(channel, items)
+  const { channel, brief } = await one(db, `select o.channel, (select b.brief from bids b where b.id = d.bid_id) brief from deals d join slots s on s.id = d.slot_id
+                                     join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.id = $1`, [dealId])
+  const missing = missingProof(channel, items, brief)
   if (missing.length) throw new MarketError(`Add ${missing.join(' and ')} before sending proof.`)
 }
 

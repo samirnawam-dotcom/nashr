@@ -1095,7 +1095,7 @@ describe('add placement as Omar described it', () => {
       description: 'A 30-second spot.', specs: 'MP3, 30 seconds', language: 'arabic', listFrom: '2026-11-08', listDays: 14 })).json()
     expect(r.slots).toBeGreaterThan(0)
     const slot = (await pool.query(`select s.id from slots s where s.placement_id = $1 order by starts_at limit 1`, [r.id])).rows[0].id
-    expect((await call(buyerA, 'GET', `/api/slots/${slot}`)).json().details).toEqual({ description: 'A 30-second spot.', specs: 'MP3, 30 seconds', language: 'arabic', unit: 'day' })
+    expect((await call(buyerA, 'GET', `/api/slots/${slot}`)).json().details).toEqual({ description: 'A 30-second spot.', specs: 'MP3, 30 seconds', language: 'arabic', unit: 'day', notAccepted: [] })
   })
 
   test('a week-long placement makes one slot a week that runs seven days', async () => {
@@ -1177,5 +1177,74 @@ describe('business profiles both ways, never contact details', () => {
     expect(pub).toMatchObject({ name: 'Skyline FM', type: 'publisher', outlets: ['Skyline FM'] })
     // no emails, phones or people anywhere in either profile
     for (const p of [seen, bidder, pub]) expect(JSON.stringify(p)).not.toMatch(/@|\+971|sara|ali|email|phone/i)
+  })
+})
+
+describe('audiences: buyers pick who they want to reach', () => {
+  test('a placement reaches its own audiences, else its outlet\'s; SQL and the shared rule agree', async () => {
+    const outletX = (await pool.query(`select o.id from outlets o where o.company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+    expect((await call(sellerX, 'PUT', `/api/seller/outlets/${outletX}`, { audiences: ['commuters', 'executives'], reach: 150_000 })).statusCode).toBe(200)
+    expect((await call(sellerX, 'PUT', `/api/seller/outlets/${outletX}`, { audiences: ['not_a_real_audience'] })).statusCode).toBe(400)
+    const outletY = (await pool.query(`select o.id from outlets o where o.company_id = $1 limit 1`, [sellerY.companyId])).rows[0].id
+    await pool.query(`update outlets set audiences = '{students}' where id = $1`, [outletY])
+    await pool.query(`update placements set audiences = '{parents}' where outlet_id = $1`, [outletY]) // the placement's own list wins
+    const range = 'from=2026-11-09T00:00:00%2B04:00&to=2026-11-16T00:00:00%2B04:00'
+    const all = (await call(buyerA, 'GET', `/api/slots?${range}`)).json()
+    for (const [aud, expectOutlet] of [['commuters', 'Skyline FM'], ['parents', 'Gulf Radio'], ['students', null]] as const) {
+      const sql = (await call(buyerA, 'GET', `/api/slots?${range}&aud=${aud}`)).json()
+      expect(sql.map((s: any) => s.id).sort()).toEqual(all.filter((s: any) => matches({ audiences: [aud] }, s)).map((s: any) => s.id).sort())
+      if (expectOutlet) expect(new Set(sql.map((s: any) => s.outlet))).toEqual(new Set([expectOutlet]))
+      else expect(sql).toHaveLength(0)
+    }
+    // a saved search can carry audiences too
+    expect((await call(buyerA, 'POST', '/api/searches', { name: 'Drivers', filter: { audiences: ['commuters'] } })).statusCode).toBe(200)
+  })
+})
+
+describe('brand safety and regulated disclaimers', () => {
+  test('a blocked industry or advertiser is refused before any bid; buyers can see what an outlet does not accept', async () => {
+    const outletX = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+    await call(sellerX, 'PUT', `/api/seller/outlets/${outletX}`, { blockedIndustries: ['Crypto & trading'], blockedAdvertisers: ['Rival Bank'] })
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json().details.notAccepted).toEqual(['Crypto & trading'])
+    const crypto = { ...BRIEF, industry: 'Crypto & trading' }
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: crypto })).json().error).toMatch('does not accept Crypto & trading')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...BRIEF, advertiser: 'RIVAL-bank UAE' } })).json().error).toMatch('does not run ads for this advertiser')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: BRIEF })).statusCode).toBe(200)
+  })
+
+  test('a required disclaimer reaches the publisher and must be confirmed in the proof', async () => {
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...BRIEF, disclaimer: 'Licensed by the Central Bank of the UAE' } })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    const detail = (await call(sellerX, 'GET', `/api/seller/deals/${deal}/detail`)).json()
+    expect(detail.proofChecklist.map((i: any) => i.key)).toContain('disclaimer')
+    await pool.query(`update slots set starts_at = $2, ends_at = $2 where id = $1`, [slotX, new Date(now.getTime() - 3_600_000)])
+    const items = { as_run_log: 'Aired 07:15', audio_clip: 'clip.mp3' }
+    expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items })).json().error).toMatch('disclaimer')
+    expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items: { ...items, disclaimer: 'Read at the end of the spot' } })).statusCode).toBe(200)
+  })
+})
+
+describe('results, sales insights and public proof', () => {
+  test('a buyer sees spend, airings, proof and reach; a publisher sees sell-through; public figures stay hidden until meaningful', async () => {
+    const outletX = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+    await call(sellerX, 'PUT', `/api/seller/outlets/${outletX}`, { reach: 200_000 })
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
+    let r = (await call(buyerA, 'GET', '/api/buyer/results')).json()
+    expect(r.totals).toMatchObject({ bookings: 1, spend: AED(5_500), aired: 0, reach: 0, cpm: null })
+    await pool.query(`update slots set starts_at = $2, ends_at = $2 where id = $1`, [slotX, new Date(now.getTime() - 3_600_000)])
+    r = (await call(buyerA, 'GET', '/api/buyer/results')).json()
+    expect(r.totals).toMatchObject({ aired: 1, reach: 200_000, cpm: Math.round(AED(5_500) / 200_000 * 1000) })
+    expect(r.byChannel).toEqual([{ channel: 'radio', bookings: 1, spend: AED(5_500), reach: 200_000 }])
+    expect((await call(buyerB, 'GET', '/api/buyer/results')).json().items).toHaveLength(0) // only your own
+    // the publisher, once bidding has closed on its slots
+    now = T('2026-11-05T00:00:00Z'); sellerX.cookie = await signIn('sales@skyline.ae')
+    const i = (await call(sellerX, 'GET', '/api/seller/insights')).json()
+    expect(i.totals).toMatchObject({ slots: expect.any(Number), sold: 1 })
+    expect(i.totals.uplift).toBeGreaterThan(0) // sold at the buy-now price, above the starting price
+    // the landing page: below the thresholds nothing is shown
+    expect((await call(null, 'GET', '/api/public/stats')).json()).toMatchObject({ completed: null, booked: null })
   })
 })

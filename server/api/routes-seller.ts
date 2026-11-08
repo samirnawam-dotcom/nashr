@@ -2,6 +2,7 @@ import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { sellerDeal, sellerSlot } from './shapes.js'
 import { companyProfile } from './profiles.js'
+import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import { accept, acceptInterest, chooseBid, decline, MarketError } from '../marketplace/market.js'
 import { cancelBySeller, creativeMissed } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
@@ -24,7 +25,8 @@ const PLACEMENT = { type: 'object', additionalProperties: false, required: ['out
     listFrom: { type: 'string', format: 'date' }, listDays: { type: 'integer', minimum: 1, maximum: 190 },
     format: { type: 'string', maxLength: 40 }, description: { type: 'string', maxLength: 600 }, specs: { type: 'string', maxLength: 400 },
     language: { enum: ['english', 'arabic', 'both', 'hindi', 'urdu', 'other'] }, unit: { enum: ['day', 'week'] }, listing: { enum: ['rolling', 'manual'] },
-    horizonWeeks: { type: 'integer', minimum: 1, maximum: 26 }, separation: { type: 'boolean' } } }
+    horizonWeeks: { type: 'integer', minimum: 1, maximum: 26 }, separation: { type: 'boolean' },
+    audiences: { type: 'array', maxItems: 12, uniqueItems: true, items: { enum: AUDIENCE_KEYS } } } }
 const reason = { type: 'object', required: ['reason'], properties: { reason: { type: 'string', minLength: 1, maxLength: 1000 } } }
 
 // Before acceptance the money preview uses the rates that acceptance would freeze: the publisher's own rate or the default.
@@ -157,5 +159,6 @@ export function sellerRoutes(route: RouteFn) {
     properties: { name: PLACEMENT.properties.name, startingPrice: price, anyBreakPrice: price, packagePrice: price, buyNowPrice: price, reservePrice: price,
       autoAccept: { type: 'boolean' }, creativeLeadHours: PLACEMENT.properties.creativeLeadHours, closeLeadHours: PLACEMENT.properties.closeLeadHours,
       description: PLACEMENT.properties.description, specs: PLACEMENT.properties.specs, language: PLACEMENT.properties.language,
-      listing: PLACEMENT.properties.listing, horizonWeeks: PLACEMENT.properties.horizonWeeks, separation: PLACEMENT.properties.separation } })
+      listing: PLACEMENT.properties.listing, horizonWeeks: PLACEMENT.properties.horizonWeeks, separation: PLACEMENT.properties.separation,
+      audiences: PLACEMENT.properties.audiences } })
 }

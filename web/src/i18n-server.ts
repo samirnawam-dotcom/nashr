@@ -35,6 +35,8 @@ export const SERVER_AR: Record<string, string> = {
   "Buy-now and reserve prices are for auctions only.": "سعر الشراء الفوري والسعر الأدنى للمزادات فقط.",
   "This slot is not sold at a fixed price.": "هذه المساحة لا تُباع بسعر ثابت.",
   "Someone has just booked this slot, or it is no longer on sale.": "حجز أحدهم هذه المساحة للتو، أو لم تعد معروضة للبيع.",
+  "This outlet does not accept {} advertising.": "لا تقبل هذه المنصة إعلانات {1}.",
+  "This outlet does not run ads for this advertiser.": "لا تنشر هذه المنصة إعلانات لهذا المعلن.",
   'This slot is not a quick sale.': 'هذه المساحة ليست للبيع السريع.', 'Offers cannot be below {}.': 'لا يمكن أن تقل العروض عن {1}.', 'This interest can no longer be accepted.': 'لم يعد ممكنًا قبول هذا الاهتمام.',
   'A reason is required to decline.': 'يلزم ذكر سبب للرفض.', 'This bid cannot be chosen.': 'لا يمكن اختيار هذه المزايدة.',
   'You can save up to {} searches. Delete one to save another.': 'يمكنك حفظ {1} عمليات بحث كحد أقصى. احذف واحدة لتحفظ أخرى.',

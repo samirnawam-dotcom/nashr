@@ -2,6 +2,7 @@
  * What a buyer can search the calendar by. One definition for the calendar screen and for saved-search alerts on the
  * server, so an alert fires for exactly the slots the buyer would have seen. Pure: no Node or browser APIs.
  */
+import { audienceLabel } from './audiences.js'
 export type Daypart = 'morning' | 'afternoon' | 'evening' | 'allday'
 export type SlotFilter = {
   channels?: string[]        // empty or missing: every channel
@@ -11,9 +12,10 @@ export type SlotFilter = {
   dayparts?: Daypart[]       // Dubai time of day
   q?: string                 // outlet, programme or audience contains this text
   closingWithinHours?: number
+  audiences?: string[]       // reaches any of these (a placement's own audiences, else its outlet's)
 }
 export type FilterableSlot = {
-  outlet: string; placement?: string; channel: string; saleType: string; sectors?: string[]; audience?: string | null
+  outlet: string; placement?: string; channel: string; saleType: string; sectors?: string[]; audience?: string | null; audiences?: string[]
   startsAt: string; endsAt: string | null; closesAt: string; startingPrice: number; topBid: number | null
 }
 
@@ -25,7 +27,8 @@ const dubaiMinutes = (iso: string) => { const d = new Date(new Date(iso).getTime
 
 export function daypart(s: FilterableSlot): Daypart {
   const m = dubaiMinutes(s.startsAt)
-  if (!s.endsAt && m === 0) return 'allday'
+  // whole-day items (print editions) and anything a day or longer (a week's banner) are all-day, as on the calendar
+  if (s.endsAt ? new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime() >= 86_400_000 : m === 0) return 'allday'
   return m < 5 * 60 ? 'evening' : m < 12 * 60 ? 'morning' : m < 17 * 60 ? 'afternoon' : 'evening'
 }
 
@@ -40,13 +43,14 @@ export function matches(f: SlotFilter, s: FilterableSlot, now = Date.now()): boo
     if (!f.q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w))) return false
   }
   if (f.closingWithinHours != null && new Date(s.closesAt).getTime() - now > f.closingWithinHours * 3_600_000) return false
+  if (f.audiences?.length && !(s.audiences ?? []).some(a => f.audiences!.includes(a))) return false
   return true
 }
 
 /** How many filters narrow the calendar beyond "everything", for the "Clear filters (3)" button. */
 export const activeCount = (f: SlotFilter, all: { channels: number; saleTypes: number }) =>
   [f.channels && f.channels.length < all.channels, f.saleTypes && f.saleTypes.length < all.saleTypes, !!f.sector, f.maxPrice != null,
-    !!f.dayparts?.length, !!f.q?.trim(), f.closingWithinHours != null].filter(Boolean).length
+    !!f.dayparts?.length, !!f.q?.trim(), f.closingWithinHours != null, !!f.audiences?.length].filter(Boolean).length
 
 /** A short sentence for a saved search: "Radio · Banking · under AED 5,000 · morning". */
 export function describe(f: SlotFilter, names: Record<string, string> = {}, tr: (s: string) => string = s => s,
@@ -57,7 +61,8 @@ export function describe(f: SlotFilter, names: Record<string, string> = {}, tr: 
     f.sector, f.q?.trim() && `“${f.q.trim()}”`,
     f.maxPrice != null && part('under {price}').replace('{price}', price(f.maxPrice)),
     f.dayparts?.length && f.dayparts.map(d => part(d === 'allday' ? 'all day' : d)).join(tr(', ')),
-    f.saleTypes?.length === 1 && part(f.saleTypes[0] === 'auction' ? 'auctions' : 'quick sales'),
+    f.saleTypes?.length === 1 && part(f.saleTypes[0] === 'auction' ? 'auctions' : f.saleTypes[0] === 'fixed' ? 'fixed price' : 'quick sales'),
+    f.audiences?.length && f.audiences.map(a => part(audienceLabel(a))).join(tr(', ')),
   ]
   return parts.filter(Boolean).join(' · ')
 }

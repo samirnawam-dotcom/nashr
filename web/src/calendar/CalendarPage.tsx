@@ -7,6 +7,7 @@ import { SignInPrompt, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { SavedSearches } from './SavedSearches'
 import { activeCount, DAYPARTS, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
+import { AUDIENCES } from '../../../server/shared/audiences'
 import { isAr, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 import './calendar.css'
@@ -71,14 +72,14 @@ function readState(narrow: boolean): State {
   const view = isView(p.get('view')) ? p.get('view') as View : isView(saved) ? saved : narrow ? 'list' : 'week'
   return { view, date: /^\d{4}-\d{2}-\d{2}$/.test(p.get('date') ?? '') ? p.get('date')! : todayInDubai(),
     f: { channels: list('ch'), saleTypes: list('sale'), sector: p.get('sector') || undefined, maxPrice: p.get('max') ? Number(p.get('max')) : undefined,
-      dayparts: list('dp') as Daypart[] | undefined, q: p.get('q') || undefined, closingWithinHours: p.get('soon') ? Number(p.get('soon')) : undefined },
+      dayparts: list('dp') as Daypart[] | undefined, q: p.get('q') || undefined, closingWithinHours: p.get('soon') ? Number(p.get('soon')) : undefined, audiences: list('aud') },
     mine: p.get('mine') === '1', all: p.get('all') === '1', sort: (p.get('sort') as Sort) || 'time', osort: (p.get('osort') as OSort) || 'name' }
 }
 function writeState(s: State, push: boolean) {
   const p = new URLSearchParams(location.search)
   const put = (k: string, v: string | number | undefined | null | false) => v === undefined || v === null || v === '' || v === false ? p.delete(k) : p.set(k, String(v))
   put('view', s.view); put('date', s.date); put('ch', s.f.channels?.join(',')); put('sale', s.f.saleTypes?.join(',')); put('sector', s.f.sector)
-  put('max', s.f.maxPrice); put('dp', s.f.dayparts?.join(',')); put('q', s.f.q); put('soon', s.f.closingWithinHours); put('mine', s.mine && '1'); put('all', s.all && '1')
+  put('max', s.f.maxPrice); put('dp', s.f.dayparts?.join(',')); put('aud', s.f.audiences?.join(',')); put('q', s.f.q); put('soon', s.f.closingWithinHours); put('mine', s.mine && '1'); put('all', s.all && '1')
   put('sort', s.sort === 'time' ? null : s.sort); put('osort', s.osort === 'name' ? null : s.osort)
   const url = `${location.pathname}?${p.toString()}`
   if (url !== location.pathname + location.search) history[push ? 'pushState' : 'replaceState'](null, '', url)
@@ -89,7 +90,7 @@ function query(s: State, from: string, to: string, extra: Record<string, string 
   const f = s.f
   if (f.channels?.length) p.set('ch', f.channels.join(',')); if (f.saleTypes?.length) p.set('sale', f.saleTypes.join(','))
   if (f.sector) p.set('sector', f.sector); if (f.maxPrice != null) p.set('max', String(f.maxPrice)); if (f.dayparts?.length) p.set('dp', f.dayparts.join(','))
-  if (f.q?.trim()) p.set('q', f.q.trim()); if (f.closingWithinHours != null) p.set('soon', String(f.closingWithinHours))
+  if (f.q?.trim()) p.set('q', f.q.trim()); if (f.closingWithinHours != null) p.set('soon', String(f.closingWithinHours)); if (f.audiences?.length) p.set('aud', f.audiences.join(','))
   if (s.mine) p.set('mine', '1'); if (!s.all) p.set('open', '1')
   for (const [k, v] of Object.entries(extra)) p.set(k, String(v))
   return p.toString()
@@ -150,7 +151,7 @@ export function CalendarPage() {
 
   const total = totals?.reduce((n, d) => n + d.slots, 0) ?? null
   const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: 2 }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
-  const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined }, mine: false, all: false }) }
+  const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined }, mine: false, all: false }) }
   const step = (n: number) => {
     if (s.view === 'month') { const d = new Date(s.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
     update({ date: addDays(s.date, n * (narrow ? 7 : s.view === 'day' ? 1 : s.view === 'list' ? LIST_DAYS : 7)) }, true) // phones show a week in every view but month
@@ -263,6 +264,8 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
   </div>
   const dayparts = <div className="cv-checks">{DAYPARTS.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={on(s.f.dayparts, v)}
     onChange={() => update({ f: { dayparts: toggle(s.f.dayparts, v, DAYPARTS.map(d => d[0])) as Daypart[] | undefined } })} />{t(l)}</label>)}</div>
+  const audiences = <div className="cv-checks">{AUDIENCES.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={on(s.f.audiences, v)}
+    onChange={() => update({ f: { audiences: toggle(s.f.audiences, v, AUDIENCES.map(a => a[0])) } })} />{t(l)}</label>)}</div>
   const filter = { ...s.f }
   return (
     <section className={`cv-filters ${stacked ? 'stacked' : ''}`} aria-label={t('Filters')}>
@@ -274,15 +277,16 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
       <div className="cv-group" role="group" aria-label={t('Sale type')}>{stacked && <span className="cv-label">{t('Sale type')}</span>}
         {SALE_TYPES.map(v => <button key={v} type="button" className={`chipf ${on(s.f.saleTypes, v) ? 'on' : ''}`} aria-pressed={on(s.f.saleTypes, v)}
           onClick={() => update({ f: { saleTypes: toggle(s.f.saleTypes, v, [...SALE_TYPES]) } })}><SaleIcon k={v} />{saleLabel(v)}</button>)}</div>
-      {stacked ? <><span className="cv-label">{t('Time of day')}</span>{dayparts}<span className="cv-label">{t('More filters')}</span>{moreFields}</> : <>
+      {stacked ? <><span className="cv-label">{t('Audience')}</span>{audiences}<span className="cv-label">{t('Time of day')}</span>{dayparts}<span className="cv-label">{t('More filters')}</span>{moreFields}</> : <>
+        <Popover label={<>{t('Audience')}{s.f.audiences?.length ? <span className="cv-count">{s.f.audiences.length}</span> : null}</>} on={!!s.f.audiences?.length}>{audiences}</Popover>
         <Popover label={<>{t('Time of day')}{s.f.dayparts?.length ? <span className="cv-count">{s.f.dayparts.length}</span> : null}</>} on={!!s.f.dayparts?.length}>{dayparts}</Popover>
         <Popover label={<>{t('More filters')}{more ? <span className="cv-count">{more}</span> : null}</>} on={more > 0}>{moreFields}</Popover>
       </>}
       <span className="spacer" />
       {!guest && !stacked && <Popover label={<><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M6 3h12v18l-6-4-6 4z" /></svg>{t('Saved searches')}</>} align="end" wide>
-        <SavedSearches filter={filter} active={active} names={CHANNEL_NAME} onApply={f => update({ f: { channels: f.channels, saleTypes: f.saleTypes, sector: f.sector, maxPrice: f.maxPrice, dayparts: f.dayparts, q: f.q, closingWithinHours: f.closingWithinHours } })} /></Popover>}
+        <SavedSearches filter={filter} active={active} names={CHANNEL_NAME} onApply={f => update({ f: { channels: f.channels, saleTypes: f.saleTypes, sector: f.sector, maxPrice: f.maxPrice, dayparts: f.dayparts, q: f.q, closingWithinHours: f.closingWithinHours, audiences: f.audiences } })} /></Popover>}
       {stacked && !guest && <><span className="cv-label">{t('Saved searches')}</span><SavedSearches filter={filter} active={active} names={CHANNEL_NAME}
-        onApply={f => { setQText(f.q ?? ''); update({ f: { channels: f.channels, saleTypes: f.saleTypes, sector: f.sector, maxPrice: f.maxPrice, dayparts: f.dayparts, q: f.q, closingWithinHours: f.closingWithinHours } }) }} /></>}
+        onApply={f => { setQText(f.q ?? ''); update({ f: { channels: f.channels, saleTypes: f.saleTypes, sector: f.sector, maxPrice: f.maxPrice, dayparts: f.dayparts, q: f.q, closingWithinHours: f.closingWithinHours, audiences: f.audiences } }) }} /></>}
       {!stacked && active > 0 && <button type="button" className="btn cv-clear" onClick={clear}>{t('Clear all ({n})', { n: active })}</button>}
     </section>
   )

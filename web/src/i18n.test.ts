@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { AR } from './i18n-ar'
 import { SERVER_AR } from './i18n-server'
+import { AUDIENCES } from '../../server/shared/audiences'
+import { INDUSTRY_PAGES } from './public/Segments'
 
 const SRC = new URL('.', import.meta.url).pathname
 const files = (dir: string): string[] => readdirSync(dir).flatMap(f => { const p = join(dir, f); return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(f) && !/\.test\./.test(f) ? [p] : [] })
@@ -20,6 +22,8 @@ describe('Arabic', () => {
         'Awaiting publisher', 'Accepted, pay now', 'Payment secured', 'Proof ready, review', 'Issue reported', 'Disputed', 'Released', 'Complete', 'Not selected', 'Lapsed', 'Cancelled', 'Refunded',
         'Requested', 'Accepted', 'Paid', 'Aired', 'As-run log', 'Audio clip', 'Video clip', 'Tearsheet', 'Dated screenshots', 'Start time', 'End time', 'Episode link', 'Live link', 'Time of the ad in the episode',
         'Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other',
+        'Crypto & trading', 'Alcohol & nightlife', 'Lottery & gaming', 'fixed price', 'Booking', 'Full week',
+        ...AUDIENCES.flatMap(a => [a[1], a[2]]), ...INDUSTRY_PAGES.flatMap(p => [p[2], p[3]]),
         'All channels', 'under {price}', 'morning', 'afternoon', 'evening', 'all day', 'auctions', 'quick sales', ', ', '1 booking', '{n} bookings',
         '1 paid booking, released to the publisher only after you approve proof.', '{n} paid bookings, released to publishers only after you approve proof.', '1 accepted booking', '{n} accepted bookings',
         '1 new slot matches your search “{name}”.', '{n} new slots match your search “{name}”.', 'Turn off alerts for {name}', 'Turn on alerts for {name}',

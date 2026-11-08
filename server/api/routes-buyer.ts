@@ -10,7 +10,7 @@ import { approve, buyerCancelTerms, cancelByBuyer, confirmPayment } from '../pay
 import { reportIssue, respondToOffer } from '../fulfilment/issues.js'
 import { uploadCreative } from '../fulfilment/creative.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
-import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
+import { checklistFor } from '../fulfilment/proof.js'
 import { MarketError } from '../marketplace/market.js'
 import { dealRating } from './routes-ratings.js'
 import { byDay, byOutlet, grid, listSlots, parseQuery, programmes, slots as searchSlots } from '../marketplace/search.js'
@@ -22,7 +22,7 @@ const campaignId = { type: 'string', format: 'uuid' }
 const brief = { type: 'object', additionalProperties: false, properties: {
   advertiser: { type: 'string', maxLength: 200 }, industry: { type: 'string', maxLength: 100 }, message: { type: 'string', maxLength: 2000 },
   language: { enum: ['arabic', 'english', 'bilingual'] }, landingUrl: { type: 'string', maxLength: 500 }, draftFileKey: { type: 'string', maxLength: 300 },
-  creativeToFollow: { type: 'boolean' }, notes: { type: 'string', maxLength: 2000 } } }
+  creativeToFollow: { type: 'boolean' }, notes: { type: 'string', maxLength: 2000 }, disclaimer: { type: 'string', maxLength: 500 } } }
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.
 const DEAL_SQL = `select d.*, (select e.note from deal_events e where e.deal_id = d.id and e.event in ('decline', 'expire', 'lapse', 'cancel_by_seller', 'cancel_by_buyer', 'creative_missed', 'proof_missed', 'supersede') order by e.id desc limit 1) status_note,
@@ -64,7 +64,7 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
     const r = (await db.query(
-      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.company_id seller_company, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
+      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.blocked_industries, o.company_id seller_company, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, max(max_amount) filter (where max_amount > amount and kind in ('bid', 'auto')) auto_max,
@@ -73,7 +73,7 @@ export function buyerRoutes(route: RouteFn) {
     return { ...buyerSlot(r, company), youBid: mine.n > 0, creativeDueAt: r.creative_due_at,
       minNextBid: r.top_amount ? minNextBid(r.top_amount, await setting(db, 'min_step_bp', at)) : r.starting_price,
       yourMax: mine.max, yourAutoMax: mine.auto_max, briefOnFile: !!mine.has_brief,
-      details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit },
+      details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit, notAccepted: r.blocked_industries ?? [] },
       publisher: await companyProfile(db, r.seller_company) }
   })
 
@@ -141,7 +141,8 @@ export function buyerRoutes(route: RouteFn) {
       creatives: creatives.map(c => ({ version: c.version, status: c.status, reason: c.reason, fileId: c.file_key.replace(/^files\//, ''),
         fileType: c.file_type, uploadedAt: c.uploaded_at, reviewedAt: c.reviewed_at })),
       proof: proof ? { submittedAt: proof.submitted_at, note: proof.note,
-        items: PROOF_CHECKLIST[d.channel].map(i => ({ key: i.key, label: i.label, value: proof.items[i.key] ?? null })) } : null,
+        items: checklistFor(d.channel, (await db.query(`select brief from bids where id = $1`, [d.bid_id])).rows[0]?.brief)
+          .map(i => ({ key: i.key, label: i.label, value: proof.items[i.key] ?? null })) } : null,
       issue: issues[0] ? { reason: issues[0].reason, note: issues[0].note, offer: issues[0].offer, status: issues[0].status, openedAt: issues[0].opened_at } : null,
       prerun: prerun[0] ? { requestedAt: prerun[0].requested_at, confirmedAt: prerun[0].buyer_confirmed_at } : null,
       documents: docs.map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at })),

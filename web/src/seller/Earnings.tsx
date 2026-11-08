@@ -6,6 +6,7 @@ import { dubai, todayInDubai } from '../calendar/layout'
 import { DealStatus, money } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { ltr, t } from '../i18n'
+import { SalesInsights } from '../insights/SalesInsights'
 
 type E = { available: number; owed: number; payouts: { at: string; amount: number; currency: string; ref: string | null }[]
   deals: { id: string; ref: string; status: string; outlet: string; label: string; startsAt: string; price: number; mediaVat: number; fee: number; feeVat: number; payout: number; held: boolean }[] }
@@ -25,6 +26,7 @@ export function EarningsPage() {
         <div className="card"><dt>{t("Paid to your bank")}</dt><dd className="num">{money(paid)}</dd></div>
         {e.owed > 0 && <div className="card"><dt>{t("Owed (deducted from next payout)")}</dt><dd className="num" style={{ color: 'var(--red)' }}>{money(e.owed)}</dd></div>}
       </dl>
+      <SalesInsights />
       <div className="toolbar"><h2 className="sec-h" style={{ margin: 0 }}>{t("Bookings")}</h2><div className="spacer" />
         <label className="small muted" htmlFor="m">{t("Monthly statement")}</label><input id="m" className="search" style={{ minWidth: 0 }} type="month" value={month} onChange={x => setMonth(x.target.value)} />
         <a className="btn primary" href={`/earnings/statement/${month}`}>{t("View statement")}</a><a className="btn" href={`/api/seller/statement/${month}`}>{t("Download CSV")}</a></div>

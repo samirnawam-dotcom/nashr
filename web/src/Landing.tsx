@@ -4,6 +4,9 @@ import { BgVideo } from './BgVideo'
 import { FAQ, PAGES, faqLd, useMeta } from './seo'
 import { isAr, t } from './i18n'
 import { dayLabel, money } from './format'
+import { api } from './api'
+import { AUDIENCES } from '../../server/shared/audiences'
+import { INDUSTRY_PAGES } from './public/Segments'
 
 /**
  * The first page visitors see. One bold element — the live programme board in the control room — and everything
@@ -103,6 +106,8 @@ export function Landing() {
         </ul>
       </section>
 
+      <LiveStats />
+
       <section className="product">
         <div className="wrap">
           <div className="product-head">
@@ -144,6 +149,16 @@ export function Landing() {
               <li className="done">{t("Brief sent with the bid")}</li><li className="done">{t("Creative approved")}</li><li className="done">{t("Proof received")}</li><li>{t("Approve and release")}</li>
             </ol>
           </article>
+        </div>
+      </section>
+
+      <section className="block reach">
+        <div className="wrap">
+          <h2>{t('Start from who you want to reach.')}</h2>
+          <p className="intro">{t('Pick an audience and see every slot that reaches it, on every channel, from every publisher.')}</p>
+          <ul className="reach-aud">{AUDIENCES.slice(0, 8).map(([k, label]) => <li key={k}><a href={`/audiences/${k}`}>{t(label)}</a></li>)}
+            <li><a className="more" href="/audiences">{t('All audiences')}</a></li></ul>
+          <p className="reach-ind"><span className="muted">{t('Or by industry:')}</span>{INDUSTRY_PAGES.map(([k, , label]) => <a key={k} href={`/advertise/${k}`}>{t(label)}</a>)}</p>
         </div>
       </section>
 
@@ -234,7 +249,7 @@ export function Landing() {
       <footer className="lp-foot">
         <div className="wrap foot-grid">
           <div className="foot-brand"><span className="mark"><b>Nashr</b><i lang="ar">نشر</i></span><p>{t("The UAE media marketplace. Prices in AED, times in Dubai time.")}</p></div>
-          <nav aria-label={t("Product")}><b>{t("Product")}</b><a href="/calendar">{t("Calendar")}</a><a href="/directory">{t("Directory")}</a><button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></nav>
+          <nav aria-label={t("Product")}><b>{t("Product")}</b><a href="/calendar">{t("Calendar")}</a><a href="/directory">{t("Directory")}</a><a href="/audiences">{t('Audiences')}</a><a href="/insights">{t('Insights')}</a><button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></nav>
           <nav aria-label={t("Account")}><b>{t("Account")}</b><a href="/request-access">{t("Request access")}</a><a href="/sign-in">{t("Sign in")}</a></nav>
           <nav aria-label={t("Legal")}><b>{t("Legal")}</b><a href="/terms">{t("Terms")}</a><a href="/privacy">{t("Privacy")}</a><a href="/refunds">{t("Refunds")}</a></nav>
         </div>
@@ -242,4 +257,24 @@ export function Landing() {
       </footer>
     </div>
   )
+}
+
+type Stats = { publishers: number | null; outlets: number | null; channels: number | null; openSlots: number | null; completed: number | null; booked: number | null }
+
+/** Proof in real numbers (as Dianomi does with its own): live from Nashr's records, each shown only once it is big enough to mean something. */
+function LiveStats() {
+  const [s, setS] = useState<Stats | null>(null)
+  useEffect(() => { api<Stats>('/public/stats').then(setS, () => {}) }, [])
+  if (!s) return null
+  const items = ([
+    [s.openSlots, t('slots open to book in the next 30 days')], [s.outlets, t('outlets you can book today')], [s.publishers, t('verified UAE publishers')],
+    [s.channels, t('channels: radio, TV, print, digital, podcast')], [s.completed, t('bookings completed, paid only after proof')],
+  ] as [number | null, string][]).filter(([v]) => v != null)
+  if (!items.length && !s.booked) return null
+  return <section className="stats-band" aria-label={t('Nashr in numbers')}>
+    <div className="wrap stats-row">
+      {s.booked != null && <div><b className="num">{money(s.booked).replace(/\.00$/, '')}</b><span>{t('booked through Nashr, held until the ad ran')}</span></div>}
+      {items.slice(0, s.booked != null ? 3 : 4).map(([v, l]) => <div key={l}><b className="num">{v!.toLocaleString('en-US')}</b><span>{l}</span></div>)}
+    </div>
+  </section>
 }

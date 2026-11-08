@@ -113,6 +113,7 @@ export function SellerDealPage({ id }: { id: string }) {
           <div><dt>{t("The ad will say")}</dt><dd>{d.brief.message}</dd></div><div><dt>{t("Language")}</dt><dd>{t(d.brief.language[0].toUpperCase() + d.brief.language.slice(1))}</dd></div>
           {d.brief.landingUrl && <div><dt>{t("Landing page")}</dt><dd>{d.brief.landingUrl}</dd></div>}
           {d.brief.notes && <div><dt>{t("Notes")}</dt><dd>{d.brief.notes}</dd></div>}
+          {d.brief.disclaimer && <div className="must"><dt>{t('Required disclaimer')}</dt><dd><b dir="auto">{d.brief.disclaimer}</b><div className="small muted">{t('Include it in the ad and confirm it when you send proof.')}</div></dd></div>}
         </dl>
         {d.checks && <ul className="checklist" style={{ marginTop: 12 }}>{([
           [d.checks.categoryAccepted, d.checks.categoryAccepted ? t("Industry is one of your sectors") : t("Industry isn't in your sectors")],

@@ -18,6 +18,8 @@ const DUBAI = `(s.starts_at at time zone 'Asia/Dubai')`
 const MINUTE = `(extract(hour from ${DUBAI}) * 60 + extract(minute from ${DUBAI}))`
 const ALL_DAY = `(case when s.ends_at is null then ${MINUTE} = 0 else s.ends_at - s.starts_at >= interval '1 day' end)`
 const PRICE = `coalesce(s.top_amount, s.starting_price)`
+/** Who a slot reaches: its placement's audiences, else its outlet's. */
+export const AUDIENCES_SQL = `(case when cardinality(p.audiences) > 0 then p.audiences else o.audiences end)`
 const DAYPART: Record<string, string> = {
   allday: ALL_DAY,
   morning: `(not ${ALL_DAY} and ${MINUTE} >= 300 and ${MINUTE} < 720)`,
@@ -42,6 +44,7 @@ export function where(q: Query, now: Date) {
   for (const word of (q.q ?? '').toLowerCase().split(/\s+/).filter(Boolean))
     w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || coalesce(o.audience, '') || ' ' || coalesce(c.name, '')), ${add(word)}) > 0`)
   if (q.closingWithinHours != null && Number.isFinite(q.closingWithinHours)) w.push(`s.closes_at <= ${add(new Date(now.getTime() + q.closingWithinHours * 3_600_000))}`)
+  if (q.audiences?.length) w.push(`${AUDIENCES_SQL} && ${add(q.audiences)}::text[]`)
   if (q.mine && q.me) w.push(`exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = ${add(q.me)})`)
   if (q.placement) w.push(`p.id = ${add(q.placement)}`)
   if (q.outlet) w.push(`o.id = ${add(q.outlet)}`)
@@ -52,7 +55,7 @@ export function where(q: Query, now: Date) {
 }
 
 /** A slot row with its bid count and whether this buyer has bid, in one pass rather than a query per row. */
-const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.sectors, o.audience, o.logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
+const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.sectors, o.audience, ${AUDIENCES_SQL} audiences, o.logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
   (select d.id from deals d where d.slot_id = s.id order by d.created_at desc limit 1) deal_id`
 const BID_COUNTS = (me: string) => `left join lateral (select count(*) n, bool_or(b.buyer_id = ${me}) mine from bids b where b.slot_id = s.id and b.status <> 'withdrawn') bc on true`
 
@@ -169,7 +172,7 @@ export function parseQuery(r: Record<string, string | undefined>, me: string | n
   const list = (v?: string) => v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined
   const num = (v?: string) => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
   return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max),
-    dayparts: list(r.dp) as SlotFilter['dayparts'], q: r.q || undefined, closingWithinHours: num(r.soon),
+    dayparts: list(r.dp) as SlotFilter['dayparts'], q: r.q || undefined, closingWithinHours: num(r.soon), audiences: list(r.aud),
     mine: r.mine === '1', open: r.open === '1', placement: r.placement || undefined, date: r.date || undefined, outlet: r.outlet || undefined,
     tmin: num(r.tmin), tmax: num(r.tmax), statuses: list(r.st) }
 }

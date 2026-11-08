@@ -7,12 +7,13 @@ import { balance } from '../payments/ledger.js'
 import { FakeProvider, type PaymentProvider } from '../payments/provider.js'
 import { generateSlots } from '../catalog/placements.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
-import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
+import { checklistFor } from '../fulfilment/proof.js'
 import { REJECT_REASONS } from '../fulfilment/creative.js'
 import { uploadMediaInvoice, payoutStatement, statement } from '../documents/documents.js'
 import { containsContactDetails } from '../core/contact.js'
 import { setting } from '../core/settings.js'
 import { companyProfile } from './profiles.js'
+import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import { coverUrl, logoUrl } from './routes-covers.js'
 
 const SELLER: ['seller'] = ['seller']
@@ -133,7 +134,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     return {
       channel: d.channel, creativeDueAt: d.creative_due_at, slotId: d.slot_id, slotStatus: d.slot_status, choiceDeadlineAt: d.choice_deadline_at,
       invoiceMode: d.invoice_mode, placeholder: d.placeholder, rejectReasons: REJECT_REASONS,
-      proofChecklist: PROOF_CHECKLIST[d.channel], adHasRun: at >= (d.make_good_at ?? d.ends_at ?? d.starts_at),
+      proofChecklist: checklistFor(d.channel, (await db.query(`select brief from bids where id = $1`, [d.bid_id])).rows[0]?.brief), adHasRun: at >= (d.make_good_at ?? d.ends_at ?? d.starts_at),
       timeline: events.map(e => ({ at: e.at, event: e.event, status: e.to_status, note: e.note })),
       creatives: creatives.map(c => ({ version: c.version, status: c.status, reason: c.reason, fileId: fileId(c.file_key), fileType: c.file_type, fileSize: c.file_size, uploadedAt: c.uploaded_at })),
       proof: p ? { submittedAt: p.submitted_at, note: p.note, items: p.items } : null,
@@ -222,27 +223,34 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
       company: { name: c.name, trn: c.trn, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled,
         rateCard: c.rate_card_id ? { fileId: c.rate_card_id, name: c.rate_card_name } : null },
       outlets: outlets.map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, description: o.description,
-        website: o.website, audience: o.audience, coverUrl: coverUrl(o), logoUrl: logoUrl(o) })),
+        website: o.website, audience: o.audience, coverUrl: coverUrl(o), logoUrl: logoUrl(o), audiences: o.audiences, blockedIndustries: o.blocked_industries,
+        blockedAdvertisers: o.blocked_advertisers, reach: o.reach })),
       placements: placements.map(p => ({ id: p.id, outlet: p.outlet, outletId: p.outlet_id, name: p.name, saleType: p.sale_type, days: p.days,
         startsAt: p.starts_at_local, endsAt: p.ends_at_local, breaks: p.breaks, startingPrice: p.starting_price, anyBreakPrice: p.any_break_price,
         packagePrice: p.package_price, buyNowPrice: p.buy_now_price, reservePrice: p.reserve_price, creativeLeadHours: p.creative_lead_hours,
         closeLeadHours: p.close_lead_hours, autoAccept: p.auto_accept, archived: p.archived, openSlots: p.open_slots, listedUntil: p.listed_until,
         format: p.format, description: p.description, specs: p.specs, language: p.language, unit: p.unit, listing: p.listing, horizonWeeks: p.horizon_weeks,
-        separation: p.separation })),
+        separation: p.separation, audiences: p.audiences })),
     }
   })
 
   const outletBody = { type: 'object', additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] },
     sectors: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 60 } }, description: { type: 'string', maxLength: 2000 },
-    website: { type: 'string', maxLength: 300, pattern: '^https?://' }, audience: { type: 'string', maxLength: 300 } } }
+    website: { type: 'string', maxLength: 300, pattern: '^https?://' }, audience: { type: 'string', maxLength: 300 },
+    audiences: { type: 'array', maxItems: 12, uniqueItems: true, items: { enum: AUDIENCE_KEYS } },
+    blockedIndustries: { type: 'array', maxItems: 30, uniqueItems: true, items: { type: 'string', minLength: 1, maxLength: 60 } },
+    blockedAdvertisers: { type: 'array', maxItems: 30, uniqueItems: true, items: { type: 'string', minLength: 2, maxLength: 80 } },
+    reach: { type: 'integer', minimum: 1, maximum: 50_000_000 } } }
   const checkText = (b: any) => { if (containsContactDetails([b.name, b.nameAr, b.description, b.audience, ...(b.sectors ?? [])].filter(Boolean).join(' \n ')))
     throw new MarketError('Emails and phone numbers are not allowed in the profile.') }
 
   route('POST', '/api/seller/outlets', SELLER, async ({ db, at, me }, req) => {
     const b = req.body; checkText(b)
-    const o = (await db.query(`insert into outlets (company_id, name, name_ar, channel, sectors, description, website, audience) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
-      [me.actAs.companyId, b.name, b.nameAr ?? null, b.channel, b.sectors ?? [], b.description ?? null, b.website ?? null, b.audience ?? null])).rows[0]
+    const o = (await db.query(`insert into outlets (company_id, name, name_ar, channel, sectors, description, website, audience, audiences, blocked_industries, blocked_advertisers, reach)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning id`,
+      [me.actAs.companyId, b.name, b.nameAr ?? null, b.channel, b.sectors ?? [], b.description ?? null, b.website ?? null, b.audience ?? null,
+       b.audiences ?? [], b.blockedIndustries ?? [], b.blockedAdvertisers ?? [], b.reach ?? null])).rows[0]
     await audit(db, `seller:${me.actAs.companyId}`, 'outlet.created', 'outlet', o.id, { name: b.name }, at)
     return { id: o.id }
   }, { ...outletBody, required: ['name', 'channel'] })
@@ -250,7 +258,8 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   // Sectors are free text and live straight away (owner, SPEC 12.3).
   route('PUT', '/api/seller/outlets/:id', SELLER, async ({ db, at, me }, req) => {
     const b = req.body; checkText(b)
-    const cols: Record<string, string> = { name: 'name', nameAr: 'name_ar', sectors: 'sectors', description: 'description', website: 'website', audience: 'audience' }
+    const cols: Record<string, string> = { name: 'name', nameAr: 'name_ar', sectors: 'sectors', description: 'description', website: 'website', audience: 'audience',
+      audiences: 'audiences', blockedIndustries: 'blocked_industries', blockedAdvertisers: 'blocked_advertisers', reach: 'reach' }
     const set = Object.keys(cols).filter(k => k in b)
     if (!set.length) throw new MarketError('Nothing to change.')
     const r = await db.query(`update outlets set ${set.map((k, i) => `${cols[k]} = $${i + 3}`).join(', ')} where id = $1 and company_id = $2`,

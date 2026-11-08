@@ -1,6 +1,7 @@
 import { audit } from '../core/audit.js'
 import { MarketError } from '../marketplace/market.js'
 import { NotFound, type RouteFn } from './app.js'
+import { AUDIENCE_KEYS } from '../shared/audiences.js'
 
 const MAX_SEARCHES = 20
 // The same fields as the calendar's filter (server/shared/slot-filter.ts); anything else is refused.
@@ -11,7 +12,8 @@ export const filterSchema = { type: 'object', additionalProperties: false, prope
   maxPrice: { type: 'integer', minimum: 1 },
   dayparts: { type: 'array', maxItems: 4, uniqueItems: true, items: { enum: ['morning', 'afternoon', 'evening', 'allday'] } },
   q: { type: 'string', maxLength: 100 },
-  closingWithinHours: { type: 'integer', minimum: 1, maximum: 168 } } }
+  closingWithinHours: { type: 'integer', minimum: 1, maximum: 168 },
+  audiences: { type: 'array', maxItems: 12, uniqueItems: true, items: { enum: AUDIENCE_KEYS } } } }
 const shape = (r: any) => ({ id: r.id, name: r.name, filter: r.filter, alerts: r.alerts, createdAt: r.created_at })
 
 /** Saved calendar searches belong to the buyer's company; alerts arrive in the company's notifications. */

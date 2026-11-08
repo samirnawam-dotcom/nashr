@@ -3,7 +3,7 @@ import { audit } from '../core/audit.js'
 import { setting, ratesFor } from '../core/settings.js'
 import { minNextBid } from '../core/money.js'
 import { openDeal, transition } from './deals.js'
-import { briefProblems } from '../fulfilment/brief.js'
+import { brandSafetyProblem, briefProblems } from '../fulfilment/brief.js'
 import { notify } from '../core/notify.js'
 import { issueOrder } from '../documents/documents.js'
 
@@ -16,11 +16,14 @@ const lockSlot = (db: Db, id: string) => one(db, `select * from slots where id =
 
 /** A brief is required with a buyer's first bid, request or interest on a slot (brief section 10). */
 async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown) {
-  const has = await db.query(`select 1 from bids where slot_id = $1 and buyer_id = $2 and brief is not null limit 1`, [slot.id, buyerId])
-  if (has.rowCount && brief == null) return
-  const { channel } = await one(db, `select o.channel from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
-  const problems = briefProblems(brief as any, channel)
-  if (problems.length) throw new MarketError(problems.join(' '))
+  const outlet = await one(db, `select o.channel, o.blocked_industries, o.blocked_advertisers from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  const onFile = (await db.query(`select brief from bids where slot_id = $1 and buyer_id = $2 and brief is not null order by created_at desc limit 1`, [slot.id, buyerId])).rows[0]?.brief
+  if (!(onFile && brief == null)) {
+    const problems = briefProblems(brief as any, outlet.channel)
+    if (problems.length) throw new MarketError(problems.join(' '))
+  }
+  const unsafe = brandSafetyProblem((brief ?? onFile) as any, outlet)
+  if (unsafe) throw new MarketError(unsafe)
 }
 
 /** Only open markets can be booked; KSA is "coming soon" at launch (brief section 14, scenario 19). */
