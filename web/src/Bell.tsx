@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { locale, t } from './i18n'
+import { money } from './format'
+const aedOf = (n: number | undefined) => n == null ? '' : money(n)
 import './directory/directory.css'
 
 type N = { id: number; kind: string; dealId: string | null; dealRef: string | null; data: any; at: string; read: boolean }
@@ -16,7 +18,11 @@ const TEXT: Record<string, (n: N) => string> = {
   'interest.received': n => t('A buyer is interested in {slot}. Accept to book it.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'interest.not_selected': n => t('The publisher booked {slot} with another buyer.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'interest.expired': n => t('The publisher did not take up your interest in {slot} before it closed.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
-  'bid.outbid': n => t('You were outbid on {slot}.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
+  'bid.outbid': n => n.data?.max
+    ? t('Your auto-bid maximum of {max} on {slot} was passed. Raise it to get back in front.', { max: aedOf(n.data.max), slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` })
+    : t('You were outbid on {slot}.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
+  'bid.auto_raised': n => t('Auto-bid kept you in front on {slot}: you lead at {amount} (maximum {max}).', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? ''}`, amount: aedOf(n.data?.amount), max: aedOf(n.data?.max) }),
+  'bid.auto_cap': n => t('Auto-bid reached your maximum of {max} on {slot}. You still lead; raise it in case someone bids again.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? ''}`, max: aedOf(n.data?.max) }),
   'creative.sent': () => t('New creative to review.'),
   'creative.approved': () => t('Your creative was approved.'),
   'creative.changes_requested': n => n.data?.reason ? t('The publisher asked for changes: {reason}', { reason: n.data.reason }) : t('The publisher asked for changes.'),
@@ -63,7 +69,7 @@ export function Bell({ role }: { role: string }) {
       {open && <div className="card bell-pop" role="menu">
         {!data.items.length && <p className="muted small">{t('Nothing yet.')}</p>}
         {data.items.map(n => { const text = (TEXT[n.kind] ?? (() => n.kind))(n)
-          const href = n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind === 'bid.outbid' || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
+          const href = n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
           return <a key={n.id} href={href} className={n.read ? '' : 'unread'} onClick={() => setOpen(false)} role="menuitem">
             <div>{text}</div><div className="small muted">{n.dealRef ? `${n.dealRef} · ` : ''}{new Date(n.at).toLocaleString(locale, { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></a> })}
       </div>}

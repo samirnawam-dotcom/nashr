@@ -7,6 +7,7 @@ import { escalateIssue } from '../fulfilment/issues.js'
 import { requestPreRunChecks } from '../fulfilment/prerun.js'
 import { notify } from '../core/notify.js'
 import { sendSearchAlerts } from './alerts.js'
+import { topUpRolling } from '../catalog/placements.js'
 import type { Db } from '../core/db.js'
 
 // Why the timer acted, in words both sides see on the timeline (scenarios 3, 4, 10, 11).
@@ -74,6 +75,7 @@ export async function sweep(at: Date, batch = 100) {
   handled += await tx(c => requestPreRunChecks(c, at))
   handled += await tx(c => sendReminders(c, at))
   handled += await tx(c => sendSearchAlerts(c, at))
+  handled += await tx(c => topUpRolling(c, at)) // "keep it on sale" placements stay listed their number of weeks ahead
   await audit(pool, 'system:sweeper', 'sweeper.heartbeat', null, null, { handled }, at)
   return handled
 }

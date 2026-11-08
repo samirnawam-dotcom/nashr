@@ -82,17 +82,21 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await pub.shot('f4-profile'); say()
 
     step = '5 publisher: placements listed'
+    // The placement form as Omar described it: a format, what the buyer gets, specs, sale type, kept on sale 8 weeks ahead
     const placement = async (name, sale, from, to, at, extra) => {
-      await nav(pub, 'Listings'); await pub.click('text=Add placement'); await pub.waitForSelector('#n')
-      await pub.fill('#n', name); await pub.selectOption('#st', sale)
-      for (const d of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) { const l = pub.locator(`.days label:has-text("${d}")`); if (!(await l.locator('input').isChecked())) await l.click() }
+      await nav(pub, 'Listings'); await pub.click('a:has-text("Add placement")'); await pub.waitForSelector('.pl-format')
+      await pub.click('.pl-format:has-text("Something else")'); await pub.fill('#n', name)
+      await pub.fill('#ds', 'A 30-second spot in one ad break of the programme.'); await pub.fill('#sx', 'MP3, 30 seconds')
+      await pub.click('.pl-quick button:has-text("Every day")')
       await pub.fill('#sa', from); await pub.fill('#ea', to); await pub.click('button:has-text("Add break")'); await pub.fill('#bt0', at)
-      await pub.fill('#sp', '2000'); if (extra) await extra()
+      if (sale === 'quick_sale') await pub.click('.pl-sale-card:has-text("Quick sale")')
+      await pub.fill('#sp', '2000'); await pub.fill('#cd', '6'); if (extra) await extra()
       await pub.shot(`f5-${sale}`)
-      await pub.click('button:has-text("Save placement")'); await pub.waitForSelector('h1:has-text("Placement saved"), td:has-text("' + name + '")')
+      await pub.click('button:has-text("Save placement")'); await pub.waitForSelector('h1:has-text("is saved")')
+      const lead = await pub.locator('.pl-done .lead').textContent(); if (!/slots are on sale/.test(lead)) throw new Error(`${name}: ${lead}`)
     }
-    await placement('Morning Drive', 'auction', '07:00', '09:00', '07:30', async () => { await pub.fill('#bn', '3500'); await pub.fill('#cd', '6') })
-    await placement('Evening Drive', 'quick_sale', '17:00', '19:00', '17:30', async () => { await pub.fill('#cd', '6') })
+    await placement('Morning Drive', 'auction', '07:00', '09:00', '07:30', async () => { await pub.fill('#bn', '3500') })
+    await placement('Evening Drive', 'quick_sale', '17:00', '19:00', '17:30')
     await pub.shot('f5-listings')
     const listed = await sql(`select p.name, count(*)::int n, min(s.starts_at) first from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                               where o.name = $1 group by p.name`, [`Palm Radio ${run}`])
@@ -149,13 +153,21 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '14 auction: two buyers bid, bidding closes, publisher picks'
     await buy.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy.waitForSelector('.cv-table tbody tr:has-text("Morning Drive")')
     const target = await buy.locator('.cv-table tbody tr:has-text("Morning Drive")').nth(1).getAttribute('data-slot')
-    for (const [p, amt] of [[buy, '2100'], [buy2, '2300']]) {
-      await p.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await p.waitForSelector(`tr[data-slot="${target}"]`)
-      await p.click(`tr[data-slot="${target}"] .cv-act`); await p.waitForSelector('.drawer h2'); await brief(p); await p.fill('#amt', amt)
-      await p.click('.drawer-f .btn.primary'); await p.waitForSelector('.drawer .ok, .drawer .error'); const r = await p.locator('.drawer .ok, .drawer .error').first().textContent()
-      if (!/bid is in/.test(r)) throw new Error(`${p.who}: ${r}`)
-    }
-    const ob = await bell(buy); say('outbid told:', JSON.stringify(ob).includes('outbid'))
+    const open = async p => { await p.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await p.waitForSelector(`tr[data-slot="${target}"]`)
+      await p.click(`tr[data-slot="${target}"] .cv-act`); await p.waitForSelector('.drawer h2') }
+    const result = async p => { await p.waitForSelector('.drawer .ok, .drawer .warn, .drawer .error'); return p.locator('.drawer .ok, .drawer .warn, .drawer .error').first().textContent() }
+    // buyer 1 turns on auto-bid with a 3,000 cap
+    await open(buy); await brief(buy); await buy.click('.bid-mode button:has-text("Auto-bid")'); await buy.fill('#max', '3000'); await buy.shot('f14-autobid')
+    await buy.click('.drawer-f .btn.primary'); let r = await result(buy); if (!/Auto-bid is on/.test(r)) throw new Error('buyer1: ' + r)
+    // buyer 2 bids 2,300 once: the auto-bid answers at once and buyer 2 is told
+    await open(buy2); await brief(buy2); await buy2.fill('#amt', '2300'); await buy2.click('.drawer-f .btn.primary'); r = await result(buy2)
+    if (!/auto-bid is higher/.test(r)) throw new Error('buyer2 single bid: ' + r)
+    // buyer 2 sets a 4,000 maximum and takes the lead one step above buyer 1's cap
+    await buy2.click('.bid-mode button:has-text("Auto-bid")'); await buy2.fill('#max', '4000'); await buy2.click('.drawer-f .btn.primary'); r = await result(buy2)
+    if (!/You lead at AED 3,090/.test(r)) throw new Error('buyer2 auto-bid: ' + r)
+    await open(buy); await buy.waitForSelector('.bid-status.outbid'); await buy.shot('f14-cap-passed')
+    say(await buy.locator('.bid-status').textContent())
+    const ob = await bell(buy); if (!JSON.stringify(ob).includes('bid.outbid')) throw new Error('buyer 1 was not told the cap was passed')
     await sql(`update slots set closes_at = now() - interval '1 minute' where id = $1`, [target])
     for (let i = 0; i < 30 && !(await sql(`select 1 from deals where slot_id = $1`, [target])).length; i++) await pub.waitForTimeout(2000)
     const ad = (await sql(`select id, status from deals where slot_id = $1`, [target]))[0]; if (!ad) throw new Error('bidding closed but no deal was opened')

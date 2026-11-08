@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api, type Campaign, type Slot } from '../api'
 import { dayLabel, money, time } from '../format'
-import { dubai, isAllDay } from './layout'
+import { addDays, dubai, isAllDay } from './layout'
 import { SaleType, status } from './CalendarPage'
 import { SignInPrompt, useGuest } from '../guest'
 import { t } from '../i18n'
 
-type Detail = Slot & { minNextBid: number; yourMax: number | null; briefOnFile: boolean; creativeDueAt: string }
+type Detail = Slot & { minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
+  details?: { description: string | null; specs: string | null; language: string | null; unit: string | null } }
+export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
 export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other']
 const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign'
 const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Date(s.startsAt).getTime()) / 1000)
@@ -21,31 +23,37 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
     const blank = { advertiser: '', industry: 'Banking', message: '', language: 'english', landingUrl: '', creativeToFollow: true, notes: '' }
     try { return { ...blank, ...JSON.parse(localStorage.getItem(LAST_BRIEF) ?? '{}') } } catch { return blank }
   })
-  const [error, setError] = useState(''), [done, setDone] = useState(''), [busy, setBusy] = useState(false)
+  const [error, setError] = useState(''), [done, setDone] = useState(''), [warn, setWarn] = useState(''), [busy, setBusy] = useState(false)
   // Tag the booking to a campaign so it counts against that budget; the last choice is offered again.
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [campaignId, setCampaignId] = useState(() => { try { return localStorage.getItem(LAST_CAMPAIGN) ?? '' } catch { return '' } })
   useEffect(() => { if (!guest) api<Campaign[]>('/campaigns').then(c => { const active = c.filter(x => x.status === 'active'); setCampaigns(active)
     if (!active.some(x => x.id === campaignId)) setCampaignId('') }, () => {}) }, [])
 
-  const load = () => api<Detail>(`/slots/${slotId}`).then(d => { setS(d); setAmount(String(d.minNextBid / 100)) }, e => setError(e.message))
+  const load = () => api<Detail>(`/slots/${slotId}`).then(d => { setS(d); setAmount(String(d.minNextBid / 100))
+    if (d.yourAutoMax) { setAuto(true); setMax('') } }, e => setError(e.message))
   // What the buyer is already committed to if every bid it leads wins and every request is accepted (a warning, never a block).
   const [exposure, setExposure] = useState<{ total: number; leading: { count: number }; requests: { count: number }; toPay: { count: number } } | null>(null)
   useEffect(() => { load(); if (!guest) api('/buyer/exposure').then(setExposure, () => {}) }, [slotId])
 
-  async function send(path: string, body: object, message: string) {
-    setBusy(true); setError('')
+  async function send(path: string, body: object, message: string | ((r: any) => string)) {
+    setBusy(true); setError(''); setDone(''); setWarn('')
     try {
       const b = s!.briefOnFile ? {} : { brief: { ...brief, landingUrl: brief.landingUrl || undefined, notes: brief.notes || undefined } }
-      await api(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}) } })
+      const r = await api<any>(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}) } })
+      if (r?.beatenByAutoBid) message = () => ''
+      if (r?.beatenByAutoBid) setWarn(t("Your bid is in, but another buyer's auto-bid is higher, so you are not leading. The top bid is now {top}. Bid at least {min}, or set a higher maximum.", { top: money(r.topAmount), min: money(r.minNextBid) }))
+      message = typeof message === 'string' ? message : message(r)
       try { localStorage.setItem(LAST_CAMPAIGN, campaignId) } catch { /* fine */ }
       if (!s!.briefOnFile) try { localStorage.setItem(LAST_BRIEF, JSON.stringify(brief)) } catch { /* private mode: nothing to remember */ }
-      setDone(message); onDone(); await load()
+      if (message) setDone(message); onDone(); await load()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   if (!s) return <Shell onClose={onClose}>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</Shell>
 
-  const when = isAllDay(s) ? dayLabel(dubai(s.startsAt).date, { weekday: 'short', day: 'numeric', month: 'short' })
+  const weekLong = !!s.endsAt && new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime() >= 86_400_000
+  const when = weekLong ? `${dayLabel(dubai(s.startsAt).date, { day: 'numeric', month: 'short' })} – ${dayLabel(addDays(dubai(s.endsAt!).date, -1), { day: 'numeric', month: 'short' })}`
+    : isAllDay(s) ? dayLabel(dubai(s.startsAt).date, { weekday: 'short', day: 'numeric', month: 'short' })
     : `${dayLabel(dubai(s.startsAt).date)} · ${time(s.startsAt)}${!s.endsAt ? '' : seconds(s) < 120 ? ` · ${t('{n} seconds', { n: seconds(s) })}` : `–${time(s.endsAt)}`}`
   const closes = new Date(s.closesAt)
   return (
@@ -53,6 +61,12 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       <div className="row-flex"><SaleType t={s.saleType} /><span className="small">{status(s)}</span></div>
       {s.saleType === 'auction' && <p className="small muted">{t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })}</p>}
 
+      {s.details && (s.details.description || s.details.specs || s.details.language) && <dl className="facts placement-facts">
+        {s.details.description && <div><dt>{t('What you get')}</dt><dd>{s.details.description}</dd></div>}
+        {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd>{s.details.specs}</dd></div>}
+        {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
+        <div><dt>{t('Creative due')}</dt><dd>{dayLabel(dubai(s.creativeDueAt).date, { weekday: 'short', day: 'numeric', month: 'short' })}, {time(s.creativeDueAt)}</dd></div>
+      </dl>}
       <dl className="prices">
         <div><dt>{s.saleType === 'auction' ? t('Starting price') : t('Asking price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>
         {s.saleType === 'auction' && <div><dt>{t("Current top bid")}</dt><dd className="num">{s.topBid ? money(s.topBid) : t('No bids yet')}<small>{t('{n} bids · bidders anonymous', { n: s.bids })}</small></dd></div>}
@@ -63,14 +77,21 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       {s.available && guest && <SignInPrompt to={s.saleType === 'auction' ? 'bid on this slot' : 'book this slot'} />}
       {s.available && !guest && <>
         {s.saleType === 'auction' ? <section className="form">
-          <div className="field"><label htmlFor="amt">{t("Your bid (excl. VAT)")}</label>
+          <BidStatus s={s} />
+          <div className="seg bid-mode" role="radiogroup" aria-label={t('How to bid')}>
+            <button type="button" role="radio" aria-checked={!auto} className={!auto ? 'on' : ''} onClick={() => setAuto(false)}>{t('Single bid')}</button>
+            <button type="button" role="radio" aria-checked={auto} className={auto ? 'on' : ''} onClick={() => setAuto(true)}>{t('Auto-bid')}</button></div>
+          {!auto ? <div className="field"><label htmlFor="amt">{t("Your bid (excl. VAT)")}</label>
             <div className="money-input"><span aria-hidden>{t("AED")}</span><input id="amt" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
             <div className="quick-add" aria-label={t("Raise your bid")}>{[100, 250, 500].map(n => <button key={n} type="button" className="btn"
               onClick={() => setAmount(String(Math.max(Number(amount.replace(/,/g, '')) || 0, s.minNextBid / 100) + n))}>+{n}</button>)}</div></div>
-          <label className="check"><input type="checkbox" checked={auto} onChange={e => setAuto(e.target.checked)} /> {t("Auto-bid")}</label>
-          {auto && <div className="field"><label htmlFor="max">{t("Maximum bid")}</label><div className="money-input"><span aria-hidden>{t("AED")}</span><input id="max" inputMode="decimal" value={max} onChange={e => setMax(e.target.value)} /></div>
-            <span className="small muted">{t("We raise your bid in 3% steps when you're outbid, up to this maximum.")}</span></div>}
-          {s.yourMax ? <p className="small muted">{t('Your current maximum: {amount}', { amount: money(s.yourMax) })}</p> : null}
+          : <div className="field"><label htmlFor="max">{s.youLead && s.yourAutoMax ? t('New maximum (excl. VAT)') : t('Your maximum (excl. VAT)')}</label>
+            <div className="money-input"><span aria-hidden>{t("AED")}</span><input id="max" inputMode="decimal" value={max} placeholder={String(Math.max(s.minNextBid, (s.yourAutoMax ?? 0) + 100) / 100)} onChange={e => setMax(e.target.value)} /></div>
+            <div className="quick-add" aria-label={t("Raise your maximum")}>{[500, 1000, 2500].map(n => <button key={n} type="button" className="btn"
+              onClick={() => setMax(String(Math.max(Number(max.replace(/,/g, '')) || 0, (s.yourAutoMax ?? s.minNextBid) / 100) + n))}>+{n}</button>)}</div>
+            <span className="small muted">{s.youLead
+              ? t('You lead at {top}. Raising your maximum does not raise your bid; we only bid more when someone challenges you.', { top: money(s.topBid!) })
+              : t('We bid {min} for you now, then only what it takes to stay ahead, in 3% steps, up to your maximum. Other buyers never see it. If you win, you pay the final bid, not your maximum.', { min: money(s.minNextBid) })}</span></div>}
         </section> : <section className="form">
           <div className="field"><label htmlFor="offer">{t("Your offer (AED, optional, not below the asking price)")}</label><input id="offer" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
         </section>}
@@ -94,7 +115,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             {campaigns.map(c => <option key={c.id} value={c.id}>{c.name} · {t('{amount} left', { amount: money(c.remaining) })}</option>)}</select></div>}
 
         {exposure && s.saleType === 'auction' && (() => {
-          const bid = toFils(amount) || 0, mine = s.youLead && s.topBid ? s.topBid : 0, withThis = exposure.total - mine + bid
+          const bid = (auto ? toFils(max) : toFils(amount)) || 0, mine = s.youLead && s.topBid ? s.topBid : 0, withThis = exposure.total - mine + bid
           const n = exposure.leading.count + exposure.requests.count + exposure.toPay.count
           return <div className="exposure" role="note">
             <span className="small muted">{n ? t('If everything you lead or requested goes through') : t('Nothing else you lead or requested yet')}</span>
@@ -102,10 +123,16 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             <span className="small muted">{t('Excluding VAT. Bids are binding, so plan within your budget.')}</span></div> })()}
         {error && <p className="error" role="alert">{error}</p>}
         {done && <p className="ok" role="status">{done}</p>}
+        {warn && <p className="warn" role="status">{warn}</p>}
         <p className="small muted">{t("You'll be asked to pay once the publisher accepts. Nothing is charged now.")}</p>
         <footer className="drawer-f">
           {s.saleType === 'auction'
-            ? <button className="btn primary" disabled={busy || new Date() >= closes} onClick={() => send(`/slots/${s.id}/bids`, { amount: toFils(amount), ...(auto && max ? { maxAmount: toFils(max) } : {}) }, t('Your bid is in.'))}>{t('Place bid {amount}', { amount: money(toFils(amount) || 0) })}</button>
+            ? (auto
+              ? <button className="btn primary" disabled={busy || new Date() >= closes || !(toFils(max) >= (s.youLead ? (s.yourAutoMax ?? s.topBid ?? 0) + 1 : s.minNextBid))}
+                  onClick={() => send(`/slots/${s.id}/bids`, { amount: s.youLead && s.topBid ? s.topBid : s.minNextBid, maxAmount: toFils(max) },
+                    r => r.leading ? t('Auto-bid is on. You lead at {top}; we bid for you up to {max}.', { top: money(r.topAmount), max: money(r.yourMax) }) : '')}>
+                  {s.youLead && s.yourAutoMax ? t('Raise maximum to {amount}', { amount: money(toFils(max) || 0) }) : t('Start auto-bid up to {amount}', { amount: money(toFils(max) || 0) })}</button>
+              : <button className="btn primary" disabled={busy || new Date() >= closes} onClick={() => send(`/slots/${s.id}/bids`, { amount: toFils(amount) }, r => r.leading ? t('Your bid is in. You lead at {top}.', { top: money(r.topAmount) }) : '')}>{t('Place bid {amount}', { amount: money(toFils(amount) || 0) })}</button>)
             : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
           {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>
@@ -125,4 +152,15 @@ function Shell({ title, sub, onClose, children }: { title?: string; sub?: string
       </aside>
     </div>
   )
+}
+
+/** Where the buyer stands on this slot, in one line: leading (and how far auto-bid will go) or outbid (and whether the maximum was passed). */
+function BidStatus({ s }: { s: Detail }) {
+  if (!s.youBid || !s.topBid) return null
+  const auto = s.yourAutoMax
+  if (s.youLead) return <p className="bid-status lead"><span className="dot lead">{t('You lead at {top}', { top: money(s.topBid) })}</span>
+    <span className="small">{auto && auto > s.topBid ? t('Auto-bid is on, up to {max}.', { max: money(auto) })
+      : auto ? t('Your maximum is reached. Raise it to stay ahead if someone bids.') : t('Turn on auto-bid to stay ahead without watching.')}</span></p>
+  return <p className="bid-status outbid"><span className="dot outbid">{t('Outbid: the top bid is {top}', { top: money(s.topBid) })}</span>
+    <span className="small">{auto ? t('Your maximum of {max} was passed. Set a higher one to get back in front.', { max: money(auto) }) : t('Bid again, or let auto-bid do it up to a maximum.')}</span></p>
 }

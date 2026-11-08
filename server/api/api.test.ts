@@ -1057,3 +1057,78 @@ describe('quick sale: interest reaches the publisher, who accepts one buyer', ()
     expect(bid).toMatchObject({ status: 'not_selected', acceptable: false })
   })
 })
+
+describe('auto-bid: the system bids up to the cap, and says so', () => {
+  const notes = async (who: Who) => (await call(who, 'GET', '/api/notifications')).json().items
+
+  test('a maximum holds the lead in steps up to the cap; the challenger is told at once; passing the cap is announced', async () => {
+    // A sets auto-bid with a cap of 6,000 (bids 3,500 now)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), maxAmount: AED(6_000), brief: BRIEF })).json())
+      .toMatchObject({ leading: true, topAmount: AED(3_500), yourMax: AED(6_000) })
+    // B bids 4,000: A's auto-bid answers at once, one step above B
+    const b1 = (await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_000), brief: BRIEF })).json()
+    expect(b1).toMatchObject({ leading: false, beatenByAutoBid: true, topAmount: AED(4_120) })
+    expect((await notes(buyerA)).map((n: any) => n.kind)).toContain('bid.auto_raised')
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(4_120), yourAutoMax: AED(6_000) })
+    // B bids 5,900: A's auto-bid stops at the cap (6,000) and A is told the cap is reached
+    expect((await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(5_900) })).json()).toMatchObject({ leading: false, topAmount: AED(6_000) })
+    expect((await notes(buyerA)).map((n: any) => n.kind)).toContain('bid.auto_cap')
+    // A raises the cap without raising the visible bid
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(6_000), maxAmount: AED(8_000) })).json()).toMatchObject({ leading: true, topAmount: AED(6_000), yourMax: AED(8_000) })
+    // B bids past the new cap: B leads and A hears its maximum was passed
+    expect((await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(8_500) })).json()).toMatchObject({ leading: true, topAmount: AED(8_500) })
+    expect((await notes(buyerA)).find((n: any) => n.kind === 'bid.outbid').data).toMatchObject({ max: AED(8_000), top: AED(8_500) })
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: false, yourAutoMax: AED(8_000) })
+    // B's own bids never reveal A's maximum
+    expect(JSON.stringify((await call(buyerB, 'GET', `/api/slots/${slotX}`)).json())).not.toContain(String(AED(8_000)))
+  })
+})
+
+describe('add placement as Omar described it', () => {
+  const outletOf = async (seller: Who) => (await pool.query(`select id from outlets where company_id = $1 limit 1`, [seller.companyId])).rows[0].id
+  const base = { saleType: 'auction', days: [1, 2, 3, 4, 5], startingPrice: AED(2_000), creativeLeadHours: 48, closeLeadHours: 144 }
+
+  test('buyers see what they get, the specs and the language; contact details are refused', async () => {
+    const outletId = await outletOf(sellerX)
+    expect((await call(sellerX, 'POST', '/api/seller/placements', { ...base, outletId, name: 'Drive', description: 'Call 050 123 4567' })).json().error).toMatch('Emails and phone numbers')
+    const r = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, outletId, name: 'Drive', startsAt: '07:00', endsAt: '09:00', format: 'spots',
+      description: 'A 30-second spot.', specs: 'MP3, 30 seconds', language: 'arabic', listFrom: '2026-11-08', listDays: 14 })).json()
+    expect(r.slots).toBeGreaterThan(0)
+    const slot = (await pool.query(`select s.id from slots s where s.placement_id = $1 order by starts_at limit 1`, [r.id])).rows[0].id
+    expect((await call(buyerA, 'GET', `/api/slots/${slot}`)).json().details).toEqual({ description: 'A 30-second spot.', specs: 'MP3, 30 seconds', language: 'arabic', unit: 'day' })
+  })
+
+  test('a week-long placement makes one slot a week that runs seven days', async () => {
+    const r = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, outletId: await outletOf(sellerX), name: 'Banner week', days: [1], unit: 'week',
+      listFrom: '2026-11-08', listDays: 28 })).json()
+    const slots = (await pool.query(`select starts_at, ends_at, label from slots where placement_id = $1 order by starts_at`, [r.id])).rows
+    expect(slots.length).toBe(r.slots)
+    expect(slots.length).toBeGreaterThanOrEqual(2)
+    expect(slots.every((s: any) => s.ends_at - s.starts_at === 7 * 86_400_000 && s.label === 'Full week')).toBe(true)
+    expect((await call(sellerX, 'POST', '/api/seller/placements', { ...base, outletId: await outletOf(sellerX), name: 'Bad', days: [1, 2], unit: 'week' })).json().error).toMatch('one day')
+  })
+
+  test('"keep it on sale" tops itself up to the horizon every day; "I list weeks myself" does not', async () => {
+    const outletId = await outletOf(sellerX)
+    const rolling = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, outletId, name: 'Rolling', days: [1, 2, 3, 4, 5, 6, 7], listing: 'rolling', horizonWeeks: 4, listFrom: '2026-11-01', listDays: 28 })).json().id
+    const manual = (await call(sellerX, 'POST', '/api/seller/placements', { ...base, outletId, name: 'Manual', days: [1, 2, 3, 4, 5, 6, 7], listing: 'manual', listFrom: '2026-11-01', listDays: 28 })).json().id
+    const last = async (id: string) => (await pool.query(`select max(air_date)::text d from slots where placement_id = $1`, [id])).rows[0].d
+    expect(await last(rolling)).toBe('2026-11-28')
+    now = T('2026-11-10T08:00:00Z'); await sweep(now)
+    expect(await last(rolling)).toBe('2026-12-07') // nine days later, still four weeks ahead
+    expect(await last(manual)).toBe('2026-11-28')
+    await sweep(now) // nothing more to add on the same day
+    expect(await last(rolling)).toBe('2026-12-07')
+  })
+
+  test('competitive separation warns the publisher when the same industry is booked that day', async () => {
+    await pool.query(`update placements set separation = true where id = (select placement_id from slots where id = $1)`, [slotX])
+    const twin = (await pool.query(`insert into slots (placement_id, air_date, kind, label, starts_at, ends_at, sale_type, starting_price, buy_now_price, auto_accept, currency, closes_at, creative_due_at, listed_at)
+      select placement_id, air_date, kind, 'Break 9', starts_at + interval '1 hour', ends_at + interval '1 hour', sale_type, starting_price, buy_now_price, false, currency, closes_at, creative_due_at, listed_at
+      from slots where id = $1 returning id`, [slotX])).rows[0].id
+    const first = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${first}/accept`)
+    const second = (await call(buyerB, 'POST', `/api/slots/${twin}/buy-now`, { brief: BRIEF })).json().id
+    expect((await call(sellerX, 'GET', `/api/seller/deals/${second}`)).json().separation).toEqual({ industry: BRIEF.industry, count: 1 })
+  })
+})

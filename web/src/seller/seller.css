@@ -61,3 +61,46 @@
 .wk-ev:focus-visible { box-shadow: var(--focus); z-index: 2; }
 .wk-ev:hover { z-index: 2; box-shadow: var(--shadow-2); }
 .brief-mini { display: grid; gap: 2px; margin-top: 6px; max-width: 52ch; line-height: 1.45; }
+
+/* Add placement: the form on the left, a live preview and the save summary on the right */
+.pl-page { max-width: 1180px; }
+.pl-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.pl-head h1 { margin: 0; }
+.pl-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.pl-form { display: grid; gap: 16px; min-width: 0; }
+.pl-form h2 { font-size: 17px; margin: 0; }
+.pl-side { position: sticky; top: 16px; display: grid; gap: 12px; }
+.pl-formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.pl-format, .pl-sale-card { display: grid; gap: 3px; text-align: start; padding: 11px 13px; border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--surface);
+  font: inherit; color: var(--ink); cursor: pointer; transition: border-color .15s, background-color .15s; }
+.pl-format span, .pl-sale-card span { font-size: 12.5px; color: var(--slate); line-height: 1.4; }
+.pl-format:hover, .pl-sale-card:hover { border-color: var(--teal-4); }
+.pl-format.on, .pl-sale-card.on { border-color: var(--teal); background: var(--teal-1); box-shadow: inset 0 0 0 1px var(--teal); }
+.pl-format:focus-visible, .pl-sale-card:focus-visible { outline: none; box-shadow: var(--focus); }
+.pl-sale { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pl-sale-card b { display: inline-flex; align-items: center; gap: 6px; }
+.pl-unit { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 420px; }
+.pl-more summary { cursor: pointer; color: var(--teal); font-weight: 500; font-size: 14px; padding: 4px 0; }
+.pl-more[open] { display: grid; gap: 12px; }
+.pl-preview { display: grid; gap: 8px; }
+.pl-preview h3 { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+.pl-preview p { margin: 0; overflow-wrap: anywhere; }
+.pl-preview .sale { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--slate); }
+.pl-price b { font-size: 20px; }
+.pl-breaks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.pl-breaks li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 8px; background: var(--surface-2); }
+.pl-summary { display: grid; gap: 10px; }
+.pl-summary h3 { margin: 0; font-size: 15px; }
+.pl-summary ul { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px; font-size: 13.5px; color: var(--slate); }
+.pl-done .row-flex { margin-top: 16px; }
+.placement-facts { margin: 4px 0 8px; }
+@media (max-width: 900px) {
+  .pl-grid { grid-template-columns: minmax(0, 1fr); }
+  .pl-side { position: static; }
+}
+@media (max-width: 560px) {
+  .pl-sale { grid-template-columns: 1fr; }
+  .breaks-row { grid-template-columns: minmax(0, 1fr) 110px 64px auto; }
+}
+.pl-quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.pl-quick button { border: 0; background: none; padding: 2px 0; margin-inline-end: 10px; color: var(--teal); font: 500 13px/1.4 var(--body); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }

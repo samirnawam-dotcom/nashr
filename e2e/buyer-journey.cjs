@@ -21,7 +21,7 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   // Bid on a break with a full brief
   await p.click(await row(picks[0])); await p.waitForSelector('.drawer h2')
   await p.fill('#adv', 'Northwind Business Cards'); await p.fill('#msg', 'Business cards for growing companies. Apply in minutes.')
-  await p.check('text=Auto-bid'); await p.fill('#max', '6000')
+  await p.click('.bid-mode button:has-text("Auto-bid")'); await p.fill('#max', '6000')
   out && await p.screenshot({ path: out + '/8-drawer-brief.png' })
   await p.click('.drawer-f .btn.primary'); await p.waitForSelector('.drawer .ok, .drawer .error')
   console.log('bid:', await p.locator('.drawer .ok, .drawer .error').first().textContent())

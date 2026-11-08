@@ -25,7 +25,9 @@ export function monthGrid(date: string) {
 }
 
 /** Print editions and whole-day digital items have no time: they sit in the all-day lane, as in Google Calendar. */
-export const isAllDay = (s: { startsAt: string; endsAt: string | null }) => !s.endsAt && dubai(s.startsAt).minutes === 0
+// whole-day items (print editions) and week-long ones (a week's banner) sit in the all-day lane
+export const isAllDay = (s: { startsAt: string; endsAt: string | null }) => dubai(s.startsAt).minutes === 0
+  && (!s.endsAt || new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime() >= 86_400_000)
 
 /** Overlapping events share the width: each gets a column and the number of columns in its cluster. */
 export function layoutDay<T extends { id: string; start: number; end: number }>(events: T[]) {

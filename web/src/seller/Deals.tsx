@@ -10,7 +10,7 @@ import { tm } from '../i18n-server'
 import { Thread } from '../messages/Thread'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
-  brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean
+  brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean; separation?: { industry: string; count: number } | null
   money: { bid: number; mediaVat: number; fee: number; feeVat: number; youReceive: number; commissionBp: number }
   otherBids: { id: string; label: string; company: string; amount: number }[]; rating?: { score: number; comment: string | null } | null }
 type Detail = { channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
@@ -89,6 +89,7 @@ export function SellerDealPage({ id }: { id: string }) {
         </dl>
         {d.status === 'awaiting_seller' && <>
           {d.belowReserve && <p className="warn">{t("This is below your reserve price. You can still accept it.")}</p>}
+          {d.separation && <p className="warn">{t('Competitive separation: another {industry} advertiser is already booked with this outlet on the same day. You can still accept it.', { industry: t(d.separation.industry) })}</p>}
           {d.nextDeadlineAt && <p className="small muted">{t('Decide by {when} or the request expires.', { when: when(d.nextDeadlineAt) })}</p>}
           {form?.k !== 'decline' ? <div className="row-flex">
             <button className="btn primary" disabled={busy} onClick={() => act(`/seller/deals/${d.id}/accept`, {}, t("Accepted. The buyer has been asked to pay."))}>{t("Accept")}</button>

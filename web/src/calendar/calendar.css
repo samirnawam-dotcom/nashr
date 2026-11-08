@@ -361,3 +361,10 @@ label.side-h { display: block; }
 .cv-nolink { cursor: default !important; }
 .cv-table .cv-slot, .cv-table td:nth-child(3) { white-space: nowrap; }
 .cv-filters-m { display: grid; gap: 10px; } .cv-filters-m .cv-filters.stacked { padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+
+/* Bid panel: single bid or auto-bid, and where the buyer stands */
+.bid-mode { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+.bid-mode button { padding: 8px 12px; }
+.bid-status { display: grid; gap: 2px; margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2, #f6f8f7); }
+.bid-status.lead { border-color: rgba(10, 140, 125, .35); background: rgba(10, 140, 125, .06); }
+.bid-status.outbid { border-color: rgba(196, 122, 10, .4); background: rgba(196, 122, 10, .07); }

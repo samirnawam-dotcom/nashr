@@ -11,6 +11,7 @@ import { PROOF_CHECKLIST } from '../fulfilment/proof.js'
 import { REJECT_REASONS } from '../fulfilment/creative.js'
 import { uploadMediaInvoice, payoutStatement, statement } from '../documents/documents.js'
 import { containsContactDetails } from '../core/contact.js'
+import { setting } from '../core/settings.js'
 import { coverUrl, logoUrl } from './routes-covers.js'
 
 const SELLER: ['seller'] = ['seller']
@@ -204,7 +205,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   })
 
   // Listings and profile.
-  route('GET', '/api/seller/profile', SELLER, async ({ db, me }) => {
+  route('GET', '/api/seller/profile', SELLER, async ({ db, me, at }) => {
     const c = (await db.query(`select c.name, c.trn, c.vat_registered, c.invoice_mode, c.payouts_enabled, f.id rate_card_id, f.name rate_card_name
       from companies c left join files f on f.id = c.rate_card_file where c.id = $1`, [me.actAs.companyId])).rows[0]
     const outlets = (await db.query(`select * from outlets where company_id = $1 order by name`, [me.actAs.companyId])).rows
@@ -213,6 +214,8 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
         (select max(s.air_date)::text from slots s where s.placement_id = p.id) listed_until
         from placements p join outlets o on o.id = p.outlet_id where o.company_id = $1 order by p.archived, o.name, p.name`, [me.actAs.companyId])).rows
     return {
+      // the placement form works out the earliest closing time from these (SPEC 12.1 "deadlines must fit")
+      windows: { sellerHours: await setting<number>(db, 'seller_window_hours', at), paymentHours: await setting<number>(db, 'payment_window_hours', at) },
       company: { name: c.name, trn: c.trn, vatRegistered: c.vat_registered, invoiceMode: c.invoice_mode, payoutsEnabled: c.payouts_enabled,
         rateCard: c.rate_card_id ? { fileId: c.rate_card_id, name: c.rate_card_name } : null },
       outlets: outlets.map(o => ({ id: o.id, name: o.name, nameAr: o.name_ar, channel: o.channel, sectors: o.sectors, description: o.description,
@@ -220,7 +223,9 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
       placements: placements.map(p => ({ id: p.id, outlet: p.outlet, outletId: p.outlet_id, name: p.name, saleType: p.sale_type, days: p.days,
         startsAt: p.starts_at_local, endsAt: p.ends_at_local, breaks: p.breaks, startingPrice: p.starting_price, anyBreakPrice: p.any_break_price,
         packagePrice: p.package_price, buyNowPrice: p.buy_now_price, reservePrice: p.reserve_price, creativeLeadHours: p.creative_lead_hours,
-        closeLeadHours: p.close_lead_hours, autoAccept: p.auto_accept, archived: p.archived, openSlots: p.open_slots, listedUntil: p.listed_until })),
+        closeLeadHours: p.close_lead_hours, autoAccept: p.auto_accept, archived: p.archived, openSlots: p.open_slots, listedUntil: p.listed_until,
+        format: p.format, description: p.description, specs: p.specs, language: p.language, unit: p.unit, listing: p.listing, horizonWeeks: p.horizon_weeks,
+        separation: p.separation })),
     }
   })
 

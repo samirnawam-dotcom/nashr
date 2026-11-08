@@ -43,8 +43,17 @@ const majlis = await company('The Majlis Podcast', 'publisher')
 const today = localDay(now, 'AE')
 const offset = ((8 - today.weekday) % 7) || 7
 const from = new Date(Date.parse(today.date + 'T00:00:00Z') + offset * 86_400_000).toISOString().slice(0, 10)
+// What buyers read before they bid, by channel (Omar's brief: what the buyer gets, specs, language)
+const DETAILS: Record<string, { description: string; specs: string }> = {
+  radio: { description: 'A 30-second spot in one ad break of the programme.', specs: 'MP3 or WAV, 30 seconds, broadcast-ready.' },
+  tv: { description: 'A 30-second spot in one ad break of the programme.', specs: 'MP4 (H.264), 1920 × 1080, 30 seconds, loudness −23 LUFS.' },
+  print: { description: 'A page in one edition.', specs: 'PDF/X-1a, 300 dpi, sizes on the rate card.' },
+  digital: { description: 'Your brand on the site for the day.', specs: 'JPG, PNG or HTML5, up to 150 KB.' },
+  podcast: { description: 'A host-read or produced ad in one position of the episode.', specs: 'MP3, 48 kHz, or a script for the host to read.' },
+}
 const list = async (outletId: string, p: any) => tx(async c => {
-  const id = await createPlacement(c, { outletId, creativeLeadHours: 48, closeLeadHours: 120, ...p }, 'seed', now)
+  const { channel } = (await c.query(`select channel from outlets where id = $1`, [outletId])).rows[0]
+  const id = await createPlacement(c, { outletId, creativeLeadHours: 48, closeLeadHours: 120, ...DETAILS[channel], language: 'english', listing: 'rolling', horizonWeeks: 4, ...p }, 'seed', now)
   await generateSlots(c, id, from, 28, now)
   return id
 })

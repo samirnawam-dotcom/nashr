@@ -44,12 +44,12 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   if (await p.locator('.cv-table .st:not(.st-on_sale)').count()) throw new Error('the status filter let other statuses through')
   await p.click('.cv-views button:has-text("Month")'); await p.waitForSelector('.cv-mcell'); await shot('s6c-month')
   // A new placement, listed straight away
-  await p.click('.nav >> text=Listings'); await p.waitForSelector('table'); await p.click('text=Add placement')
-  await p.fill('#n', 'Weekend Brunch'); await p.selectOption('#st', 'quick_sale')
-  await p.click('.days label:has-text("Mon")'); await p.click('.days label:has-text("Sat")'); await p.click('.days label:has-text("Sun")')
-  await p.fill('#sa', '10:00'); await p.fill('#ea', '12:00'); await p.click('button:has-text("Add break")'); await p.fill('#bt0', '10:30')
+  await p.click('.nav >> text=Listings'); await p.waitForSelector('table'); await p.click('a:has-text("Add placement")'); await p.waitForSelector('.pl-format')
+  await p.click('.pl-format:has-text("Programme sponsorship")'); await p.fill('#n', 'Weekend Brunch'); await p.click('.pl-sale-card:has-text("Quick sale")')
+  await p.click('.pl-quick button:has-text("Weekend")'); await p.fill('#sa', '10:00'); await p.fill('#ea', '12:00')
   await p.fill('#sp', '1800'); await shot('s7-new-placement')
-  await p.click('button:has-text("Save placement")'); await p.waitForSelector('td:has-text("Weekend Brunch")'); await shot('s8-listings')
+  await p.click('button:has-text("Save placement")'); await p.waitForSelector('h1:has-text("is saved")')
+  await p.click('a:has-text("Go to listings")'); await p.waitForSelector('td:has-text("Weekend Brunch")'); await shot('s8-listings')
   await p.click('.nav >> text=Earnings'); await p.waitForSelector('.kpis'); await shot('s9-earnings')
   await p.click('.nav >> text=Profile'); await p.waitForSelector('text=Payout account'); await shot('s10-profile')
   const sp = p.context().request

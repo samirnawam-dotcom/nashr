@@ -20,7 +20,10 @@ const PLACEMENT = { type: 'object', additionalProperties: false, required: ['out
       properties: { label: { type: 'string', minLength: 1, maxLength: 60 }, at: time, seconds: { type: 'integer', minimum: 1, maximum: 3600 } } } },
     startingPrice: price, anyBreakPrice: price, packagePrice: price, buyNowPrice: price, reservePrice: price, autoAccept: { type: 'boolean' },
     creativeLeadHours: { type: 'integer', minimum: 0, maximum: 2000 }, closeLeadHours: { type: 'integer', minimum: 1, maximum: 4000 },
-    listFrom: { type: 'string', format: 'date' }, listDays: { type: 'integer', minimum: 1, maximum: 120 } } }
+    listFrom: { type: 'string', format: 'date' }, listDays: { type: 'integer', minimum: 1, maximum: 190 },
+    format: { type: 'string', maxLength: 40 }, description: { type: 'string', maxLength: 600 }, specs: { type: 'string', maxLength: 400 },
+    language: { enum: ['english', 'arabic', 'both', 'hindi', 'urdu', 'other'] }, unit: { enum: ['day', 'week'] }, listing: { enum: ['rolling', 'manual'] },
+    horizonWeeks: { type: 'integer', minimum: 1, maximum: 26 }, separation: { type: 'boolean' } } }
 const reason = { type: 'object', required: ['reason'], properties: { reason: { type: 'string', minLength: 1, maxLength: 1000 } } }
 
 // Before acceptance the money preview uses the rates that acceptance would freeze: the publisher's own rate or the default.
@@ -37,6 +40,20 @@ async function ownDeal(db: pg.PoolClient, id: string, sellerId: string) {
   if (!d) throw new NotFound()
   return d
 }
+/**
+ * Competitive separation (a placement setting from Omar's prototype): before the publisher accepts, say whether an advertiser
+ * of the same industry is already booked with this outlet on the same day. A warning only; the publisher decides.
+ */
+async function separationConflict(db: pg.PoolClient, d: any) {
+  if (d.status !== 'awaiting_seller' || !d.brief?.industry) return null
+  const r = (await db.query(`select count(*)::int n from deals x join slots s2 on s2.id = x.slot_id join placements p2 on p2.id = s2.placement_id
+      join bids b on b.id = x.bid_id, slots s join placements p on p.id = s.placement_id
+      where s.id = $1 and p.separation and p2.outlet_id = p.outlet_id and s2.air_date = s.air_date and x.id <> $2
+        and x.status in ('awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out') and b.brief->>'industry' = $3`,
+    [d.slot_id, d.id, d.brief.industry])).rows[0]
+  return r.n ? { industry: d.brief.industry, count: r.n } : null
+}
+
 async function ownSlot(db: pg.PoolClient, id: string, sellerId: string) {
   const s = (await db.query(`select s.id from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                              where s.id = $1 and o.company_id = $2`, [id, sellerId])).rows[0]
@@ -65,7 +82,7 @@ export function sellerRoutes(route: RouteFn) {
 
   route('GET', '/api/seller/deals/:id', SELLER, async ({ db, me }, req) => {
     const d = await ownDeal(db, req.params.id, me.actAs.companyId)
-    return { ...sellerDeal(d, await otherBids(db, d)), rating: await dealRating(db, d.id) }
+    return { ...sellerDeal(d, await otherBids(db, d)), rating: await dealRating(db, d.id), separation: await separationConflict(db, d) }
   })
 
   route('POST', '/api/seller/deals/:id/accept', SELLER, async ({ db, at, me }, req) => {
@@ -136,5 +153,7 @@ export function sellerRoutes(route: RouteFn) {
     updatePlacement(db, req.params.id, me.actAs.companyId, req.body, `seller:${me.actAs.companyId}`, at),
   { type: 'object', additionalProperties: false, required: ['name', 'startingPrice', 'creativeLeadHours', 'closeLeadHours'],
     properties: { name: PLACEMENT.properties.name, startingPrice: price, anyBreakPrice: price, packagePrice: price, buyNowPrice: price, reservePrice: price,
-      autoAccept: { type: 'boolean' }, creativeLeadHours: PLACEMENT.properties.creativeLeadHours, closeLeadHours: PLACEMENT.properties.closeLeadHours } })
+      autoAccept: { type: 'boolean' }, creativeLeadHours: PLACEMENT.properties.creativeLeadHours, closeLeadHours: PLACEMENT.properties.closeLeadHours,
+      description: PLACEMENT.properties.description, specs: PLACEMENT.properties.specs, language: PLACEMENT.properties.language,
+      listing: PLACEMENT.properties.listing, horizonWeeks: PLACEMENT.properties.horizonWeeks, separation: PLACEMENT.properties.separation } })
 }

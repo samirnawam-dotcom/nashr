@@ -41,6 +41,7 @@ const EarningsPage = L(load_seller_Earnings, 'EarningsPage')
 const load_seller_Listings = () => import('./seller/Listings')
 const ListingsPage = L(load_seller_Listings, 'ListingsPage')
 const NewPlacementPage = L(load_seller_Listings, 'NewPlacementPage')
+const ImportPlacementsPage = L(load_seller_Listings, 'ImportPlacementsPage')
 const load_seller_Profile = () => import('./seller/Profile')
 const ProfilePage = L(load_seller_Profile, 'ProfilePage')
 const load_buyer_Dashboard = () => import('./buyer/Dashboard')
@@ -105,6 +106,7 @@ const SELLER: Routes = [
   [/^\/messages/, () => <MessagesPage role="seller" />],
   [/^\/listings\/([\w-]+)\/edit$/, id => <EditPlacementPage id={id} />],
   [/^\/listings\/new$/, () => <NewPlacementPage />],
+  [/^\/listings\/import$/, () => <ImportPlacementsPage />],
   [/^\/listings/, () => <ListingsPage />],
   [/^\/profile/, () => <ProfilePage />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],

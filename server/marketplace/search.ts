@@ -15,7 +15,7 @@ export type Query = SlotFilter & { from: string; to: string; me: string | null; 
 const OPEN_MARKET = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1) ? o.market`
 const DUBAI = `(s.starts_at at time zone 'Asia/Dubai')`
 const MINUTE = `(extract(hour from ${DUBAI}) * 60 + extract(minute from ${DUBAI}))`
-const ALL_DAY = `(s.ends_at is null and ${MINUTE} = 0)`
+const ALL_DAY = `(${MINUTE} = 0 and (s.ends_at is null or s.ends_at - s.starts_at >= interval '1 day'))`
 const PRICE = `coalesce(s.top_amount, s.starting_price)`
 const DAYPART: Record<string, string> = {
   allday: ALL_DAY,

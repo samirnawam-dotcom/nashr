@@ -21,7 +21,8 @@ beforeEach(async () => {
 })
 
 const bid = (buyerId: string, amount: number, maxAmount?: number, at = now) =>
-  tx(c => placeBid(c, { slotId: b2.id, buyerId, amount: AED(amount), maxAmount: maxAmount && AED(maxAmount), brief: BRIEF }, at))
+  // the two numbers these tests pin; the screen also gets the buyer's maximum and the next minimum bid
+  tx(c => placeBid(c, { slotId: b2.id, buyerId, amount: AED(amount), maxAmount: maxAmount && AED(maxAmount), brief: BRIEF }, at)).then(r => ({ leading: r.leading, topAmount: r.topAmount }))
 const deal = async () => (await pool.query(`select * from deals where slot_id = $1 order by created_at desc, ref desc limit 1`, [b2.id])).rows[0]
 const slotNow = async () => (await pool.query(`select * from slots where id = $1`, [b2.id])).rows[0]
 

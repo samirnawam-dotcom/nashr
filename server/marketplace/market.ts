@@ -74,20 +74,30 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
     const price = Math.max(a.amount, Math.min(max, minNextBid(slot.top_max, step)))
     await db.query(`update bids set status = 'outbid' where slot_id = $1 and buyer_id = $2 and status = 'active'`, [slot.id, slot.top_buyer_id])
     const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
-    await notify(db, slot.top_buyer_id, 'bid.outbid', null, { slotId: slot.id, outlet, label: slot.label }, at)
+    // an auto-bidder hears that their maximum was passed, so they can raise it; a plain bidder that they were outbid
+    const autoBidder = slot.top_max > slot.top_amount
+    await notify(db, slot.top_buyer_id, 'bid.outbid', null, { slotId: slot.id, outlet, label: slot.label, ...(autoBidder ? { max: slot.top_max } : {}), top: price }, at)
     const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: price, max, brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount: price, buyerId: a.buyerId, max }
-  } else { // leader's maximum holds: the system raises the leader just above the challenger
+  } else { // leader's maximum holds: the system raises the leader just above the challenger, never past the leader's maximum
     await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, status: 'outbid', brief: a.brief, campaignId: a.campaignId }, at)
     const price = Math.min(slot.top_max, Math.max(slot.top_amount, minNextBid(max, step)))
     const bid = price > slot.top_amount
       ? await insertBid(db, slot, { buyerId: slot.top_buyer_id, kind: 'auto', amount: price, max: slot.top_max }, at)
       : { id: slot.top_bid_id }
     top = { bidId: bid.id, amount: price, buyerId: slot.top_buyer_id, max: slot.top_max }
+    if (price > slot.top_amount) { // tell the auto-bidder it worked, and when it has reached the cap
+      const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+      await notify(db, slot.top_buyer_id, price >= slot.top_max ? 'bid.auto_cap' : 'bid.auto_raised', null,
+        { slotId: slot.id, outlet, label: slot.label, amount: price, max: slot.top_max }, at)
+    }
   }
   await db.query(`update slots set top_bid_id = $2, top_amount = $3, top_buyer_id = $4, top_max = $5 where id = $1`,
     [slot.id, top.bidId, top.amount, top.buyerId, top.max])
-  return { leading: top.buyerId === a.buyerId, topAmount: top.amount }
+  const leading = top.buyerId === a.buyerId
+  return { leading, topAmount: top.amount, yourMax: leading ? top.max : max, minNextBid: minNextBid(top.amount, step),
+    // the bid went in but another buyer's auto-bid answered at once: the screen says so instead of "your bid is in"
+    beatenByAutoBid: !leading }
 }
 
 /** Buy-now is a request: nothing is charged, the seller must accept (brief section 9). */
