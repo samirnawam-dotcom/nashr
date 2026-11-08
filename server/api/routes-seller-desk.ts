@@ -1,6 +1,7 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
+import { requireTwoStepForMoney } from '../auth/two-step.js'
 import { split } from '../core/money.js'
 import { audit } from '../core/audit.js'
 import { balance } from '../payments/ledger.js'
@@ -272,6 +273,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   route('PUT', '/api/seller/company', SELLER, async ({ db, at, me }, req) => {
     const b = req.body
     if (b.vatRegistered && !b.trn) throw new MarketError('A VAT-registered publisher needs its TRN on invoices.')
+    if (containsContactDetails(b.address)) throw new MarketError('Emails and phone numbers are not allowed in the address.')
     await db.query(`update companies set trn = $2, vat_registered = $3, invoice_mode = $4, address = case when $5 then $6 else address end where id = $1`,
       [me.actAs.companyId, b.trn || null, b.vatRegistered, b.invoiceMode, 'address' in b, b.address?.trim() || null])
     await audit(db, `seller:${me.actAs.companyId}`, 'company.tax_updated', 'company', me.actAs.companyId, b, at)
@@ -282,6 +284,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   // ponytail: payout onboarding is the provider's hosted flow (Stripe Connect, B5). With the test provider it verifies at once.
   // Real provider: open (or continue) the publisher's onboarding on the provider's own pages; we come back to the profile.
   route('POST', '/api/seller/payouts/connect', SELLER, async ({ db, at, me }, req) => {
+    await requireTwoStepForMoney(db, me.userId, 'payouts', at) // where money goes out, two-step sign-in first (founder's setting)
     const pa = deps.provider.payoutAccount
     if (pa) {
       const c = (await db.query(`select id, name, provider_account from companies where id = $1`, [me.actAs.companyId])).rows[0]

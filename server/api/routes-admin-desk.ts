@@ -3,6 +3,7 @@ import { MarketError } from '../marketplace/market.js'
 import { audit } from '../core/audit.js'
 import { checklistFor } from '../fulfilment/proof.js'
 import { met, scorecard } from './scorecard.js'
+import { resetTwoStep } from '../auth/two-step.js'
 import { split } from '../core/money.js'
 import { balance } from '../payments/ledger.js'
 import { reconcile } from '../payments/payments.js'
@@ -73,7 +74,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       invoiceMode: c.invoice_mode, providerAccount: c.provider_account, createdAt: c.created_at,
       rateCard: c.rate_card_file ? (await db.query(`select id "fileId", name from files where id = $1`, [c.rate_card_file])).rows[0] : null,
       balance: c.type === 'publisher' ? { payable: await liability(db, `seller_payable:${c.id}`), owed: await balance(db, `seller_receivable:${c.id}`, 'AED') } : null,
-      users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled && staffTwoStep(), createdAt: u.created_at, resetRequested: u.reset_requested })),
+      users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled && (!['admin', 'founder'].includes(u.role) || staffTwoStep()), createdAt: u.created_at, resetRequested: u.reset_requested })),
       outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel, sectors: o.sectors, logoUrl: logoUrl(o) })),
       deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, createdAt: d.created_at, label: d.label, outlet: d.outlet })),
       commissionHistory: commission.map(h => ({ bp: h.value, from: h.valid_from, by: h.changed_by })) }
@@ -104,6 +105,12 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   }, { type: 'object', required: ['status'], properties: { status: { enum: ['active', 'suspended'] }, reason: { type: 'string', maxLength: 500 } } })
 
   // A buyer or publisher who forgot their password: Nashr issues a one-day link (emailed once email is connected).
+  // Lost phone: turn off a buyer's or publisher's two-step sign-in, with a reason. They are signed out and their company is told.
+  route('POST', '/api/admin/users/:id/two-step-reset', STAFF, async ({ db, at, me }, req) => {
+    await resetTwoStep(db, req.params.id, req.body.reason, `admin:${me.userId}`, at)
+    return { ok: true }
+  }, { type: 'object', required: ['reason'], additionalProperties: false, properties: { reason: { type: 'string', maxLength: 500 } } })
+
   route('POST', '/api/admin/users/:id/reset-link', STAFF, async ({ db, at, me }, req) =>
     ({ link: `/reset#${await issueReset(db, req.params.id, `${me.role}:${me.userId}`, at)}` }))
 

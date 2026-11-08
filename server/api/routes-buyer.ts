@@ -1,6 +1,8 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { companyProfile } from './profiles.js'
+import { containsContactDetails } from '../core/contact.js'
+import { requireTwoStepForMoney } from '../auth/two-step.js'
 import { buyerDeal, buyerSlot } from './shapes.js'
 import { placeBid, requestBuyNow, showInterest, withdrawBuyNow, bookFixed } from '../marketplace/market.js'
 import { minNextBid } from '../core/money.js'
@@ -70,7 +72,10 @@ export function buyerRoutes(route: RouteFn) {
     const mine = (await db.query(`select max(max_amount) max, max(max_amount) filter (where max_amount > amount and kind in ('bid', 'auto')) auto_max,
       bool_or(brief is not null) has_brief, count(*) filter (where kind in ('bid', 'auto', 'interest') and status <> 'withdrawn')::int n
       from bids where slot_id = $1 and buyer_id = $2`, [r.id, company])).rows[0]
-    return { ...buyerSlot(r, company), youBid: mine.n > 0, creativeDueAt: r.creative_due_at,
+    // this buyer's own booking on the slot, if it is still going ahead (the screen says "You won" from this, not from the top bid)
+    const yourDeal = company ? (await db.query(`select id, status, kind from deals where slot_id = $1 and buyer_id = $2
+      and status not in ('declined', 'lapsed', 'cancelled', 'refunded') order by created_at desc limit 1`, [r.id, company])).rows[0] ?? null : null
+    return { ...buyerSlot(r, company), youBid: mine.n > 0, creativeDueAt: r.creative_due_at, yourDeal,
       minNextBid: r.top_amount ? minNextBid(r.top_amount, await setting(db, 'min_step_bp', at)) : r.starting_price,
       yourMax: mine.max, yourAutoMax: mine.auto_max, briefOnFile: !!mine.has_brief,
       details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit, notAccepted: r.blocked_industries ?? [] },
@@ -110,6 +115,7 @@ export function buyerRoutes(route: RouteFn) {
     return { name: c.name, trn: c.trn, address: c.address, team: team.map(u => ({ name: u.name, email: u.email, status: u.status, since: u.created_at })) }
   })
   route('PUT', '/api/buyer/company', BUYER, async ({ db, at, me }, req) => {
+    if (containsContactDetails(req.body.address)) throw new MarketError('Emails and phone numbers are not allowed in the address.')
     // the address is optional here: an older client may send only the TRN
     await db.query(`update companies set trn = $2, address = case when $3 then $4 else address end where id = $1`,
       [me.actAs.companyId, req.body.trn || null, 'address' in req.body, req.body.address?.trim() || null])
@@ -159,6 +165,7 @@ export function buyerRoutes(route: RouteFn) {
 
   route('POST', '/api/deals/:id/pay', BUYER, async ({ db, at, me, provider }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)
+    await requireTwoStepForMoney(db, me.userId, 'pay', at) // the founder's setting: paying needs two-step sign-in
     return confirmPayment(provider, { dealId: req.params.id, buyerId: me.actAs.companyId, paymentMethod: req.body.paymentMethod }, at)
   }, { type: 'object', required: ['paymentMethod'], properties: { paymentMethod: { type: 'string', maxLength: 100 } } })
 

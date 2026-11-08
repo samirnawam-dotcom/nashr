@@ -4,6 +4,8 @@ import { acceptInvite, changePassword, login, logout, requestAccess, requestRese
 import { MarketError } from '../marketplace/market.js'
 import { sha256 } from '../auth/crypto.js'
 import { audit } from '../core/audit.js'
+import { setting } from '../core/settings.js'
+import { confirmTwoStep, startTwoStep, stopTwoStep } from '../auth/two-step.js'
 
 const str = { type: 'string', minLength: 1, maxLength: 200 }
 
@@ -46,7 +48,10 @@ export function authRoutes(route: RouteFn) {
   // Forgotten password: the same answer whether or not the email has an account (no account probing).
   route('POST', '/api/auth/forgot', 'public', async ({ db, at }, req, reply) => {
     if (!rateLimit(`forgot:${req.ip}`, 5, at.getTime())) return reply.code(429).send({ error: 'Too many requests. Try again in a minute.' })
+    // the same answer in the same time either way: the extra work for a real account is hidden under a fixed minimum
+    const started = Date.now()
     await requestReset(db, req.body.email, at)
+    await new Promise(r => setTimeout(r, Math.max(0, 300 - (Date.now() - started))))
     return { ok: true }
   }, { type: 'object', required: ['email'], additionalProperties: false, properties: { email: str } })
   route('POST', '/api/auth/reset', 'public', async ({ db, at }, req, reply) => {
@@ -57,8 +62,9 @@ export function authRoutes(route: RouteFn) {
 
   // Your own account: name, password, and which emails you want (essential ones about your bookings and money always go).
   route('GET', '/api/me/account', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me }) => {
-    const u = (await db.query(`select name, email, role, email_prefs from users where id = $1`, [me.userId])).rows[0]
-    return { name: u.name, email: u.email, role: u.role, emails: { bids: true, alerts: true, messages: true, news: false, ...u.email_prefs } }
+    const u = (await db.query(`select name, email, role, email_prefs, totp_enabled from users where id = $1`, [me.userId])).rows[0]
+    return { name: u.name, email: u.email, role: u.role, emails: { bids: true, alerts: true, messages: true, news: false, ...u.email_prefs },
+      twoStep: { on: u.totp_enabled, staff: ['admin', 'founder'].includes(u.role), requiredForMoney: !!(await setting(db, 'two_step_for_money', new Date())) } }
   })
   route('PUT', '/api/me/account', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req) => {
     const b = req.body
@@ -69,6 +75,22 @@ export function authRoutes(route: RouteFn) {
     return { ok: true }
   }, { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 },
     emails: { type: 'object', additionalProperties: false, properties: { bids: { type: 'boolean' }, alerts: { type: 'boolean' }, messages: { type: 'boolean' }, news: { type: 'boolean' } } } } })
+  // Two-step sign-in for buyers and publishers (staff set theirs up when they join).
+  route('POST', '/api/me/two-step/start', ['buyer', 'seller'], async ({ db, at, me }) => {
+    if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')
+    return startTwoStep(db, me.userId, at)
+  })
+  route('POST', '/api/me/two-step/confirm', ['buyer', 'seller'], async ({ db, at, me }, req, reply) => {
+    if (!rateLimit(`2s:${me.userId}`, 10, at.getTime())) return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
+    await confirmTwoStep(db, me.userId, req.body.code, at)
+    return { ok: true }
+  }, { type: 'object', required: ['code'], additionalProperties: false, properties: { code: { type: 'string', maxLength: 10 } } })
+  route('POST', '/api/me/two-step/off', ['buyer', 'seller'], async ({ db, at, me }, req, reply) => {
+    if (!rateLimit(`2s:${me.userId}`, 10, at.getTime())) return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
+    await stopTwoStep(db, me.userId, req.body, at)
+    return { ok: true }
+  }, { type: 'object', required: ['password', 'code'], additionalProperties: false, properties: { password: { type: 'string', maxLength: 200 }, code: { type: 'string', maxLength: 10 } } })
+
   route('PUT', '/api/me/password', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req, reply) => {
     if (!rateLimit(`pw:${me.userId}`, 10, at.getTime())) return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
     if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')

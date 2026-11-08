@@ -5,12 +5,20 @@ import { EventEmitter } from 'node:events'
  * the new state itself, so nothing private ever travels on this channel. Two kinds of signal:
  *  - "notification" for one company (its bell has something new),
  *  - "slot" for everyone watching a slot (a bid, an acceptance, a relist): just the slot id.
- * Signals go out a moment after the change, once its transaction has committed.
+ * Signals go out once the change's transaction has committed.
  * ponytail: in-process. With more than one API instance, carry the same two signals over Postgres LISTEN/NOTIFY.
  */
 export const live = new EventEmitter()
 live.setMaxListeners(0)
 
-const AFTER_COMMIT_MS = 250
-export function signalCompany(companyId: string) { setTimeout(() => live.emit('notification', companyId), AFTER_COMMIT_MS).unref?.() }
-export function signalSlot(slotId: string) { setTimeout(() => live.emit('slot', slotId), AFTER_COMMIT_MS).unref?.() }
+// Signals raised inside a transaction wait for it: sent once after COMMIT (each once), dropped on ROLLBACK, so a refused bid
+// signals nothing and a page never refetches before the change is visible. Outside a transaction they go at once.
+const waiting = new WeakMap<object, Set<string>>()
+export function holdSignals(client: object) { waiting.set(client, new Set()) }
+export function releaseSignals(client: object, committed: boolean) {
+  const queue = waiting.get(client); waiting.delete(client)
+  if (committed && queue) for (const s of queue) { const [kind, id] = s.split(':'); live.emit(kind, id) }
+}
+const raise = (db: object, kind: 'notification' | 'slot', id: string) => { const q = waiting.get(db); if (q) q.add(`${kind}:${id}`); else live.emit(kind, id) }
+export const signalCompany = (db: object, companyId: string) => raise(db, 'notification', companyId)
+export const signalSlot = (db: object, slotId: string) => raise(db, 'slot', slotId)

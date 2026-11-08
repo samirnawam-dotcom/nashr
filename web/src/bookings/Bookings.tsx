@@ -8,6 +8,7 @@ import '../directory/directory.css'
 import { PhotoBand } from '../PhotoBand'
 import { StarInput, Stars } from '../Stars'
 import { isAr, ltr, t } from '../i18n'
+import { useNeedsTwoStep } from '../twoStep'
 import { tm } from '../i18n-server'
 import { Thread } from '../messages/Thread'
 
@@ -106,6 +107,7 @@ export function BookingPage({ id }: { id: string }) {
       await load()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
+  const needsTwoStep = useNeedsTwoStep(d?.status === 'accepted_pay_now')
   if (!d) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   const order = d.documents.find(x => x.type === 'order')
   return (
@@ -189,7 +191,8 @@ export function BookingPage({ id }: { id: string }) {
           <p>{d.nextDeadlineAt ? t('The publisher accepted. Please pay by {date}.', { date: when(d.nextDeadlineAt) }) : t('The publisher accepted. Please pay.')}</p>
           <div className="field"><label htmlFor="card">{t("Card")}</label><select id="card" value={card} onChange={e => setCard(e.target.value)}>{CARDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <p className="small muted">{t('The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher.')} {t('By paying you agree to the')} <a href="/terms">{t('terms')}</a> {t('and the')} <a href="/refunds">{t('refund and cancellation policy')}</a>.</p>
-          <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>{t('Pay {amount}', { amount: money(d.total, d.currency) })}</button>
+          {needsTwoStep ? <p className="warn small">{t('Before paying, turn on two-step sign-in to protect your account.')} <a href="/account">{t('Turn it on')}</a></p>
+          : <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>{t('Pay {amount}', { amount: money(d.total, d.currency) })}</button>}
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">{t("Waiting for the publisher's decision. You'll be asked to pay once they accept.")}</p>}
         {d.status === 'awaiting_publisher' && d.kind === 'buy_now' && (!withdrawing

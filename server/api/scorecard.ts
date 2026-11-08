@@ -19,7 +19,8 @@ export async function scorecard(db: Db, from: string, to: string): Promise<Measu
         (select min(at) from deal_events e where e.deal_id = d.id and e.event = 'report_issue') issue_at,
         (select min(at) from deal_events e where e.deal_id = d.id and e.event in ('escalate', 'chargeback')) dispute_at,
         (select min(at) from deal_events e where e.deal_id = d.id and e.to_status = 'released') released_at,
-        (select min(created_at) from money_ops m where m.deal_id = d.id and m.kind = 'transfer') payout_at
+        (select min(updated_at) from money_ops m where m.deal_id = d.id and m.kind = 'transfer' and m.status = 'succeeded') payout_at,
+        exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'transfer') has_transfer
       from deals d where (d.created_at at time zone 'Asia/Dubai')::date between $1::date and $2::date)
     select
       count(*) filter (where pay_at is not null)::int paid,
@@ -33,7 +34,7 @@ export async function scorecard(db: Db, from: string, to: string): Promise<Measu
       count(*) filter (where issue_at is not null and dispute_at is not null)::int disputes,
       count(*) filter (where released_at is not null and payout_at is not null
         and (payout_at at time zone 'Asia/Dubai')::date = (released_at at time zone 'Asia/Dubai')::date)::int payouts_same_day,
-      count(*) filter (where released_at is not null)::int released
+      count(*) filter (where released_at is not null and has_transfer)::int released -- a payout wholly kept for earlier refund costs is not a miss
     from d`, [from, to])).rows[0]
   const share = (key: string, done: number, of: number, target: number, better: 'higher' | 'lower' = 'higher'): Measure =>
     ({ key, done, of, value: of ? done / of : null, target, better, unit: 'share' })

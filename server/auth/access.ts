@@ -100,14 +100,14 @@ export const staffTwoStep = () => process.env.STAFF_TWO_STEP !== 'off'
 
 const DUMMY_HASH = hashPassword('not a real password, only spends the same time')
 
-/** Login. Staff need their authenticator code. Returns a session token for the cookie. */
+/** Login. Staff need their authenticator code, and so does anyone who turned two-step sign-in on. Returns a session token for the cookie. */
 export async function login(db: Db, a: { email: string; password: string; totpCode?: string }, at: Date) {
   const u = (await db.query(`select * from users where lower(email) = lower($1)`, [a.email])).rows[0]
   const fail = () => new MarketError('Email or password is not right.') // same message either way: no account probing
   // unknown emails still pay for one password hash, so the response time does not reveal who has an account
   const ok = verifyPassword(a.password ?? '', u?.password_hash ?? DUMMY_HASH)
   if (!u || u.status !== 'active' || !ok) throw fail()
-  if (STAFF.includes(u.role) && staffTwoStep()) {
+  if (STAFF.includes(u.role) ? staffTwoStep() : u.totp_enabled) {
     const step = u.totp_enabled && a.totpCode ? totpStep(u.totp_secret, a.totpCode, at) : null
     if (step === null || (u.totp_last_step != null && step <= Number(u.totp_last_step))) throw new MarketError('Enter the code from your authenticator app.')
     await db.query(`update users set totp_last_step = $2 where id = $1`, [u.id, step]) // each code signs in once
@@ -160,15 +160,22 @@ export async function requestReset(db: Db, email: string, at: Date) {
   await audit(db, `user:${u.id}`, 'password.reset_requested', 'user', u.id, null, at)
 }
 
-/** Nashr's team issues a one-day link for a buyer or publisher (never for staff: they keep their authenticator). Older links stop working. */
+/**
+ * Nashr's team issues a one-day link for a buyer or publisher (never for staff: they keep their authenticator), only when that
+ * person asked for one from the sign-in page in the last week, and their company is told. Older links stop working.
+ */
 export async function issueReset(db: Db, userId: string, actor: string, at: Date) {
-  const u = (await db.query(`select id, role, status from users where id = $1`, [userId])).rows[0]
+  const u = (await db.query(`select id, name, role, status, company_id from users where id = $1`, [userId])).rows[0]
   if (!u || u.status !== 'active' || STAFF.includes(u.role)) throw new MarketError('A reset link can be issued only for an active buyer or publisher user.')
+  const asked = await db.query(`select 1 from password_resets where user_id = $1 and issued_at is null and used_at is null and requested_at > $2`,
+    [u.id, new Date(at.getTime() - 7 * 86_400_000)])
+  if (!asked.rowCount) throw new MarketError('This person has not asked for a password reset. They ask from "Forgot your password?" on the sign-in page.')
   const token = randomToken()
   await db.query(`update password_resets set used_at = $2 where user_id = $1 and used_at is null`, [u.id, at])
   await db.query(`insert into password_resets (user_id, token_hash, requested_at, issued_at, expires_at) values ($1, $2, $3, $3, $4)`,
     [u.id, sha256(token), at, new Date(at.getTime() + RESET_HOURS * 3_600_000)])
   await audit(db, actor, 'password.reset_issued', 'user', u.id, null, at)
+  await notify(db, u.company_id, 'access.reset_issued', null, { user: u.name }, at)
   return token
 }
 
@@ -179,8 +186,13 @@ export async function resetPassword(db: Db, a: { token: string; password: string
   await db.query(`update users set password_hash = $2 where id = $1`, [r.user_id, hashPassword(a.password)])
   await db.query(`update password_resets set used_at = $2 where id = $1`, [r.id, at])
   await db.query(`delete from sessions where user_id = $1`, [r.user_id]) // signed out everywhere
+  await endSignInAs(db, r.user_id)
   await audit(db, `user:${r.user_id}`, 'password.reset', 'user', r.user_id, null, at)
 }
+
+/** Staff signed in as this person lose that access too when the person's sign-in details change. */
+export const endSignInAs = (db: Db, userId: string) =>
+  db.query(`update sessions set act_as_user_id = null, act_as_until = null, act_as_reason = null where act_as_user_id = $1`, [userId])
 
 /** Signed in: change the password (the current one is required), and sign out every other session. */
 export async function changePassword(db: Db, a: { userId: string; current: string; password: string; keepToken: string }, at: Date) {
@@ -190,5 +202,6 @@ export async function changePassword(db: Db, a: { userId: string; current: strin
   if (a.password === a.current) throw new MarketError('Choose a new password, not the current one.')
   await db.query(`update users set password_hash = $2 where id = $1`, [a.userId, hashPassword(a.password)])
   await db.query(`delete from sessions where user_id = $1 and token_hash <> $2`, [a.userId, a.keepToken])
+  await endSignInAs(db, a.userId)
   await audit(db, `user:${a.userId}`, 'password.changed', 'user', a.userId, null, at)
 }

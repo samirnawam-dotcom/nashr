@@ -104,7 +104,8 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   })
 
   // Steps only the account holder may take, even when Nashr is signed in as them: their password and email choices, paying by card, bank details.
-  const OWN_STEPS = new Set(['PUT /api/me/password', 'PUT /api/me/account', 'POST /api/deals/:id/pay', 'POST /api/seller/payouts/connect'])
+  const OWN_STEPS = new Set(['PUT /api/me/password', 'PUT /api/me/account', 'POST /api/deals/:id/pay', 'POST /api/seller/payouts/connect',
+    'POST /api/me/two-step/start', 'POST /api/me/two-step/confirm', 'POST /api/me/two-step/off'])
 
   /** Every route goes through here: authentication, role check, read-only enforcement while viewing as, one transaction. */
   function route(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, roles: Role[] | 'public', handler: Handler, schema?: object) {
@@ -127,7 +128,8 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
       if (s.signedInAs && OWN_STEPS.has(`${method} ${url}`))
         return reply.code(403).send({ error: 'Nashr is signed in as this user. The person must do this step themselves.' })
       return tx(async db => {
-        if (s.signedInAs && method !== 'GET') await audit(db, `admin:${s.signedInAs.staffId}`, 'sign_in_as.action', 'user', s.userId, { method, url: req.url, company: s.companyId }, at)
+        if (s.signedInAs) await audit(db, `admin:${s.signedInAs.staffId}`, method === 'GET' ? 'sign_in_as.page' : 'sign_in_as.action', 'user', s.userId,
+          { method, url: req.url, company: s.companyId }, at) // every page read and every change, as view-as logs every page
         if (viewing && method === 'GET') await audit(db, `admin:${s.userId}`, 'view_as.page', 'company', actAs.companyId, { url: req.url }, at)
         return handler({ db, at, me: { ...s, actAs }, provider: deps.provider }, req as Req, reply)
       })

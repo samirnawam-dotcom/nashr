@@ -1,3 +1,4 @@
+const { twoStepViaApi, twoStepViaPage } = require('./two-step.cjs')
 const { chromium } = require('playwright')
 // Seller journey against a running app (npm run seed, npm start, npm run dev:web). Screenshots go to E2E_OUT if set.
 const out = process.env.E2E_OUT, BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
@@ -22,6 +23,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   await p.click(`.tasks a[href="/deals/${dealId}"]`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')
   await p.click('button:has-text("Accept")'); await p.waitForSelector('text=Accepted. The buyer')
   // The buyer pays and sends creative
+  await twoStepViaApi(buyer, BASE) // paying needs two-step sign-in
   console.log('pay:', (await (await buyer.post(`${BASE}/api/deals/${dealId}/pay`, { data: { paymentMethod: 'pm_card_4242' } })).json()).status)
   const f = await (await buyer.post(BASE + '/api/files', { data: Buffer.from('ID3 spot'), headers: { 'content-type': 'audio/mpeg', 'x-file-name': 'spot.mp3' } })).json()
   await buyer.post(`${BASE}/api/deals/${dealId}/creative`, { data: { fileId: f.id } })

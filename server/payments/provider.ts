@@ -60,6 +60,8 @@ export class FakeProvider implements PaymentProvider {
 
   /** Demo servers: start from the ledger's cash, since the fake balance lives in memory and the seed ran in another process. */
   prime(currency: string, amount: number) { this.bal.set(currency, amount) }
+  /** Tests: the buyer's bank takes a disputed payment (and its fee) back, or returns it when Nashr wins. */
+  chargeback(currency: string, amount: number) { this.add(currency, -amount) }
 
   async transfer(a: { amount: number; currency: string; destination: string; idempotencyKey: string }) {
     return this.once(a.idempotencyKey, () => { this.add(a.currency, -a.amount); return { id: `tr_${this.tag}_${++this.n}` } })

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
 import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
+import { useNeedsTwoStep } from '../twoStep'
 import { t } from '../i18n'
 import { LogoPicker } from '../LogoPicker'
 import { CompanyProfileEditor } from '../CompanyCard'
@@ -22,6 +23,7 @@ export function ProfilePage() {
     setBusy(true); setError(''); setNote('')
     try { await api(path, { method, body }); setNote(done); await load() } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
+  const needsTwoStep = useNeedsTwoStep(!!p && !p.company.payoutsEnabled)
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   return (
     <main className="narrow">
@@ -31,7 +33,8 @@ export function ProfilePage() {
         <h2>{t("Payout account")}</h2>
         {p.company.payoutsEnabled ? <p className="lead">{t("● Verified. Released money is transferred to it automatically.")}</p> : <>
           <p>{t("Connect the bank account Nashr pays you into. Verification is done by the payment provider; Nashr never sees your bank login.")}</p>
-          <button className="btn primary" disabled={busy} onClick={() => act('POST', '/seller/payouts/connect', {}, t("Payout account verified."))}>{t("Connect payout account")}</button></>}
+          {needsTwoStep ? <p className="warn small">{t('Before connecting where your money goes, turn on two-step sign-in to protect your account.')} <a href="/account">{t('Turn it on')}</a></p>
+          : <button className="btn primary" disabled={busy} onClick={() => act('POST', '/seller/payouts/connect', {}, t("Payout account verified."))}>{t("Connect payout account")}</button>}</>}
       </section>
       <section className="card pad section form">
         <h2>{t("Tax and invoices")}</h2>

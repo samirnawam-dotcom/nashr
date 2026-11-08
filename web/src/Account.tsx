@@ -42,7 +42,45 @@ export function ResetPassword({ token, onDone }: { token: string; onDone: () => 
   </form></AuthShell>
 }
 
-type A = { name: string; email: string; role: string; emails: { bids: boolean; alerts: boolean; messages: boolean; news: boolean } }
+type A = { name: string; email: string; role: string; emails: { bids: boolean; alerts: boolean; messages: boolean; news: boolean }
+  twoStep: { on: boolean; staff: boolean; requiredForMoney: boolean } }
+
+/**
+ * Two-step sign-in: turn it on with any authenticator app (a key to type, or a link that opens the app on a phone), confirm
+ * with a code; turning it off asks for the password and a code. Staff set theirs up when they join.
+ */
+function TwoStep({ a, onChange, role }: { a: A['twoStep']; onChange: (on: boolean) => void; role: string }) {
+  const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null), [code, setCode] = useState(''), [password, setPassword] = useState('')
+  const [off, setOff] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''), [note, setNote] = useState('')
+  async function run(fn: () => Promise<unknown>) { setBusy(true); setError(''); setNote(''); try { await fn() } catch (e: any) { setError(e.message) } finally { setBusy(false) } }
+  const money = role === 'seller' ? t('connecting your payout account') : t('paying for a booking')
+  return <section className="card pad section form two-step"><h2>{t('Two-step sign-in')}</h2>
+    {a.staff ? <p className="muted">{t('Your authenticator was set up when you joined Nashr.')}</p>
+    : a.on ? <>
+      <p><span className="pill-state is-lead">{t('On')}</span> {t('Signing in asks for a code from your authenticator app.')}</p>
+      {!off ? <button className="btn" style={{ justifySelf: 'start' }} onClick={() => setOff(true)}>{t('Turn off')}</button> : <form className="form" onSubmit={e => { e.preventDefault()
+        run(async () => { await api('/me/two-step/off', { method: 'POST', body: { password, code } }); setOff(false); setPassword(''); setCode(''); onChange(false); setNote(t('Two-step sign-in is off.')) }) }}>
+        <div className="grid2"><div className="field"><label htmlFor="tp">{t('Current password')}</label><input id="tp" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></div>
+          <div className="field"><label htmlFor="tc">{t('Code from your authenticator app')}</label><input id="tc" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} required /></div></div>
+        {a.requiredForMoney && <p className="small warn">{t('Without it you cannot go on {what}.', { what: money })}</p>}
+        <div className="row-flex"><button className="btn primary" disabled={busy || code.length !== 6 || !password}>{t('Turn off two-step sign-in')}</button><button type="button" className="btn" onClick={() => setOff(false)}>{t('Keep it on')}</button></div></form>}
+    </> : !setup ? <>
+      <p>{t('Protect your account with a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password and others) each time you sign in.')}</p>
+      {a.requiredForMoney && <p className="small warn">{t('Nashr asks for it before {what}.', { what: money })}</p>}
+      <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy} onClick={() => run(async () => setSetup(await api('/me/two-step/start', { method: 'POST' })))}>{t('Turn on two-step sign-in')}</button>
+    </> : <form className="form" onSubmit={e => { e.preventDefault()
+        run(async () => { await api('/me/two-step/confirm', { method: 'POST', body: { code } }); setSetup(null); setCode(''); onChange(true); setNote(t('Two-step sign-in is on. Next time you sign in, have your authenticator app ready.')) }) }}>
+      <ol className="steps">
+        <li>{t('In your authenticator app, add an account and type this key:')}<div className="key" dir="ltr"><code>{setup.secret.match(/.{1,4}/g)!.join(' ')}</code></div>
+          <a className="small" href={setup.uri}>{t('On this phone? Open it in your authenticator app')}</a></li>
+        <li><label htmlFor="tcode">{t('Enter the 6-digit code the app shows:')}</label>
+          <input id="tcode" className="code-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} autoFocus required /></li>
+      </ol>
+      <div className="row-flex"><button className="btn primary" disabled={busy || code.length !== 6}>{t('Confirm and turn on')}</button><button type="button" className="btn" onClick={() => { setSetup(null); setCode('') }}>{t('Cancel')}</button></div>
+    </form>}
+    {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
+  </section>
+}
 
 /** Your own account, for every role: your name, your password and which emails you get. */
 export function MyAccountPage() {
@@ -80,6 +118,7 @@ export function MyAccountPage() {
         <div className="field"><label htmlFor="pa">{t('Repeat password')}</label><input id="pa" type="password" autoComplete="new-password" value={pw.again} onChange={e => setPw({ ...pw, again: e.target.value })} required /></div></div>
       <span className="small muted">{t('At least 12 characters. Changing it signs you out on every other device.')}</span>
       <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy}>{t('Change password')}</button></form>
+    <TwoStep a={a.twoStep} role={a.role} onChange={on => setA({ ...a, twoStep: { ...a.twoStep, on } })} />
     <section className="card pad section form"><h2>{t('Emails')}</h2>
       <p className="small muted">{t('Emails about payments, bookings you must act on and deadlines always go, so nothing is missed.')}</p>
       {EMAILS.map(([k, label, help]) => <label key={k} className="switch"><input type="checkbox" role="switch" checked={a.emails[k]} onChange={e => { const emails = { ...a.emails, [k]: e.target.checked }; setA({ ...a, emails }); save({ emails }, t('Email choices saved.')) }} />

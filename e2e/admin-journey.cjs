@@ -1,3 +1,4 @@
+const { twoStepViaApi, twoStepViaPage } = require('./two-step.cjs')
 const { chromium } = require('playwright')
 const { createHmac } = require('node:crypto')
 // Admin journey against a running app (npm run seed, npm start, npm run dev:web). Screenshots go to E2E_OUT if set.
@@ -21,6 +22,7 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   const brief = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards for growing companies.', language: 'english', creativeToFollow: true }
   const dealId = (await (await buyer.post(`${BASE}/api/slots/${slot.id}/buy-now`, { data: { brief } })).json()).id
   await seller.post(`${BASE}/api/seller/deals/${dealId}/accept`)
+  await twoStepViaApi(buyer, BASE) // paying needs two-step sign-in
   await buyer.post(`${BASE}/api/deals/${dealId}/pay`, { data: { paymentMethod: 'pm_card_4242' } })
   const { Client } = require('pg'); const db = new Client({ connectionString: process.env.DATABASE_URL ?? 'postgres://nashr:nashr@localhost:5432/nashr' })
   await db.connect(); await db.query(`update slots set starts_at = now() - interval '2 hours', ends_at = now() - interval '2 hours' + interval '30 seconds' where id = $1`, [slot.id]); await db.end()

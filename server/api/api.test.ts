@@ -210,7 +210,7 @@ describe('admin', () => {
     expect((await call(admin, 'GET', '/api/admin/overview')).statusCode).toBe(403) // staff pages wait until they are back
     expect((await call(admin, 'PUT', '/api/me/password', { current: PASS, password: 'a brand new long password' })).json().error).toMatch('themselves')
     const logged = (await pool.query(`select actor, action from audit_log where entity_id = $1 and action like 'sign_in_as.%' order by id`, [seller])).rows
-    expect(logged.map(r => r.action)).toEqual(['sign_in_as.started', 'sign_in_as.action'])
+    expect(logged.map(r => r.action)).toEqual(['sign_in_as.started', 'sign_in_as.page', 'sign_in_as.action']) // what was read is logged, as well as what was done
     expect(logged.every(r => r.actor.startsWith('admin:'))).toBe(true)
     expect((await pool.query(`select count(*)::int n from notifications where company_id = $1 and kind = 'access.staff_signed_in'`, [sellerX.companyId])).rows[0].n).toBe(1)
     expect((await call(admin, 'DELETE', '/api/admin/sign-in-as')).json()).toEqual({ companyId: sellerX.companyId })
@@ -1371,6 +1371,36 @@ describe('Nashr steps in: interventions, voided bids, chargebacks', () => {
     expect(await status(d)).toBe('disputed')
     expect((await pool.query(`select 1 from notifications where kind = 'chargeback.opened' and deal_id = $1`, [d])).rowCount).toBeGreaterThan(0)
   })
+
+  test('a chargeback takes the money out of the books at once; nothing is refunded or released until the bank decides', async () => {
+    const d = await paidDeal()
+    const charge = (await pool.query(`select provider_id, amount from money_ops where deal_id = $1 and kind = 'charge' and status = 'succeeded'`, [d])).rows[0]
+    const held = Number((await pool.query(`select coalesce(sum(case when credit = 'held' then amount else -amount end), 0)::bigint n from ledger_entries where deal_id = $1 and (debit = 'held' or credit = 'held')`, [d])).rows[0].n)
+    const fee = AED(55)
+    provider.chargeback('AED', held + fee) // the provider takes the payment back and charges its dispute fee
+    await handleProviderEvent({ id: 'evt_cb_2', type: 'charge.dispute.created', data: { id: charge.provider_id, amount: held, fee, dispute: 'dp_1' } }, now)
+    await handleProviderEvent({ id: 'evt_cb_2b', type: 'charge.dispute.created', data: { id: charge.provider_id, amount: held, fee, dispute: 'dp_1' } }, now) // sent again
+    expect((await reconcile(provider, 'AED')).ok).toBe(true)
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/dispute`, { outcome: 'refund', reason: 'Refund the buyer now' })).json().error).toMatch('chargeback')
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/intervene`, { action: 'release', reason: 'Pay the publisher anyway' })).json().error).toMatch('chargeback')
+    // the bank sides with the buyer: the booking ends refunded, with no second refund
+    await handleProviderEvent({ id: 'evt_cb_3', type: 'charge.dispute.closed', data: { id: charge.provider_id, status: 'lost' } }, now)
+    expect(await status(d)).toBe('refunded')
+    expect((await pool.query(`select count(*)::int n from money_ops where deal_id = $1 and kind = 'refund'`, [d])).rows[0].n).toBe(0)
+    expect((await reconcile(provider, 'AED')).ok).toBe(true)
+  })
+
+  test('Nashr wins the chargeback: the money comes back and the dispute is decided as usual', async () => {
+    const d = await paidDeal()
+    const charge = (await pool.query(`select provider_id from money_ops where deal_id = $1 and kind = 'charge' and status = 'succeeded'`, [d])).rows[0]
+    const held = Number((await pool.query(`select coalesce(sum(case when credit = 'held' then amount else -amount end), 0)::bigint n from ledger_entries where deal_id = $1 and (debit = 'held' or credit = 'held')`, [d])).rows[0].n)
+    provider.chargeback('AED', held)
+    await handleProviderEvent({ id: 'evt_cb_4', type: 'charge.dispute.created', data: { id: charge.provider_id, amount: held } }, now)
+    provider.chargeback('AED', -held) // the bank returns it
+    await handleProviderEvent({ id: 'evt_cb_5', type: 'charge.dispute.closed', data: { id: charge.provider_id, status: 'won' } }, now)
+    expect((await reconcile(provider, 'AED')).ok).toBe(true)
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/dispute`, { outcome: 'release', reason: 'The ad ran as booked' })).json()).toMatchObject({ status: 'released' })
+  })
 })
 
 describe('help and Contact Nashr', () => {
@@ -1391,6 +1421,61 @@ describe('help and Contact Nashr', () => {
     expect((await call(admin, 'POST', `/api/admin/support/${r.id}/reply`, { reply: 'Yes, ask them in Messages; we have told them too.' })).json()).toMatchObject({ status: 'answered' })
     expect((await call(buyerA, 'GET', '/api/support')).json()[0]).toMatchObject({ status: 'answered', reply: expect.stringContaining('Messages') })
     expect((await pool.query(`select count(*)::int n from notifications where company_id = $1 and kind = 'support.replied'`, [buyerA.companyId])).rows[0].n).toBe(1)
+  })
+})
+
+describe('two-step sign-in for buyers and publishers', () => {
+  const code = (secret: string, at = now) => totp(secret, at)
+  test('turn it on with a code; signing in then needs one, each code once; off needs password and code', async () => {
+    const start = (await call(buyerA, 'POST', '/api/me/two-step/start')).json()
+    expect(start.uri).toMatch(/^otpauth:\/\/totp\/Nashr%3Asara%40northwind\.ae\?secret=[A-Z2-7]{20}&issuer=Nashr/)
+    expect((await call(buyerA, 'POST', '/api/me/two-step/confirm', { code: '000000' })).json().error).toMatch('not right')
+    expect((await call(buyerA, 'POST', '/api/me/two-step/confirm', { code: code(start.secret) })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/me/account')).json().twoStep).toMatchObject({ on: true })
+    expect((await call(null, 'POST', '/api/auth/login', { email: 'sara@northwind.ae', password: PASS })).json().error).toMatch('authenticator')
+    const next = { email: 'sara@northwind.ae', password: PASS, totpCode: code(start.secret, new Date(now.getTime() + 30_000)) } // the confirming code is spent
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: next })).statusCode).toBe(200)
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: next })).json().error).toMatch('authenticator') // each code signs in once
+    expect((await call(buyerA, 'POST', '/api/me/two-step/off', { password: 'wrong password!!', code: code(start.secret) })).json().error).toMatch('password')
+  })
+
+  test('with the founder\'s setting on, paying and connecting payouts need it; Nashr can turn it off for a lost phone', async () => {
+    await pool.query(`insert into settings (key, value, valid_from, changed_by) values ('two_step_for_money', 'true', '2000-01-03', 'test')`)
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().error).toMatch('two-step')
+    expect((await call(sellerX, 'POST', '/api/seller/payouts/connect', {})).json().error).toMatch('two-step')
+    const { secret } = (await call(buyerA, 'POST', '/api/me/two-step/start')).json()
+    await call(buyerA, 'POST', '/api/me/two-step/confirm', { code: code(secret) })
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).statusCode).toBe(200)
+    const user = (await pool.query(`select id from users where email = 'sara@northwind.ae'`)).rows[0].id
+    expect((await call(admin, 'POST', `/api/admin/users/${user}/two-step-reset`, { reason: 'x' })).json().error).toMatch('why')
+    expect((await call(admin, 'POST', `/api/admin/users/${user}/two-step-reset`, { reason: 'Lost phone, identity checked by call' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/me')).statusCode).toBe(401) // signed out everywhere
+    expect((await pool.query(`select count(*)::int n from notifications where kind = 'access.two_step_reset' and company_id = $1`, [buyerA.companyId])).rows[0].n).toBe(1)
+  })
+})
+
+describe('pre-launch review fixes', () => {
+  test('a reset link only for someone who asked; their company is told', async () => {
+    const user = (await pool.query(`select id from users where email = 'sara@northwind.ae'`)).rows[0].id
+    expect((await call(admin, 'POST', `/api/admin/users/${user}/reset-link`)).json().error).toMatch('has not asked')
+    await call(null, 'POST', '/api/auth/forgot', { email: 'sara@northwind.ae' })
+    expect((await call(admin, 'POST', `/api/admin/users/${user}/reset-link`)).json().link).toMatch(/^\/reset#/)
+    expect((await pool.query(`select count(*)::int n from notifications where company_id = $1 and kind = 'access.reset_issued'`, [buyerA.companyId])).rows[0].n).toBe(1)
+  })
+
+  test('no contact details in an address or a website, including chat links', async () => {
+    expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '', address: 'Gate Building, call 050 123 4567' })).json().error).toMatch('address')
+    expect((await call(buyerA, 'PUT', '/api/company/profile', { website: 'https://wa.me/971501234567' })).json().error).toMatch('not allowed')
+    expect((await call(buyerA, 'PUT', '/api/company/profile', { website: 'https://northwind.ae' })).statusCode).toBe(200)
+  })
+
+  test('CSV cells that a spreadsheet would run as a formula are made inert, tabs and returns included', async () => {
+    const { sendCsv } = await import('./csv.js')
+    const reply: any = { header: () => reply }
+    const body = sendCsv(reply, 'x', ['a'], [['\t=1+1'], ['=cmd'], ['plain']])
+    expect(body).toContain(`"'\t=1+1"`); expect(body).toContain(`"'=cmd"`); expect(body).toContain('"plain"')
   })
 })
 

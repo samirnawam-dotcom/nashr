@@ -8,6 +8,20 @@ import { AR } from './i18n-ar.js'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  "Emails and phone numbers are not allowed in the address.": "لا يُسمح بالبريد الإلكتروني وأرقام الهاتف في العنوان.",
+  "Too many live connections.": "عدد كبير جدًا من الاتصالات المباشرة.",
+  "This person has not asked for a password reset. They ask from \"Forgot your password?\" on the sign-in page.": "لم يطلب هذا الشخص إعادة تعيين كلمة المرور. يطلبها من «نسيت كلمة المرور؟» في صفحة تسجيل الدخول.",
+  "The buyer's bank is deciding a chargeback on this payment. Wait for its decision.": "يبتّ بنك المشتري في استرداد على هذه الدفعة. انتظر قراره.",
+  "The buyer's bank decided the chargeback for the buyer": "حسم بنك المشتري الاسترداد لصالح المشتري",
+  "chargeback fee": "رسوم الاسترداد البنكي",
+  "chargeback won": "كسب الاسترداد البنكي",
+  "chargeback lost: payout withheld": "خسارة الاسترداد البنكي: حُجبت الدفعة",
+  "Two-step sign-in is already on.": "تسجيل الدخول بخطوتين مفعّل بالفعل.",
+  "Two-step sign-in is already off.": "تسجيل الدخول بخطوتين متوقف بالفعل.",
+  "Write why two-step sign-in is being turned off.": "اكتب سبب إيقاف تسجيل الدخول بخطوتين.",
+  "Two-step sign-in is not on for this user.": "تسجيل الدخول بخطوتين غير مفعّل لهذا المستخدم.",
+  "Turn on two-step sign-in under Your account before paying.": "فعّل تسجيل الدخول بخطوتين من صفحة حسابك قبل الدفع.",
+  "Turn on two-step sign-in under Your account before connecting your payout account.": "فعّل تسجيل الدخول بخطوتين من صفحة حسابك قبل ربط حساب التحويلات.",
   "Tell us a little more, so we can help the first time.": "أخبرنا بالمزيد قليلًا، لنساعدك من المرة الأولى.",
   "You have 10 open requests. Nashr will answer those first.": "لديك 10 طلبات مفتوحة. ستجيب نشر عنها أولًا.",
   "Write the answer.": "اكتب الإجابة.",

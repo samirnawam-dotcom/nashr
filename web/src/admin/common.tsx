@@ -36,7 +36,7 @@ export const Loading = ({ error }: { error: string }) => <main>{error ? <p class
 /** Download rows as CSV from the browser (reports, audit). */
 export function csv(name: string, rows: Record<string, unknown>[]) {
   if (!rows.length) return
-  const cols = Object.keys(rows[0]), esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const cols = Object.keys(rows[0]), esc = (v: unknown) => { const s = String(v ?? ''); return `"${(/^[=+\-@\t\r]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"` } // no formulas in a spreadsheet
   const blob = new Blob([[cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n')], { type: 'text/csv' })
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
 }

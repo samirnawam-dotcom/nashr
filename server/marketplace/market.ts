@@ -14,7 +14,7 @@ export class MarketError extends Error {}
 const aed = (fils: number) => `AED ${(fils / 100).toLocaleString('en-US', { minimumFractionDigits: fils % 100 ? 2 : 0, maximumFractionDigits: 2 })}`
 
 // Every change to a slot goes through this lock, so it is also where open pages are told the slot changed (after commit).
-const lockSlot = (db: Db, id: string) => { signalSlot(id); return one(db, `select * from slots where id = $1 for update`, [id]) }
+const lockSlot = (db: Db, id: string) => { signalSlot(db, id); return one(db, `select * from slots where id = $1 for update`, [id]) }
 
 /** A brief is required with a buyer's first bid, request or interest on a slot (brief section 10). */
 async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown) {
@@ -132,8 +132,12 @@ export async function voidBid(db: Db, bidId: string, reason: string, actor: stri
   // the buyer's whole position on this slot goes: their bids and any auto-bid made for them
   await db.query(`update bids set status = 'withdrawn' where slot_id = $1 and buyer_id = $2 and status in ('active', 'outbid') and kind in ('bid', 'auto')`, [slot.id, bid.buyer_id])
   const step = await setting<number>(db, 'min_step_bp', at)
-  const per = (await db.query(`select buyer_id, max(coalesce(max_amount, amount))::bigint top_max, max(amount) filter (where kind = 'bid')::bigint own, min(seq) first_seq
-      from bids where slot_id = $1 and status in ('active', 'outbid') and kind in ('bid', 'auto') group by buyer_id order by top_max desc, first_seq`, [slot.id])).rows
+  // ties go to the buyer who reached that maximum first, as in live bidding
+  const per = (await db.query(`select buyer_id, top_max, own, (select min(seq) from bids b2 where b2.slot_id = $1 and b2.buyer_id = x.buyer_id
+        and b2.status in ('active', 'outbid') and b2.kind in ('bid', 'auto') and coalesce(b2.max_amount, b2.amount) = x.top_max) first_seq
+      from (select buyer_id, max(coalesce(max_amount, amount))::bigint top_max, max(amount) filter (where kind = 'bid')::bigint own
+            from bids where slot_id = $1 and status in ('active', 'outbid') and kind in ('bid', 'auto') group by buyer_id) x
+      order by top_max desc, first_seq`, [slot.id])).rows
   if (!per.length) await db.query(`update slots set top_bid_id = null, top_amount = null, top_buyer_id = null, top_max = null where id = $1`, [slot.id])
   else {
     const [lead, next] = per, leadMax = Number(lead.top_max), own = Number(lead.own ?? lead.top_max)
@@ -249,7 +253,7 @@ export async function closeAuction(db: Db, slotId: string, at: Date) {
  * Breaks, "any break" and the package on the same airing exclude each other. Recomputed from the booked slots
  * every time, so a lapsed booking releases what it held.
  */
-async function refreshConflicts(db: Db, slot: any, at: Date) {
+export async function refreshConflicts(db: Db, slot: any, at: Date) {
   // ponytail: an accepted "any break" only holds the package; assigning the actual break is the seller's job in fulfilment (C1).
   const group = [slot.placement_id, slot.air_date]
   // released slots whose bidding already closed come back as a quick sale, like a relist
@@ -341,7 +345,8 @@ export async function decline(db: Db, dealId: string, reason: string, actor: str
 export async function afterNoGo(db: Db, deal: any, at: Date) {
   const slot = await lockSlot(db, deal.slot_id)
   await db.query(`update bids set status = 'not_selected' where id = $1`, [deal.bid_id])
-  if (deal.kind === 'buy_now' && deal.status === 'declined') return // request refused or expired: the auction carries on
+  // a buy-now request refused, expired or cancelled while the auction is still open: the auction carries on untouched
+  if (deal.kind === 'buy_now' && (deal.status === 'declined' || slot.status === 'open')) return
   // a buyer who did not go ahead is out of this slot altogether: none of their earlier bids can be chosen later
   await db.query(`update bids set status = 'not_selected' where slot_id = $1 and buyer_id = $2 and status in ('active', 'outbid')`, [slot.id, deal.buyer_id])
   await db.query(`update slots set status = 'awaiting_seller' where id = $1`, [slot.id]) // no longer booked

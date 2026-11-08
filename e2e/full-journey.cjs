@@ -1,3 +1,4 @@
+const { twoStepViaApi, twoStepViaPage } = require('./two-step.cjs')
 const { chromium } = require('playwright')
 const { createHmac } = require('node:crypto')
 // The whole marketplace through the screens only, with brand-new accounts:
@@ -70,6 +71,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
       await p.waitForSelector('h1:has-text("You are in")')
     }
     await signIn(pub, pubEmail); await pub.shot('f3-pub-first'); await signIn(buy, buyEmail); await buy.shot('f3-buy-first'); await signIn(buy2, buy2Email)
+    await twoStepViaPage(buy, BASE); await twoStepViaPage(buy2, BASE) // both buyers will pay: two-step sign-in first
     say(await pub.locator('main h1').first().textContent(), '/', await buy.locator('main h1').first().textContent())
 
     step = '4 publisher: outlet, payouts, tax'
@@ -78,6 +80,8 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await pub.fill('#n-new', `Palm Radio ${run}`); await pub.selectOption('#c-new', 'radio'); await pub.fill('#s-new', 'Banking, Retail')
     await pub.fill('#au-new', 'Commuters 25-45'); await pub.fill('#d-new', 'Drive-time radio across the Emirates.')
     await pub.click('button:has-text("Add outlet")'); await pub.waitForSelector('text=Outlet added.')
+    // connecting payouts needs two-step sign-in: the publisher turns it on from its account page first
+    await twoStepViaPage(pub, BASE); await nav(pub, 'Profile'); await pub.waitForSelector('h2:has-text("Payout account")')
     await pub.click('button:has-text("Connect payout account")'); await pub.waitForSelector('text=Payout account verified.')
     await pub.fill('#trn', '100123456700003'); await pub.click('section:has(#trn) button:has-text("Save")'); await pub.waitForSelector('text=Tax details saved.')
     await pub.shot('f4-profile'); say()

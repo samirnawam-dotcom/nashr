@@ -696,3 +696,10 @@ a.avatar { text-decoration: none; }
 .support-reply { margin-top: 10px; padding: 10px 14px; border-inline-start: 3px solid var(--green); background: var(--green-1); border-radius: 0 var(--radius) var(--radius) 0; }
 .support-reply p { margin: 4px 0 0; white-space: pre-line; }
 .support-list textarea { width: 100%; }
+
+/* Two-step sign-in set-up: the key is read and typed, so it is large, spaced and never wraps mid-group. */
+.two-step .steps { margin: 0; padding-inline-start: 20px; display: grid; gap: 14px; }
+.two-step .key { margin: 8px 0 4px; }
+.two-step .key code { display: inline-block; font-size: 18px; letter-spacing: .08em; padding: 8px 12px; border-radius: var(--radius); background: var(--surface-2, #f3f4f6); word-spacing: .3em; }
+.two-step .code-input { display: block; margin-top: 6px; width: 9ch; font-size: 20px; letter-spacing: .2em; text-align: center; }
+.two-step .warn { margin: 0; }

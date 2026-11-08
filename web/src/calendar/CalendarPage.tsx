@@ -154,7 +154,7 @@ export function CalendarPage() {
   }, [])
 
   const total = totals?.reduce((n, d) => n + d.slots, 0) ?? null
-  const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: 2 }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
+  const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: SALE_TYPES.length }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
   const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined }, mine: false, all: false }) }
   const step = (n: number) => {
     if (s.view === 'month') { const d = new Date(s.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }

@@ -79,13 +79,16 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
       </section>}
       <section className="card pad section"><h2>{t("Users")}</h2>
         <div className="table-wrap"><table className="table"><tbody>{c.users.map(u => <tr key={u.id}>
-          <td><b>{u.name}</b><div className="small muted"><bdi>{u.email}</bdi>{u.phone ? <> · <bdi>{u.phone}</bdi></> : ''}</div></td><td className="small">{t(u.role)}</td>
+          <td><b>{u.name}</b><div className="small muted"><bdi>{u.email}</bdi>{u.phone ? <> · <bdi>{u.phone}</bdi></> : ''}</div></td><td className="small">{t(u.role)}{u.twoFactor && <div className="muted">{t('Two-step on')}</div>}</td>
           <td className={`small ${u.status === 'suspended' ? 'outbid' : ''}`}>{t(u.status)}{u.resetRequested && <div className="soon">{t('Asked for a password reset')}</div>}
             {reset[u.id] && <div className="small">{t('Reset link (valid 24 hours, send it to {email}):', { email: u.email })}<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + reset[u.id]} onFocus={e => e.target.select()} /></div>}</td>
           <td className="r">{u.status === 'active' && <button className="btn" disabled={busy} onClick={() => confirm(t('Suspend {name}? They are signed out at once.', { name: u.name })) && act('POST', `/admin/users/${u.id}/status`, { status: 'suspended' }, t('{name} suspended.', { name: u.name }))}>{t("Suspend")}</button>}
             {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, t('{name} restored.', { name: u.name }))}>{t("Restore")}</button>}
             {u.status === 'active' && ['buyer', 'seller'].includes(u.role) && <button className={`btn ${u.resetRequested ? 'primary' : ''}`} disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/reset-link`, {},
               x => { setReset({ ...reset, [u.id]: x.link }); return t('Reset link ready for {name}. Older links no longer work.', { name: u.name }) })}>{t('Password reset link')}</button>}
+            {u.twoFactor && ['buyer', 'seller'].includes(u.role) && <button className="btn" disabled={busy} onClick={() => {
+              const why = prompt(t('Why is two-step sign-in being turned off for {name}? (lost phone, identity checked…) Their company sees this.', { name: u.name }))
+              if (why) act('POST', `/admin/users/${u.id}/two-step-reset`, { reason: why }, t('Two-step sign-in is off for {name}. They have been signed out.', { name: u.name })) }}>{t('Turn off two-step')}</button>}
             {u.status === 'active' && ['buyer', 'seller'].includes(u.role) && <button className="btn" aria-expanded={asUser === u.id} onClick={() => { setAsUser(asUser === u.id ? null : u.id); setWhy(''); setAsError('') }}>{t('Sign in as {name}', { name: u.name.split(' ')[0] })}</button>}
             {asUser === u.id && <div className="sign-in-as">
               <label htmlFor={`why-${u.id}`} className="small">{t('Why are you signing in as {name}? They see this on their bell.', { name: u.name })}</label>

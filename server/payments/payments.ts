@@ -4,7 +4,7 @@ import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
 import { pct, split } from '../core/money.js'
 import { TRANSITIONS, transition } from '../marketplace/deals.js'
-import { afterNoGo, MarketError, relist, releaseBids } from '../marketplace/market.js'
+import { afterNoGo, MarketError, refreshConflicts, relist, releaseBids } from '../marketplace/market.js'
 import { balance, heldFor, post } from './ledger.js'
 import type { ChargeResult, PaymentProvider } from './provider.js'
 import { issueCommissionInvoice, issueMediaInvoice, issueReceipt, reissueAfterRefund } from '../documents/documents.js'
@@ -204,7 +204,14 @@ export async function cancelBySeller(db: Db, dealId: string, sellerId: string, r
 }
 
 /** Admin decision on a dispute (brief section 12): release, full refund, partial refund or make-good. */
+/** While the buyer's bank is deciding a chargeback, money stays where the bank left it: no refund (the buyer may be paid twice), no release. */
+async function noOpenChargeback(db: Db, dealId: string) {
+  const { chargeback } = await one(db, `select chargeback from deals where id = $1`, [dealId])
+  if (chargeback === 'open') throw new MarketError("The buyer's bank is deciding a chargeback on this payment. Wait for its decision.")
+}
+
 export async function decideDispute(db: Db, dealId: string, outcome: 'release' | 'refund' | 'partial_refund' | 'make_good', actor: string, at: Date, refundAmount?: number, reason?: string) {
+  await noOpenChargeback(db, dealId)
   const deal = await transition(db, dealId, outcome, actor, at, reason?.trim() || undefined)
   const held = await heldFor(db, deal.id, deal.currency)
   if (outcome === 'release') await settle(db, deal, held, at)
@@ -227,6 +234,7 @@ export async function intervene(db: Db, a: { dealId: string; action: 'cancel' | 
   cost?: 'buyer' | 'seller' | 'nashr'; actor: string }, at: Date) {
   if ((a.reason ?? '').trim().length < 5) throw new MarketError('Write the reason both sides will see.')
   const pre = await lockDeal(db, a.dealId)
+  if (a.action !== 'cancel') await noOpenChargeback(db, a.dealId)
   const event = a.action === 'cancel' ? 'admin_cancel' : a.action === 'refund' ? 'admin_refund' : 'admin_release'
   if (!TRANSITIONS[pre.status]?.[event]) throw new MarketError('This step is not possible for a deal in this state.')
   const held = await heldFor(db, pre.id, pre.currency)
@@ -237,12 +245,64 @@ export async function intervene(db: Db, a: { dealId: string; action: 'cancel' | 
   if (a.action === 'partial_refund') await refund(db, deal, a.amount!, a.cost ?? 'nashr', at)
   if (a.action === 'refund') {
     await refund(db, deal, held, a.cost ?? 'nashr', at)
-    const slot = await one(db, `select id, starts_at from slots where id = $1`, [deal.slot_id])
-    if (new Date(slot.starts_at) > at) await relist(db, slot.id, at)
+    const slot = await one(db, `select * from slots where id = $1 for update`, [deal.slot_id])
+    if (new Date(slot.starts_at) > at) { // not aired yet: free the airtime it held (a package or its breaks), then put it back on sale
+      await db.query(`update slots set status = 'awaiting_seller' where id = $1`, [slot.id])
+      await refreshConflicts(db, slot, at)
+      await relist(db, slot.id, at)
+    }
   }
   for (const side of [deal.buyer_id, deal.seller_id])
     await notify(db, side, 'deal.nashr_action', deal.id, { action: a.action, reason: a.reason.trim(), ...(a.amount ? { amount: a.amount } : {}) }, at)
   return deal
+}
+
+// ---------------------------------------------------------------- chargebacks
+
+/**
+ * The buyer's bank disputes a charge (a chargeback). The provider takes the disputed amount and its fee out of Nashr's balance
+ * at once, so the books follow: the money leaves what is held for the deal, or, if the publisher was already paid, the
+ * publisher owes it (recovered from later payouts, as card costs are) and any payout not yet sent waits. Nashr's team is
+ * told; refund and release wait for the bank's decision.
+ */
+async function chargebackOpened(c: Db, op: any, data: any, at: Date) {
+  const deal = await lockDeal(c, op.deal_id)
+  if (deal.chargeback === 'open') return // the same dispute again
+  const held = await heldFor(c, deal.id, deal.currency)
+  const amount = Number(data.amount ?? op.amount), fee = Number(data.fee ?? 0), ref = `chargeback ${data.dispute ?? ''}`.trim()
+  const fromHeld = Math.min(amount, held), fromSeller = amount - fromHeld
+  await post(c, [
+    { debit: 'held', credit: 'cash', amount: fromHeld, dealId: deal.id, ref },
+    { debit: `seller_receivable:${deal.seller_id}`, credit: 'cash', amount: fromSeller, dealId: deal.id, ref },
+    { debit: 'nashr_losses', credit: 'cash', amount: fee, dealId: deal.id, ref: 'chargeback fee' },
+  ], deal.currency, at)
+  await c.query(`update money_ops set status = 'on_hold', updated_at = $2 where deal_id = $1 and kind = 'transfer' and status = 'pending'`, [deal.id, at])
+  await c.query(`update deals set chargeback = 'open' where id = $1`, [deal.id])
+  if (TRANSITIONS[deal.status]?.chargeback) await transition(c, deal.id, 'chargeback', 'system:provider', at, "The buyer's bank disputed the payment")
+  await audit(c, 'system:provider', 'chargeback.opened', 'deal', deal.id, { amount, fee, fromHeld, fromSeller }, at)
+  for (const admin of (await c.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
+    await notify(c, admin.company_id, 'chargeback.opened', deal.id, { released: ['released', 'paid_out'].includes(deal.status) }, at)
+}
+
+/** The bank decided. Won: the money comes back where it was taken from. Lost: the buyer keeps it and the booking ends as refunded. */
+async function chargebackClosed(c: Db, op: any, data: any, at: Date) {
+  const deal = await lockDeal(c, op.deal_id)
+  if (deal.chargeback !== 'open') return
+  const taken = (await c.query(`select debit, sum(amount)::bigint amount from ledger_entries where deal_id = $1 and credit = 'cash'
+      and ref like 'chargeback%' and ref <> 'chargeback fee' group by debit`, [deal.id])).rows
+  if (data.status === 'won') {
+    await post(c, taken.map(t => ({ debit: 'cash', credit: t.debit, amount: Number(t.amount), dealId: deal.id, ref: 'chargeback won' })), deal.currency, at)
+    await c.query(`update money_ops set status = 'pending', updated_at = $2 where deal_id = $1 and kind = 'transfer' and status = 'on_hold'`, [deal.id, at])
+  } else {
+    // a payout that was waiting is not sent; what the publisher was owed for this deal is set against what it now owes
+    for (const t of (await c.query(`update money_ops set status = 'cancelled', updated_at = $2 where deal_id = $1 and kind = 'transfer' and status = 'on_hold' returning amount, company_id`, [deal.id, at])).rows)
+      await post(c, [{ debit: `seller_payable:${t.company_id}`, credit: `seller_receivable:${t.company_id}`, amount: Number(t.amount), dealId: deal.id, ref: 'chargeback lost: payout withheld' }], deal.currency, at)
+    if (deal.status === 'disputed') await transition(c, deal.id, 'refund', 'system:provider', at, "The buyer's bank decided the chargeback for the buyer")
+  }
+  await c.query(`update deals set chargeback = $2 where id = $1`, [deal.id, data.status === 'won' ? 'won' : 'lost'])
+  await audit(c, 'system:provider', `chargeback.${data.status === 'won' ? 'won' : 'lost'}`, 'deal', deal.id, null, at)
+  for (const admin of (await c.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
+    await notify(c, admin.company_id, 'chargeback.closed', deal.id, { won: data.status === 'won' }, at)
 }
 
 // ---------------------------------------------------------------- outbox and provider events
@@ -286,13 +346,8 @@ export async function handleProviderEvent(ev: { id: string; type: string; data: 
     if (ev.type === 'charge.succeeded') await recordCharge(c, op.id, { id: op.provider_id, status: 'succeeded' }, at)
     if (ev.type === 'charge.failed') await recordCharge(c, op.id, { id: op.provider_id, status: 'failed', failure: ev.data.failure }, at)
     if (ev.type === 'payout.paid') await transition(c, op.deal_id, 'paid_out', 'system:provider', at, op.ref)
-    if (ev.type === 'charge.dispute.created') { // the buyer's bank disputes the charge: hold everything and put it in front of Nashr
-      await audit(c, 'system:provider', 'chargeback.opened', 'deal', op.deal_id, ev.data, at)
-      const d = (await c.query(`select status from deals where id = $1`, [op.deal_id])).rows[0]
-      if (d && TRANSITIONS[d.status]?.chargeback) await transition(c, op.deal_id, 'chargeback', 'system:provider', at, 'The buyer\'s bank disputed the payment')
-      for (const admin of (await c.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
-        await notify(c, admin.company_id, 'chargeback.opened', op.deal_id, { released: d && ['released', 'paid_out'].includes(d.status) }, at)
-    }
+    if (ev.type === 'charge.dispute.created') await chargebackOpened(c, op, ev.data, at)
+    if (ev.type === 'charge.dispute.closed') await chargebackClosed(c, op, ev.data, at)
     return 'handled'
   })
   if (result === 'handled' && ev.type === 'charge.succeeded' && provider) {

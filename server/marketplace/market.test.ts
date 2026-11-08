@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { pool, tx } from '../core/db.js'
 import { generateSlots } from '../catalog/placements.js'
-import { accept, acceptInterest, chooseBid, decline, placeBid, requestBuyNow, showInterest } from './market.js'
+import { accept, acceptInterest, chooseBid, decline, placeBid, requestBuyNow, showInterest, voidBid } from './market.js'
+import { intervene } from '../payments/payments.js'
 import { transition } from './deals.js'
 import { sweep } from './sweeper.js'
 import { AED, BRIEF, T, company, radio, reset, slot } from '../test/helpers.js'
@@ -103,6 +104,22 @@ describe('after the auction closes (sweeper)', () => {
     expect(await bid(A, 3_500, 4_500)).toEqual({ leading: true, topAmount: AED(4_000) })
     await sweep(CLOSE)
     expect(await deal()).toMatchObject({ status: 'awaiting_payment', amount: AED(4_000) })
+  })
+
+  test('voiding a bid keeps a tie with the buyer who reached that maximum first', async () => {
+    await bid(A, 4_000); await bid(B, 4_200, 6_000); await bid(C, 4_400)
+    await bid(A, 6_000)                                                       // A ties at 6,000: B keeps the lead
+    expect((await slotNow()).top_buyer_id).toBe(B)
+    const cBid = (await pool.query(`select id from bids where buyer_id = $1`, [C])).rows[0].id
+    await tx(c => voidBid(c, cBid, 'Placed by mistake', 'admin:x', now))
+    expect((await slotNow()).top_buyer_id).toBe(B)
+  })
+
+  test('Nashr cancelling a buy-now request leaves the auction running with its bids', async () => {
+    await bid(A, 4_000); await bid(C, 4_200)
+    const d = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, now))
+    await tx(c => intervene(c, { dealId: d.id, action: 'cancel', reason: 'Asked by the buyer', actor: 'admin:x' }, now))
+    expect(await slotNow()).toMatchObject({ status: 'open', sale_type: 'auction', top_buyer_id: C, top_amount: AED(4_200) })
   })
 
   test('auto-accept at or above the reserve (buyer still has to pay)', async () => {

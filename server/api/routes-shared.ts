@@ -18,7 +18,10 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
   route('GET', '/api/company/profile', ['buyer', 'seller'], async ({ db, me }) => companyProfile(db, me.actAs.companyId))
   route('PUT', '/api/company/profile', ['buyer', 'seller'], async ({ db, at, me }, req) => {
     const b = req.body
-    if (containsContactDetails([b.industry, b.about].filter(Boolean).join(' \n '))) throw new MarketError('Emails and phone numbers are not allowed in the profile.')
+    // the website too: a phone number in a link, or a chat link (WhatsApp, Telegram, Messenger), is a contact detail
+    if (containsContactDetails([b.industry, b.about, b.website].filter(Boolean).join(' \n '))
+      || /^https?:\/\/([^/]*\.)?(wa\.me|whatsapp\.com|t\.me|telegram\.(me|org)|m\.me|signal\.me|viber\.com)(\/|$)/i.test(b.website ?? ''))
+      throw new MarketError('Emails and phone numbers are not allowed in the profile.')
     await db.query(`update companies set industry = $2, website = $3, about = $4 where id = $1`, [me.actAs.companyId, b.industry?.trim() || null, b.website?.trim() || null, b.about?.trim() || null])
     await audit(db, `${me.role}:${me.actAs.companyId}`, 'company.profile_updated', 'company', me.actAs.companyId, null, at)
     return companyProfile(db, me.actAs.companyId)

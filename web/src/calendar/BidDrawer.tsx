@@ -8,7 +8,7 @@ import { t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { useLive } from '../live'
 
-type Detail = Slot & { minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
+type Detail = Slot & { yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
 export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
 export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government',
@@ -87,7 +87,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         {s.buyNowPrice && <div><dt>{t("Buy now")}</dt><dd className="num">{money(s.buyNowPrice)}<small>{t("Request to book: the publisher must accept")}</small></dd></div>}
       </dl>
 
-      {s.saleType === 'auction' && !s.available && !guest && s.youLead && new Date(s.closesAt).getTime() <= now && <p className="ok">{t('You won this slot.')} <a href="/bookings">{t('See it in Bookings')}</a></p>}
+      {s.saleType === 'auction' && !guest && s.yourDeal?.kind === 'auction' && <p className="ok">{t('You won this slot.')} <a href={`/bookings/${s.yourDeal.id}`}>{t('See it in Bookings')}</a></p>}
       {s.available && guest && <SignInPrompt to={s.saleType === 'auction' ? 'bid on this slot' : 'book this slot'} />}
       {s.available && !guest && <>
         {s.saleType === 'auction' ? <section className="form">

@@ -1,3 +1,4 @@
+import { holdSignals, releaseSignals } from './live.js'
 import pg from 'pg'
 
 // int8 → number. Amounts are in fils/halalas; safe up to 2^53 (≈ 90 trillion AED).
@@ -11,10 +12,13 @@ export async function tx<T>(fn: (c: pg.PoolClient) => Promise<T>): Promise<T> {
   const c = await pool.connect()
   try {
     await c.query('begin')
+    holdSignals(c)
     const out = await fn(c)
     await c.query('commit')
+    releaseSignals(c, true)
     return out
   } catch (e) {
+    releaseSignals(c, false)
     await c.query('rollback')
     throw e
   } finally {

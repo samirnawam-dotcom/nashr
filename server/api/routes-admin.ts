@@ -36,8 +36,9 @@ export function adminRoutes(route: RouteFn) {
     if (q.status) w.push(`d.status = any(${add(String(q.status).split(','))}::text[])`)
     if (q.kind) w.push(`d.kind = ${add(q.kind)}`)
     if (q.channel) w.push(`o.channel = ${add(q.channel)}`)
-    if (q.from) w.push(`s.starts_at >= ${add(q.from)}::date`)
-    if (q.to) w.push(`s.starts_at < ${add(q.to)}::date + 1`)
+    // air dates are Dubai days (an edition at 00:00 Dubai is 20:00 UTC the day before)
+    if (q.from) w.push(`(s.starts_at at time zone 'Asia/Dubai')::date >= ${add(q.from)}::date`)
+    if (q.to) w.push(`(s.starts_at at time zone 'Asia/Dubai')::date <= ${add(q.to)}::date`)
     if (q.q) { const p = add(`%${q.q}%`); w.push(`(d.ref ilike ${p} or bc.name ilike ${p} or sc.name ilike ${p} or o.name ilike ${p})`) }
     const base = `from deals d join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join slots s on s.id = d.slot_id
       join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where ${w.join(' and ')}`
@@ -105,7 +106,7 @@ export function adminRoutes(route: RouteFn) {
     const rows = (await db.query(`select at, actor, action, entity, entity_id, detail from audit_log
       where ($1::text is null or entity_id = $1) and action <> 'sweeper.heartbeat'
         and ($2::text is null or actor ilike '%' || $2 || '%') and ($3::text is null or action ilike $3 || '%')
-        and ($4::date is null or at >= $4::date) and ($5::date is null or at < $5::date + 1)
+        and ($4::date is null or (at at time zone 'Asia/Dubai')::date >= $4::date) and ($5::date is null or (at at time zone 'Asia/Dubai')::date <= $5::date)
       order by id desc limit ${q.format === 'csv' ? 50000 : 500}`, [q.entityId ?? null, q.actor || null, q.action || null, q.from || null, q.to || null])).rows
     if (q.format === 'csv') return sendCsv(reply, 'nashr-audit', ['At', 'Actor', 'Action', 'Entity', 'Entity id', 'Detail'],
       rows.map(r => [r.at, r.actor, r.action, r.entity, r.entity_id, r.detail ? JSON.stringify(r.detail) : '']))
