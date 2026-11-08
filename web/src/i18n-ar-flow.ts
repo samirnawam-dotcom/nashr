@@ -175,4 +175,6 @@ export const AR_FLOW: Record<string, string> = {
   "Importing…": "جارٍ الاستيراد…",
   "Import 1 placement": "استيراد مساحة واحدة",
   "Import {n} placements": "استيراد {n} مساحات",
+  // Review fixes
+  "Your bid on {slot} was not selected. The slot has gone to another buyer or is no longer on sale.": "لم تُختر مزايدتك على {slot}. ذهبت المساحة إلى مشترٍ آخر أو لم تعد معروضة للبيع.",
 }

@@ -27,9 +27,9 @@ export async function checkProof(db: Db, dealId: string, items: Record<string, u
 }
 
 export async function submitProof(db: Db, a: { dealId: string; sellerId: string; items: Record<string, unknown>; note?: string }, at: Date) {
-  const d = await one(db, `select d.*, s.starts_at from deals d join slots s on s.id = d.slot_id where d.id = $1`, [a.dealId])
+  const d = await one(db, `select d.*, s.starts_at, s.ends_at from deals d join slots s on s.id = d.slot_id where d.id = $1`, [a.dealId])
   if (d.seller_id !== a.sellerId) throw new MarketError('This booking is not yours.')
-  if (at < (d.make_good_at ?? d.starts_at)) throw new MarketError('Proof can be sent once the ad has run.')
+  if (at < (d.make_good_at ?? d.ends_at ?? d.starts_at)) throw new MarketError('Proof can be sent once the ad has run.') // a week-long run ends after the week
   await checkProof(db, d.id, a.items)
   await assertOwnFiles(db, a.items, a.sellerId)
   await db.query(`insert into proofs (deal_id, items, note, submitted_at) values ($1, $2, $3, $4)`, [d.id, JSON.stringify(a.items), a.note ?? null, at])

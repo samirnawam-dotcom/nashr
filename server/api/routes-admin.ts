@@ -53,7 +53,8 @@ export function adminRoutes(route: RouteFn) {
   }, { type: 'object', required: ['value'], properties: { value: {} } })
 
   route('GET', '/api/admin/audit', STAFF, async ({ db }, req) => (await db.query(
-    `select at, actor, action, entity, entity_id, detail from audit_log where ($1::text is null or entity_id = $1) order by id desc limit 500`,
+    // the sweeper's once-a-minute heartbeat is for monitoring, not people: it would push every real action off the page
+    `select at, actor, action, entity, entity_id, detail from audit_log where ($1::text is null or entity_id = $1) and action <> 'sweeper.heartbeat' order by id desc limit 500`,
     [req.query.entityId ?? null])).rows)
 
   // View any publisher or buyer account, read-only; every page viewed is logged (SPEC 12.1).

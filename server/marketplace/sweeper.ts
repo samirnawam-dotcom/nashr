@@ -48,28 +48,42 @@ export async function sendReminders(db: Db, at: Date) {
  */
 export async function sweep(at: Date, batch = 100) {
   let handled = 0
+  // One broken row must not stop every other timer: it is skipped for this run, logged, and tried again next minute.
+  const skip: string[] = []
+  let current: string | null = null
   for (;;) {
-    const n = await tx(async c => {
-      const slot = (await c.query(`select id from slots where status = 'open' and sale_type = 'auction' and closes_at <= $1
-                                   order by closes_at limit 1 for update skip locked`, [at])).rows[0]
-      if (slot) { await closeAuction(c, slot.id, at); return 1 }
-      const quick = (await c.query(`select s.id from slots s where s.status = 'open' and s.sale_type = 'quick_sale' and s.closes_at <= $1
-                                    and exists (select 1 from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active')
-                                    order by s.closes_at limit 1 for update skip locked`, [at])).rows[0]
-      if (quick) { await expireInterests(c, quick.id, at); return 1 }
-      const choice = (await c.query(`select id from slots where status = 'awaiting_choice' and choice_deadline_at <= $1
-                                     order by choice_deadline_at limit 1 for update skip locked`, [at])).rows[0]
-      if (choice) { await relist(c, choice.id, at); return 1 }
-      const deal = (await c.query(`select * from deals where next_deadline_at <= $1 order by next_deadline_at limit 1 for update skip locked`, [at])).rows[0]
-      if (!deal) return 0
-      const event = ON_DEADLINE[deal.status]
-      if (!event) { await c.query(`update deals set next_deadline_at = null where id = $1`, [deal.id]); return 1 }
-      if (event === 'escalate') { await escalateIssue(c, deal, 'system:timer', at); return 1 } // seller did not answer the issue in time
-      const updated = await transition(c, deal.id, event, 'system:timer', at, TIMER_NOTE[event])
-      if (event === 'expire' || event === 'lapse') await afterNoGo(c, updated, at)
-      await onTimerEvent(c, updated, event, at)
-      return 1
-    })
+    let n: number
+    try {
+      n = await tx(async c => {
+        current = null
+        const slot = (await c.query(`select id from slots where status = 'open' and sale_type = 'auction' and closes_at <= $1 and id <> all($2::uuid[])
+                                     order by closes_at limit 1 for update skip locked`, [at, skip])).rows[0]
+        if (slot) { current = slot.id; await closeAuction(c, slot.id, at); return 1 }
+        const quick = (await c.query(`select s.id from slots s where s.status = 'open' and s.sale_type = 'quick_sale' and s.closes_at <= $1 and s.id <> all($2::uuid[])
+                                      and exists (select 1 from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active')
+                                      order by s.closes_at limit 1 for update skip locked`, [at, skip])).rows[0]
+        if (quick) { current = quick.id; await expireInterests(c, quick.id, at); return 1 }
+        const choice = (await c.query(`select id from slots where status = 'awaiting_choice' and choice_deadline_at <= $1 and id <> all($2::uuid[])
+                                       order by choice_deadline_at limit 1 for update skip locked`, [at, skip])).rows[0]
+        if (choice) { current = choice.id; await relist(c, choice.id, at); return 1 }
+        const deal = (await c.query(`select * from deals where next_deadline_at <= $1 and id <> all($2::uuid[]) order by next_deadline_at limit 1 for update skip locked`, [at, skip])).rows[0]
+        if (!deal) return 0
+        current = deal.id
+        const event = ON_DEADLINE[deal.status]
+        if (!event) { await c.query(`update deals set next_deadline_at = null where id = $1`, [deal.id]); return 1 }
+        if (event === 'escalate') { await escalateIssue(c, deal, 'system:timer', at); return 1 } // seller did not answer the issue in time
+        const updated = await transition(c, deal.id, event, 'system:timer', at, TIMER_NOTE[event])
+        if (event === 'expire' || event === 'lapse') await afterNoGo(c, updated, at)
+        await onTimerEvent(c, updated, event, at)
+        return 1
+      })
+    } catch (e: any) {
+      if (!current) throw e
+      skip.push(current)
+      console.error(`sweeper: ${current} failed and is skipped this run:`, e?.message ?? e)
+      await audit(pool, 'system:sweeper', 'sweeper.error', 'timer', current, { error: String(e?.message ?? e).slice(0, 500) }, at)
+      n = 1
+    }
     if (!n || (handled += n) >= batch) break
   }
   handled += await tx(c => requestPreRunChecks(c, at))

@@ -18,7 +18,9 @@ export function authRoutes(route: RouteFn) {
     { type: 'object', required: ['token', 'password'], properties: { token: str, password: { type: 'string', maxLength: 200 }, totpCode: str } })
 
   route('POST', '/api/auth/login', 'public', async ({ db, at }, req, reply) => {
-    if (!rateLimit(`login:${req.ip}:${String(req.body.email).toLowerCase()}`, 10, at.getTime()))
+    // three limits: one address on one account, one address across many accounts (password spraying), one account from many addresses
+    const email = String(req.body.email).toLowerCase()
+    if (!rateLimit(`login:${req.ip}:${email}`, 10, at.getTime()) || !rateLimit(`login-ip:${req.ip}`, 60, at.getTime()) || !rateLimit(`login-acct:${email}`, 30, at.getTime()))
       return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
     const token = await login(db, req.body, at)
     reply.header('set-cookie', `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`)

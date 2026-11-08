@@ -130,7 +130,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     return {
       channel: d.channel, creativeDueAt: d.creative_due_at, slotId: d.slot_id, slotStatus: d.slot_status, choiceDeadlineAt: d.choice_deadline_at,
       invoiceMode: d.invoice_mode, placeholder: d.placeholder, rejectReasons: REJECT_REASONS,
-      proofChecklist: PROOF_CHECKLIST[d.channel], adHasRun: at >= (d.make_good_at ?? d.starts_at),
+      proofChecklist: PROOF_CHECKLIST[d.channel], adHasRun: at >= (d.make_good_at ?? d.ends_at ?? d.starts_at),
       timeline: events.map(e => ({ at: e.at, event: e.event, status: e.to_status, note: e.note })),
       creatives: creatives.map(c => ({ version: c.version, status: c.status, reason: c.reason, fileId: fileId(c.file_key), fileType: c.file_type, fileSize: c.file_size, uploadedAt: c.uploaded_at })),
       proof: p ? { submittedAt: p.submitted_at, note: p.note, items: p.items } : null,
@@ -233,7 +233,8 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] },
     sectors: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 60 } }, description: { type: 'string', maxLength: 2000 },
     website: { type: 'string', maxLength: 300, pattern: '^https?://' }, audience: { type: 'string', maxLength: 300 } } }
-  const checkText = (b: any) => { if (containsContactDetails(`${b.description ?? ''} ${b.audience ?? ''}`)) throw new MarketError('Emails and phone numbers are not allowed in the profile.') }
+  const checkText = (b: any) => { if (containsContactDetails([b.name, b.nameAr, b.description, b.audience, ...(b.sectors ?? [])].filter(Boolean).join(' \n ')))
+    throw new MarketError('Emails and phone numbers are not allowed in the profile.') }
 
   route('POST', '/api/seller/outlets', SELLER, async ({ db, at, me }, req) => {
     const b = req.body; checkText(b)

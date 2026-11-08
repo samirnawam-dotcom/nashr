@@ -3,6 +3,7 @@ import { assertOwnFiles } from '../files/attachments.js'
 import { notify } from '../core/notify.js'
 import { transition } from '../marketplace/deals.js'
 import { MarketError } from '../marketplace/market.js'
+import { setting } from '../core/settings.js'
 import { partialRefund } from '../payments/payments.js'
 import { checkProof } from './proof.js'
 
@@ -33,6 +34,8 @@ export async function offerFix(db: Db, a: { dealId: string; sellerId: string; of
   if (a.offer.type === 'corrected_proof') { await checkProof(db, d.id, a.offer.items); await assertOwnFiles(db, a.offer.items, a.sellerId) }
   if (a.offer.type === 'make_good' && !(a.offer.runAt > at)) throw new MarketError('Choose a future date for the rerun.')
   await db.query(`update issues set offer = $2 where id = $1`, [issue.id, JSON.stringify(a.offer)])
+  // the publisher answered in time: the buyer now gets a full window to respond before it goes to Nashr
+  await db.query(`update deals set next_deadline_at = $2 where id = $1`, [d.id, new Date(at.getTime() + await setting<number>(db, 'issue_response_hours', at) * 3_600_000)])
   await notify(db, d.buyer_id, 'issue.offer', d.id, a.offer, at)
 }
 

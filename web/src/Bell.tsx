@@ -15,6 +15,7 @@ const TEXT: Record<string, (n: N) => string> = {
   'deal.refunded': () => t('A refund was issued.'),
   'deal.released': () => t('Payment was released.'),
   'deal.opened': n => n.data?.kind === 'buy_now' ? t('New buy-now request.') : t('New booking to decide on.'),
+  'bid.not_selected': n => t('Your bid on {slot} was not selected. The slot has gone to another buyer or is no longer on sale.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'interest.received': n => t('A buyer is interested in {slot}. Accept to book it.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'interest.not_selected': n => t('The publisher booked {slot} with another buyer.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),
   'interest.expired': n => t('The publisher did not take up your interest in {slot} before it closed.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}` }),

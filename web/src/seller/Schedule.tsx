@@ -98,7 +98,9 @@ export function SchedulePage() {
 function WeekGrid({ days, slots, onOpen }: { days: string[]; slots: SSlot[]; onOpen: (id: string) => void }) {
   const HOUR = 72, MIN_LEN = 30, mins = (iso: string) => dubai(iso).minutes
   // Single breaks sit at their time; whole-day items and package offers (any break, all breaks) go in the lane at the top.
-  const timed = slots.filter(s => s.endsAt && s.kind === 'single'), allDay = slots.filter(s => !s.endsAt || s.kind !== 'single')
+  // a day or longer (a week's banner, a weekly issue) is an all-day item, whatever time it starts
+  const long = (s: SSlot) => !s.endsAt || Date.parse(s.endsAt) - Date.parse(s.startsAt) >= 86_400_000
+  const timed = slots.filter(s => !long(s) && s.kind === 'single'), allDay = slots.filter(s => long(s) || s.kind !== 'single')
   const starts = timed.map(s => mins(s.startsAt)), from = Math.max(0, Math.floor((Math.min(...starts, 8 * 60)) / 60) - 1)
   const to = Math.min(24, Math.ceil(Math.max(...timed.map(s => mins(s.startsAt) + Math.max(MIN_LEN, (Date.parse(s.endsAt!) - Date.parse(s.startsAt)) / 60000)), 18 * 60) / 60) + 1)
   const hours = Array.from({ length: to - from }, (_, i) => from + i), today = todayInDubai()

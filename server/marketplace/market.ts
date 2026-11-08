@@ -155,8 +155,9 @@ export async function expireInterests(db: Db, slotId: string, at: Date) {
 
 /** The seller accepts one quick-sale interest; everyone else is told the slot has gone. */
 export async function acceptInterest(db: Db, bidId: string, actor: string, at: Date) {
-  const bid = await one(db, `select * from bids where id = $1`, [bidId])
-  const slot = await lockSlot(db, bid.slot_id)
+  const { slot_id } = await one(db, `select slot_id from bids where id = $1`, [bidId])
+  const slot = await lockSlot(db, slot_id)
+  const bid = await one(db, `select * from bids where id = $1 for update`, [bidId]) // read again under the slot lock: it may have been replaced
   if (slot.status !== 'open' || bid.kind !== 'interest' || bid.status !== 'active' || at >= slot.closes_at) throw new MarketError('This interest can no longer be accepted.')
   const deal = await openDeal(db, slot, bid, 'quick_sale', actor, at)
   return accept(db, deal.id, actor, at)
@@ -182,21 +183,56 @@ async function refreshConflicts(db: Db, slot: any, at: Date) {
   // ponytail: an accepted "any break" only holds the package; assigning the actual break is the seller's job in fulfilment (C1).
   const group = [slot.placement_id, slot.air_date]
   // released slots whose bidding already closed come back as a quick sale, like a relist
-  await db.query(`update slots set status = 'open', sale_type = case when closes_at <= $3 then 'quick_sale' else sale_type end
-                  where placement_id = $1 and air_date = $2 and status = 'held'`, [...group, at])
+  for (const h of (await db.query(`select id from slots where placement_id = $1 and air_date = $2 and status = 'held'`, group)).rows) await reopen(db, h.id, at)
   const booked = (await db.query(`select kind from slots where placement_id = $1 and air_date = $2 and status = 'booked'`, group)).rows.map(r => r.kind)
   const hold = new Set<string>()
   if (booked.includes('package')) ['single', 'any'].forEach(k => hold.add(k))
   if (booked.includes('single') || booked.includes('any')) hold.add('package')
-  if (hold.size) await db.query(`update slots set status = 'held' where placement_id = $1 and air_date = $2 and status = 'open' and kind = any($3)`, [...group, [...hold]])
+  const held = hold.size ? (await db.query(`update slots set status = 'held' where placement_id = $1 and air_date = $2 and status = 'open' and kind = any($3) returning id`, [...group, [...hold]])).rows : []
   // no single breaks left → "any break" can no longer be honoured
-  await db.query(`update slots set status = 'held' where placement_id = $1 and air_date = $2 and kind = 'any' and status = 'open'
-                  and not exists (select 1 from slots s where s.placement_id = $1 and s.air_date = $2 and s.kind = 'single' and s.status = 'open')`, group)
+  held.push(...(await db.query(`update slots set status = 'held' where placement_id = $1 and air_date = $2 and kind = 'any' and status = 'open'
+                  and not exists (select 1 from slots s where s.placement_id = $1 and s.air_date = $2 and s.kind = 'single' and s.status = 'open') returning id`, group)).rows)
+  // whatever was waiting on a held slot ends now: open requests are superseded, bids released, and their buyers told
+  for (const h of held) {
+    for (const d of (await db.query(`select id, bid_id from deals where slot_id = $1 and status = 'awaiting_seller'`, [h.id])).rows) {
+      await transition(db, d.id, 'supersede', 'system', at, 'An overlapping booking was accepted')
+      await db.query(`update bids set status = 'not_selected' where id = $1`, [d.bid_id])
+    }
+    await releaseBids(db, h.id, at)
+    await db.query(`update slots set top_bid_id = null, top_amount = null, top_buyer_id = null, top_max = null where id = $1`, [h.id])
+  }
+}
+
+/** Bids that will never be taken up are released, and each buyer hears once (SPEC 11.1 #7: "not selected"). */
+export async function releaseBids(db: Db, slotId: string, at: Date, except?: string) {
+  await db.query(`update bids set status = 'not_selected' where slot_id = $1 and buyer_id = $2 and status in ('active', 'outbid')`, [slotId, except ?? null])
+  const gone = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid') returning buyer_id`, [slotId])).rows
+  const buyers = [...new Set(gone.map(b => b.buyer_id as string))]
+  if (!buyers.length) return
+  const s = await one(db, `select s.label, o.name outlet from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1`, [slotId])
+  for (const b of buyers) await notify(db, b, 'bid.not_selected', null, { slotId, outlet: s.outlet, label: s.label }, at)
+}
+
+/**
+ * A slot comes back on sale (relist, or an overlapping booking fell through). If bidding already closed, it reopens as a quick sale
+ * that closes 12 hours before the creative is due, so an accepted buyer still has time to pay; if that time has passed it is unsold
+ * (a slot nobody can buy must not look open).
+ */
+async function reopen(db: Db, slotId: string, at: Date) {
+  const s = await one(db, `select * from slots where id = $1`, [slotId])
+  // a relisted quick sale is decided on the spot (the publisher accepts an interest), so it only needs half a day for the buyer to pay
+  const latest = new Date(new Date(s.creative_due_at).getTime() - RELIST_PAY_HOURS * 3_600_000)
+  if (new Date(s.closes_at) > at) return db.query(`update slots set status = 'open' where id = $1`, [slotId])
+  if (latest <= at) return db.query(`update slots set status = 'unsold' where id = $1`, [slotId])
+  await db.query(`update slots set status = 'open', sale_type = case when sale_type = 'auction' then 'quick_sale' else sale_type end, closes_at = $2 where id = $1`, [slotId, latest])
 }
 
 export async function accept(db: Db, dealId: string, actor: string, at: Date) {
   const pre = await one(db, `select * from deals where id = $1`, [dealId])
   const slot = await lockSlot(db, pre.slot_id)
+  // never sell airtime twice: a slot held by an overlapping booking (or already booked) cannot be accepted again
+  if (!['open', 'awaiting_seller'].includes(slot.status)) throw new MarketError('This slot is no longer available.')
+  if (pre.status === 'awaiting_seller' && pre.next_deadline_at && new Date(pre.next_deadline_at) <= at) throw new MarketError('This request has expired.')
   const rates = await ratesFor(db, pre.seller_id, at) // frozen on the deal (brief section 3)
   await db.query(`update deals set commission_bp = $2, media_vat_bp = $3, fee_vat_bp = $4 where id = $1`,
     [dealId, rates.commissionBp, rates.mediaVatBp, rates.feeVatBp])
@@ -211,8 +247,10 @@ export async function accept(db: Db, dealId: string, actor: string, at: Date) {
     for (const b of others.filter(b => b.kind === 'interest' && b.buyer_id !== deal.buyer_id))
       await notify(db, b.buyer_id, 'interest.not_selected', null, { slotId: slot.id, outlet, label: slot.label }, at)
   }
-  for (const other of (await db.query(`select id from deals where slot_id = $1 and id <> $2 and status = 'awaiting_seller'`, [slot.id, dealId])).rows)
+  for (const other of (await db.query(`select id, bid_id from deals where slot_id = $1 and id <> $2 and status = 'awaiting_seller'`, [slot.id, dealId])).rows) {
     await transition(db, other.id, 'supersede', 'system', at, 'Another request was accepted')
+    await db.query(`update bids set status = 'not_selected' where id = $1`, [other.bid_id]) // a superseded request can never be "chosen" later
+  }
   await refreshConflicts(db, slot, at)
   await issueOrder(db, dealId, at)
   return deal
@@ -234,13 +272,17 @@ export async function afterNoGo(db: Db, deal: any, at: Date) {
   const slot = await lockSlot(db, deal.slot_id)
   await db.query(`update bids set status = 'not_selected' where id = $1`, [deal.bid_id])
   if (deal.kind === 'buy_now' && deal.status === 'declined') return // request refused or expired: the auction carries on
+  // a buyer who did not go ahead is out of this slot altogether: none of their earlier bids can be chosen later
+  await db.query(`update bids set status = 'not_selected' where slot_id = $1 and buyer_id = $2 and status in ('active', 'outbid')`, [slot.id, deal.buyer_id])
   await db.query(`update slots set status = 'awaiting_seller' where id = $1`, [slot.id]) // no longer booked
   await refreshConflicts(db, slot, at)
   if (deal.kind === 'buy_now' || deal.kind === 'quick_sale') return relist(db, slot.id, at) // the other buyers were already told
   const remaining = await db.query(`select 1 from bids where slot_id = $1 and status in ('active', 'outbid') and buyer_id <> $2 limit 1`, [slot.id, deal.buyer_id])
   // round 1 is the original winner; the seller may then choose another bid up to max_choice_rounds times
-  if (slot.round > await setting<number>(db, 'max_choice_rounds', at) || !remaining.rowCount) return relist(db, slot.id, at)
   const window = await setting<number>(db, 'seller_window_hours', at)
+  // another round only if the next buyer could still pay before the creative is due (SPEC G8/G9: never past the creative deadline)
+  const tooLate = at.getTime() + (window + MIN_PAY_HOURS) * 3_600_000 > new Date(slot.creative_due_at).getTime()
+  if (slot.round > await setting<number>(db, 'max_choice_rounds', at) || !remaining.rowCount || tooLate) return relist(db, slot.id, at)
   await db.query(`update slots set status = 'awaiting_choice', choice_deadline_at = $2 where id = $1`, [slot.id, new Date(at.getTime() + window * 3_600_000)])
 }
 
@@ -250,18 +292,26 @@ export async function chooseBid(db: Db, slotId: string, bidId: string, actor: st
   const bid = await one(db, `select * from bids where id = $1`, [bidId])
   if (slot.status !== 'awaiting_choice' || bid.slot_id !== slot.id || !['active', 'outbid'].includes(bid.status))
     throw new MarketError('This bid cannot be chosen.')
+  if (at.getTime() + MIN_PAY_HOURS * 3_600_000 > new Date(slot.creative_due_at).getTime())
+    throw new MarketError('It is too close to the creative deadline for another buyer to pay. The slot will be relisted.')
   await db.query(`update slots set status = 'awaiting_seller', round = round + 1, choice_deadline_at = null where id = $1`, [slot.id])
   // Bidders above the chosen one were skipped: tell them now.
-  await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid') and amount > $2 and id <> $3`,
-    [slot.id, bid.amount, bid.id])
+  const skipped = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid') and amount > $2 and id <> $3 and buyer_id <> $4
+      returning buyer_id`, [slot.id, bid.amount, bid.id, bid.buyer_id])).rows
+  for (const b of new Set(skipped.map(x => x.buyer_id as string))) await notify(db, b, 'bid.not_selected', null, { slotId: slot.id, label: slot.label }, at)
   const deal = await openDeal(db, { ...slot, status: 'awaiting_seller' }, bid, 'choice', actor, at)
   return accept(db, deal.id, actor, at)
 }
 
 /** ponytail: relisting reopens the slot as a quick sale at its starting price; the owner may prefer another rule. */
 export async function relist(db: Db, slotId: string, at: Date) {
-  await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid')`, [slotId])
-  await db.query(`update slots set status = 'open', sale_type = 'quick_sale', choice_deadline_at = null,
+  await releaseBids(db, slotId, at)
+  await db.query(`update slots set sale_type = case when sale_type = 'auction' then 'quick_sale' else sale_type end, choice_deadline_at = null,
                   top_bid_id = null, top_amount = null, top_buyer_id = null, top_max = null where id = $1`, [slotId])
+  await reopen(db, slotId, at)
   await audit(db, 'system', 'slot.relisted', 'slot', slotId, null, at)
 }
+
+/** The shortest payment window worth offering a buyer (SPEC G9: under this, don't ask anyone to pay). */
+const MIN_PAY_HOURS = 4
+const RELIST_PAY_HOURS = 12

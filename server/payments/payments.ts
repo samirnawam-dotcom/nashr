@@ -4,7 +4,7 @@ import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
 import { pct, split } from '../core/money.js'
 import { transition } from '../marketplace/deals.js'
-import { MarketError } from '../marketplace/market.js'
+import { MarketError, releaseBids } from '../marketplace/market.js'
 import { balance, heldFor, post } from './ledger.js'
 import type { ChargeResult, PaymentProvider } from './provider.js'
 import { issueCommissionInvoice, issueMediaInvoice, issueReceipt, reissueAfterRefund } from '../documents/documents.js'
@@ -85,7 +85,7 @@ async function secure(db: Db, op: any, at: Date) {
   await issueReceipt(db, deal.id, op.amount, op.ref, at)
   if (await setting(db, 'media_invoice_timing', at) === 'payment') await issueMediaInvoice(db, deal.id, at)
   // Payment secured: the other bids on this slot are no longer needed (SPEC 11.1 #7).
-  await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid')`, [deal.slot_id])
+  await releaseBids(db, deal.slot_id, at, deal.buyer_id) // the other bidders hear the slot is gone
 }
 
 // ---------------------------------------------------------------- release and refunds

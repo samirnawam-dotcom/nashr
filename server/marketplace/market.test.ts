@@ -102,16 +102,16 @@ describe('after the auction closes (sweeper)', () => {
     const bBid = (await pool.query(`select id from bids where buyer_id = $1`, [B])).rows[0].id
     let d = await tx(c => chooseBid(c, b2.id, bBid, 'seller', h(CLOSE, 30)))
     expect(d).toMatchObject({ status: 'awaiting_payment', buyer_id: B, amount: AED(3_800) })
-    await sweep(h(CLOSE, 30 + 48))                                // B does not pay: lapses
+    await sweep(h(CLOSE, 30 + 48))                                // B does not pay by the creative deadline: lapses
     expect((await deal()).status).toBe('lapsed')
-    expect((await slotNow()).status).toBe('awaiting_choice')
-
+    // no further round: nobody could pay before the creative is due (SPEC G8), so the slot is unsold and A is told
+    expect(await slotNow()).toMatchObject({ status: 'unsold', top_amount: null })
+    expect((await pool.query(`select status from bids where buyer_id = $1`, [A])).rows[0].status).toBe('not_selected')
+    expect((await pool.query(`select 1 from notifications where company_id = $1 and kind = 'bid.not_selected'`, [A])).rowCount).toBe(1)
     const aBid = (await pool.query(`select id from bids where buyer_id = $1`, [A])).rows[0].id
-    await tx(c => chooseBid(c, b2.id, aBid, 'seller', h(CLOSE, 80)))
-    await sweep(h(CLOSE, 80 + 48))                                // A does not pay either: third failure → relist
-    expect(await slotNow()).toMatchObject({ status: 'open', sale_type: 'quick_sale', top_amount: null })
+    await expect(tx(c => chooseBid(c, b2.id, aBid, 'seller', h(CLOSE, 80)))).rejects.toThrow('cannot be chosen')
     const events = (await pool.query(`select event from deal_events order by id`)).rows.map(r => r.event)
-    expect(events).toEqual(['opened', 'expire', 'opened', 'accept', 'lapse', 'opened', 'accept', 'lapse'])
+    expect(events).toEqual(['opened', 'expire', 'opened', 'accept', 'lapse'])
   })
 
   test('scenario 2: seller declines with a reason; a reason is required', async () => {
@@ -184,6 +184,18 @@ describe('breaks, any break and package on the same airing', () => {
     expect(await statuses()).toMatchObject({ 'Break 1': 'open', 'Break 4': 'open', 'All 4 breaks': 'open' })
     const sale = (await pool.query(`select distinct sale_type from slots where air_date = '2026-11-09' and status = 'open'`)).rows
     expect(sale).toEqual([{ sale_type: 'quick_sale' }]) // bidding closed, still sellable before the creative deadline
+  })
+
+  test('airtime is never sold twice: accepting the package ends a waiting request for one of its breaks', async () => {
+    const pkg = await slot(p.placement, '2026-11-09', 'All 4 breaks')
+    const req = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, T('2026-11-04T02:00:00Z'))) // still waiting when the package is accepted
+    await tx(c => placeBid(c, { slotId: pkg.id, buyerId: A, amount: AED(15_000), brief: BRIEF }, now))
+    await sweep(T('2026-11-04T02:30:00Z'))
+    const d = (await pool.query(`select * from deals where slot_id = $1`, [pkg.id])).rows[0]
+    await tx(c => accept(c, d.id, 'seller', T('2026-11-04T03:00:00Z')))
+    expect((await pool.query(`select event from deal_events where deal_id = $1 order by id desc limit 1`, [req.id])).rows[0].event).toBe('supersede')
+    await expect(tx(c => accept(c, req.id, 'seller', T('2026-11-04T03:05:00Z')))).rejects.toThrow()
+    expect((await pool.query(`select status from slots where id = $1`, [b2.id])).rows[0].status).toBe('held')
   })
 
   test('booking a single break holds the package but not the other breaks', async () => {

@@ -5,8 +5,10 @@ import { atLocal, type Market } from '../core/market.js'
 import { MarketError } from '../marketplace/market.js'
 import { containsContactDetails } from '../core/contact.js'
 
-const noContacts = (p: { description?: string; specs?: string }) => {
-  if (containsContactDetails(`${p.description ?? ''} ${p.specs ?? ''}`)) throw new MarketError('Emails and phone numbers are not allowed in what buyers see.')
+// everything a buyer reads about a placement: its name, break labels, description and specs (no way around the platform)
+const noContacts = (p: { name?: string; description?: string; specs?: string; breaks?: Break[] }) => {
+  if (containsContactDetails([p.name, p.description, p.specs, ...(p.breaks ?? []).map(b => b.label)].filter(Boolean).join(' \n ')))
+    throw new MarketError('Emails and phone numbers are not allowed in what buyers see.')
 }
 
 export type Break = { label: string; at?: string; seconds?: number }
@@ -99,7 +101,8 @@ export async function generateSlots(db: Db, placementId: string, fromDate: strin
       const r = await db.query(
         `insert into slots (placement_id, air_date, kind, label, starts_at, ends_at, sale_type, starting_price, buy_now_price, reserve_price,
            auto_accept, currency, closes_at, creative_due_at, listed_at)
-         values ($1, $2, 'single', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) on conflict do nothing`,
+         select $1, $2::date, 'single', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+         where not exists (select 1 from slots x where x.placement_id = $1 and x.air_date = $2::date and x.kind = 'single') on conflict do nothing`,
         [p.id, date, 'Full week', start, atLocal(addDays(date, 7), p.starts_at_local?.slice(0, 5) ?? '00:00', m), p.sale_type, p.starting_price,
          p.buy_now_price, p.reserve_price, p.auto_accept, p.currency, closes, hours(start, p.creative_lead_hours), at])
       made += r.rowCount ?? 0
@@ -123,9 +126,11 @@ export async function generateSlots(db: Db, placementId: string, fromDate: strin
       const r = await db.query(
         `insert into slots (placement_id, air_date, kind, label, starts_at, ends_at, sale_type, starting_price, buy_now_price, reserve_price,
            auto_accept, currency, closes_at, creative_due_at, listed_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) on conflict do nothing`,
+         select $1, $2::date, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+         where not ($3 = 'single' and $16::boolean and exists (select 1 from slots x where x.placement_id = $1 and x.air_date = $2::date and x.kind = 'single'))
+         on conflict do nothing`,
         [p.id, date, s.kind, s.label, s.startsAt, s.endsAt, p.sale_type, s.price, s.kind === 'single' ? p.buy_now_price : null,
-         s.kind === 'single' ? p.reserve_price : null, p.auto_accept, p.currency, closes, hours(s.startsAt, p.creative_lead_hours), at])
+         s.kind === 'single' ? p.reserve_price : null, p.auto_accept, p.currency, closes, hours(s.startsAt, p.creative_lead_hours), at, breaks.length === 0])
       made += r.rowCount ?? 0
     }
   }
@@ -180,11 +185,11 @@ export async function updatePlacement(db: Db, placementId: string, sellerId: str
       starting_price = case s.kind when 'any' then coalesce($2::bigint, s.starting_price) when 'package' then coalesce($3::bigint, s.starting_price) else $4::bigint end,
       buy_now_price = case when s.kind = 'single' then $5::bigint end, reserve_price = case when s.kind = 'single' then $6::bigint end,
       auto_accept = $7::boolean, closes_at = s.starts_at - make_interval(hours => $8::int), creative_due_at = s.starts_at - make_interval(hours => $9::int),
-      label = case when s.kind = 'single' and jsonb_array_length($11::jsonb) = 0 then $12::text else s.label end
+      label = case when s.kind = 'single' and jsonb_array_length($11::jsonb) = 0 and $13::text = 'day' then $12::text else s.label end
     where s.placement_id = $1 and s.status = 'open' and s.starts_at - make_interval(hours => $8::int) > $10::timestamptz
       and not exists (select 1 from bids b where b.slot_id = s.id)`,
     [p.id, e.anyBreakPrice ?? null, e.packagePrice ?? null, e.startingPrice, e.buyNowPrice ?? null, e.reservePrice ?? null, e.autoAccept ?? false,
-     e.closeLeadHours, e.creativeLeadHours, at, JSON.stringify(p.breaks ?? []), e.name])
+     e.closeLeadHours, e.creativeLeadHours, at, JSON.stringify(p.breaks ?? []), e.name, p.unit])
   await audit(db, actor, 'placement.updated', 'placement', p.id, { ...e, slotsUpdated: r.rowCount }, at)
   return { slotsUpdated: r.rowCount ?? 0 }
 }

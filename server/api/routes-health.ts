@@ -8,6 +8,13 @@ import type { PaymentProvider } from '../payments/provider.js'
  * 503 when anything needs a person: the database is down, the sweeper stopped, money is stuck, or the ledger and the provider disagree.
  */
 export function healthRoute(app: FastifyInstance, deps: { provider: PaymentProvider; clock: () => Date }) {
+  // The reconciliation asks the payment provider for its balance: do it at most once a minute, however often the URL is hit,
+  // so an anonymous caller cannot spend Nashr's provider rate limit.
+  let recon: { at: number; ok: boolean } | null = null
+  const reconciles = async (at: Date) => {
+    if (!recon || at.getTime() - recon.at >= 60_000 || at.getTime() < recon.at) recon = { at: at.getTime(), ok: (await reconcile(deps.provider, 'AED')).ok }
+    return recon.ok
+  }
   app.get('/api/health', async (_req, reply) => {
     const at = deps.clock(), checks: Record<string, boolean> = {}
     try {
@@ -19,7 +26,7 @@ export function healthRoute(app: FastifyInstance, deps: { provider: PaymentProvi
       checks.sweeper = !!r.heartbeat && at.getTime() - r.heartbeat.getTime() < 5 * 60_000          // runs every minute
       checks.moneyFlowing = !r.oldest_pending || at.getTime() - r.oldest_pending.getTime() < 15 * 60_000 // payouts and refunds go out every minute
       checks.noFailedPayouts = r.failed === 0
-      checks.ledgerReconciles = (await reconcile(deps.provider, 'AED')).ok
+      checks.ledgerReconciles = await reconciles(at)
     } catch { checks.database = false }
     const ok = Object.values(checks).every(Boolean) && checks.database
     return reply.code(ok ? 200 : 503).header('cache-control', 'no-store').send({ ok, checks, at: at.toISOString() })

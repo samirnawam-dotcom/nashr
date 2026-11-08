@@ -1,5 +1,6 @@
 import type { Db } from '../core/db.js'
 import type { SlotFilter } from '../shared/slot-filter.js'
+import { MarketError } from './market.js'
 
 /*
  * Calendar search at scale (1000+ outlets): every filter, sort, page and summary runs in SQL, so the screen receives only
@@ -15,7 +16,7 @@ export type Query = SlotFilter & { from: string; to: string; me: string | null; 
 const OPEN_MARKET = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1) ? o.market`
 const DUBAI = `(s.starts_at at time zone 'Asia/Dubai')`
 const MINUTE = `(extract(hour from ${DUBAI}) * 60 + extract(minute from ${DUBAI}))`
-const ALL_DAY = `(${MINUTE} = 0 and (s.ends_at is null or s.ends_at - s.starts_at >= interval '1 day'))`
+const ALL_DAY = `(case when s.ends_at is null then ${MINUTE} = 0 else s.ends_at - s.starts_at >= interval '1 day' end)`
 const PRICE = `coalesce(s.top_amount, s.starting_price)`
 const DAYPART: Record<string, string> = {
   allday: ALL_DAY,
@@ -37,7 +38,7 @@ export function where(q: Query, now: Date) {
   if (q.saleTypes?.length) w.push(`s.sale_type = any(${add(q.saleTypes)}::text[])`)
   if (q.sector) w.push(`exists (select 1 from unnest(o.sectors) x where lower(x) = lower(${add(q.sector)}))`)
   if (q.maxPrice != null && Number.isFinite(q.maxPrice)) w.push(`${PRICE} <= ${add(q.maxPrice)}`)
-  if (q.dayparts?.length) w.push(`(${q.dayparts.map(d => DAYPART[d] ?? 'false').join(' or ')})`)
+  if (q.dayparts?.length) w.push(`(${q.dayparts.map(d => Object.hasOwn(DAYPART, d) ? DAYPART[d] : 'false').join(' or ')})`)
   for (const word of (q.q ?? '').toLowerCase().split(/\s+/).filter(Boolean))
     w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || coalesce(o.audience, '') || ' ' || coalesce(c.name, '')), ${add(word)}) > 0`)
   if (q.closingWithinHours != null && Number.isFinite(q.closingWithinHours)) w.push(`s.closes_at <= ${add(new Date(now.getTime() + q.closingWithinHours * 3_600_000))}`)
@@ -71,7 +72,7 @@ export async function listSlots(db: Db, q: Query, sort: Sort, offset: number, li
   const c = where(q, now)
   const total = (await db.query(`select count(*)::int n ${c.from} ${c.where}`, c.params)).rows[0].n as number
   const w = where(q, now), me = w.add(q.me)
-  const rows = (await db.query(`select ${SLOT_COLUMNS} ${w.from} ${BID_COUNTS(me)} ${w.where} order by ${ORDER[sort] ?? ORDER.time} ${page(offset, limit)}`, w.params)).rows
+  const rows = (await db.query(`select ${SLOT_COLUMNS} ${w.from} ${BID_COUNTS(me)} ${w.where} order by ${Object.hasOwn(ORDER, sort) ? ORDER[sort] : ORDER.time} ${page(offset, limit)}`, w.params)).rows
   return { total, rows }
 }
 
@@ -155,7 +156,16 @@ export async function byOutlet(db: Db, q: Query, sort: OutletSort, offset: numbe
 }
 
 /** Calendar filters from a query string: ?ch=radio,tv&sale=auction&sector=…&max=500000&dp=morning&q=…&soon=24&mine=1&open=1 */
-export function parseQuery(r: Record<string, string | undefined>, me: string | null, from: string, to: string): Query {
+/** The longest period one calendar request may cover (a month view with its edge weeks is 42 days); public routes must stay cheap. */
+const MAX_RANGE_DAYS = 62
+function clampRange(from: string, to: string) {
+  const a = Date.parse(from), b = Date.parse(to)
+  if (Number.isNaN(a) || Number.isNaN(b)) throw new MarketError('Choose a valid date range.')
+  return b - a > MAX_RANGE_DAYS * 86_400_000 ? new Date(a + MAX_RANGE_DAYS * 86_400_000).toISOString() : to
+}
+
+export function parseQuery(r: Record<string, string | undefined>, me: string | null, from: string, rawTo: string): Query {
+  const to = clampRange(from, rawTo)
   const list = (v?: string) => v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined
   const num = (v?: string) => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
   return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max),
