@@ -1,6 +1,7 @@
 import { type Db, one } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
+import { setting } from '../core/settings.js'
 import { MarketError } from '../marketplace/market.js'
 import { checkTotp, totpStep, hashPassword, newTotpSecret, randomToken, sha256, verifyPassword } from './crypto.js'
 
@@ -23,7 +24,7 @@ export async function requestAccess(db: Db, r: AccessRequest, at: Date) {
   return row.id as string
 }
 
-async function issueInvite(db: Db, userId: string, at: Date) {
+export async function issueInvite(db: Db, userId: string, at: Date) {
   const token = randomToken()
   await db.query(`insert into invites (token_hash, user_id, expires_at) values ($1, $2, $3)`, [sha256(token), userId, new Date(at.getTime() + INVITE_DAYS * 86_400_000)])
   return token // goes in the invite email link; never stored in clear
@@ -74,10 +75,11 @@ export async function inviteStaff(db: Db, a: { email: string; name: string; role
  * Accept an invite and set a password. Admin and founder accounts must also set up two-factor login before they are active:
  * the first call returns a secret for their authenticator app, the second (with a code) activates the account.
  */
-export async function acceptInvite(db: Db, a: { token: string; password: string; totpCode?: string }, at: Date) {
+export async function acceptInvite(db: Db, a: { token: string; password: string; totpCode?: string; acceptTerms?: boolean }, at: Date) {
   const inv = (await db.query(`select i.*, u.role, u.totp_secret from invites i join users u on u.id = i.user_id where token_hash = $1 for update of i`, [sha256(a.token)])).rows[0]
   if (!inv || inv.used_at || inv.expires_at <= at) throw new MarketError('This invite link has expired. Ask Nashr for a new one.')
   if ((a.password ?? '').length < 12) throw new MarketError('Use a password of at least 12 characters.')
+  if (!a.acceptTerms) throw new MarketError('Accept the terms of use to join.')
   if (STAFF.includes(inv.role) && staffTwoStep()) {
     if (!inv.totp_secret) {
       const secret = newTotpSecret()
@@ -89,7 +91,17 @@ export async function acceptInvite(db: Db, a: { token: string; password: string;
   await db.query(`update users set password_hash = $2, status = 'active', totp_enabled = $3 where id = $1`, [inv.user_id, hashPassword(a.password), STAFF.includes(inv.role) && staffTwoStep()])
   await db.query(`update invites set used_at = $2 where token_hash = $1`, [inv.token_hash, at])
   await audit(db, `user:${inv.user_id}`, 'invite.accepted', 'user', inv.user_id, null, at)
+  await acceptTerms(db, inv.user_id, at)
   return { needsTotp: false as const }
+}
+
+/** The terms in force now, and whether this person has accepted them. A new version must be accepted to carry on. */
+export const termsVersion = (db: Db, at: Date) => setting<string>(db, 'terms_version', at)
+export async function acceptTerms(db: Db, userId: string, at: Date, version?: string) {
+  const current = await termsVersion(db, at)
+  if (version && version !== current) throw new MarketError('The terms changed while you were reading. Read the latest version and accept again.')
+  await db.query(`update users set terms_version = $2, terms_accepted_at = $3 where id = $1`, [userId, current, at])
+  await audit(db, `user:${userId}`, 'terms.accepted', 'user', userId, { version: current }, at)
 }
 
 /**
@@ -101,7 +113,7 @@ export const staffTwoStep = () => process.env.STAFF_TWO_STEP !== 'off'
 const DUMMY_HASH = hashPassword('not a real password, only spends the same time')
 
 /** Login. Staff need their authenticator code, and so does anyone who turned two-step sign-in on. Returns a session token for the cookie. */
-export async function login(db: Db, a: { email: string; password: string; totpCode?: string }, at: Date) {
+export async function login(db: Db, a: { email: string; password: string; totpCode?: string }, at: Date, from: { ip?: string; ua?: string } = {}) {
   const u = (await db.query(`select * from users where lower(email) = lower($1)`, [a.email])).rows[0]
   const fail = () => new MarketError('Email or password is not right.') // same message either way: no account probing
   // unknown emails still pay for one password hash, so the response time does not reveal who has an account
@@ -113,10 +125,28 @@ export async function login(db: Db, a: { email: string; password: string; totpCo
     await db.query(`update users set totp_last_step = $2 where id = $1`, [u.id, step]) // each code signs in once
   }
   const token = randomToken()
-  await db.query(`insert into sessions (token_hash, user_id, created_at, expires_at) values ($1, $2, $3, $4)`,
-    [sha256(token), u.id, at, new Date(at.getTime() + SESSION_HOURS * 3_600_000)])
+  await db.query(`insert into sessions (token_hash, user_id, created_at, expires_at, ip, user_agent, last_seen_at) values ($1, $2, $3, $4, $5, $6, $3)`,
+    [sha256(token), u.id, at, new Date(at.getTime() + SESSION_HOURS * 3_600_000), from.ip ?? null, from.ua ?? null])
+  await recordSignIn(db, { email: a.email, ip: from.ip, ua: from.ua, success: true }, at)
   await audit(db, `user:${u.id}`, 'login', 'user', u.id, null, at)
   return token
+}
+
+/**
+ * Every sign-in attempt is kept for Nashr's team (and the person's own security): failures are recorded outside the request's
+ * transaction (which rolls back on the error), successes inside it. Ten failed attempts on one account in 15 minutes lock it
+ * for 15 minutes; asking for the authenticator code is a step, not a failure.
+ */
+export async function recordSignIn(db: Db, e: { email: string; ip?: string; ua?: string; success: boolean; reason?: string }, at: Date) {
+  await db.query(`insert into login_events (at, email, user_id, ip, user_agent, success, reason)
+    values ($1, $2, (select id from users where lower(email) = lower($2)), $3, $4, $5, $6)`,
+    [at, String(e.email ?? '').slice(0, 200), e.ip ?? null, e.ua?.slice(0, 300) ?? null, e.success, e.reason ?? null])
+}
+export const LOCK_FAILURES = 10, LOCK_MINUTES = 15
+export async function signInLocked(db: Db, email: string, at: Date) {
+  const { n } = await one(db, `select count(*)::int n from login_events where lower(email) = lower($1) and not success
+    and reason in ('password', 'code') and at > $2`, [email, new Date(at.getTime() - LOCK_MINUTES * 60_000)])
+  return n >= LOCK_FAILURES
 }
 
 /** `signedInAs` is set while a staff member is signed in as another user: the session then is that user, and `staffId` is who is really there. */
@@ -134,6 +164,8 @@ export async function session(db: Db, token: string | undefined, at: Date): Prom
       left join users t on t.id = s.act_as_user_id
       where s.token_hash = $1 and s.expires_at > $2`, [sha256(token), at])).rows[0]
   if (!s || s.status !== 'active') return null
+  // when it was last used, for Nashr's team (written at most every five minutes)
+  await db.query(`update sessions set last_seen_at = $2 where token_hash = $1 and (last_seen_at is null or last_seen_at < $2::timestamptz - interval '5 minutes')`, [s.token_hash, at])
   // Signed in as someone else: only staff, only an active buyer or publisher user, only until the time runs out.
   if (s.t_id && STAFF_ROLES.includes(s.role) && s.t_status === 'active' && ['buyer', 'seller'].includes(s.t_role) && s.act_as_until > at)
     return { tokenHash: s.token_hash, userId: s.t_id, companyId: s.t_company, role: s.t_role, viewAs: null,
@@ -188,6 +220,25 @@ export async function resetPassword(db: Db, a: { token: string; password: string
   await db.query(`delete from sessions where user_id = $1`, [r.user_id]) // signed out everywhere
   await endSignInAs(db, r.user_id)
   await audit(db, `user:${r.user_id}`, 'password.reset', 'user', r.user_id, null, at)
+}
+
+/**
+ * Self-service reset for anyone who turned on two-step sign-in: email, a fresh code from their authenticator app and a new
+ * password, no link needed. Every failure gets the same answer, so it reveals nothing about who has an account.
+ */
+export async function resetWithCode(db: Db, a: { email: string; code: string; password: string }, at: Date) {
+  if ((a.password ?? '').length < 12) throw new MarketError('Use a password of at least 12 characters.')
+  const u = (await db.query(`select * from users where lower(email) = lower($1) for update`, [a.email ?? ''])).rows[0]
+  const wrong = () => new MarketError('The email or the code is not right.')
+  if (!u || u.status !== 'active' || STAFF.includes(u.role) || !u.totp_enabled) throw wrong()
+  const step = totpStep(u.totp_secret, String(a.code ?? '').trim(), at)
+  if (step === null || (u.totp_last_step != null && step <= Number(u.totp_last_step))) throw wrong()
+  await db.query(`update users set password_hash = $2, totp_last_step = $3 where id = $1`, [u.id, hashPassword(a.password), step])
+  await db.query(`update password_resets set used_at = $2 where user_id = $1 and used_at is null`, [u.id, at]) // any pending request is settled
+  await db.query(`delete from sessions where user_id = $1`, [u.id])
+  await endSignInAs(db, u.id)
+  await audit(db, `user:${u.id}`, 'password.reset_with_code', 'user', u.id, null, at)
+  await notify(db, u.company_id, 'access.password_reset_self', null, { user: u.name }, at)
 }
 
 /** Staff signed in as this person lose that access too when the person's sign-in details change. */

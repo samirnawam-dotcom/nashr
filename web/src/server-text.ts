@@ -8,6 +8,21 @@ import { AR } from './i18n-ar.js'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  "Accept the updated terms of use to carry on.": "وافق على شروط الاستخدام المحدّثة للمتابعة.",
+  "Too many failed sign-ins for this account. Try again in 15 minutes, or reset your password.": "محاولات دخول فاشلة كثيرة لهذا الحساب. حاول بعد 15 دقيقة، أو أعد تعيين كلمة المرور.",
+  "Only the founder can sign a staff member out.": "المؤسس وحده يمكنه تسجيل خروج أحد أفراد الفريق.",
+  "Write why this person is being signed out.": "اكتب سبب تسجيل خروج هذا الشخص.",
+  "Write just the name.": "اكتب الاسم فقط.",
+  "Someone already uses this email on Nashr.": "هناك من يستخدم هذا البريد على نشر بالفعل.",
+  "This person has already joined.": "انضم هذا الشخص بالفعل.",
+  "Only the founder can invite staff.": "المؤسس وحده يمكنه دعوة أفراد الفريق.",
+  "Accept the terms of use to join.": "وافق على شروط الاستخدام للانضمام.",
+  "The terms changed while you were reading. Read the latest version and accept again.": "تغيّرت الشروط أثناء قراءتك. اقرأ أحدث إصدار ووافق مجددًا.",
+  "The email or the code is not right.": "البريد الإلكتروني أو الرمز غير صحيح.",
+  "Statements can be added only while Nashr is deciding a dispute.": "لا يمكن إضافة إفادات إلا أثناء نظر نشر في النزاع.",
+  "Explain your side in a few sentences.": "اشرح روايتك في بضع جمل.",
+  "Emails and phone numbers are not allowed here.": "لا يُسمح هنا بالبريد الإلكتروني وأرقام الهاتف.",
+  "Each side can add up to five statements. Nashr has your case.": "يمكن لكل طرف إضافة خمس إفادات كحد أقصى. ملفك لدى نشر.",
   "Emails and phone numbers are not allowed in the address.": "لا يُسمح بالبريد الإلكتروني وأرقام الهاتف في العنوان.",
   "Too many live connections.": "عدد كبير جدًا من الاتصالات المباشرة.",
   "This person has not asked for a password reset. They ask from \"Forgot your password?\" on the sign-in page.": "لم يطلب هذا الشخص إعادة تعيين كلمة المرور. يطلبها من «نسيت كلمة المرور؟» في صفحة تسجيل الدخول.",

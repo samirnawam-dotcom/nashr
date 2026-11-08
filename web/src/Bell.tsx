@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useLive } from './live'
 import { api } from './api'
 import { locale, t } from './i18n'
-import { money } from './format'
+import { dayLabel, money } from './format'
+import { dubai } from './calendar/layout'
 const aedOf = (n: number | undefined) => n == null ? '' : money(n)
 import './directory/directory.css'
 
@@ -47,7 +48,8 @@ const TEXT: Record<string, (n: N) => string> = {
   'issue.reported': () => t('The buyer reported an issue.'),
   'issue.offer': () => t('The publisher offered a fix for your issue.'),
   'issue.resolved': () => t('The issue was resolved.'),
-  'dispute.opened': () => t('A dispute was opened.'),
+  'dispute.opened': n => n.data?.decideBy ? t('Nashr will decide this dispute by {date}. Add your side and any files from the booking.', { date: dayLabel(dubai(n.data.decideBy).date, { day: 'numeric', month: 'short' }) }) : t('A dispute was opened.'),
+  'dispute.statement': n => n.data?.side === 'buyer' ? t('The buyer added to the dispute case.') : t('The publisher added to the dispute case.'),
   'dispute.decided': n => (({ release: t('Nashr decided the dispute: the payment is released to the publisher.'), refund: t('Nashr decided the dispute: full refund to the buyer.'),
     partial_refund: t('Nashr decided the dispute: a partial refund to the buyer.'), make_good: t('Nashr decided the dispute: the ad runs again.') } as Record<string, string>)[n.data?.outcome] ?? t('Nashr decided the dispute.'))
     + (n.data?.reason ? ` ${t('Reason: {reason}', { reason: n.data.reason })}` : ''),

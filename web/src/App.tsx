@@ -8,7 +8,8 @@ import { Bell } from './Bell'
 import { CalendarPage } from './calendar/CalendarPage'
 import { DirectoryPage, OutletPage } from './directory/Directory'
 import { Landing } from './Landing'
-import { PrivacyPage, RefundsPage, TermsPage } from './Legal'
+import { DisputesPolicyPage, PrivacyPage, RefundsPage, TermsPage } from './Legal'
+import { TermsGate } from './TermsGate'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
 import { LangSwitch, t } from './i18n'
@@ -32,6 +33,8 @@ const DocumentPage = L(load_documents_Documents, 'DocumentPage')
 const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
 const HelpPage = L(() => import('./Help'), 'HelpPage')
 const SupportPage = L(() => import('./admin/Support'), 'SupportPage')
+const UsersPage = L(() => import('./admin/Users'), 'UsersPage')
+const UserPage = L(() => import('./admin/Users'), 'UserPage')
 const load_seller_Dashboard = () => import('./seller/Dashboard')
 const InboxPage = L(load_seller_Dashboard, 'InboxPage')
 const SellerDashboard = L(load_seller_Dashboard, 'SellerDashboard')
@@ -83,7 +86,7 @@ const DirectoryAdminPage = L(load_admin_System, 'DirectoryAdminPage')
 const SettingsPage = L(load_admin_System, 'SettingsPage')
 
 export type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null
-  signedInAs: { user: string; staff: string; until: string; companyId: string } | null }
+  signedInAs: { user: string; staff: string; until: string; companyId: string } | null; terms?: { version: string; accepted: boolean } }
 
 // One page per path; ids are the last segment.
 type Routes = [RegExp, (id: string) => React.ReactNode][]
@@ -130,6 +133,8 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/admin/, () => <AdminOverview />],
   [/^\/access/, () => <AccessPage />],
   [/^\/accounts\/([\w-]+)$/, id => <AccountPage id={id} isFounder={founder} />],
+  [/^\/users\/([\w-]+)$/, id => <UserPage id={id} />],
+  [/^\/users/, () => <UsersPage />],
   [/^\/accounts/, () => <AccountsPage />],
   [/^\/calendar/, () => <AdminCalendarPage />],
   [/^\/deals\/([\w-]+)$/, id => <AdminDealPage id={id} />],
@@ -146,7 +151,7 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
 ]
 // Terms, privacy and refunds are open to everyone, signed in or not.
-const LEGAL: Routes = [[/^\/terms$/, () => <TermsPage />], [/^\/privacy$/, () => <PrivacyPage />], [/^\/refunds$/, () => <RefundsPage />],
+const LEGAL: Routes = [[/^\/terms$/, () => <TermsPage />], [/^\/privacy$/, () => <PrivacyPage />], [/^\/refunds$/, () => <RefundsPage />], [/^\/dispute-policy$/, () => <DisputesPolicyPage />],
   // audiences, industries and insights: public pages anyone can open
   [/^\/audiences\/([\w-]+)$/, id => <AudiencePage id={id} />], [/^\/audiences$/, () => <AudiencesPage />], [/^\/advertise\/([\w-]+)$/, id => <IndustryPage id={id} />],
   [/^\/insights\/([\w-]+)$/, id => <ArticlePage id={id} />], [/^\/insights$/, () => <InsightsPage />]]
@@ -162,7 +167,7 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
@@ -186,6 +191,7 @@ const ICON: Record<string, string> = {
   '/profile': 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0', '/admin': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
   '/access': 'M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21a8 8 0 0 1 12-6.9M19 14v6M16 17h6', '/accounts': 'M3 21V8l9-5 9 5v13M9 21v-6h6v6M3 21h18',
   '/help': 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
+  '/users': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   '/support': 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   '/disputes': 'M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   '/funds': 'M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18', '/payouts': 'M4 8h14l-3-3M20 16H6l3 3',
@@ -212,7 +218,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   useEffect(() => { if (initialMe === undefined) load() }, [])
   const unread = useUnread(!!me && (me.role === 'buyer' || me.role === 'seller'), full)
   // Screens behind sign-in stay out of search results; public pages set their own metadata.
-  useEffect(() => { if (me && !/^\/(calendar|directory|terms|privacy|refunds)/.test(hash)) applyMeta({ title: 'Nashr', description: PAGES['/'].description, noindex: true }) }, [me, hash])
+  useEffect(() => { if (me && !/^\/(calendar|directory|terms|privacy|refunds|dispute-policy)/.test(hash)) applyMeta({ title: 'Nashr', description: PAGES['/'].description, noindex: true }) }, [me, hash])
   // After signing in, go back to where the visitor was, if that page is theirs to see; otherwise to their home.
   const signedIn = async () => {
     const m = await api<Me>('/me').catch(() => null)
@@ -283,7 +289,10 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <Bell role={me.role} />
         <a className="avatar" href="/account" aria-label={t('Your account')}>{initials}</a>
       </header>
-      {hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
+      {/* updated terms come first, except on the legal pages themselves (so they can be read); never for staff acting as someone */}
+      {me.terms && !me.terms.accepted && !me.signedInAs && !me.viewingAs && !/^\/(terms|privacy|refunds|dispute-policy)$/.test(path)
+        ? <TermsGate version={me.terms.version} onDone={load} />
+        : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
         aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a>)}</nav>}

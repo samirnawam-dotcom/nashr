@@ -1,6 +1,7 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
+import { addStatement, disputeView } from '../fulfilment/issues.js'
 import { requireTwoStepForMoney } from '../auth/two-step.js'
 import { split } from '../core/money.js'
 import { audit } from '../core/audit.js'
@@ -140,6 +141,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
       creatives: creatives.map(c => ({ version: c.version, status: c.status, reason: c.reason, fileId: fileId(c.file_key), fileType: c.file_type, fileSize: c.file_size, uploadedAt: c.uploaded_at })),
       proof: p ? { submittedAt: p.submitted_at, note: p.note, items: p.items } : null,
       issue: i ? { reason: i.reason, note: i.note, evidence: i.evidence, offer: i.offer, status: i.status, openedAt: i.opened_at } : null,
+      dispute: i || d.decide_by ? await disputeView(db, d.id) : null,
       prerun: prerun[0] ? { requestedAt: prerun[0].requested_at, confirmedAt: prerun[0].seller_confirmed_at } : null,
       documents: docs.map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at })),
     }
@@ -283,6 +285,13 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
 
   // ponytail: payout onboarding is the provider's hosted flow (Stripe Connect, B5). With the test provider it verifies at once.
   // Real provider: open (or continue) the publisher's onboarding on the provider's own pages; we come back to the profile.
+  // the publisher's side of a dispute while Nashr decides
+  route('POST', '/api/seller/deals/:id/statements', SELLER, async ({ db, at, me }, req) => {
+    await addStatement(db, { dealId: req.params.id, companyId: me.actAs.companyId, userId: me.userId, text: req.body.text, files: req.body.files }, at)
+    return { ok: true }
+  }, { type: 'object', required: ['text'], additionalProperties: false, properties: { text: { type: 'string', maxLength: 4000 },
+    files: { type: 'array', maxItems: 10, items: { type: 'string', pattern: '^files/[0-9a-f-]{36}$' } } } })
+
   route('POST', '/api/seller/payouts/connect', SELLER, async ({ db, at, me }, req) => {
     await requireTwoStepForMoney(db, me.userId, 'payouts', at) // where money goes out, two-step sign-in first (founder's setting)
     const pa = deps.provider.payoutAccount

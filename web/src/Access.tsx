@@ -52,13 +52,13 @@ export function RequestAccess() {
 /** The invite link: set a password; staff also link an authenticator app. */
 export function AcceptInvite({ token, onDone }: { token: string; onDone: () => void }) {
   const [password, setPassword] = useState(''), [confirm, setConfirm] = useState(''), [code, setCode] = useState('')
-  const [secret, setSecret] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false), [done, setDone] = useState(false)
+  const [secret, setSecret] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false), [done, setDone] = useState(false), [agree, setAgree] = useState(false)
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setError('')
     if (password !== confirm) return setError(t('The passwords do not match.'))
     setBusy(true)
     try {
-      const r = await api('/auth/invite', { method: 'POST', body: { token, password, ...(code ? { totpCode: code } : {}) } })
+      const r = await api('/auth/invite', { method: 'POST', body: { token, password, acceptTerms: agree, ...(code ? { totpCode: code } : {}) } })
       if (r.needsTotp) setSecret(r.totpSecret); else setDone(true)
     } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
@@ -75,8 +75,9 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
             <code className="num" style={{ wordBreak: 'break-all' }}>{secret}</code>
             <div className="field"><label htmlFor="code">{t("Code from your authenticator app")}</label><input id="code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value)} required /></div>
           </>}
+          <label className="check small"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} required /> <span>{t('I accept the')} <a href="/terms" target="_blank" rel="noopener">{t('terms of use')}</a>, {t('the')} <a href="/dispute-policy" target="_blank" rel="noopener">{t('disputes and payment protection policy')}</a> {t('and the')} <a href="/privacy" target="_blank" rel="noopener">{t('privacy policy')}</a>, {t('for myself and the company I act for.')}</span></label>
           {error && <p className="auth-error" role="alert">{error}</p>}
-          <button className="btn primary lg auth-submit" disabled={busy}>{secret ? t("Activate") : t("Continue")}</button>
+          <button className="btn primary lg auth-submit" disabled={busy || !agree}>{secret ? t("Activate") : t("Continue")}</button>
         </>}
       </form>
     </AuthShell>

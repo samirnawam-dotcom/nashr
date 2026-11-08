@@ -4,6 +4,7 @@ import { audit } from '../core/audit.js'
 import { checklistFor } from '../fulfilment/proof.js'
 import { met, scorecard } from './scorecard.js'
 import { resetTwoStep } from '../auth/two-step.js'
+import { disputeView } from '../fulfilment/issues.js'
 import { split } from '../core/money.js'
 import { balance } from '../payments/ledger.js'
 import { reconcile } from '../payments/payments.js'
@@ -36,6 +37,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
         (select count(*)::int from quote_requests where status = 'open') quotes_open,
         (select count(*)::int from support_requests where status = 'open') support_open,
         (select count(*)::int from deals where status = 'disputed') disputes,
+        (select count(*)::int from deals where status = 'disputed' and decide_by < $1 and coalesce(chargeback, '') <> 'open') disputes_overdue,
         (select count(*)::int from deals where status = 'issue_open') issues,
         (select count(*)::int from money_ops where status = 'failed') failed_ops,
         (select count(*)::int from money_ops where status = 'pending' and kind <> 'charge') pending_ops,
@@ -149,7 +151,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       proofChecklist: checklistFor(d.channel, d.brief),
       nextDeadlineAt: d.next_deadline_at, extraCreativeRounds: d.extra_creative_rounds, ratesFrozen: d.commission_bp != null,
       money: { price: d.amount, mediaVat: s.mediaVat, buyerPays: s.buyerPays, commissionBp: d.commission_bp, fee: s.fee, feeVat: s.feeVat, payout: s.payout, held: 0 - await balance(db, 'held', d.currency, d.id) },
-      events, ledger, moneyOps: ops, creatives: creatives.map(c => ({ ...c, fileId: c.file_key.replace(/^files\//, '') })), proofs, issues, documents: docs }
+      events, ledger, moneyOps: ops, creatives: creatives.map(c => ({ ...c, fileId: c.file_key.replace(/^files\//, '') })), proofs, issues, documents: docs, dispute: await disputeView(db, d.id), chargeback: d.chargeback }
   })
 
   route('POST', '/api/admin/deals/:id/extra-round', STAFF, async ({ db, at, me }, req) => {
@@ -158,13 +160,14 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   })
 
   route('GET', '/api/admin/disputes', STAFF, async ({ db }) => (await db.query(
-    `select d.id, d.ref, d.status, d.amount, d.next_deadline_at, bc.name buyer, sc.name seller, o.name outlet, s.label, i.reason, i.note, i.offer, i.opened_at
+    `select d.id, d.ref, d.status, d.amount, d.next_deadline_at, d.decide_by, d.chargeback,
+       (select count(*)::int from dispute_statements ds where ds.deal_id = d.id) statements, bc.name buyer, sc.name seller, o.name outlet, s.label, i.reason, i.note, i.offer, i.opened_at
      from deals d join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join slots s on s.id = d.slot_id
      join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
      left join lateral (select * from issues i where i.deal_id = d.id order by opened_at desc limit 1) i on true
-     where d.status in ('disputed', 'issue_open') order by (d.status = 'disputed') desc, i.opened_at`)).rows
+     where d.status in ('disputed', 'issue_open') order by (d.status = 'disputed') desc, d.decide_by nulls last, i.opened_at`)).rows
     .map(r => ({ id: r.id, ref: r.ref, status: r.status, amount: r.amount, dueAt: r.next_deadline_at, buyer: r.buyer, seller: r.seller, outlet: r.outlet,
-      label: r.label, reason: r.reason, note: r.note, offer: r.offer, openedAt: r.opened_at })))
+      label: r.label, reason: r.reason, note: r.note, offer: r.offer, openedAt: r.opened_at, decideBy: r.decide_by, chargeback: r.chargeback, statements: r.statements })))
 
   // Funds: every ledger account, and whether the ledger agrees with the provider's balance.
   route('GET', '/api/admin/funds', STAFF, async ({ db }) => {

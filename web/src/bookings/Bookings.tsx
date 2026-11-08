@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
 import { api, upload, type Rating } from '../api'
 import { dayLabel, money, time } from '../format'
@@ -12,7 +13,7 @@ import { useNeedsTwoStep } from '../twoStep'
 import { tm } from '../i18n-server'
 import { Thread } from '../messages/Thread'
 
-type Deal = { id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
+type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
 
 const STATUS: Record<string, [string, string]> = {
   awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Payment secured', 'lead'],
@@ -144,6 +145,8 @@ export function BookingPage({ id }: { id: string }) {
         </>}
       </section>}
 
+      <Resolution side="buyer" status={d.status} issue={d.issue as any} dispute={d.dispute ?? null} held={d.total} currency={d.currency} deadline={d.nextDeadlineAt}
+        statementPath={`/deals/${d.id}/statements`} onChange={load} />
       {d.issue && <section className="card pad section">
         <h2>{t('Issue: {reason}', { reason: ISSUE_REASONS.find(([v]) => v === d.issue!.reason)?.[1] ?? '' })}</h2>
         <p>{d.issue.note}</p>

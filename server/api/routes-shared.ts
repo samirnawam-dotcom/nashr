@@ -43,6 +43,8 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
     const f = (await db.query(
       `select f.* from files f where f.id = $1 and ($3 or f.company_id = $2 or exists (
          select 1 from deals d where $2 in (d.buyer_id, d.seller_id) and (
+           -- either side's files attached to its statement in a dispute: the case is open both ways
+           exists (select 1 from dispute_statements s where s.deal_id = d.id and s.company_id = f.company_id and s.files::text like '%files/' || f.id || '%') or
            -- the buyer sends creative and issue evidence; the publisher sends proof, corrected proof and its own invoice
            (f.company_id = d.buyer_id and (exists (select 1 from creatives c where c.deal_id = d.id and c.file_key = 'files/' || f.id)
               or exists (select 1 from issues i where i.deal_id = d.id and i.evidence::text like '%files/' || f.id || '%')))

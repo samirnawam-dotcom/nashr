@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
 import { DOC_TYPE } from '../documents/Documents'
@@ -14,7 +15,7 @@ type SDeal = { id: string; ref: string; status: string; label: string; startsAt:
   brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean; separation?: { industry: string; count: number } | null; buyerProfile?: CompanyProfile | null
   money: { bid: number; mediaVat: number; fee: number; feeVat: number; youReceive: number; commissionBp: number }
   otherBids: { id: string; label: string; company: string; amount: number }[]; rating?: { score: number; comment: string | null } | null }
-type Detail = { channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
+type Detail = { dispute?: Dispute | null; channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
   proofChecklist: { key: string; label: string }[]; adHasRun: boolean
   timeline: { at: string; event: string; status: string; note: string | null }[]
   creatives: { version: number; status: string; reason: string | null; fileId: string; fileType: string; fileSize: number; uploadedAt: string }[]
@@ -160,6 +161,8 @@ export function SellerDealPage({ id }: { id: string }) {
         : <ProofForm items={x.proofChecklist} busy={busy} onUpload={withFile} onSend={(items, n) => act(`/seller/deals/${d.id}/proof`, { items, ...(n ? { note: n } : {}) }, t("Proof sent. The buyer has the review window to approve."))} />}
       </section>}
 
+      <Resolution side="publisher" status={d.status} issue={x.issue as any} dispute={x.dispute ?? null} held={d.money.bid + d.money.mediaVat} currency="AED"
+        deadline={d.nextDeadlineAt} statementPath={`/seller/deals/${d.id}/statements`} onChange={load} />
       {x.issue && <section className="card pad section">
         <h2>{t('Issue: {reason}', { reason: t(ISSUE[x.issue.reason]) })}</h2><p>{x.issue.note}</p>
         {x.issue.status === 'open' && !x.issue.offer && (form?.k !== 'offer' ? <>

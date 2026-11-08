@@ -1,6 +1,7 @@
 import type { RouteFn } from './app.js'
+import { pool } from '../core/db.js'
 import { COOKIE, cookie, rateLimit } from './app.js'
-import { acceptInvite, changePassword, login, logout, requestAccess, requestReset, resetPassword } from '../auth/access.js'
+import { acceptInvite, acceptTerms, termsVersion, changePassword, resetWithCode, recordSignIn, signInLocked, login, logout, requestAccess, requestReset, resetPassword } from '../auth/access.js'
 import { MarketError } from '../marketplace/market.js'
 import { sha256 } from '../auth/crypto.js'
 import { audit } from '../core/audit.js'
@@ -18,14 +19,24 @@ export function authRoutes(route: RouteFn) {
        properties: { name: str, email: str, phone: str, role: str, company: str, companyType: { enum: ['brand', 'agency', 'media_outlet'] } } })
 
   route('POST', '/api/auth/invite', 'public', async ({ db, at }, req) => acceptInvite(db, req.body, at),
-    { type: 'object', required: ['token', 'password'], properties: { token: str, password: { type: 'string', maxLength: 200 }, totpCode: str } })
+    { type: 'object', required: ['token', 'password'], properties: { token: str, password: { type: 'string', maxLength: 200 }, totpCode: str, acceptTerms: { type: 'boolean' } } })
 
   route('POST', '/api/auth/login', 'public', async ({ db, at }, req, reply) => {
     // three limits: one address on one account, one address across many accounts (password spraying), one account from many addresses
     const email = String(req.body.email).toLowerCase()
     if (!rateLimit(`login:${req.ip}:${email}`, 10, at.getTime()) || !rateLimit(`login-ip:${req.ip}`, 60, at.getTime()) || !rateLimit(`login-acct:${email}`, 30, at.getTime()))
       return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
-    const token = await login(db, req.body, at)
+    const from = { ip: req.ip, ua: String(req.headers['user-agent'] ?? '') }
+    if (await signInLocked(pool, email, at)) {
+      await recordSignIn(pool, { email, ...from, success: false, reason: 'locked' }, at)
+      return reply.code(429).send({ error: 'Too many failed sign-ins for this account. Try again in 15 minutes, or reset your password.' })
+    }
+    let token: string
+    try { token = await login(db, req.body, at, from) } catch (e: any) {
+      const reason = /authenticator/.test(e.message) ? (req.body.totpCode ? 'code' : 'code_needed') : 'password'
+      await recordSignIn(pool, { email, ...from, success: false, reason }, at) // outside this request's transaction, which rolls back
+      throw e
+    }
     reply.header('set-cookie', `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`)
     return { ok: true }
   }, { type: 'object', required: ['email', 'password'], properties: { email: str, password: { type: 'string', maxLength: 200 }, totpCode: str } })
@@ -38,10 +49,12 @@ export function authRoutes(route: RouteFn) {
     return { ok: true }
   })
 
-  route('GET', '/api/me', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me }) => {
+  route('GET', '/api/me', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me, at }) => {
     const c = (await db.query(`select name, type from companies where id = $1`, [me.actAs.companyId])).rows[0]
     const as = me.signedInAs && (await db.query(`select u.name, (select name from users where id = $2) staff from users u where u.id = $1`, [me.userId, me.signedInAs.staffId])).rows[0]
-    return { role: me.actAs.role, company: c, viewingAs: me.viewAs ? me.viewAs.companyId : null,
+    const terms = (await db.query(`select terms_version from users where id = $1`, [me.userId])).rows[0]
+    const current = await termsVersion(db, at)
+    return { role: me.actAs.role, company: c, viewingAs: me.viewAs ? me.viewAs.companyId : null, terms: { version: current, accepted: terms?.terms_version === current },
       signedInAs: me.signedInAs ? { user: as.name, staff: as.staff, until: me.signedInAs.until, companyId: me.companyId } : null }
   })
 
@@ -54,6 +67,15 @@ export function authRoutes(route: RouteFn) {
     await new Promise(r => setTimeout(r, Math.max(0, 300 - (Date.now() - started))))
     return { ok: true }
   }, { type: 'object', required: ['email'], additionalProperties: false, properties: { email: str } })
+  route('POST', '/api/auth/reset-with-code', 'public', async ({ db, at }, req, reply) => {
+    if (!rateLimit(`reset-code:${req.ip}`, 5, at.getTime()) || !rateLimit(`reset-code:${String(req.body.email).toLowerCase()}`, 5, at.getTime()))
+      return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
+    const started = Date.now()
+    try { await resetWithCode(db, req.body, at) }
+    finally { await new Promise(r => setTimeout(r, Math.max(0, 300 - (Date.now() - started)))) } // the same time either way
+    return { ok: true }
+  }, { type: 'object', required: ['email', 'code', 'password'], additionalProperties: false,
+    properties: { email: str, code: { type: 'string', maxLength: 10 }, password: { type: 'string', maxLength: 200 } } })
   route('POST', '/api/auth/reset', 'public', async ({ db, at }, req, reply) => {
     if (!rateLimit(`reset:${req.ip}`, 10, at.getTime())) return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
     await resetPassword(db, req.body, at)
@@ -75,6 +97,13 @@ export function authRoutes(route: RouteFn) {
     return { ok: true }
   }, { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 },
     emails: { type: 'object', additionalProperties: false, properties: { bids: { type: 'boolean' }, alerts: { type: 'boolean' }, messages: { type: 'boolean' }, news: { type: 'boolean' } } } } })
+  // Updated terms: accepted once per version, by the person themselves (not by Nashr signed in as them)
+  route('POST', '/api/me/accept-terms', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req) => {
+    if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')
+    await acceptTerms(db, me.userId, at, req.body.version)
+    return { ok: true }
+  }, { type: 'object', required: ['version'], additionalProperties: false, properties: { version: { type: 'string', maxLength: 40 } } })
+
   // Two-step sign-in for buyers and publishers (staff set theirs up when they join).
   route('POST', '/api/me/two-step/start', ['buyer', 'seller'], async ({ db, at, me }) => {
     if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')

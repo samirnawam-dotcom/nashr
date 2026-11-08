@@ -67,7 +67,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
 
     step = '3 accept invites'
     for (const [p, company] of [[pub, `Palm Radio ${run}`], [buy, `Desert Bank ${run}`], [buy2, `Oasis Retail ${run}`]]) {
-      await p.goto(links[company]); await p.fill('#pw', PW); await p.fill('#pw2', PW); await p.click('button:has-text("Continue")')
+      await p.goto(links[company]); await p.fill('#pw', PW); await p.fill('#pw2', PW); await p.check('label.check input'); await p.click('button:has-text("Continue")')
       await p.waitForSelector('h1:has-text("You are in")')
     }
     await signIn(pub, pubEmail); await pub.shot('f3-pub-first'); await signIn(buy, buyEmail); await buy.shot('f3-buy-first'); await signIn(buy2, buy2Email)

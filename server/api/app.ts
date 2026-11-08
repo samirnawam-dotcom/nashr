@@ -3,7 +3,7 @@ import type pg from 'pg'
 import { pool, tx } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { MarketError } from '../marketplace/market.js'
-import { session, type Session } from '../auth/access.js'
+import { session, termsVersion, type Session } from '../auth/access.js'
 import type { PaymentProvider } from '../payments/provider.js'
 import { authRoutes } from './routes-auth.js'
 import { buyerRoutes } from './routes-buyer.js'
@@ -18,6 +18,7 @@ import { coverRoutes } from './routes-covers.js'
 import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
+import { userRoutes } from './routes-users.js'
 import { supportRoutes } from './routes-support.js'
 import { insightRoutes } from './routes-insights.js'
 import { liveRoute } from './routes-live.js'
@@ -103,9 +104,10 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })
 
+  const TERMS_FREE = new Set(['/api/me/accept-terms', '/api/auth/logout'])
   // Steps only the account holder may take, even when Nashr is signed in as them: their password and email choices, paying by card, bank details.
   const OWN_STEPS = new Set(['PUT /api/me/password', 'PUT /api/me/account', 'POST /api/deals/:id/pay', 'POST /api/seller/payouts/connect',
-    'POST /api/me/two-step/start', 'POST /api/me/two-step/confirm', 'POST /api/me/two-step/off'])
+    'POST /api/me/two-step/start', 'POST /api/me/two-step/confirm', 'POST /api/me/two-step/off', 'POST /api/me/accept-terms'])
 
   /** Every route goes through here: authentication, role check, read-only enforcement while viewing as, one transaction. */
   function route(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, roles: Role[] | 'public', handler: Handler, schema?: object) {
@@ -128,6 +130,11 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
       if (s.signedInAs && OWN_STEPS.has(`${method} ${url}`))
         return reply.code(403).send({ error: 'Nashr is signed in as this user. The person must do this step themselves.' })
       return tx(async db => {
+        // a buyer or publisher who has not accepted the terms in force can look, not act (accepting them, and signing out, excepted)
+        if (method !== 'GET' && ['buyer', 'seller'].includes(s.role) && !s.signedInAs && !TERMS_FREE.has(url)) {
+          const u = (await db.query(`select terms_version from users where id = $1`, [s.userId])).rows[0]
+          if (u?.terms_version !== await termsVersion(db, at)) return reply.code(403).send({ error: 'Accept the updated terms of use to carry on.' })
+        }
         if (s.signedInAs) await audit(db, `admin:${s.signedInAs.staffId}`, method === 'GET' ? 'sign_in_as.page' : 'sign_in_as.action', 'user', s.userId,
           { method, url: req.url, company: s.companyId }, at) // every page read and every change, as view-as logs every page
         if (viewing && method === 'GET') await audit(db, `admin:${s.userId}`, 'view_as.page', 'company', actAs.companyId, { url: req.url }, at)
@@ -149,6 +156,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   messageRoutes(route)
   insightRoutes(route)
   supportRoutes(route)
+  userRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   liveRoute(app, clock)
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })

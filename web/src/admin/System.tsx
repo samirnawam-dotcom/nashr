@@ -75,7 +75,9 @@ function Staff({ isFounder }: { isFounder: boolean }) {
 
 type A = { at: string; actor: string; action: string; entity: string; entity_id: string; detail: unknown }
 export function AuditPage() {
-  const [f, setF] = useState({ entityId: '', actor: '', action: '', from: '', to: '' }), [draft, setDraft] = useState(f)
+  // a link can open the log already filtered (?entityId=… from a user or company page)
+  const start = () => { const q = new URLSearchParams(location.search); return { entityId: q.get('entityId') ?? '', actor: q.get('actor') ?? '', action: q.get('action') ?? '', from: '', to: '' } }
+  const [f, setF] = useState(start), [draft, setDraft] = useState(f)
   const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v)).toString()
   const { data, error } = useLoad<A[]>(`/admin/audit?${qs}`, [qs])
   const field = (k: keyof typeof f) => ({ value: draft[k], onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [k]: e.target.value }) })

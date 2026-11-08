@@ -35,15 +35,15 @@ async function signIn(email: string, totpCode?: string) {
 async function member(company: string, email: string, type: 'brand' | 'media_outlet'): Promise<Who> {
   const id = await tx(c => requestAccess(c, { name: 'Sara', email, phone: '+971500000000', role: 'Manager', company, companyType: type }, now))
   const { companyId, inviteToken } = await tx(c => approveAccess(c, id, 'admin:test', now))
-  await tx(c => acceptInvite(c, { token: inviteToken, password: PASS }, now))
+  await tx(c => acceptInvite(c, { token: inviteToken, password: PASS, acceptTerms: true }, now))
   return { cookie: await signIn(email), companyId }
 }
 async function staff(email: string, role: 'admin' | 'founder'): Promise<Who> {
   const { inviteToken, userId } = await tx(c => inviteStaff(c, { email, name: role, role }, 'system', now))
-  const first = await tx(c => acceptInvite(c, { token: inviteToken, password: PASS }, now))
+  const first = await tx(c => acceptInvite(c, { token: inviteToken, password: PASS, acceptTerms: true }, now))
   expect(first.needsTotp).toBe(true)
   const secret = (first as any).totpSecret
-  await tx(c => acceptInvite(c, { token: inviteToken, password: PASS, totpCode: totp(secret, now) }, now))
+  await tx(c => acceptInvite(c, { token: inviteToken, password: PASS, acceptTerms: true, totpCode: totp(secret, now) }, now))
   const companyId = (await pool.query(`select company_id from users where id = $1`, [userId])).rows[0].company_id
   return { cookie: await signIn(email, totp(secret, now)), companyId, secret } as Who & { secret: string }
 }
@@ -90,9 +90,9 @@ describe('invite-only access (scenario 14)', () => {
     const id = (await call(null, 'POST', '/api/access-requests', { name: 'Huda', email: 'huda@brandco.ae', phone: '+971501112222', role: 'Buyer', company: 'Brand Co', companyType: 'brand' })).json().id
     const link = (await call(admin, 'POST', `/api/admin/access-requests/${id}/approve`)).json().inviteLink
     const token = link.split('#')[1]
-    expect((await call(null, 'POST', '/api/auth/invite', { token, password: 'short' })).json().error).toMatch('12 characters')
-    expect((await call(null, 'POST', '/api/auth/invite', { token, password: PASS })).statusCode).toBe(200)
-    expect((await call(null, 'POST', '/api/auth/invite', { token, password: PASS })).json().error).toMatch('expired')
+    expect((await call(null, 'POST', '/api/auth/invite', { token, password: 'short', acceptTerms: true })).json().error).toMatch('12 characters')
+    expect((await call(null, 'POST', '/api/auth/invite', { token, password: PASS, acceptTerms: true })).statusCode).toBe(200)
+    expect((await call(null, 'POST', '/api/auth/invite', { token, password: PASS, acceptTerms: true })).json().error).toMatch('expired')
     expect((await call(null, 'POST', '/api/auth/login', { email: 'huda@brandco.ae', password: 'wrong password!!' })).json().error).toBe('Email or password is not right.')
     expect((await call(null, 'POST', '/api/auth/login', { email: 'omar@nashr.ae', password: PASS })).json().error).toMatch('authenticator')
   })
@@ -103,7 +103,7 @@ describe('invite-only access (scenario 14)', () => {
     expect((await call(admin, 'GET', '/api/admin/access-requests')).json().find((r: any) => r.id === id).invite_pending).toBe(true)
     const second = (await call(admin, 'POST', `/api/admin/access-requests/${id}/invite`)).json().inviteLink.split('#')[1]
     expect((await call(null, 'POST', '/api/auth/invite', { token: first, password: PASS })).json().error).toMatch('expired')
-    expect((await call(null, 'POST', '/api/auth/invite', { token: second, password: PASS })).statusCode).toBe(200)
+    expect((await call(null, 'POST', '/api/auth/invite', { token: second, password: PASS, acceptTerms: true })).statusCode).toBe(200)
     expect((await call(admin, 'GET', '/api/admin/access-requests')).json().find((r: any) => r.id === id).invite_pending).toBe(false)
     expect((await call(admin, 'POST', `/api/admin/access-requests/${id}/invite`)).json().error).toMatch('already set their password')
     expect((await call(buyerA, 'POST', `/api/admin/access-requests/${id}/invite`)).statusCode).toBe(403)
@@ -118,7 +118,7 @@ describe('invite-only access (scenario 14)', () => {
       const cookie = String(r.headers['set-cookie']).split(';')[0]
       expect((await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } })).json().role).toBe('founder')
       const link = (await call(founder, 'POST', '/api/admin/staff', { email: 'ops2@nashr.ae', name: 'Ops', role: 'admin' })).json().inviteLink
-      const accepted = (await call(null, 'POST', '/api/auth/invite', { token: link.split('#')[1], password: PASS })).json()
+      const accepted = (await call(null, 'POST', '/api/auth/invite', { token: link.split('#')[1], password: PASS, acceptTerms: true })).json()
       expect(accepted.needsTotp).toBe(false)
       expect((await call(null, 'POST', '/api/auth/login', { email: 'ops2@nashr.ae', password: PASS })).statusCode).toBe(200)
     } finally { delete process.env.STAFF_TWO_STEP }
@@ -414,6 +414,43 @@ describe('admin screens', () => {
     expect((await call(admin, 'GET', '/api/admin/disputes')).json()).toEqual([expect.objectContaining({ id: deal, status: 'disputed', reason: 'wrong_time', offer: { type: 'partial_refund', amount: AED(500) } })])
     expect((await call(admin, 'POST', `/api/admin/deals/${deal}/dispute`, { outcome: 'partial_refund', amount: AED(1_000) })).json().status).toBe('released')
     expect((await call(admin, 'GET', '/api/admin/disputes')).json()).toEqual([])
+  })
+
+  test('a dispute has a decision date; each side puts its case, sees the other\'s, and Nashr sees both', async () => {
+    const deal = await paidDeal()
+    now = T('2026-11-09T04:00:00Z')
+    for (const w of [buyerA, sellerX, admin]) w.cookie = await signIn(w === buyerA ? 'sara@northwind.ae' : w === sellerX ? 'sales@skyline.ae' : 'ops@nashr.ae', w === admin ? totp((admin as any).secret, now) : undefined)
+    buyerB.cookie = await signIn('ali@alfuttaim.ae')
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/proof`, { items: { as_run_log: 'log', audio_clip: 'clip' } })
+    await call(buyerA, 'POST', `/api/deals/${deal}/issues`, { reason: 'wrong_time', note: 'Aired at 08:30' })
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/statements`, { text: 'It aired an hour late, here is why.' })).json().error).toMatch('only while Nashr is deciding')
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/issues/offer`, { type: 'partial_refund', amount: AED(500) })
+    await call(buyerA, 'POST', `/api/deals/${deal}/issues/respond`, { accept: false })
+    const decideBy = (await pool.query(`select decide_by from deals where id = $1`, [deal])).rows[0].decide_by
+    expect(decideBy.getTime()).toBeGreaterThan(now.getTime())                                     // Nashr commits to a date, told to both
+    expect((await pool.query(`select count(*)::int n from notifications where deal_id = $1 and kind = 'dispute.opened' and data ? 'decideBy'`, [deal])).rows[0].n).toBe(2)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/statements`, { text: 'Call me on 050 123 4567 about it' })).json().error).toMatch('not allowed')
+    const { id: fileId } = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('%PDF-1.4 as-run log'), headers: { cookie: sellerX.cookie, 'content-type': 'application/pdf', 'x-file-name': 'log.pdf' } })).json()
+    expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/statements`, { text: 'The as-run log shows 07:30, as booked.', files: [`files/${fileId}`] })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/deals/${deal}/statements`, { text: 'Our monitoring recorded it at 08:30.' })).statusCode).toBe(200)
+    expect((await call(buyerB, 'POST', `/api/deals/${deal}/statements`, { text: 'Not my booking but writing anyway' })).statusCode).toBe(404)
+    const seen = (await call(buyerA, 'GET', `/api/deals/${deal}`)).json().dispute
+    expect(seen.statements.map((x: any) => x.side).sort()).toEqual(['buyer', 'publisher'])   // open both ways (same instant here: the test clock stands still)
+    expect((await app.inject({ method: 'GET', url: `/api/files/${fileId}`, headers: { cookie: buyerA.cookie } })).statusCode).toBe(200)
+    expect((await app.inject({ method: 'GET', url: `/api/files/${fileId}`, headers: { cookie: buyerB.cookie } })).statusCode).toBe(404)
+    expect((await call(admin, 'GET', `/api/admin/deals/${deal}`)).json().dispute.statements).toHaveLength(2)
+    expect((await call(admin, 'GET', '/api/admin/disputes')).json()[0]).toMatchObject({ statements: 2, decideBy: expect.any(String) })
+  })
+
+  test('terms: joining needs them accepted; a new version must be accepted before acting again', async () => {
+    expect((await call(buyerA, 'GET', '/api/me')).json().terms).toMatchObject({ accepted: true })
+    await pool.query(`insert into settings (key, value, valid_from, changed_by) values ('terms_version', '"2026-12-01"', '2000-01-03', 'test')`)
+    expect((await call(buyerA, 'GET', '/api/me')).json().terms).toEqual({ version: '2026-12-01', accepted: false })
+    expect((await call(buyerA, 'GET', '/api/slots')).statusCode).toBe(200)                    // can still look
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().error).toMatch('updated terms')
+    expect((await call(buyerA, 'POST', '/api/me/accept-terms', { version: '2026-11-09' })).json().error).toMatch('changed')
+    expect((await call(buyerA, 'POST', '/api/me/accept-terms', { version: '2026-12-01' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).statusCode).toBe(200)
   })
 
   test('accounts: suspend signs the user out; staff invites; payouts retry; settings history; directory outlets', async () => {
@@ -1439,6 +1476,19 @@ describe('two-step sign-in for buyers and publishers', () => {
     expect((await call(buyerA, 'POST', '/api/me/two-step/off', { password: 'wrong password!!', code: code(start.secret) })).json().error).toMatch('password')
   })
 
+  test('forgot password with two-step on: reset at once with email, a fresh code and a new password; same answer for any failure', async () => {
+    const { secret } = (await call(buyerA, 'POST', '/api/me/two-step/start')).json()
+    await call(buyerA, 'POST', '/api/me/two-step/confirm', { code: code(secret) })
+    const fresh = code(secret, new Date(now.getTime() + 30_000))
+    const wrongEmail = (await call(null, 'POST', '/api/auth/reset-with-code', { email: 'nobody@northwind.ae', code: fresh, password: 'a brand new long password' })).json().error
+    const wrongCode = (await call(null, 'POST', '/api/auth/reset-with-code', { email: 'sara@northwind.ae', code: '000000', password: 'a brand new long password' })).json().error
+    expect(wrongEmail).toBe(wrongCode)                                              // nothing learned about who has an account
+    expect((await call(null, 'POST', '/api/auth/reset-with-code', { email: 'sara@northwind.ae', code: fresh, password: 'a brand new long password' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/me')).statusCode).toBe(401)              // signed out everywhere
+    expect((await call(null, 'POST', '/api/auth/reset-with-code', { email: 'sara@northwind.ae', code: fresh, password: 'another long password!!' })).statusCode).toBe(400) // a code works once
+    expect((await pool.query(`select count(*)::int n from notifications where kind = 'access.password_reset_self' and company_id = $1`, [buyerA.companyId])).rows[0].n).toBe(1)
+  })
+
   test('with the founder\'s setting on, paying and connecting payouts need it; Nashr can turn it off for a lost phone', async () => {
     await pool.query(`insert into settings (key, value, valid_from, changed_by) values ('two_step_for_money', 'true', '2000-01-03', 'test')`)
     const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
@@ -1476,6 +1526,39 @@ describe('pre-launch review fixes', () => {
     const reply: any = { header: () => reply }
     const body = sendCsv(reply, 'x', ['a'], [['\t=1+1'], ['=cmd'], ['plain']])
     expect(body).toContain(`"'\t=1+1"`); expect(body).toContain(`"'=cmd"`); expect(body).toContain('"plain"')
+  })
+})
+
+describe('users and tracking for Nashr', () => {
+  test('every sign-in attempt is recorded; ten failures lock the account for 15 minutes', async () => {
+    // guesses spread over ten addresses (the per-address limits never trip): the account itself locks
+    const from = (n: number, password: string) => app.inject({ method: 'POST', url: '/api/auth/login', remoteAddress: `10.0.0.${n}`, payload: { email: 'ali@alfuttaim.ae', password } })
+    for (let i = 1; i <= 10; i++) expect((await from(i, 'wrong password ' + i)).statusCode).toBe(400)
+    const locked = await from(11, PASS) // even the right password waits
+    expect([locked.statusCode, locked.json().error]).toEqual([429, expect.stringMatching('15 minutes')])
+    const sec = (await call(admin, 'GET', '/api/admin/security')).json()
+    expect(sec.locked).toEqual([expect.objectContaining({ email: 'ali@alfuttaim.ae', failures: 10 })])
+    expect(sec.failed_24h).toBeGreaterThanOrEqual(10)
+  })
+
+  test('find users, see one user\'s sessions, sign-ins and actions, sign them out everywhere, add a colleague', async () => {
+    const list = (await call(admin, 'GET', '/api/admin/users?q=northwind')).json()
+    expect(list.items.map((u: any) => u.email)).toContain('sara@northwind.ae')
+    expect((await call(buyerA, 'GET', '/api/admin/users')).statusCode).toBe(403)
+    const sara = list.items.find((u: any) => u.email === 'sara@northwind.ae')
+    const one = (await call(admin, 'GET', `/api/admin/users/${sara.id}`)).json()
+    expect(one.sessions.length).toBeGreaterThan(0)
+    expect(one.signIns[0]).toMatchObject({ success: true })
+    expect((await call(admin, 'POST', `/api/admin/users/${sara.id}/sign-out`, { reason: 'x' })).json().error).toMatch('why')
+    expect((await call(admin, 'POST', `/api/admin/users/${sara.id}/sign-out`, { reason: 'Laptop reported stolen' })).json().sessions).toBeGreaterThan(0)
+    expect((await call(buyerA, 'GET', '/api/me')).statusCode).toBe(401)
+    const staffId = (await pool.query(`select id from users where email = 'omar@nashr.ae'`)).rows[0]?.id
+    if (staffId) expect((await call(admin, 'POST', `/api/admin/users/${staffId}/sign-out`, { reason: 'Testing the founder rule' })).json().error).toMatch('founder')
+    const added = (await call(admin, 'POST', `/api/admin/companies/${buyerA.companyId}/users`, { name: 'Omar K', email: 'omar.k@northwind.ae' })).json()
+    expect(added.inviteLink).toMatch(/^\/invite#/)
+    expect((await call(admin, 'POST', `/api/admin/companies/${buyerA.companyId}/users`, { name: 'Again', email: 'omar.k@northwind.ae' })).json().error).toMatch('already')
+    expect((await call(null, 'POST', '/api/auth/invite', { token: added.inviteLink.split('#')[1], password: PASS, acceptTerms: true })).statusCode).toBe(200)
+    expect((await call(admin, 'GET', '/api/admin/users?format=csv')).body).toContain('omar.k@northwind.ae')
   })
 })
 

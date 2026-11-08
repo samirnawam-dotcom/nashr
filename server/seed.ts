@@ -174,5 +174,7 @@ await pool.query(`insert into access_requests (name, email, phone, role, company
 await pool.query(`insert into quote_requests (outlet_id, buyer_id, message, created_at) select id, $1, 'Full page in the first week of December, banking section.', now() from outlets where name = 'Arabian Business'`, [buyer])
 
 const n = (await pool.query(`select count(*)::int n from slots`)).rows[0].n
+// demo accounts have accepted the current terms (real people accept them when they join, and again when they change)
+await pool.query(`update users set terms_version = (select value #>> '{}' from settings where key = 'terms_version' order by valid_from desc limit 1), terms_accepted_at = now()`)
 console.log(`Seeded ${n} slots from ${from} and ${booked} past bookings. Sign in as demo@northwind.ae (buyer), sales@skyline.ae (seller) or ops@nashr.ae / omar@nashr.ae (staff), password ${PASSWORD}.\nStaff authenticator key (development only): ${DEMO_TOTP}`)
 await pool.end()

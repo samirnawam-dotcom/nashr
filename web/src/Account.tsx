@@ -18,8 +18,32 @@ export function ForgotPassword() {
     {!sent && <><div className="field"><label htmlFor="fe">{t('Work email')}</label><input id="fe" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required /></div>
       {error && <p className="auth-error" role="alert">{error}</p>}
       <button className="btn primary lg auth-submit" disabled={busy}>{busy ? t('Sending…') : t('Send me a reset link')}</button></>}
+    {!sent && <WithCode />}
     <div className="auth-alt"><a className="btn auth-alt-btn" href="/sign-in">{t('Back to sign in')}</a></div>
   </form></AuthShell>
+}
+
+/** Two-step sign-in on? Reset at once with a code from the authenticator app, no waiting for a link. */
+function WithCode() {
+  const [open, setOpen] = useState(false), [f, setF] = useState({ email: '', code: '', pw: '', pw2: '' })
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [done, setDone] = useState(false)
+  async function go() {
+    setError('')
+    if (f.pw !== f.pw2) return setError(t('The passwords do not match.'))
+    setBusy(true)
+    try { await api('/auth/reset-with-code', { method: 'POST', body: { email: f.email, code: f.code, password: f.pw } }); setDone(true) }
+    catch (err: any) { setError(err.message) } finally { setBusy(false) }
+  }
+  if (done) return <p className="ok" role="status">{t('Password changed. Sign in with your new password. You have been signed out everywhere else.')}</p>
+  if (!open) return <p className="small auth-code-option">{t('Using two-step sign-in?')} <button type="button" className="linkish" onClick={() => setOpen(true)}>{t('Reset now with a code from your authenticator app')}</button></p>
+  return <fieldset className="auth-code-reset"><legend>{t('Reset now with your authenticator app')}</legend>
+    <div className="field"><label htmlFor="rc-e">{t('Work email')}</label><input id="rc-e" type="email" autoComplete="username" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} /></div>
+    <div className="field"><label htmlFor="rc-c">{t('Code from your authenticator app')}</label><input id="rc-c" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={f.code} onChange={e => setF({ ...f, code: e.target.value.replace(/\D/g, '') })} /></div>
+    <div className="field"><label htmlFor="rc-p">{t('New password')}</label><input id="rc-p" type="password" autoComplete="new-password" minLength={12} value={f.pw} onChange={e => setF({ ...f, pw: e.target.value })} /></div>
+    <div className="field"><label htmlFor="rc-p2">{t('Repeat password')}</label><input id="rc-p2" type="password" autoComplete="new-password" value={f.pw2} onChange={e => setF({ ...f, pw2: e.target.value })} /></div>
+    {error && <p className="auth-error" role="alert">{error}</p>}
+    <button type="button" className="btn primary" disabled={busy || !f.email || f.code.length !== 6 || f.pw.length < 12} onClick={go}>{t('Save new password')}</button>
+  </fieldset>
 }
 
 /** The link from Nashr: choose a new password. Every other session is signed out. */

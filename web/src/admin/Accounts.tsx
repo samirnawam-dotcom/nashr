@@ -77,9 +77,9 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
           <button className="btn" disabled={busy || !(Number(rate) > 0 && Number(rate) < 50)} onClick={() => act('PUT', `/admin/settings/commission:${c.id}`, { value: Math.round(Number(rate) * 100) }, t("Commission saved. It applies to deals accepted from now on."))}>{t("Set founding commission")}</button>
           <span className="small muted">{t("Founder only. Deals already accepted keep their rate.")}</span></div>}
       </section>}
-      <section className="card pad section"><h2>{t("Users")}</h2>
+      <section className="card pad section" id="users"><h2>{t("Users")}</h2>
         <div className="table-wrap"><table className="table"><tbody>{c.users.map(u => <tr key={u.id}>
-          <td><b>{u.name}</b><div className="small muted"><bdi>{u.email}</bdi>{u.phone ? <> · <bdi>{u.phone}</bdi></> : ''}</div></td><td className="small">{t(u.role)}{u.twoFactor && <div className="muted">{t('Two-step on')}</div>}</td>
+          <td><b><a href={`/users/${u.id}`}>{u.name}</a></b><div className="small muted"><bdi>{u.email}</bdi>{u.phone ? <> · <bdi>{u.phone}</bdi></> : ''}</div></td><td className="small">{t(u.role)}{u.twoFactor && <div className="muted">{t('Two-step on')}</div>}</td>
           <td className={`small ${u.status === 'suspended' ? 'outbid' : ''}`}>{t(u.status)}{u.resetRequested && <div className="soon">{t('Asked for a password reset')}</div>}
             {reset[u.id] && <div className="small">{t('Reset link (valid 24 hours, send it to {email}):', { email: u.email })}<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + reset[u.id]} onFocus={e => e.target.select()} /></div>}</td>
           <td className="r">{u.status === 'active' && <button className="btn" disabled={busy} onClick={() => confirm(t('Suspend {name}? They are signed out at once.', { name: u.name })) && act('POST', `/admin/users/${u.id}/status`, { status: 'suspended' }, t('{name} suspended.', { name: u.name }))}>{t("Suspend")}</button>}
@@ -96,6 +96,7 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
               <p className="small muted">{t('For one hour you act as this person. Every change is logged under your name. Their password, email choices, card payments and bank details stay theirs.')}</p>
               {asError && <p className="error">{asError}</p>}
               <button className="btn primary" disabled={why.trim().length < 5} onClick={() => signInAs(u)}>{t('Sign in as {name}', { name: u.name.split(' ')[0] })}</button></div>}</td></tr>)}</tbody></table></div></section>
+      {c.type !== 'nashr' && <AddColleague companyId={c.id} onDone={load} />}
       {c.outlets.length > 0 && <section className="card pad section"><h2>{t("Outlets")}</h2>
         <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{t(o.channel)}</span><span className="row-flex"><OutletMark name={o.name} url={o.logoUrl} size={28} /><b>{o.name}</b> · <span className="small muted">{o.sectors.map(s => t(s)).join(sep)}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>{t("Recent deals")}</h2>
@@ -104,3 +105,21 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
     </main>
   )
 }
+
+/** Add a colleague to this company: Nashr creates the account and hands over an invite link (they set a password and accept the terms). */
+function AddColleague({ companyId, onDone }: { companyId: string; onDone: () => void }) {
+  const [f, setF] = useState({ name: '', email: '' }), [link, setLink] = useState(''), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  async function add(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setError(''); setLink('')
+    try { const r = await api<{ inviteLink: string }>(`/admin/companies/${companyId}/users`, { method: 'POST', body: { name: f.name.trim(), email: f.email.trim() } }); setLink(r.inviteLink); setF({ name: '', email: '' }); onDone() }
+    catch (err: any) { setError(err.message) } finally { setBusy(false) }
+  }
+  return <form className="card pad section form" onSubmit={add}><h2>{t('Add a colleague')}</h2>
+    <div className="grid2"><div className="field"><label htmlFor="ac-n">{t('Name')}</label><input id="ac-n" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} required /></div>
+      <div className="field"><label htmlFor="ac-e">{t('Work email')}</label><input id="ac-e" type="email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} required /></div></div>
+    <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy}>{t('Create and get the invite link')}</button>
+    {error && <p className="error" role="alert">{error}</p>}
+    {link && <p className="ok">{t('Invite link (send it to them; it works once):')} <input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + link} onFocus={e => e.target.select()} /></p>}
+  </form>
+}
+

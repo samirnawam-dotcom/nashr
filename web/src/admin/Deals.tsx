@@ -53,7 +53,7 @@ export function AdminDealsPage() {
   )
 }
 
-type File = { rating: { id: string; score: number; comment: string | null; hidden: boolean } | null; id: string; ref: string; status: string; kind: string; outlet: string; channel: string; label: string; startsAt: string; creativeDueAt: string
+type File = { dispute?: { decideBy: string | null; statements: { side: string; text: string; by: string; at: string; files: string[] }[] } | null; chargeback?: string | null; rating: { id: string; score: number; comment: string | null; hidden: boolean } | null; id: string; ref: string; status: string; kind: string; outlet: string; channel: string; label: string; startsAt: string; creativeDueAt: string
   buyer: { id: string; name: string }; seller: { id: string; name: string }; brief: any; nextDeadlineAt: string | null; extraCreativeRounds: number; ratesFrozen: boolean
   money: { price: number; mediaVat: number; buyerPays: number; commissionBp: number | null; fee: number; feeVat: number; payout: number; held: number }
   events: { at: string; event: string; from_status: string | null; to_status: string; actor: string; note: string | null }[]
@@ -139,7 +139,7 @@ export function AdminDealPage({ id }: { id: string }) {
 }
 
 type Dispute = { id: string; ref: string; status: string; amount: number; dueAt: string | null; buyer: string; seller: string; outlet: string; label: string
-  reason: string | null; note: string | null; offer: any; openedAt: string | null }
+  reason: string | null; note: string | null; offer: any; openedAt: string | null; decideBy: string | null; chargeback: string | null; statements: number }
 
 export function DisputesPage() {
   const { data, error } = useLoad<Dispute[]>('/admin/disputes')
@@ -152,7 +152,9 @@ export function DisputesPage() {
           <td className="num">{r.ref}</td><td><b>{r.outlet}</b> · {r.label}<div className="small muted num">{money(r.amount)}</div></td><td className="small">{r.buyer}<br />{r.seller}</td>
           <td className="small"><b>{r.reason && t(r.reason.replace(/_/g, ' '))}</b><div className="muted">{r.note}</div></td>
           <td className="small">{!r.offer ? '—' : r.offer.type === 'partial_refund' ? t('Refund {amount}', { amount: money(r.offer.amount) }) : t(r.offer.type.replace(/_/g, ' '))}</td>
-          <td className="small num">{r.status === 'disputed' ? t('Nashr to decide') : when(r.dueAt)}</td><td><DealStatus s={r.status} /></td></tr>)}</tbody></table></div>}
+          <td className="small num">{r.status !== 'disputed' ? when(r.dueAt) : r.chargeback === 'open' ? t('With the bank (chargeback)')
+            : r.decideBy ? <>{t('Decide by {when}', { when: when(r.decideBy) })}{new Date(r.decideBy) < new Date() && <b className="outbid"> · {t('overdue')}</b>}</> : t('Nashr to decide')}
+            {r.statements > 0 && <div className="muted">{t('{n} statements', { n: r.statements })}</div>}</td><td><DealStatus s={r.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )
 }
@@ -196,6 +198,11 @@ function CaseFile({ d, busy, act }: { d: File; busy: boolean; act: (m: string, p
         {issue?.offer && <p className="case-offer">{issue.offer.type === 'partial_refund' ? t('Offered a refund of {amount}', { amount: money(issue.offer.amount) })
           : issue.offer.type === 'make_good' ? t('Offered to run it again on {when}', { when: when(issue.offer.runAt) }) : t('Sent corrected proof')} · <span className="muted">{t('the buyer turned it down')}</span></p>}</div>
     </div>
+    {d.chargeback === 'open' && <p className="warn">{t("The buyer's bank is deciding a chargeback on this payment. Refund and release wait for its decision.")}</p>}
+    {d.dispute?.decideBy && <p className="small">{t('Decide by {when}', { when: when(d.dispute.decideBy) })}{new Date(d.dispute.decideBy) < new Date() && <b className="outbid"> · {t('overdue')}</b>}</p>}
+    {!!d.dispute?.statements.length && <><h3>{t("Each side's case")}</h3><ul className="statements">{d.dispute.statements.map((x, i) => <li key={i} className={x.side === 'buyer' ? '' : 'mine'}>
+      <span className="small muted">{x.side === 'buyer' ? t('The buyer') : t('The publisher')} · {x.by} · {when(x.at)}</span><p dir="auto">{x.text}</p>
+      {x.files.length > 0 && <p className="small">{x.files.map((f, n) => <a key={f} href={`/api/files/${f}`}>{t('File {n}', { n: n + 1 })}</a>)}</p>}</li>)}</ul></>}
     {d.brief && <details><summary>{t('The brief both sides agreed to')}</summary><Brief b={d.brief} /></details>}
     <div className="form">
       <div className="field"><label htmlFor="out">{t("Outcome")}</label><select id="out" value={outcome} onChange={e => setOutcome(e.target.value)}><option value="">{t("Choose…")}</option>

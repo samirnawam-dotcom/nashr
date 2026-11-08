@@ -27,6 +27,7 @@ export const PAGES: Record<string, Meta> = {
   },
   '/terms': { title: 'Terms of use | Nashr', description: 'The terms for buying and selling advertising on Nashr, the UAE media marketplace.' },
   '/privacy': { title: 'Privacy policy | Nashr', description: 'What personal data Nashr collects, why, and your rights under the UAE Personal Data Protection Law.' },
+  '/dispute-policy': { title: 'Disputes and payment protection | Nashr', description: 'How an issue between a buyer and a publisher is resolved on Nashr: the payment stays held, each side puts its case, and Nashr decides within five working days.' },
   '/refunds': { title: 'Refunds and cancellations | Nashr', description: 'How cancellations and refunds work on Nashr: free within 24 hours, then a 15% fee, and full refunds if the ad does not run.' },
   '/sign-in': { title: 'Sign in | Nashr', description: 'Sign in to Nashr.', noindex: true },
 }

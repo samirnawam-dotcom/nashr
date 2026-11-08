@@ -9,7 +9,7 @@ import { minNextBid } from '../core/money.js'
 import { audit } from '../core/audit.js'
 import { setting } from '../core/settings.js'
 import { approve, buyerCancelTerms, cancelByBuyer, confirmPayment } from '../payments/payments.js'
-import { reportIssue, respondToOffer } from '../fulfilment/issues.js'
+import { addStatement, disputeView, reportIssue, respondToOffer } from '../fulfilment/issues.js'
 import { uploadCreative } from '../fulfilment/creative.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
 import { checklistFor } from '../fulfilment/proof.js'
@@ -152,6 +152,7 @@ export function buyerRoutes(route: RouteFn) {
         items: checklistFor(d.channel, (await db.query(`select brief from bids where id = $1`, [d.bid_id])).rows[0]?.brief)
           .map(i => ({ key: i.key, label: i.label, value: proof.items[i.key] ?? null })) } : null,
       issue: issues[0] ? { reason: issues[0].reason, note: issues[0].note, offer: issues[0].offer, status: issues[0].status, openedAt: issues[0].opened_at } : null,
+      dispute: issues[0] || d.decide_by ? await disputeView(db, d.id) : null,
       prerun: prerun[0] ? { requestedAt: prerun[0].requested_at, confirmedAt: prerun[0].buyer_confirmed_at } : null,
       documents: docs.map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at })),
       rating: await dealRating(db, d.id) }
@@ -195,6 +196,12 @@ export function buyerRoutes(route: RouteFn) {
     await cancelByBuyer(db, req.params.id, me.actAs.companyId, at)
     return buyerDeal(await ownDeal(db, req.params.id, me.actAs.companyId))
   })
+
+  route('POST', '/api/deals/:id/statements', BUYER, async ({ db, at, me }, req) => {
+    await addStatement(db, { dealId: req.params.id, companyId: me.actAs.companyId, userId: me.userId, text: req.body.text, files: req.body.files }, at)
+    return { ok: true }
+  }, { type: 'object', required: ['text'], additionalProperties: false, properties: { text: { type: 'string', maxLength: 4000 },
+    files: { type: 'array', maxItems: 10, items: { type: 'string', pattern: '^files/[0-9a-f-]{36}$' } } } })
 
   route('POST', '/api/deals/:id/issues', BUYER, async ({ db, at, me }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)

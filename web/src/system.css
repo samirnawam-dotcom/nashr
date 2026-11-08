@@ -703,3 +703,25 @@ a.avatar { text-decoration: none; }
 .two-step .key code { display: inline-block; font-size: 18px; letter-spacing: .08em; padding: 8px 12px; border-radius: var(--radius); background: var(--surface-2, #f3f4f6); word-spacing: .3em; }
 .two-step .code-input { display: block; margin-top: 6px; width: 9ch; font-size: 20px; letter-spacing: .2em; text-align: center; }
 .two-step .warn { margin: 0; }
+
+/* How an issue is being resolved: the held money first, then the steps as a sequence, the current one marked in words and shape. */
+.resolution .held { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; border-radius: var(--radius); background: var(--green-1); color: var(--ink); }
+.res-steps { list-style: none; counter-reset: step; margin: 14px 0; padding: 0; display: grid; gap: 10px; }
+.res-steps li { counter-increment: step; display: grid; gap: 2px; padding-inline-start: 38px; position: relative; }
+.res-steps li::before { content: counter(step); position: absolute; inset-inline-start: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700; border: 2px solid var(--line, #d1d5db); color: var(--muted); background: var(--surface, #fff); }
+.res-steps li.done::before { content: '✓'; border-color: var(--green); background: var(--green); color: #fff; }
+.res-steps li.now::before { border-color: var(--amber); color: var(--ink); box-shadow: 0 0 0 3px var(--amber-1); }
+.res-steps li.next b { color: var(--muted); font-weight: 500; }
+.resolution h3 { font-size: 15px; margin: 18px 0 8px; }
+.statements { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 10px; }
+.statements li { padding: 10px 14px; border-radius: var(--radius); background: var(--surface-2, #f3f4f6); border-inline-start: 3px solid var(--line, #d1d5db); }
+.statements li.mine { border-inline-start-color: var(--green); }
+.statements p { margin: 4px 0 0; white-space: pre-line; }
+.statements a + a { margin-inline-start: 10px; }
+
+/* Forgot password: the authenticator option sits under the link request, as a second way, not a competing button. */
+.auth-code-option { margin: 14px 0 0; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent, var(--green)); text-decoration: underline; cursor: pointer; }
+.auth-code-reset { margin: 16px 0 0; padding: 14px 16px; border: 1px solid var(--line, #e5e7eb); border-radius: var(--radius); display: grid; gap: 10px; }
+.auth-code-reset legend { font-weight: 600; padding: 0 6px; }
