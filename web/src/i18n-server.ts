@@ -21,9 +21,9 @@ export const SERVER_AR: Record<string, string> = {
   'Enter the code from your authenticator app.': 'أدخل الرمز من تطبيق المصادقة.',
   // Marketplace
   'This market is coming soon. Join the waiting list to hear when it opens.': 'هذا السوق قادم قريبًا. انضم إلى قائمة الانتظار لتعرف موعد افتتاحه.', 'Choose one of your active campaigns.': 'اختر إحدى حملاتك النشطة.',
-  'Bidding is closed for this slot.': 'أُغلقت المزايدة على هذه المساحة.', 'You are already the top bidder at this amount.': 'أنت بالفعل صاحب أعلى مزايدة بهذا المبلغ.', 'Your bid must be at least {}.': 'يجب ألا تقل مزايدتك عن {1} درهم.',
+  'Bidding is closed for this slot.': 'أُغلقت المزايدة على هذه المساحة.', 'You are already the top bidder at this amount.': 'أنت بالفعل صاحب أعلى مزايدة بهذا المبلغ.', 'Your bid must be at least {}.': 'يجب ألا تقل مزايدتك عن {1}.',
   'Buy now is not available for this slot.': 'الشراء الفوري غير متاح لهذه المساحة.', 'You already have a buy-now request on this slot.': 'لديك بالفعل طلب شراء فوري على هذه المساحة.',
-  'This slot is not a quick sale.': 'هذه المساحة ليست للبيع السريع.', 'Offers cannot be below {}.': 'لا يمكن أن تقل العروض عن {1} درهم.', 'This interest can no longer be accepted.': 'لم يعد ممكنًا قبول هذا الاهتمام.',
+  'This slot is not a quick sale.': 'هذه المساحة ليست للبيع السريع.', 'Offers cannot be below {}.': 'لا يمكن أن تقل العروض عن {1}.', 'This interest can no longer be accepted.': 'لم يعد ممكنًا قبول هذا الاهتمام.',
   'A reason is required to decline.': 'يلزم ذكر سبب للرفض.', 'This bid cannot be chosen.': 'لا يمكن اختيار هذه المزايدة.',
   'You can save up to {} searches. Delete one to save another.': 'يمكنك حفظ {1} عمليات بحث كحد أقصى. احذف واحدة لتحفظ أخرى.',
   // Booking brief

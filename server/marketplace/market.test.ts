@@ -33,9 +33,9 @@ describe('bidding', () => {
   })
 
   test('floor and the 3% minimum step', async () => {
-    await expect(bid(A, 3_000)).rejects.toThrow('at least 3500')
+    await expect(bid(A, 3_000)).rejects.toThrow('at least AED 3,500.')
     await bid(A, 4_200)
-    await expect(bid(B, 4_300)).rejects.toThrow('at least 4326')
+    await expect(bid(B, 4_300)).rejects.toThrow('at least AED 4,326.')
     expect((await bid(B, 4_326)).leading).toBe(true)
   })
 
@@ -159,7 +159,7 @@ describe('buy-now and quick sale', () => {
 
   test('scenario 22: two buyers show interest, the seller accepts the second; nothing is charged before payment', async () => {
     await pool.query(`update slots set sale_type = 'quick_sale' where id = $1`, [b2.id])
-    await expect(tx(c => showInterest(c, { slotId: b2.id, buyerId: A, amount: AED(3_000), brief: BRIEF }, now))).rejects.toThrow('cannot be below')
+    await expect(tx(c => showInterest(c, { slotId: b2.id, buyerId: A, amount: AED(3_000), brief: BRIEF }, now))).rejects.toThrow(/cannot be below AED \d{1,3}(,\d{3})*\./)
     const first = await tx(c => showInterest(c, { slotId: b2.id, buyerId: A, brief: BRIEF }, now))
     const second = await tx(c => showInterest(c, { slotId: b2.id, buyerId: B, amount: AED(3_900), brief: BRIEF }, now))
     const d = await tx(c => acceptInterest(c, second.id, 'seller', h(now, 2)))

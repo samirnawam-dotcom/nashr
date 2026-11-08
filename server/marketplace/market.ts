@@ -8,6 +8,9 @@ import { notify } from '../core/notify.js'
 
 export class MarketError extends Error {}
 
+/** An amount in fils as people read it in a message: "AED 4,300", "AED 4,300.50". */
+const aed = (fils: number) => `AED ${(fils / 100).toLocaleString('en-US', { minimumFractionDigits: fils % 100 ? 2 : 0, maximumFractionDigits: 2 })}`
+
 const lockSlot = (db: Db, id: string) => one(db, `select * from slots where id = $1 for update`, [id])
 
 /** A brief is required with a buyer's first bid, request or interest on a slot (brief section 10). */
@@ -57,12 +60,12 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
   if (slot.top_buyer_id === a.buyerId) { // the leader raises their maximum and/or their visible bid
     if (a.amount <= slot.top_amount && max <= slot.top_max) throw new MarketError('You are already the top bidder at this amount.')
     if (a.amount > slot.top_amount && a.amount < minNextBid(slot.top_amount, step))
-      throw new MarketError(`Your bid must be at least ${minNextBid(slot.top_amount, step) / 100}.`)
+      throw new MarketError(`Your bid must be at least ${aed(minNextBid(slot.top_amount, step))}.`)
     const amount = Math.max(a.amount, slot.top_amount)
     const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount, max: Math.max(max, slot.top_max), brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount, buyerId: a.buyerId, max: Math.max(max, slot.top_max) }
   } else if (a.amount < (slot.top_amount ? minNextBid(slot.top_amount, step) : slot.starting_price)) {
-    throw new MarketError(`Your bid must be at least ${(slot.top_amount ? minNextBid(slot.top_amount, step) : slot.starting_price) / 100}.`)
+    throw new MarketError(`Your bid must be at least ${aed(slot.top_amount ? minNextBid(slot.top_amount, step) : slot.starting_price)}.`)
   } else if (!slot.top_amount) {
     const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount: a.amount, buyerId: a.buyerId, max }
@@ -107,7 +110,7 @@ export async function showInterest(db: Db, a: { slotId: string; buyerId: string;
   await requireBrief(db, slot, a.buyerId, a.brief)
   await checkCampaign(db, a.campaignId, a.buyerId)
   const amount = a.amount ?? slot.starting_price
-  if (amount < slot.starting_price) throw new MarketError(`Offers cannot be below ${slot.starting_price / 100}.`)
+  if (amount < slot.starting_price) throw new MarketError(`Offers cannot be below ${aed(slot.starting_price)}.`)
   return insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief, campaignId: a.campaignId }, at)
 }
 
