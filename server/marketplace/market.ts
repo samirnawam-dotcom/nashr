@@ -5,6 +5,7 @@ import { minNextBid } from '../core/money.js'
 import { openDeal, transition } from './deals.js'
 import { brandSafetyProblem, briefProblems } from '../fulfilment/brief.js'
 import { notify } from '../core/notify.js'
+import { signalSlot } from '../core/live.js'
 import { issueOrder } from '../documents/documents.js'
 
 export class MarketError extends Error {}
@@ -12,7 +13,8 @@ export class MarketError extends Error {}
 /** An amount in fils as people read it in a message: "AED 4,300", "AED 4,300.50". */
 const aed = (fils: number) => `AED ${(fils / 100).toLocaleString('en-US', { minimumFractionDigits: fils % 100 ? 2 : 0, maximumFractionDigits: 2 })}`
 
-const lockSlot = (db: Db, id: string) => one(db, `select * from slots where id = $1 for update`, [id])
+// Every change to a slot goes through this lock, so it is also where open pages are told the slot changed (after commit).
+const lockSlot = (db: Db, id: string) => { signalSlot(id); return one(db, `select * from slots where id = $1 for update`, [id]) }
 
 /** A brief is required with a buyer's first bid, request or interest on a slot (brief section 10). */
 async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown) {
@@ -101,6 +103,36 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
   return { leading, topAmount: top.amount, yourMax: leading ? top.max : max, minNextBid: minNextBid(top.amount, step),
     // the bid went in but another buyer's auto-bid answered at once: the screen says so instead of "your bid is in"
     beatenByAutoBid: !leading }
+}
+
+/**
+ * Nashr voids a bid (SPEC G11: bids are binding, but the admin can void one with a reason, audited). The auction is worked out
+ * again from the bids that remain, with the same proxy rule: the highest maximum leads one step above the next buyer's maximum,
+ * never below its own bid.
+ */
+export async function voidBid(db: Db, bidId: string, reason: string, actor: string, at: Date) {
+  if ((reason ?? '').trim().length < 5) throw new MarketError('Write the reason the buyer will see.')
+  const { slot_id } = await one(db, `select slot_id from bids where id = $1`, [bidId])
+  const slot = await lockSlot(db, slot_id)
+  const bid = await one(db, `select * from bids where id = $1 for update`, [bidId])
+  if (slot.status !== 'open' || slot.sale_type !== 'auction' || !['active', 'outbid'].includes(bid.status) || !['bid', 'auto'].includes(bid.kind))
+    throw new MarketError('Only a live bid on an open auction can be voided.')
+  // the buyer's whole position on this slot goes: their bids and any auto-bid made for them
+  await db.query(`update bids set status = 'withdrawn' where slot_id = $1 and buyer_id = $2 and status in ('active', 'outbid') and kind in ('bid', 'auto')`, [slot.id, bid.buyer_id])
+  const step = await setting<number>(db, 'min_step_bp', at)
+  const per = (await db.query(`select buyer_id, max(coalesce(max_amount, amount))::bigint top_max, max(amount) filter (where kind = 'bid')::bigint own, min(seq) first_seq
+      from bids where slot_id = $1 and status in ('active', 'outbid') and kind in ('bid', 'auto') group by buyer_id order by top_max desc, first_seq`, [slot.id])).rows
+  if (!per.length) await db.query(`update slots set top_bid_id = null, top_amount = null, top_buyer_id = null, top_max = null where id = $1`, [slot.id])
+  else {
+    const [lead, next] = per, leadMax = Number(lead.top_max), own = Number(lead.own ?? lead.top_max)
+    const price = next ? Math.min(leadMax, Math.max(own, minNextBid(Number(next.top_max), step))) : own
+    const top = await insertBid(db, slot, { buyerId: lead.buyer_id, kind: 'auto', amount: price, max: leadMax }, at)
+    await db.query(`update bids set status = case when buyer_id = $2 then 'active' else 'outbid' end where slot_id = $1 and status in ('active', 'outbid') and kind in ('bid', 'auto')`, [slot.id, lead.buyer_id])
+    await db.query(`update slots set top_bid_id = $2, top_amount = $3, top_buyer_id = $4, top_max = $5 where id = $1`, [slot.id, top.id, price, lead.buyer_id, leadMax])
+  }
+  const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  await notify(db, bid.buyer_id, 'bid.voided', null, { slotId: slot.id, outlet, label: slot.label, reason: reason.trim() }, at)
+  await audit(db, actor, 'bid.voided', 'slot', slot.id, { bidId, buyer: bid.buyer_id, reason: reason.trim() }, at)
 }
 
 /** Buy-now is a request: nothing is charged, the seller must accept (brief section 9). */

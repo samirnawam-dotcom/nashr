@@ -1,12 +1,13 @@
 import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
 import { audit } from '../core/audit.js'
+import { checklistFor } from '../fulfilment/proof.js'
 import { split } from '../core/money.js'
 import { balance } from '../payments/ledger.js'
 import { reconcile } from '../payments/payments.js'
 import type { PaymentProvider } from '../payments/provider.js'
 import { allowExtraRound } from '../fulfilment/creative.js'
-import { inviteStaff } from '../auth/access.js'
+import { inviteStaff, issueReset } from '../auth/access.js'
 import { FOUNDER_ONLY } from './routes-admin.js'
 import { coverUrl, logoUrl } from './routes-covers.js'
 import { dealRating } from './routes-ratings.js'
@@ -26,6 +27,10 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     const month = `date_trunc('month', $1::timestamptz at time zone 'Asia/Dubai')`
     const k = (await db.query(`select
         (select count(*)::int from access_requests where status = 'pending') access_pending,
+        (select count(distinct user_id)::int from password_resets where issued_at is null and used_at is null) resets_pending,
+        -- money held 60+ days (SPEC G4): release or refund it before the provider's holding limits bite
+        (select count(*)::int from deals d where d.status in ('secured', 'in_review', 'issue_open', 'disputed')
+          and exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'charge' and m.status = 'succeeded' and m.created_at < $1::timestamptz - interval '60 days')) held_60,
         (select count(*)::int from quote_requests where status = 'open') quotes_open,
         (select count(*)::int from deals where status = 'disputed') disputes,
         (select count(*)::int from deals where status = 'issue_open') issues,
@@ -55,7 +60,9 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   route('GET', '/api/admin/companies/:id', STAFF, async ({ db }, req) => {
     const c = (await db.query(`select * from companies where id = $1 and type <> 'nashr'`, [req.params.id])).rows[0]
     if (!c) throw new NotFound()
-    const users = (await db.query(`select id, name, email, phone, role, status, totp_enabled, created_at from users where company_id = $1 order by created_at`, [c.id])).rows
+    const users = (await db.query(`select id, name, email, phone, role, status, totp_enabled, created_at,
+        exists (select 1 from password_resets r where r.user_id = users.id and r.issued_at is null and r.used_at is null) reset_requested
+      from users where company_id = $1 order by created_at`, [c.id])).rows
     const outlets = (await db.query(`select id, name, channel, sectors, logo_key from outlets where company_id = $1 order by name`, [c.id])).rows
     const deals = (await db.query(`select d.id, d.ref, d.status, d.amount, d.created_at, s.label, o.name outlet from deals d join slots s on s.id = d.slot_id
         join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.buyer_id = $1 or d.seller_id = $1 order by d.created_at desc limit 50`, [c.id])).rows
@@ -64,7 +71,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       invoiceMode: c.invoice_mode, providerAccount: c.provider_account, createdAt: c.created_at,
       rateCard: c.rate_card_file ? (await db.query(`select id "fileId", name from files where id = $1`, [c.rate_card_file])).rows[0] : null,
       balance: c.type === 'publisher' ? { payable: await liability(db, `seller_payable:${c.id}`), owed: await balance(db, `seller_receivable:${c.id}`, 'AED') } : null,
-      users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled && staffTwoStep(), createdAt: u.created_at })),
+      users: users.map(u => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, role: u.role, status: u.status, twoFactor: u.totp_enabled && staffTwoStep(), createdAt: u.created_at, resetRequested: u.reset_requested })),
       outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel, sectors: o.sectors, logoUrl: logoUrl(o) })),
       deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, createdAt: d.created_at, label: d.label, outlet: d.outlet })),
       commissionHistory: commission.map(h => ({ bp: h.value, from: h.valid_from, by: h.changed_by })) }
@@ -93,6 +100,10 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     await audit(db, `admin:${me.userId}`, `user.${req.body.status}`, 'user', u.id, { reason: req.body.reason ?? null }, at)
     return { ok: true }
   }, { type: 'object', required: ['status'], properties: { status: { enum: ['active', 'suspended'] }, reason: { type: 'string', maxLength: 500 } } })
+
+  // A buyer or publisher who forgot their password: Nashr issues a one-day link (emailed once email is connected).
+  route('POST', '/api/admin/users/:id/reset-link', STAFF, async ({ db, at, me }, req) =>
+    ({ link: `/reset#${await issueReset(db, req.params.id, `${me.role}:${me.userId}`, at)}` }))
 
   route('GET', '/api/admin/staff', STAFF, async ({ db }) => (await db.query(
     `select id, name, email, role, status, totp_enabled, created_at from users where role in ('admin', 'founder') order by created_at`)).rows
@@ -125,7 +136,8 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     ])
     const s = split(d.amount, { commissionBp: d.commission_bp ?? 0, mediaVatBp: d.media_vat_bp ?? d.vat_preview, feeVatBp: d.fee_vat_bp ?? 0 })
     return { rating: await dealRating(db, d.id), id: d.id, ref: d.ref, status: d.status, kind: d.kind, outlet: d.outlet, channel: d.channel, label: d.label, startsAt: d.starts_at,
-      creativeDueAt: d.creative_due_at, buyer: { id: d.buyer_id, name: d.buyer }, seller: { id: d.seller_id, name: d.seller }, brief: d.brief,
+      creativeDueAt: d.creative_due_at, buyer: { id: d.buyer_id, name: d.buyer }, seller: { id: d.seller_id, name: d.seller }, brief: d.brief, slotId: d.slot_id,
+      proofChecklist: checklistFor(d.channel, d.brief),
       nextDeadlineAt: d.next_deadline_at, extraCreativeRounds: d.extra_creative_rounds, ratesFrozen: d.commission_bp != null,
       money: { price: d.amount, mediaVat: s.mediaVat, buyerPays: s.buyerPays, commissionBp: d.commission_bp, fee: s.fee, feeVat: s.feeVat, payout: s.payout, held: 0 - await balance(db, 'held', d.currency, d.id) },
       events, ledger, moneyOps: ops, creatives: creatives.map(c => ({ ...c, fileId: c.file_key.replace(/^files\//, '') })), proofs, issues, documents: docs }

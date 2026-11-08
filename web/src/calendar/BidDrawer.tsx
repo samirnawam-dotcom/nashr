@@ -6,6 +6,7 @@ import { SaleType, status } from './CalendarPage'
 import { SignInPrompt, useGuest } from '../guest'
 import { t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
+import { useLive } from '../live'
 
 type Detail = Slot & { minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
@@ -37,6 +38,12 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   // What the buyer is already committed to if every bid it leads wins and every request is accepted (a warning, never a block).
   const [exposure, setExposure] = useState<{ total: number; leading: { count: number }; requests: { count: number }; toPay: { count: number } } | null>(null)
   useEffect(() => { load(); if (!guest) api('/buyer/exposure').then(setExposure, () => {}) }, [slotId])
+  // Another buyer bid or the slot was booked: show the new state at once. What the buyer typed stays, unless it is now too low.
+  useLive('slot', d => { if (d.id === slotId) api<Detail>(`/slots/${slotId}`).then(n => { setS(n)
+    setAmount(a => toFils(a || '0') < n.minNextBid ? String(n.minNextBid / 100) : a) }, () => {}) }, 200)
+  // In the last hour of bidding, count down the minutes.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => { const x = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(x) }, [])
 
   async function send(path: string, body: object, message: string | ((r: any) => string)) {
     setBusy(true); setError(''); setDone(''); setWarn('')
@@ -61,6 +68,8 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   return (
     <Shell onClose={onClose} title={`${s.outlet} · ${s.placement}`} sub={`${s.label} · ${when}`}>
       <div className="row-flex"><SaleType t={s.saleType} /><span className="small">{status(s)}</span></div>
+      {s.saleType === 'auction' && s.available && closes.getTime() - now < 3_600_000 && closes.getTime() > now && <p className="bid-countdown" role="timer" aria-live="off">
+        {t('Bidding closes in {time}', { time: `${Math.floor((closes.getTime() - now) / 60_000)}:${String(Math.floor((closes.getTime() - now) / 1000) % 60).padStart(2, '0')}` })}</p>}
       {s.saleType === 'auction' && <p className="small muted">{t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })}</p>}
 
       {s.details && (s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">

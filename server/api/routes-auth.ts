@@ -1,8 +1,9 @@
 import type { RouteFn } from './app.js'
 import { COOKIE, cookie, rateLimit } from './app.js'
-import { acceptInvite, login, logout, requestAccess } from '../auth/access.js'
+import { acceptInvite, changePassword, login, logout, requestAccess, requestReset, resetPassword } from '../auth/access.js'
 import { MarketError } from '../marketplace/market.js'
 import { sha256 } from '../auth/crypto.js'
+import { audit } from '../core/audit.js'
 
 const str = { type: 'string', minLength: 1, maxLength: 200 }
 
@@ -39,4 +40,37 @@ export function authRoutes(route: RouteFn) {
     const c = (await db.query(`select name, type from companies where id = $1`, [me.actAs.companyId])).rows[0]
     return { role: me.actAs.role, company: c, viewingAs: me.viewAs ? me.viewAs.companyId : null }
   })
+
+  // Forgotten password: the same answer whether or not the email has an account (no account probing).
+  route('POST', '/api/auth/forgot', 'public', async ({ db, at }, req, reply) => {
+    if (!rateLimit(`forgot:${req.ip}`, 5, at.getTime())) return reply.code(429).send({ error: 'Too many requests. Try again in a minute.' })
+    await requestReset(db, req.body.email, at)
+    return { ok: true }
+  }, { type: 'object', required: ['email'], additionalProperties: false, properties: { email: str } })
+  route('POST', '/api/auth/reset', 'public', async ({ db, at }, req, reply) => {
+    if (!rateLimit(`reset:${req.ip}`, 10, at.getTime())) return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
+    await resetPassword(db, req.body, at)
+    return { ok: true }
+  }, { type: 'object', required: ['token', 'password'], additionalProperties: false, properties: { token: str, password: { type: 'string', maxLength: 200 } } })
+
+  // Your own account: name, password, and which emails you want (essential ones about your bookings and money always go).
+  route('GET', '/api/me/account', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me }) => {
+    const u = (await db.query(`select name, email, role, email_prefs from users where id = $1`, [me.userId])).rows[0]
+    return { name: u.name, email: u.email, role: u.role, emails: { bids: true, alerts: true, messages: true, news: false, ...u.email_prefs } }
+  })
+  route('PUT', '/api/me/account', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req) => {
+    const b = req.body
+    if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')
+    if (b.name != null) await db.query(`update users set name = $2 where id = $1`, [me.userId, b.name.trim()])
+    if (b.emails) await db.query(`update users set email_prefs = $2 where id = $1`, [me.userId, JSON.stringify(b.emails)])
+    await audit(db, `user:${me.userId}`, 'account.updated', 'user', me.userId, { fields: Object.keys(b) }, at)
+    return { ok: true }
+  }, { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 },
+    emails: { type: 'object', additionalProperties: false, properties: { bids: { type: 'boolean' }, alerts: { type: 'boolean' }, messages: { type: 'boolean' }, news: { type: 'boolean' } } } } })
+  route('PUT', '/api/me/password', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req, reply) => {
+    if (!rateLimit(`pw:${me.userId}`, 10, at.getTime())) return reply.code(429).send({ error: 'Too many attempts. Try again in a minute.' })
+    if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')
+    await changePassword(db, { userId: me.userId, current: req.body.current, password: req.body.password, keepToken: me.tokenHash }, at)
+    return { ok: true }
+  }, { type: 'object', required: ['current', 'password'], additionalProperties: false, properties: { current: { type: 'string', maxLength: 200 }, password: { type: 'string', maxLength: 200 } } })
 }

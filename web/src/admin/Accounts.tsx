@@ -1,7 +1,7 @@
 import { navigate } from '../nav'
 import { useState } from 'react'
 import { api } from '../api'
-import { DealStatus, Loading, date, money, useAct, useLoad } from './common'
+import { DealStatus, Loading, csv, date, money, useAct, useLoad } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { ltr, sep, t } from '../i18n'
 import { OutletMark } from '../LogoPicker'
@@ -19,7 +19,10 @@ export function AccountsPage() {
       <PhotoBand img="/brand/dash-seller.jpg" title={t("Accounts")} sub={t("Every buyer and publisher company on Nashr, with their people, outlets and bookings.")} />
       <div className="toolbar"><input className="search" type="search" aria-label={t("Search")} placeholder={t("Search companies")} value={q} onChange={e => setQ(e.target.value)} />
         <div className="seg" role="group" aria-label={t("Type")}>{[['', t("All")], ['buyer', t("Buyers")], ['publisher', t("Publishers")]].map(([v, l]) =>
-          <button key={v} className={type === v ? 'on' : ''} onClick={() => setType(v)}>{t(l)}</button>)}</div></div>
+          <button key={v} className={type === v ? 'on' : ''} onClick={() => setType(v)}>{t(l)}</button>)}</div><div className="spacer" />
+        <button className="btn" disabled={!shown.length} onClick={() => csv('nashr-accounts.csv', shown.map(c => ({ company: c.name, type: c.type, users: c.users, suspended: c.suspended,
+          payoutsVerified: c.type === 'publisher' ? c.payoutsEnabled : '', vatRegistered: c.vatRegistered, trn: c.trn ?? '', commissionPct: c.commissionBp != null ? c.commissionBp / 100 : '',
+          bookedAed: (Number(c.gmv) / 100).toFixed(2), joined: c.createdAt })))}>{t('Download CSV')}</button></div>
       <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Company")}</th><th>{t("Type")}</th><th>{t("Users")}</th><th>{t("Payouts")}</th><th>{t("VAT")}</th><th className="r">{t("Commission")}</th><th className="r">{t("Booked value")}</th><th>{t("Joined")}</th></tr></thead>
         <tbody>{shown.map(c => <tr key={c.id} onClick={() => (navigate(`/accounts/${c.id}`))}>
           <td><b>{c.name}</b></td><td>{c.type === 'buyer' ? t('Buyer') : t("Publisher")}</td><td>{c.users}{c.suspended ? <span className="outbid small"> · {t('{n} suspended', { n: c.suspended })}</span> : ''}</td>
@@ -32,7 +35,7 @@ export function AccountsPage() {
 }
 
 type Detail = Omit<C, 'users' | 'suspended' | 'gmv' | 'commissionBp'> & { providerAccount: string | null; rateCard: { fileId: string; name: string } | null; balance: { payable: number; owed: number } | null
-  users: { id: string; name: string; email: string; phone: string | null; role: string; status: string; twoFactor: boolean; createdAt: string }[]
+  users: { id: string; name: string; email: string; phone: string | null; role: string; status: string; twoFactor: boolean; createdAt: string; resetRequested?: boolean }[]
   outlets: { id: string; name: string; channel: string; sectors: string[]; logoUrl: string | null }[]
   deals: { id: string; ref: string; status: string; amount: number; createdAt: string; label: string; outlet: string }[]
   commissionHistory: { bp: number; from: string; by: string }[] }
@@ -40,7 +43,7 @@ type Detail = Omit<C, 'users' | 'suspended' | 'gmv' | 'commissionBp'> & { provid
 export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean }) {
   const { data: c, error, load } = useLoad<Detail>(`/admin/companies/${id}`)
   const { act, busy, msg } = useAct(load)
-  const [rate, setRate] = useState('')
+  const [rate, setRate] = useState(''), [reset, setReset] = useState<Record<string, string>>({})
   if (!c) return <Loading error={error} />
   async function viewAs() { await api(`/admin/view-as/${c!.id}`, { method: 'POST' }); location.href = c!.type === 'publisher' ? '/home' : '/calendar' }
   return (
@@ -70,9 +73,12 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
       <section className="card pad section"><h2>{t("Users")}</h2>
         <div className="table-wrap"><table className="table"><tbody>{c.users.map(u => <tr key={u.id}>
           <td><b>{u.name}</b><div className="small muted"><bdi>{u.email}</bdi>{u.phone ? <> · <bdi>{u.phone}</bdi></> : ''}</div></td><td className="small">{t(u.role)}</td>
-          <td className={`small ${u.status === 'suspended' ? 'outbid' : ''}`}>{t(u.status)}</td>
+          <td className={`small ${u.status === 'suspended' ? 'outbid' : ''}`}>{t(u.status)}{u.resetRequested && <div className="soon">{t('Asked for a password reset')}</div>}
+            {reset[u.id] && <div className="small">{t('Reset link (valid 24 hours, send it to {email}):', { email: u.email })}<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + reset[u.id]} onFocus={e => e.target.select()} /></div>}</td>
           <td className="r">{u.status === 'active' && <button className="btn" disabled={busy} onClick={() => confirm(t('Suspend {name}? They are signed out at once.', { name: u.name })) && act('POST', `/admin/users/${u.id}/status`, { status: 'suspended' }, t('{name} suspended.', { name: u.name }))}>{t("Suspend")}</button>}
-            {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, t('{name} restored.', { name: u.name }))}>{t("Restore")}</button>}</td></tr>)}</tbody></table></div></section>
+            {u.status === 'suspended' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/status`, { status: 'active' }, t('{name} restored.', { name: u.name }))}>{t("Restore")}</button>}
+            {u.status === 'active' && ['buyer', 'seller'].includes(u.role) && <button className={`btn ${u.resetRequested ? 'primary' : ''}`} disabled={busy} onClick={() => act('POST', `/admin/users/${u.id}/reset-link`, {},
+              x => { setReset({ ...reset, [u.id]: x.link }); return t('Reset link ready for {name}. Older links no longer work.', { name: u.name }) })}>{t('Password reset link')}</button>}</td></tr>)}</tbody></table></div></section>
       {c.outlets.length > 0 && <section className="card pad section"><h2>{t("Outlets")}</h2>
         <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{t(o.channel)}</span><span className="row-flex"><OutletMark name={o.name} url={o.logoUrl} size={28} /><b>{o.name}</b> · <span className="small muted">{o.sectors.map(s => t(s)).join(sep)}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>{t("Recent deals")}</h2>

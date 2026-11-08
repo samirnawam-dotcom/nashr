@@ -47,7 +47,7 @@ export function AdminCalendarPage() {
         <span className="spacer" />
         {active > 0 && <button type="button" className="btn cv-clear" onClick={() => { setQText(''); update({ st: '', sale: '', ch: '', q: '' }) }}>{t('Clear all ({n})', { n: active })}</button>}
       </FilterFold>
-      {view === 'list' && <OpsList base="/admin/slots" qs={qs} who="admin" narrow={narrow} onOpen={x => x.dealId && navigate(`/deals/${x.dealId}`)} />}
+      {view === 'list' && <OpsList base="/admin/slots" qs={qs} who="admin" narrow={narrow} onOpen={x => navigate(x.dealId ? `/deals/${x.dealId}` : `/slots/${x.id}`)} />}
       {view === 'month' && <OpsMonth narrow={narrow} date={a.date} days={days} onDay={d => update({ view: 'list', date: d }, true)} />}
       {view === 'outlets' && <OpsOutlets base="/admin/slots" qs={qs} week={week} onCell={(_, d) => update({ view: 'list', date: d }, true)} />}
       <footer className="cv-foot small muted"><span>{t('Dubai time. Prices exclude VAT. A booked or decided slot opens its deal.')}</span>

@@ -4,7 +4,7 @@ import { CHANNEL, Delta, Funnel, Hero, RankedBars, StatTile, WeekColumns, compac
 import { PhotoBand } from '../PhotoBand'
 import { locale, ltr, t } from '../i18n'
 
-type O = { access_pending: number; quotes_open: number; disputes: number; issues: number; failed_ops: number; pending_ops: number; gmv_month: number
+type O = { access_pending: number; resets_pending: number; held_60: number; quotes_open: number; disputes: number; issues: number; failed_ops: number; pending_ops: number; gmv_month: number
   bookings_month: number; publishers_live: number; buyers: number; revenue: number; held: number
   reconcile: { ledgerCash: number; providerCash: number; ok: boolean }; byStatus: Record<string, number> }
 
@@ -21,7 +21,8 @@ export function AdminOverview() {
   const { data: o, error } = useLoad<O>('/admin/overview'), { data: d } = useLoad<Dash>('/admin/dashboard')
   if (!o || !d) return <Loading error={error} />
   const attention = [
-    [o.access_pending, t("Access requests to review"), '/access', false], [o.disputes, t("Disputes to decide"), '/disputes', true],
+    [o.access_pending, t("Access requests to review"), '/access', false], [o.resets_pending, t('Password resets to send'), '/accounts', false],
+    [o.held_60, t('Payments held over 60 days: release or refund them'), '/deals?status=secured,in_review,issue_open,disputed', true], [o.disputes, t("Disputes to decide"), '/disputes', true],
     [o.issues, t("Issues waiting on publishers"), '/disputes', false], [o.failed_ops, t("Failed payouts or refunds"), '/payouts', true],
     [o.quotes_open, t("Quote requests"), '/directory', false],
   ] as const

@@ -19,6 +19,7 @@ import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
 import { insightRoutes } from './routes-insights.js'
+import { liveRoute } from './routes-live.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
 import { type StripeConfig, stripeWebhook } from './routes-stripe.js'
 import { dashboardRoutes } from './routes-dashboards.js'
@@ -138,6 +139,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   messageRoutes(route)
   insightRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
+  liveRoute(app, clock)
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.
   route('GET', '/api/config', 'public', async () => ({ stripePublishableKey: deps.stripe?.publishableKey ?? null }))

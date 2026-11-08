@@ -75,20 +75,24 @@ function Staff({ isFounder }: { isFounder: boolean }) {
 
 type A = { at: string; actor: string; action: string; entity: string; entity_id: string; detail: unknown }
 export function AuditPage() {
-  const [entity, setEntity] = useState(''), [applied, setApplied] = useState(''), [q, setQ] = useState('')
-  const { data, error } = useLoad<A[]>(`/admin/audit${applied ? `?entityId=${applied}` : ''}`, [applied])
-  const shown = (data ?? []).filter(a => !q || `${a.actor} ${a.action} ${a.entity}`.toLowerCase().includes(q.toLowerCase()))
+  const [f, setF] = useState({ entityId: '', actor: '', action: '', from: '', to: '' }), [draft, setDraft] = useState(f)
+  const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v)).toString()
+  const { data, error } = useLoad<A[]>(`/admin/audit?${qs}`, [qs])
+  const field = (k: keyof typeof f) => ({ value: draft[k], onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [k]: e.target.value }) })
   return (
     <main>
-      <PhotoBand img="/brand/tv-wide.jpg" title={t("Audit log")} sub={t("Append-only. Latest 500 entries; filter by record to see its whole history.")} />
-      <form className="toolbar" onSubmit={e => { e.preventDefault(); setApplied(entity.trim()) }}>
-        <input className="search" type="search" aria-label={t("Filter")} placeholder={t("Filter by actor or action")} value={q} onChange={e => setQ(e.target.value)} />
-        <input className="search mono" aria-label={t("Record id")} placeholder={t("Record id (deal, company, user…)")} value={entity} onChange={e => setEntity(e.target.value)} />
+      <PhotoBand img="/brand/tv-wide.jpg" title={t("Audit log")} sub={t("Append-only. Filter by who, what, when or one record to see its whole history; the CSV holds every match.")} />
+      <form className="toolbar admin-filters" onSubmit={e => { e.preventDefault(); setF({ ...draft, entityId: draft.entityId.trim() }) }}>
+        <input className="search" aria-label={t("Who")} placeholder={t('Who (e.g. admin:, seller:, system)')} {...field('actor')} />
+        <input className="search" aria-label={t("Action")} placeholder={t('Action (e.g. deal., password.)')} {...field('action')} />
+        <input className="search mono" aria-label={t("Record id")} placeholder={t("Record id (deal, company, user…)")} {...field('entityId')} />
+        <label className="small muted" htmlFor="af">{t('From')}</label><input id="af" className="search" type="date" {...field('from')} />
+        <label className="small muted" htmlFor="at">{t('to')}</label><input id="at" className="search" type="date" {...field('to')} />
         <button className="btn">{t("Show")}</button><div className="spacer" />
-        <button type="button" className="btn" disabled={!shown.length} onClick={() => csv('nashr-audit.csv', shown.map(a => ({ ...a, detail: JSON.stringify(a.detail) })))}>CSV</button></form>
-      {!data ? <Loading error={error} /> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("When")}</th><th>{t("Who")}</th><th>{t("Action")}</th><th>{t("Record")}</th><th>{t("Detail")}</th></tr></thead>
-        <tbody>{shown.map((a, i) => <tr key={i}><td className="small num">{when(a.at)}</td><td className="mono">{a.actor}</td><td>{a.action}</td>
-          <td className="mono"><a href="/audit" onClick={e => { e.preventDefault(); setEntity(a.entity_id); setApplied(a.entity_id) }}>{a.entity}:{a.entity_id?.slice(0, 8)}</a></td>
+        <a className="btn" href={`/api/admin/audit?${qs}&format=csv`}>{t('Download CSV')}</a></form>
+      {!data ? <Loading error={error} /> : !data.length ? <p className="muted empty">{t('Nothing matches.')}</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("When")}</th><th>{t("Who")}</th><th>{t("Action")}</th><th>{t("Record")}</th><th>{t("Detail")}</th></tr></thead>
+        <tbody>{data.map((a, i) => <tr key={i}><td className="small num">{when(a.at)}</td><td className="mono">{a.actor}</td><td>{a.action}</td>
+          <td className="mono"><a href="/audit" onClick={e => { e.preventDefault(); setDraft({ ...draft, entityId: a.entity_id }); setF({ ...f, entityId: a.entity_id }) }}>{a.entity}:{a.entity_id?.slice(0, 8)}</a></td>
           <td className="mono small">{a.detail ? JSON.stringify(a.detail).slice(0, 160) : ''}</td></tr>)}</tbody></table></div>}
     </main>
   )

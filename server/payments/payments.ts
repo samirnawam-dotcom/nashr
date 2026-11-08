@@ -3,8 +3,8 @@ import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
 import { pct, split } from '../core/money.js'
-import { transition } from '../marketplace/deals.js'
-import { MarketError, releaseBids } from '../marketplace/market.js'
+import { TRANSITIONS, transition } from '../marketplace/deals.js'
+import { afterNoGo, MarketError, relist, releaseBids } from '../marketplace/market.js'
 import { balance, heldFor, post } from './ledger.js'
 import type { ChargeResult, PaymentProvider } from './provider.js'
 import { issueCommissionInvoice, issueMediaInvoice, issueReceipt, reissueAfterRefund } from '../documents/documents.js'
@@ -204,8 +204,8 @@ export async function cancelBySeller(db: Db, dealId: string, sellerId: string, r
 }
 
 /** Admin decision on a dispute (brief section 12): release, full refund, partial refund or make-good. */
-export async function decideDispute(db: Db, dealId: string, outcome: 'release' | 'refund' | 'partial_refund' | 'make_good', actor: string, at: Date, refundAmount?: number) {
-  const deal = await transition(db, dealId, outcome, actor, at)
+export async function decideDispute(db: Db, dealId: string, outcome: 'release' | 'refund' | 'partial_refund' | 'make_good', actor: string, at: Date, refundAmount?: number, reason?: string) {
+  const deal = await transition(db, dealId, outcome, actor, at, reason?.trim() || undefined)
   const held = await heldFor(db, deal.id, deal.currency)
   if (outcome === 'release') await settle(db, deal, held, at)
   if (outcome === 'refund') await refund(db, deal, held, 'seller', at)
@@ -214,7 +214,34 @@ export async function decideDispute(db: Db, dealId: string, outcome: 'release' |
     await refund(db, deal, refundAmount, 'seller', at)
   }
   for (const side of [deal.buyer_id, deal.seller_id]) // both sides hear the decision (scenario 12)
-    await notify(db, side, 'dispute.decided', deal.id, { outcome, ...(refundAmount ? { amount: refundAmount } : {}) }, at)
+    await notify(db, side, 'dispute.decided', deal.id, { outcome, ...(refundAmount ? { amount: refundAmount } : {}), ...(reason?.trim() ? { reason: reason.trim() } : {}) }, at)
+  return deal
+}
+
+/**
+ * Nashr steps in on a live deal (not only disputes): cancel before payment, refund in full or in part, or release to the publisher.
+ * Always with a written reason that both sides see; who bears the card cost on a refund is Nashr's call (default Nashr).
+ * A refund before the ad has run puts the slot back on sale.
+ */
+export async function intervene(db: Db, a: { dealId: string; action: 'cancel' | 'refund' | 'release' | 'partial_refund'; reason: string; amount?: number;
+  cost?: 'buyer' | 'seller' | 'nashr'; actor: string }, at: Date) {
+  if ((a.reason ?? '').trim().length < 5) throw new MarketError('Write the reason both sides will see.')
+  const pre = await lockDeal(db, a.dealId)
+  const event = a.action === 'cancel' ? 'admin_cancel' : a.action === 'refund' ? 'admin_refund' : 'admin_release'
+  if (!TRANSITIONS[pre.status]?.[event]) throw new MarketError('This step is not possible for a deal in this state.')
+  const held = await heldFor(db, pre.id, pre.currency)
+  if (a.action === 'partial_refund' && (!a.amount || a.amount <= 0 || a.amount >= held)) throw new MarketError('Enter a partial refund between zero and the amount paid.')
+  const deal = await transition(db, a.dealId, event, a.actor, at, a.reason.trim())
+  if (a.action === 'cancel') await afterNoGo(db, deal, at) // nothing was paid: the slot goes back to the next buyer or on sale
+  if (a.action === 'release') await settle(db, deal, held, at)
+  if (a.action === 'partial_refund') await refund(db, deal, a.amount!, a.cost ?? 'nashr', at)
+  if (a.action === 'refund') {
+    await refund(db, deal, held, a.cost ?? 'nashr', at)
+    const slot = await one(db, `select id, starts_at from slots where id = $1`, [deal.slot_id])
+    if (new Date(slot.starts_at) > at) await relist(db, slot.id, at)
+  }
+  for (const side of [deal.buyer_id, deal.seller_id])
+    await notify(db, side, 'deal.nashr_action', deal.id, { action: a.action, reason: a.reason.trim(), ...(a.amount ? { amount: a.amount } : {}) }, at)
   return deal
 }
 
@@ -259,7 +286,13 @@ export async function handleProviderEvent(ev: { id: string; type: string; data: 
     if (ev.type === 'charge.succeeded') await recordCharge(c, op.id, { id: op.provider_id, status: 'succeeded' }, at)
     if (ev.type === 'charge.failed') await recordCharge(c, op.id, { id: op.provider_id, status: 'failed', failure: ev.data.failure }, at)
     if (ev.type === 'payout.paid') await transition(c, op.deal_id, 'paid_out', 'system:provider', at, op.ref)
-    if (ev.type === 'charge.dispute.created') await audit(c, 'system:provider', 'chargeback.opened', 'deal', op.deal_id, ev.data, at) // goes to the admin as a dispute
+    if (ev.type === 'charge.dispute.created') { // the buyer's bank disputes the charge: hold everything and put it in front of Nashr
+      await audit(c, 'system:provider', 'chargeback.opened', 'deal', op.deal_id, ev.data, at)
+      const d = (await c.query(`select status from deals where id = $1`, [op.deal_id])).rows[0]
+      if (d && TRANSITIONS[d.status]?.chargeback) await transition(c, op.deal_id, 'chargeback', 'system:provider', at, 'The buyer\'s bank disputed the payment')
+      for (const admin of (await c.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
+        await notify(c, admin.company_id, 'chargeback.opened', op.deal_id, { released: d && ['released', 'paid_out'].includes(d.status) }, at)
+    }
     return 'handled'
   })
   if (result === 'handled' && ev.type === 'charge.succeeded' && provider) {

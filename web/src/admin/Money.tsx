@@ -41,7 +41,8 @@ export function PayoutsPage() {
     <main>
       <PhotoBand img="/brand/podcast-wide.jpg" title={t("Payouts and refunds")} sub={t("Sent every minute by the money job. A retry reuses the same key, so nothing is paid twice.")} />
       <div className="toolbar"><div className="seg" role="group" aria-label={t("Status")}>{[['', t("All")], ['failed', t("Failed")], ['pending', t("Pending")], ['succeeded', t("Sent")]].map(([v, l]) =>
-        <button key={v} className={status === v ? 'on' : ''} onClick={() => setStatus(v)}>{t(l)}</button>)}</div></div>
+        <button key={v} className={status === v ? 'on' : ''} onClick={() => setStatus(v)}>{t(l)}</button>)}</div><div className="spacer" />
+        <button className="btn" disabled={!data?.length} onClick={() => csv('nashr-payouts-and-refunds.csv', (data ?? []).map(m => ({ ...m })))}>{t('Download CSV')}</button></div>
       {msg}
       {!data ? <Loading error={error} /> : !data.length ? <p className="muted empty">{t("Nothing here.")}</p>
         : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Reference")}</th><th>{t("Type")}</th><th>{t("To")}</th><th>{t("Order")}</th><th className="r">{t("Amount")}</th><th>{t("Status")}</th><th>{t("Updated")}</th><th /></tr></thead>

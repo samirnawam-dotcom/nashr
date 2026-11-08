@@ -38,7 +38,7 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   await p.waitForSelector('.attn-list'); await shot('a1-overview')
   // Decide the dispute
   await p.click('.nav >> text=Disputes'); await p.waitForSelector('table'); await shot('a2-disputes')
-  await p.click('tbody tr >> nth=0'); await p.waitForSelector('text=Decide this dispute'); await p.selectOption('#out', 'partial_refund'); await p.fill('#amt', '1000')
+  await p.click('tbody tr >> nth=0'); await p.waitForSelector('text=Decide this dispute'); await p.selectOption('#out', 'partial_refund'); await p.fill('#amt', '1000'); await p.fill('#why', 'The ad ran short; half the fee goes back to the buyer.')
   await shot('a3-dispute'); await p.click('button:has-text("Apply decision")'); await p.waitForSelector('text=Decision applied')
   await p.click('[role=tab]:has-text("Money")'); await shot('a4-deal-money')
   // Approve an access request

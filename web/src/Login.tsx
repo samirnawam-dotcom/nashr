@@ -29,7 +29,7 @@ export function Login({ onIn, note }: { onIn: () => void; note?: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError('')
     try { await api('/auth/login', { method: 'POST', body: { email, password, ...(code ? { totpCode: code } : {}) } }); onIn() }
-    catch (err: any) { if (/authenticator/.test(err.message)) setNeedCode(true); setError(err.message) }
+    catch (err: any) { if (/authenticator/.test(err.raw ?? err.message)) setNeedCode(true); setError(err.message) }
     finally { setBusy(false) }
   }
   return (
@@ -41,7 +41,8 @@ export function Login({ onIn, note }: { onIn: () => void; note?: string }) {
           <input id="email" type="email" autoComplete="username" placeholder="name@company.ae" value={email} onChange={e => setEmail(e.target.value)} required /></div>
         <div className="field"><label htmlFor="pw">{t("Password")}</label>
           <div className="pw-wrap"><input id="pw" type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
-            <button type="button" className="pw-toggle" aria-pressed={show} aria-controls="pw" onClick={() => setShow(!show)}>{show ? t("Hide") : t("Show")}</button></div></div>
+            <button type="button" className="pw-toggle" aria-pressed={show} aria-controls="pw" onClick={() => setShow(!show)}>{show ? t("Hide") : t("Show")}</button></div>
+          <a className="small" style={{ justifySelf: 'end' }} href="/forgot">{t('Forgot your password?')}</a></div>
         {needCode && <div className="field"><label htmlFor="code">{t("Code from your authenticator app")}</label>
           <input id="code" inputMode="numeric" autoComplete="one-time-code" placeholder={t("6 digits")} maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} autoFocus /></div>}
         {error && <p className="auth-error" role="alert">{error}</p>}

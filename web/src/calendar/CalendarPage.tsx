@@ -3,6 +3,7 @@ import { api, type Slot } from '../api'
 import { closesIn, dayLabel, money, time } from '../format'
 import { addDays, dubai, layoutDay, monthGrid, todayInDubai, weekOf } from './layout'
 import { BidDrawer, INDUSTRIES } from './BidDrawer'
+import { useLive } from '../live'
 import { SignInPrompt, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { SavedSearches } from './SavedSearches'
@@ -123,6 +124,9 @@ export function CalendarPage() {
   const [open, setOpen] = useState<string | null>(null), [panel, setPanel] = useState<Panel | null>(null), [sheet, setSheet] = useState(false)
   const [totals, setTotals] = useState<DayTotal[] | null>(null), [next, setNext] = useState<string | null>(null)
   const [reload, setReload] = useState(0)
+  // Someone bid, booked or relisted: refresh the grid and outlet views quietly (the list updates the rows it shows).
+  const [live, setLive] = useState(0)
+  useLive('slot', () => setLive(n => n + 1), 1500)
   const latest = useLatest()
   const [from, to] = span(s.view, s.date, narrow)
 
@@ -216,10 +220,10 @@ export function CalendarPage() {
       </div>}
 
       {(s.view === 'list' || (narrow && (s.view === 'week' || s.view === 'day'))) && <ListView s={s} from={from} to={to} narrow={narrow} reload={reload} onSort={v => update({ sort: v })} onOpen={setOpen} />}
-      {!narrow && s.view === 'week' && <TimeGrid key="week" s={s} from={from} to={to} reload={reload} columns="days" onPanel={setPanel} onDay={goDay} />}
-      {!narrow && s.view === 'day' && <TimeGrid key="day" s={s} from={from} to={to} reload={reload} columns="channels" onPanel={setPanel} onDay={goDay} />}
+      {!narrow && s.view === 'week' && <TimeGrid key="week" s={s} from={from} to={to} reload={reload} live={live} columns="days" onPanel={setPanel} onDay={goDay} />}
+      {!narrow && s.view === 'day' && <TimeGrid key="day" s={s} from={from} to={to} reload={reload} live={live} columns="channels" onPanel={setPanel} onDay={goDay} />}
       {s.view === 'month' && <MonthView date={s.date} totals={totals ?? []} narrow={narrow} onDay={d => update({ view: narrow ? 'list' : 'day', date: d }, true)} />}
-      {s.view === 'outlets' && <OutletsView s={s} from={from} to={to} reload={reload} onSort={v => update({ osort: v })} onPanel={setPanel} />}
+      {s.view === 'outlets' && <OutletsView s={s} from={from} to={to} reload={reload} live={live} onSort={v => update({ osort: v })} onPanel={setPanel} />}
 
       <footer className="cv-foot small muted">
         <span>{t('Dubai time. Prices exclude VAT. You pay only once the publisher accepts, and the money is held until the ad has run.')}</span>
@@ -318,6 +322,9 @@ function ListView({ s, from, to, narrow, reload, onSort, onOpen }: { s: State; f
     latest(api<{ total: number; items: Slot[] }>(`/slots/list?${query(s, from, to, { sort: s.sort, offset, limit: PAGE })}`),
       r => { setItems(cur => offset ? [...cur, ...r.items] : r.items); setTotal(r.total); setBusy(false); setError('') }, e => { setError(e.message); setBusy(false) }) }
   useEffect(() => { setItems([]); setTotal(null); load(0) }, [from, to, s.f, s.mine, s.all, s.sort, reload])
+  // A slot on screen changed: fetch just those rows again and swap them in place.
+  useLive('slot', (_, all) => { const ids = new Set(all.map(d => d.id)); items.filter(x => ids.has(x.id)).forEach(x =>
+    api<Slot>(`/slots/${x.id}`).then(n => setItems(cur => cur.map(c => c.id === n.id ? { ...c, ...n } : c)), () => {})) }, 300)
   const grouped = s.sort === 'time'
   const rows: (Slot | string)[] = []
   items.forEach((x, i) => { const d = dubai(x.startsAt).date; if (grouped && (i === 0 || dubai(items[i - 1].startsAt).date !== d)) rows.push(d); rows.push(x) })
@@ -374,12 +381,13 @@ const progEnd = (g: Prog) => mins(g.startsAt) + Math.max(30, (Date.parse(g.endsA
  * than two programmes air at once, the grid shows one summary of them, which opens the matching slots as a sortable list.
  * So the grid reads the same with five outlets or five thousand.
  */
-function TimeGrid({ s, from, to, reload, columns, onPanel, onDay }: { s: State; from: string; to: string; reload: number; columns: 'days' | 'channels'
+function TimeGrid({ s, from, to, reload, live, columns, onPanel, onDay }: { s: State; from: string; to: string; reload: number; live: number; columns: 'days' | 'channels'
   onPanel: (p: Panel) => void; onDay: (d: string) => void }) {
   const [data, setData] = useState<{ blocks: Prog[]; folds: Fold[] } | null>(null), [error, setError] = useState('')
   const latest = useLatest()
   useEffect(() => { setData(null); latest(api<{ blocks: Prog[]; folds: Fold[] }>(`/slots/grid?${query(s, from, to, { by: columns === 'days' ? 'day' : 'channel' })}`), d => { setData(d); setError('') }, e => setError(e.message)) },
     [from, to, s.f, s.mine, s.all, reload, columns])
+  useEffect(() => { if (live) latest(api<{ blocks: Prog[]; folds: Fold[] }>(`/slots/grid?${query(s, from, to, { by: columns === 'days' ? 'day' : 'channel' })}`), setData, () => {}) }, [live])
   const days = columns === 'days' ? weekOf(from) : [from]
   const cols = columns === 'days' ? days.map(d => ({ key: d, label: <><span className="small muted">{dayLabel(d, { weekday: 'short' })}</span><b>{dayLabel(d, { day: 'numeric' })}</b></>, date: d, channel: undefined as string | undefined }))
     : CHANNELS.filter(c => !s.f.channels?.length || s.f.channels.includes(c)).map(c => ({ key: c, label: <ChannelMark c={c} label />, date: from, channel: c as string | undefined }))
@@ -479,12 +487,12 @@ function MonthView({ date, totals, narrow, onDay }: { date: string; totals: DayT
 
 // ---- outlets across the week ------------------------------------------------------------------------------------------
 /** Outlets down, days across: each cell the count and lowest price. 50 outlets a page; search and sort narrow thousands. */
-function OutletsView({ s, from, to, reload, onSort, onPanel }: { s: State; from: string; to: string; reload: number; onSort: (v: OSort) => void; onPanel: (p: Panel) => void }) {
+function OutletsView({ s, from, to, reload, live, onSort, onPanel }: { s: State; from: string; to: string; reload: number; live: number; onSort: (v: OSort) => void; onPanel: (p: Panel) => void }) {
   const [data, setData] = useState<{ total: number; items: OutletRow[] } | null>(null), [offset, setOffset] = useState(0), [error, setError] = useState('')
   const latest = useLatest()
   useEffect(() => { setOffset(0) }, [from, to, s.f, s.mine, s.all, s.osort])
   useEffect(() => { latest(api<{ total: number; items: OutletRow[] }>(`/slots/outlets?${query(s, from, to, { sort: s.osort, offset, limit: OUTLET_PAGE })}`), d => { setData(d); setError('') }, e => setError(e.message)) },
-    [from, to, s.f, s.mine, s.all, s.osort, offset, reload])
+    [from, to, s.f, s.mine, s.all, s.osort, offset, reload, live])
   const days = weekOf(from), today = todayInDubai()
   const prices = (data?.items ?? []).flatMap(o => o.days.map(d => d.fromPrice))
   const lo = Math.min(...prices), hi = Math.max(...prices)

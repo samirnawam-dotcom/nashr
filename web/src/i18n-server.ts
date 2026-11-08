@@ -8,6 +8,17 @@ import { isAr } from './i18n'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  // Account self-service and Nashr stepping in
+  "You are viewing another account. Changes are not allowed.": "أنت تعرض حسابًا آخر. التغييرات غير مسموحة.",
+  "A reset link can be issued only for an active buyer or publisher user.": "لا يمكن إصدار رابط إعادة التعيين إلا لمستخدم مشترٍ أو ناشر نشط.",
+  "This reset link has expired. Ask Nashr for a new one.": "انتهت صلاحية رابط إعادة التعيين هذا. اطلب رابطًا جديدًا من نشر.",
+  "Your current password is not right.": "كلمة المرور الحالية غير صحيحة.",
+  "Choose a new password, not the current one.": "اختر كلمة مرور جديدة، لا الحالية.",
+  "Write the reason the buyer will see.": "اكتب السبب الذي سيراه المشتري.",
+  "Only a live bid on an open auction can be voided.": "لا يمكن إلغاء إلا عرض قائم في مزاد مفتوح.",
+  "Write the reason both sides will see.": "اكتب السبب الذي سيراه الطرفان.",
+  "This step is not possible for a deal in this state.": "هذه الخطوة غير ممكنة لصفقة في هذه الحالة.",
+  "The buyer's bank disputed the payment": "اعترض بنك المشتري على الدفعة",
   // Requests and access
   'Send JSON.': 'أرسل البيانات بصيغة JSON.', 'Please sign in.': 'يرجى تسجيل الدخول.', 'The file is too large.': 'الملف كبير جدًا.', 'Requests must come from Nashr.': 'يجب أن تصدر الطلبات من نشر.',
   'Some fields are missing or not valid.': 'بعض الحقول ناقصة أو غير صحيحة.', 'Something went wrong on our side.': 'حدث خطأ من جهتنا.', 'Something went wrong.': 'حدث خطأ ما.', 'Upload failed.': 'تعذّر الرفع.',

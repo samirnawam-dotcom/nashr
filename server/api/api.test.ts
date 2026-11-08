@@ -12,6 +12,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { sweep } from '../marketplace/sweeper.js'
+import { handleProviderEvent } from '../payments/payments.js'
 import { reconcile, runMoneyOps } from '../payments/payments.js'
 import { balance } from '../payments/ledger.js'
 import { addWorkingDays } from '../core/market.js'
@@ -358,7 +359,10 @@ describe('admin screens', () => {
     expect(file.events.map((e: any) => e.actor)).toEqual([`buyer:${buyerA.companyId}`, `seller:${sellerX.companyId}`, `buyer:${buyerA.companyId}`])
     const r = (await call(admin, 'GET', '/api/admin/reports?from=2026-11-01&to=2026-11-30')).json()
     expect(r.byChannel).toEqual([{ channel: 'radio', bookings: 1, gmv: AED(5_500), commission: AED(660) }])
-    expect((await call(admin, 'GET', '/api/admin/deals?q=northwind')).json()).toHaveLength(1)
+    expect((await call(admin, 'GET', '/api/admin/deals?q=northwind')).json()).toMatchObject({ total: 1, items: [expect.anything()] })
+    const csvText = (await call(admin, 'GET', '/api/admin/deals?q=northwind&format=csv')).body
+    expect(csvText.split('\r\n').filter(Boolean)).toHaveLength(2) // header and the one deal
+    expect((await call(buyerA, 'GET', '/api/admin/deals?format=csv')).statusCode).toBe(403)
   })
 
   test('disputes: the buyer declines the fix, Nashr decides a partial refund', async () => {
@@ -1246,5 +1250,87 @@ describe('results, sales insights and public proof', () => {
     expect(i.totals.uplift).toBeGreaterThan(0) // sold at the buy-now price, above the starting price
     // the landing page: below the thresholds nothing is shown
     expect((await call(null, 'GET', '/api/public/stats')).json()).toMatchObject({ completed: null, booked: null })
+  })
+})
+
+describe('account self-service', () => {
+  test('forgot password: same answer for anyone; Nashr issues a one-day link; it works once and signs out everywhere', async () => {
+    expect((await call(null, 'POST', '/api/auth/forgot', { email: 'nobody@nowhere.ae' })).json()).toEqual({ ok: true })
+    expect((await call(null, 'POST', '/api/auth/forgot', { email: 'sara@northwind.ae' })).json()).toEqual({ ok: true })
+    const user = (await pool.query(`select id from users where email = 'sara@northwind.ae'`)).rows[0].id
+    const acct = (await call(admin, 'GET', `/api/admin/companies/${buyerA.companyId}`)).json()
+    expect(acct.users.find((u: any) => u.id === user).resetRequested).toBe(true)
+    expect((await call(buyerB, 'POST', `/api/admin/users/${user}/reset-link`)).statusCode).toBe(403)
+    const staffUser = (await pool.query(`select id from users where email = 'ops@nashr.ae'`)).rows[0].id
+    expect((await call(admin, 'POST', `/api/admin/users/${staffUser}/reset-link`)).json().error).toMatch('buyer or publisher')
+    const token = (await call(admin, 'POST', `/api/admin/users/${user}/reset-link`)).json().link.split('#')[1]
+    expect((await call(null, 'POST', '/api/auth/reset', { token, password: 'short' })).json().error).toMatch('12 characters')
+    expect((await call(null, 'POST', '/api/auth/reset', { token, password: 'a brand new long password' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/me')).statusCode).toBe(401) // the old session is gone
+    expect((await call(null, 'POST', '/api/auth/reset', { token, password: 'another new long password' })).json().error).toMatch('expired')
+    expect((await call(null, 'POST', '/api/auth/login', { email: 'sara@northwind.ae', password: 'a brand new long password' })).statusCode).toBe(200)
+  })
+
+  test('change password needs the current one; email choices are saved; view-as cannot change anything', async () => {
+    expect((await call(buyerA, 'PUT', '/api/me/password', { current: 'wrong password!!', password: 'a brand new long password' })).json().error).toMatch('current password')
+    expect((await call(buyerA, 'PUT', '/api/me/password', { current: PASS, password: 'a brand new long password' })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/me')).statusCode).toBe(200) // this session stays
+    expect((await call(buyerA, 'PUT', '/api/me/account', { name: 'Sara A.', emails: { bids: true, alerts: false, messages: true, news: false } })).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', '/api/me/account')).json()).toMatchObject({ name: 'Sara A.', emails: { alerts: false } })
+  })
+})
+
+describe('Nashr steps in: interventions, voided bids, chargebacks', () => {
+  const paidDeal = async () => {
+    const d = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(sellerX, 'POST', `/api/seller/deals/${d}/accept`)
+    await call(buyerA, 'POST', `/api/deals/${d}/pay`, { paymentMethod: 'pm_card_4242' })
+    return d as string
+  }
+  const status = async (d: string) => (await pool.query(`select status from deals where id = $1`, [d])).rows[0].status
+
+  test('a reason is required; refund in full puts an unaired slot back on sale and both sides are told', async () => {
+    const d = await paidDeal()
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/intervene`, { action: 'refund', reason: 'x' })).json().error).toMatch('reason')
+    expect((await call(buyerA, 'POST', `/api/admin/deals/${d}/intervene`, { action: 'refund', reason: 'Publisher off air that day' })).statusCode).toBe(403)
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/intervene`, { action: 'cancel', reason: 'Publisher off air that day' })).json().error).toMatch('not possible')
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/intervene`, { action: 'refund', reason: 'Publisher off air that day' })).json()).toEqual({ status: 'refunded' })
+    expect((await pool.query(`select count(*)::int n from money_ops where deal_id = $1 and kind = 'refund'`, [d])).rows[0].n).toBe(1)
+    expect((await pool.query(`select status from slots where id = $1`, [slotX])).rows[0].status).toBe('open')
+    const told = (await pool.query(`select company_id from notifications where kind = 'deal.nashr_action' and deal_id = $1`, [d])).rows.map(r => r.company_id).sort()
+    expect(told).toEqual([buyerA.companyId, sellerX.companyId].sort())
+  })
+
+  test('release pays the publisher; cancel before payment frees the slot', async () => {
+    const d = await paidDeal()
+    expect((await call(admin, 'POST', `/api/admin/deals/${d}/intervene`, { action: 'release', reason: 'Proof confirmed by phone with both sides' })).json()).toEqual({ status: 'released' })
+    expect((await pool.query(`select count(*)::int n from money_ops where deal_id = $1 and kind = 'transfer'`, [d])).rows[0].n).toBe(1)
+    const slot2 = (await pool.query(`select id from slots where status = 'open' and id <> $1 and placement_id = (select placement_id from slots where id = $1) and kind = 'single' limit 1`, [slotX])).rows[0]?.id
+    if (slot2) {
+      const r = (await call(buyerB, 'POST', `/api/slots/${slot2}/buy-now`, { brief: BRIEF })).json().id
+      await call(sellerX, 'POST', `/api/seller/deals/${r}/accept`)
+      expect((await call(admin, 'POST', `/api/admin/deals/${r}/intervene`, { action: 'cancel', reason: 'Buyer asked Nashr to cancel' })).json()).toEqual({ status: 'cancelled' })
+    }
+  })
+
+  test('voiding a bid works the auction out again from the bids that remain', async () => {
+    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(5_000), brief: BRIEF })
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_000), brief: BRIEF })
+    let s = (await call(admin, 'GET', `/api/admin/slots/${slotX}`)).json()
+    expect(s.topAmount).toBe(AED(4_120))
+    const bBid = s.bids.find((b: any) => b.buyer === 'Al Futtaim').id
+    expect((await call(admin, 'POST', `/api/admin/bids/${bBid}/void`, { reason: 'Placed by mistake, buyer called' })).statusCode).toBe(200)
+    s = (await call(admin, 'GET', `/api/admin/slots/${slotX}`)).json()
+    expect(s.topAmount).toBe(AED(3_600)) // back to A's own bid: nobody else is bidding
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(3_600) })
+    expect((await pool.query(`select 1 from notifications where company_id = $1 and kind = 'bid.voided'`, [buyerB.companyId])).rowCount).toBe(1)
+  })
+
+  test('a chargeback puts a held deal in front of Nashr as a dispute', async () => {
+    const d = await paidDeal()
+    const charge = (await pool.query(`select provider_id from money_ops where deal_id = $1 and kind = 'charge' and status = 'succeeded'`, [d])).rows[0].provider_id
+    await handleProviderEvent({ id: 'evt_cb_1', type: 'charge.dispute.created', data: { id: charge } }, now)
+    expect(await status(d)).toBe('disputed')
+    expect((await pool.query(`select 1 from notifications where kind = 'chargeback.opened' and deal_id = $1`, [d])).rowCount).toBeGreaterThan(0)
   })
 })

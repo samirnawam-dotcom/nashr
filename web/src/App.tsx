@@ -3,6 +3,7 @@ import { Fragment, lazy, Suspense, useEffect, useState } from 'react'
 import { api } from './api'
 import { Login } from './Login'
 import { AcceptInvite, RequestAccess } from './Access'
+import { MyAccountPage, ForgotPassword, ResetPassword } from './Account'
 import { Bell } from './Bell'
 import { CalendarPage } from './calendar/CalendarPage'
 import { DirectoryPage, OutletPage } from './directory/Directory'
@@ -12,6 +13,7 @@ import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
 import { LangSwitch, t } from './i18n'
 import { useUnread } from './messages/unread'
+import { resetLive } from './live'
 import './messages/messages.css'
 
 
@@ -64,6 +66,7 @@ const AccountPage = L(load_admin_Accounts, 'AccountPage')
 const AccountsPage = L(load_admin_Accounts, 'AccountsPage')
 const load_admin_Deals = () => import('./admin/Deals')
 const AdminDealPage = L(load_admin_Deals, 'AdminDealPage')
+const AdminSlotPage = L(load_admin_Deals, 'AdminSlotPage')
 const AdminDealsPage = L(load_admin_Deals, 'AdminDealsPage')
 const DisputesPage = L(load_admin_Deals, 'DisputesPage')
 const load_admin_Money = () => import('./admin/Money')
@@ -123,6 +126,7 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/accounts/, () => <AccountsPage />],
   [/^\/calendar/, () => <AdminCalendarPage />],
   [/^\/deals\/([\w-]+)$/, id => <AdminDealPage id={id} />],
+  [/^\/slots\/([\w-]+)$/, id => <AdminSlotPage id={id} />],
   [/^\/deals/, () => <AdminDealsPage />],
   [/^\/disputes/, () => <DisputesPage />],
   [/^\/funds/, () => <FundsPage />],
@@ -144,7 +148,7 @@ const GUEST: Routes = [...LEGAL,
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
 ]
-const routesFor = (role: string): Routes => [...LEGAL, ...(role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER)]
+const routesFor = (role: string): Routes => [...LEGAL, [/^\/account$/, () => <MyAccountPage />], ...(role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER)]
 const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 
@@ -203,8 +207,9 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
     const m = await api<Me>('/me').catch(() => null)
     const next = takePlace()
     navigate(next && m && routesFor(m.role).some(([re]) => re.test(next.split('?')[0])) ? next : '/', true)
-    setMe(m)
+    setMe(m); resetLive()
   }
+  if (location.pathname === '/reset') return <ResetPassword token={location.hash.slice(1)} onDone={() => { navigate('/sign-in', true); load() }} />
   if (location.pathname === '/invite') return <AcceptInvite token={location.hash.slice(1)} onDone={() => { navigate('/sign-in', true); load() }} />
   if (me === undefined) return null
 
@@ -213,6 +218,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
     if (path === '/') return <GuestContext.Provider value={true}><GuestHeader path={path} menu={menu} setMenu={setMenu} /><Landing /><GuestTabs path={path} /></GuestContext.Provider>
     if (path === '/sign-in') return <Login onIn={signedIn} />
     if (path === '/request-access') return <RequestAccess />
+    if (path === '/forgot') return <ForgotPassword />
     const hit = GUEST.map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
     // A private page (campaigns, bookings, a deal link from an email): sign in, then come straight back to it.
     if (!hit) { rememberPlace(); return <Login onIn={signedIn} note="Sign in to see this page. You'll come straight back to it." /> }
@@ -228,11 +234,11 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   const seller = me.role === 'seller', staff = me.role === 'admin' || me.role === 'founder'
   const home = staff ? '/admin' : seller ? '/home' : '/dashboard'
   const path = hash === '/' ? home : hash
-  if (path === '/sign-in' || path === '/request-access') { queueMicrotask(() => navigate(home, true)); return null }
+  if (path === '/sign-in' || path === '/request-access' || path === '/forgot') { queueMicrotask(() => navigate(home, true)); return null }
 
   const nav = NAV[staff ? 'admin' : seller ? 'seller' : 'buyer']
   const initials = me.company.name.split(' ').map(w => w[0]).slice(0, 2).join('')
-  const signOut = async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null) }
+  const signOut = async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null); resetLive() }
   const hit = routesFor(me.role).map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
   return (
     <div className="shell">
@@ -244,7 +250,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
             <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a></Fragment>)}</nav>
         <div className="side-foot">
           <div className="side-me"><span className="avatar" aria-hidden>{initials}</span>
-            <span className="who"><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role}</span></span><span className="spacer" /><Bell role={me.role} /></div>
+            <a className="who" href="/account" title={t('Your account')}><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role} · {t('Your account')}</span></a><span className="spacer" /><Bell role={me.role} /></div>
           <div className="side-actions"><button className="btn signout" onClick={signOut}>{t("Sign out")}</button><LangSwitch className="on-dark" /></div>
         </div>
       </aside>
@@ -257,11 +263,12 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
           {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a>)}
+          <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
         <LangSwitch className="on-dark topbar-lang" />
         <Bell role={me.role} />
-        <span className="avatar" aria-hidden>{initials}</span>
+        <a className="avatar" href="/account" aria-label={t('Your account')}>{initials}</a>
       </header>
       {hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>

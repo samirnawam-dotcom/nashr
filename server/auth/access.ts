@@ -132,3 +132,52 @@ export async function session(db: Db, token: string | undefined, at: Date): Prom
 }
 
 export const logout = (db: Db, tokenHash: string) => db.query(`delete from sessions where token_hash = $1`, [tokenHash])
+
+/*
+ * Password resets. A person asks from the sign-in page; Nashr's team is told and sends the link (until email is connected, then
+ * the link is emailed straight away). The answer to the asker is the same whether or not the email has an account.
+ */
+const RESET_HOURS = 24
+export async function requestReset(db: Db, email: string, at: Date) {
+  const u = (await db.query(`select id, company_id from users where lower(email) = lower($1) and status = 'active'`, [email ?? ''])).rows[0]
+  if (!u) return
+  const open = await db.query(`select 1 from password_resets where user_id = $1 and used_at is null and issued_at is null and requested_at > $2`, [u.id, new Date(at.getTime() - 3_600_000)])
+  if (open.rowCount) return // one request an hour is enough
+  await db.query(`insert into password_resets (user_id, requested_at) values ($1, $2)`, [u.id, at])
+  for (const admin of (await db.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
+    await notify(db, admin.company_id, 'access.reset_requested', null, { userId: u.id, companyId: u.company_id }, at)
+  await audit(db, `user:${u.id}`, 'password.reset_requested', 'user', u.id, null, at)
+}
+
+/** Nashr's team issues a one-day link for a buyer or publisher (never for staff: they keep their authenticator). Older links stop working. */
+export async function issueReset(db: Db, userId: string, actor: string, at: Date) {
+  const u = (await db.query(`select id, role, status from users where id = $1`, [userId])).rows[0]
+  if (!u || u.status !== 'active' || STAFF.includes(u.role)) throw new MarketError('A reset link can be issued only for an active buyer or publisher user.')
+  const token = randomToken()
+  await db.query(`update password_resets set used_at = $2 where user_id = $1 and used_at is null`, [u.id, at])
+  await db.query(`insert into password_resets (user_id, token_hash, requested_at, issued_at, expires_at) values ($1, $2, $3, $3, $4)`,
+    [u.id, sha256(token), at, new Date(at.getTime() + RESET_HOURS * 3_600_000)])
+  await audit(db, actor, 'password.reset_issued', 'user', u.id, null, at)
+  return token
+}
+
+export async function resetPassword(db: Db, a: { token: string; password: string }, at: Date) {
+  const r = (await db.query(`select * from password_resets where token_hash = $1 for update`, [sha256(a.token ?? '')])).rows[0]
+  if (!r || r.used_at || !r.expires_at || r.expires_at <= at) throw new MarketError('This reset link has expired. Ask Nashr for a new one.')
+  if ((a.password ?? '').length < 12) throw new MarketError('Use a password of at least 12 characters.')
+  await db.query(`update users set password_hash = $2 where id = $1`, [r.user_id, hashPassword(a.password)])
+  await db.query(`update password_resets set used_at = $2 where id = $1`, [r.id, at])
+  await db.query(`delete from sessions where user_id = $1`, [r.user_id]) // signed out everywhere
+  await audit(db, `user:${r.user_id}`, 'password.reset', 'user', r.user_id, null, at)
+}
+
+/** Signed in: change the password (the current one is required), and sign out every other session. */
+export async function changePassword(db: Db, a: { userId: string; current: string; password: string; keepToken: string }, at: Date) {
+  const u = (await db.query(`select password_hash from users where id = $1`, [a.userId])).rows[0]
+  if (!u || !verifyPassword(a.current ?? '', u.password_hash)) throw new MarketError('Your current password is not right.')
+  if ((a.password ?? '').length < 12) throw new MarketError('Use a password of at least 12 characters.')
+  if (a.password === a.current) throw new MarketError('Choose a new password, not the current one.')
+  await db.query(`update users set password_hash = $2 where id = $1`, [a.userId, hashPassword(a.password)])
+  await db.query(`delete from sessions where user_id = $1 and token_hash <> $2`, [a.userId, a.keepToken])
+  await audit(db, `user:${a.userId}`, 'password.changed', 'user', a.userId, null, at)
+}

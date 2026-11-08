@@ -6,11 +6,13 @@ import { addWorkingDays, type Market } from '../core/market.js'
 
 // The booking state machine (SPEC 5.2). No other code writes deals.status.
 export const TRANSITIONS: Record<string, Record<string, string>> = {
-  awaiting_seller: { accept: 'awaiting_payment', decline: 'declined', expire: 'declined', supersede: 'declined', withdraw: 'cancelled' },
-  awaiting_payment: { pay: 'secured', lapse: 'lapsed' },
-  secured: { submit_proof: 'in_review', cancel_by_buyer: 'cancelled', cancel_by_seller: 'cancelled', creative_missed: 'cancelled', proof_missed: 'refunded' },
-  in_review: { approve: 'released', auto_release: 'released', report_issue: 'issue_open' },
-  issue_open: { resolve: 'in_review', make_good: 'secured', partial_refund: 'released', escalate: 'disputed' },
+  // admin_* events: Nashr's team steps in on a live deal, always with a written reason (SPEC 6D "All deals: release/refund/cancel")
+  awaiting_seller: { accept: 'awaiting_payment', decline: 'declined', expire: 'declined', supersede: 'declined', withdraw: 'cancelled', admin_cancel: 'cancelled' },
+  awaiting_payment: { pay: 'secured', lapse: 'lapsed', admin_cancel: 'cancelled' },
+  secured: { submit_proof: 'in_review', cancel_by_buyer: 'cancelled', cancel_by_seller: 'cancelled', creative_missed: 'cancelled', proof_missed: 'refunded',
+    admin_refund: 'refunded', admin_release: 'released', chargeback: 'disputed' },
+  in_review: { approve: 'released', auto_release: 'released', report_issue: 'issue_open', admin_refund: 'refunded', admin_release: 'released', chargeback: 'disputed' },
+  issue_open: { resolve: 'in_review', make_good: 'secured', partial_refund: 'released', escalate: 'disputed', admin_refund: 'refunded', admin_release: 'released', chargeback: 'disputed' },
   disputed: { release: 'released', refund: 'refunded', partial_refund: 'released', make_good: 'secured' },
   released: { paid_out: 'paid_out' },
 }

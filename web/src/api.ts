@@ -1,6 +1,7 @@
 import { tm } from './i18n-server'
 // Thin wrapper over the API. The server decides everything; the screens only show what it returns.
-export class ApiError extends Error { constructor(message: string, public status: number) { super(message) } }
+/** `message` is shown to the person (in their language); `raw` is the server's English text, for code that checks what went wrong. */
+export class ApiError extends Error { constructor(message: string, public status: number, public raw = message) { super(message) } }
 
 export async function api<T = any>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const r = await fetch(`/api${path}`, {
@@ -9,7 +10,7 @@ export async function api<T = any>(path: string, init?: { method?: string; body?
     body: init?.body ? JSON.stringify(init.body) : undefined,
   })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new ApiError(tm(data.error ?? 'Something went wrong.'), r.status)
+  if (!r.ok) throw new ApiError(tm(data.error ?? 'Something went wrong.'), r.status, data.error ?? '')
   return data
 }
 
@@ -24,7 +25,7 @@ export async function upload(file: File): Promise<{ id: string; name: string; si
   const r = await fetch('/api/files', { method: 'POST', credentials: 'same-origin', body: file,
     headers: { 'content-type': file.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(file.name) } })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new ApiError(tm(data.error ?? 'Upload failed.'), r.status)
+  if (!r.ok) throw new ApiError(tm(data.error ?? 'Upload failed.'), r.status, data.error ?? '')
   return data
 }
 

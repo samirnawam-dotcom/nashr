@@ -79,7 +79,7 @@ export function OpsList({ base, qs, who, onOpen, reload = 0, narrow }: { base: s
           <th className="r">{t('Bids')}</th><th>{t('Status')}</th><th>{t('Bidding closes')}</th></tr></thead>
         <tbody>{rows.map(r => typeof r === 'string'
           ? <tr key={r} className="cv-dayrow"><th colSpan={9} className={r === today ? 'today' : ''}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'long' })}</th></tr>
-          : <tr key={r.id} data-slot={r.id} onClick={() => onOpen(r)} className={who === 'admin' && !r.dealId ? 'cv-nolink' : ''}>
+          : <tr key={r.id} data-slot={r.id} onClick={() => onOpen(r)} className=''>
             <td className="num nowrap">{grouped ? '' : <span className="muted">{dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })} · </span>}{timeOf(r)}</td>
             <td><span className="cv-outlet"><ChannelMark c={r.channel} /><span><b>{r.outlet}</b>{who === 'admin' && r.company && r.company !== r.outlet && <span className="small muted">{r.company}</span>}</span></span></td>
             <td><span className="cv-slot">{r.placement}</span>{r.label !== r.placement && <span className="small muted"> · {tm(r.label)}</span>}</td>
