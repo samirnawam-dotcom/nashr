@@ -17,7 +17,7 @@ const when = (iso: string) => `${dayLabel(dubai(iso).date, { day: 'numeric', mon
 // Answers built from the live rules, so a changed setting changes the help too.
 const buyerQA = (r: Rules): QA[] => [
   [t('How do I book a slot?'), t('Each slot is sold one of three ways. Auction: the highest bid when bidding closes wins. Fixed price: book it now and it comes off sale at once. Quick sale: offer a price and the publisher picks one. In every case the publisher confirms within {h} hours.', { h: r.seller_window_hours })],
-  [t('What is auto-bid?'), t('Set the most you will pay. Nashr bids for you, one step above anyone else, up to that maximum. Other buyers never see it.')],
+  [t('What is auto-bid?'), t('Set the most you will pay. Nashr bids for you, one step above anyone else, up to that maximum. If the publisher has a hidden minimum price and your maximum covers it, your bid rises to that minimum at once. Other buyers never see your maximum.')],
   [t('When do I pay?'), t('Only after the publisher accepts. You then have {h} hours to pay, or until the creative deadline if that comes sooner.', { h: r.payment_window_hours })],
   [t('Where does my money go?'), t('Nashr holds it. The publisher is paid only after you approve proof that the ad ran. If you do not answer within {d} working days, it is released.', { d: r.review_working_days })],
   [t('What if the ad did not run as booked?'), t('Report an issue from the booking while you review the proof. The publisher has {h} hours to fix it, offer a make-good or refund. If you cannot agree, Nashr decides.', { h: r.issue_response_hours })],

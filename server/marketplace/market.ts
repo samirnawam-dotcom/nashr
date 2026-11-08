@@ -49,6 +49,15 @@ async function insertBid(db: Db, slot: any, b: { buyerId: string; kind: string; 
 }
 
 /**
+ * The reserve as a floor for auto-bids (owner decision): when the leader's maximum reaches the reserve but the price is below it,
+ * the price goes up to the reserve, never past the maximum. A plain bid below the reserve stays where it is.
+ */
+const reserveFloor = (slot: any, price: number, max: number) => {
+  const reserve = slot.reserve_price == null ? null : Number(slot.reserve_price)
+  return reserve != null && price < reserve && max >= reserve ? reserve : price
+}
+
+/**
  * Place a bid, with optional auto-bid maximum (owner feedback: needed for launch). The slot row lock
  * serialises bids, so two bids in the same second can never both win (brief scenario 13).
  * Auto-bid is standard proxy bidding: the higher maximum leads at one step above the other, ties go to the earlier bid.
@@ -76,7 +85,7 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
     const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, brief: a.brief, campaignId: a.campaignId }, at)
     top = { bidId: bid.id, amount: a.amount, buyerId: a.buyerId, max }
   } else if (max > slot.top_max) { // challenger takes the lead
-    const price = Math.max(a.amount, Math.min(max, minNextBid(slot.top_max, step)))
+    const price = reserveFloor(slot, Math.max(a.amount, Math.min(max, minNextBid(slot.top_max, step))), max)
     await db.query(`update bids set status = 'outbid' where slot_id = $1 and buyer_id = $2 and status = 'active'`, [slot.id, slot.top_buyer_id])
     const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
     // an auto-bidder hears that their maximum was passed, so they can raise it; a plain bidder that they were outbid
@@ -86,7 +95,7 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
     top = { bidId: bid.id, amount: price, buyerId: a.buyerId, max }
   } else { // leader's maximum holds: the system raises the leader just above the challenger, never past the leader's maximum
     await insertBid(db, slot, { buyerId: a.buyerId, kind: 'bid', amount: a.amount, max, status: 'outbid', brief: a.brief, campaignId: a.campaignId }, at)
-    const price = Math.min(slot.top_max, Math.max(slot.top_amount, minNextBid(max, step)))
+    const price = reserveFloor(slot, Math.min(slot.top_max, Math.max(slot.top_amount, minNextBid(max, step))), slot.top_max)
     const bid = price > slot.top_amount
       ? await insertBid(db, slot, { buyerId: slot.top_buyer_id, kind: 'auto', amount: price, max: slot.top_max }, at)
       : { id: slot.top_bid_id }
@@ -97,6 +106,9 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
         { slotId: slot.id, outlet, label: slot.label, amount: price, max: slot.top_max }, at)
     }
   }
+  // a first bid, or a leader raising their own maximum: the auto-bid lifts the price to the reserve if the maximum allows
+  const floored = reserveFloor(slot, top.amount, top.max)
+  if (floored > top.amount) top = { ...top, amount: floored, bidId: (await insertBid(db, slot, { buyerId: top.buyerId, kind: 'auto', amount: floored, max: top.max }, at)).id }
   await db.query(`update slots set top_bid_id = $2, top_amount = $3, top_buyer_id = $4, top_max = $5 where id = $1`,
     [slot.id, top.bidId, top.amount, top.buyerId, top.max])
   const leading = top.buyerId === a.buyerId
@@ -125,7 +137,7 @@ export async function voidBid(db: Db, bidId: string, reason: string, actor: stri
   if (!per.length) await db.query(`update slots set top_bid_id = null, top_amount = null, top_buyer_id = null, top_max = null where id = $1`, [slot.id])
   else {
     const [lead, next] = per, leadMax = Number(lead.top_max), own = Number(lead.own ?? lead.top_max)
-    const price = next ? Math.min(leadMax, Math.max(own, minNextBid(Number(next.top_max), step))) : own
+    const price = reserveFloor(slot, next ? Math.min(leadMax, Math.max(own, minNextBid(Number(next.top_max), step))) : own, leadMax)
     const top = await insertBid(db, slot, { buyerId: lead.buyer_id, kind: 'auto', amount: price, max: leadMax }, at)
     await db.query(`update bids set status = case when buyer_id = $2 then 'active' else 'outbid' end where slot_id = $1 and status in ('active', 'outbid') and kind in ('bid', 'auto')`, [slot.id, lead.buyer_id])
     await db.query(`update slots set top_bid_id = $2, top_amount = $3, top_buyer_id = $4, top_max = $5 where id = $1`, [slot.id, top.id, price, lead.buyer_id, leadMax])

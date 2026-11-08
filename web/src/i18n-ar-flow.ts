@@ -455,7 +455,7 @@ export const AR_FLOW: Record<string, string> = {
   "How do I book a slot?": "كيف أحجز مساحة؟",
   "Each slot is sold one of three ways. Auction: the highest bid when bidding closes wins. Fixed price: book it now and it comes off sale at once. Quick sale: offer a price and the publisher picks one. In every case the publisher confirms within {h} hours.": "تُباع كل مساحة بإحدى ثلاث طرق. المزاد: يفوز أعلى عرض عند إغلاق المزايدة. السعر الثابت: احجزها الآن فتُسحب من البيع فورًا. البيع السريع: اعرض سعرًا ويختار الناشر أحد العروض. وفي كل الحالات يؤكد الناشر خلال {h} ساعة.",
   "What is auto-bid?": "ما هي المزايدة التلقائية؟",
-  "Set the most you will pay. Nashr bids for you, one step above anyone else, up to that maximum. Other buyers never see it.": "حدّد أقصى ما ستدفعه. تزايد نشر عنك بخطوة واحدة فوق أي شخص آخر حتى هذا الحد. لا يراه المشترون الآخرون أبدًا.",
+  "Set the most you will pay. Nashr bids for you, one step above anyone else, up to that maximum. If the publisher has a hidden minimum price and your maximum covers it, your bid rises to that minimum at once. Other buyers never see your maximum.": "حدّد أقصى ما ستدفعه. تزايد نشر عنك بخطوة واحدة فوق أي شخص آخر حتى هذا الحد. وإذا كان لدى الناشر حد أدنى مخفي للسعر ويغطيه حدك الأقصى، يرتفع عرضك إليه فورًا. لا يرى المشترون الآخرون حدك الأقصى أبدًا.",
   "When do I pay?": "متى أدفع؟",
   "Only after the publisher accepts. You then have {h} hours to pay, or until the creative deadline if that comes sooner.": "فقط بعد قبول الناشر. لديك بعدها {h} ساعة للدفع، أو حتى موعد تسليم الإعلان إن كان أقرب.",
   "Where does my money go?": "أين تذهب أموالي؟",

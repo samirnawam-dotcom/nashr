@@ -162,7 +162,7 @@ describe('who can see what (SPEC 5.5, scenario 15)', () => {
     expect(slots.length).toBeGreaterThan(0)
     for (const s of slots) expect(s).toMatchObject({ youLead: false, youBid: false })   // an unbid slot must not read as "you lead"
     const one = (await call(null, 'GET', `/api/slots/${slotX}`)).json()
-    expect(one).toMatchObject({ topBid: AED(3_600), youLead: false, yourMax: null, briefOnFile: false })
+    expect(one).toMatchObject({ topBid: AED(4_000), youLead: false, yourMax: null, briefOnFile: false }) // B's maximum covers the reserve
     expect(JSON.stringify(slots) + JSON.stringify(one)).not.toMatch(/reserve|4200|420000|alfuttaim|Al Futtaim/i)
     const dir = (await call(null, 'GET', '/api/directory')).json()
     const outlet = dir.find((o: any) => o.name === 'Skyline FM')
@@ -1101,14 +1101,14 @@ describe('auto-bid: the system bids up to the cap, and says so', () => {
   const notes = async (who: Who) => (await call(who, 'GET', '/api/notifications')).json().items
 
   test('a maximum holds the lead in steps up to the cap; the challenger is told at once; passing the cap is announced', async () => {
-    // A sets auto-bid with a cap of 6,000 (bids 3,500 now)
+    // A sets auto-bid with a cap of 6,000, bidding 3,500: the cap covers the 4,000 reserve, so the price starts there
     expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), maxAmount: AED(6_000), brief: BRIEF })).json())
-      .toMatchObject({ leading: true, topAmount: AED(3_500), yourMax: AED(6_000) })
-    // B bids 4,000: A's auto-bid answers at once, one step above B
-    const b1 = (await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_000), brief: BRIEF })).json()
-    expect(b1).toMatchObject({ leading: false, beatenByAutoBid: true, topAmount: AED(4_120) })
+      .toMatchObject({ leading: true, topAmount: AED(4_000), yourMax: AED(6_000) })
+    // B bids 4,200: A's auto-bid answers at once, one step above B
+    const b1 = (await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_200), brief: BRIEF })).json()
+    expect(b1).toMatchObject({ leading: false, beatenByAutoBid: true, topAmount: AED(4_326) })
     expect((await notes(buyerA)).map((n: any) => n.kind)).toContain('bid.auto_raised')
-    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(4_120), yourAutoMax: AED(6_000) })
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(4_326), yourAutoMax: AED(6_000) })
     // B bids 5,900: A's auto-bid stops at the cap (6,000) and A is told the cap is reached
     expect((await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(5_900) })).json()).toMatchObject({ leading: false, topAmount: AED(6_000) })
     expect((await notes(buyerA)).map((n: any) => n.kind)).toContain('bid.auto_cap')
@@ -1350,14 +1350,14 @@ describe('Nashr steps in: interventions, voided bids, chargebacks', () => {
 
   test('voiding a bid works the auction out again from the bids that remain', async () => {
     await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(5_000), brief: BRIEF })
-    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_000), brief: BRIEF })
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_200), brief: BRIEF })
     let s = (await call(admin, 'GET', `/api/admin/slots/${slotX}`)).json()
-    expect(s.topAmount).toBe(AED(4_120))
+    expect(s.topAmount).toBe(AED(4_326))
     const bBid = s.bids.find((b: any) => b.buyer === 'Al Futtaim').id
     expect((await call(admin, 'POST', `/api/admin/bids/${bBid}/void`, { reason: 'Placed by mistake, buyer called' })).statusCode).toBe(200)
     s = (await call(admin, 'GET', `/api/admin/slots/${slotX}`)).json()
-    expect(s.topAmount).toBe(AED(3_600)) // back to A's own bid: nobody else is bidding
-    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(3_600) })
+    expect(s.topAmount).toBe(AED(4_000)) // nobody else is bidding: A's own bid, lifted to the reserve its maximum covers
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(4_000) })
     expect((await pool.query(`select 1 from notifications where company_id = $1 and kind = 'bid.voided'`, [buyerB.companyId])).rowCount).toBe(1)
   })
 

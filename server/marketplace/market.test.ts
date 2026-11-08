@@ -85,6 +85,26 @@ describe('after the auction closes (sweeper)', () => {
     expect((await pool.query(`select status from bids where buyer_id = $1`, [A])).rows[0].status).toBe('outbid') // still valid until paid
   })
 
+  // owner decision: an auto-bid whose maximum reaches the reserve lifts the price to the reserve (the fixture's reserve is AED 4,000)
+  test('auto-bid up to the reserve: a maximum at or above it lifts the price to it; a plain bid or a lower maximum does not', async () => {
+    expect(await bid(A, 3_500, 3_900)).toEqual({ leading: true, topAmount: AED(3_500) }) // maximum below the reserve: no lift
+    expect(await bid(A, 3_500, 4_500)).toEqual({ leading: true, topAmount: AED(4_000) }) // the leader raises the maximum past it
+    expect((await pool.query(`select kind, amount from bids where slot_id = $1 order by seq desc limit 1`, [b2.id])).rows[0]).toEqual({ kind: 'auto', amount: AED(4_000) })
+  })
+
+  test('auto-bid up to the reserve: a first bid and a challenger', async () => {
+    expect(await bid(A, 3_600)).toEqual({ leading: true, topAmount: AED(3_600) })          // a plain bid stays below the reserve
+    expect(await bid(B, 3_708, 4_500)).toEqual({ leading: true, topAmount: AED(4_000) })   // the challenger's maximum carries it to the reserve
+    expect(await bid(C, 4_120, 6_000)).toEqual({ leading: true, topAmount: AED(4_635) })   // above the reserve, proxy bidding as before
+  })
+
+  test('auto-bid at the reserve is accepted automatically where the publisher allows it', async () => {
+    await pool.query(`update slots set auto_accept = true where id = $1`, [b2.id])
+    expect(await bid(A, 3_500, 4_500)).toEqual({ leading: true, topAmount: AED(4_000) })
+    await sweep(CLOSE)
+    expect(await deal()).toMatchObject({ status: 'awaiting_payment', amount: AED(4_000) })
+  })
+
   test('auto-accept at or above the reserve (buyer still has to pay)', async () => {
     await pool.query(`update slots set auto_accept = true where id = $1`, [b2.id])
     await bid(A, 4_100)
