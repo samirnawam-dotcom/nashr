@@ -512,3 +512,5 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 :root[dir="rtl"] .plan-table .r { text-align: left; }
 :root[dir="rtl"] .plan-table th, :root[dir="rtl"] .plan-table td { padding: 8px 0 8px 8px; text-align: right; }
 :root[dir="rtl"] .plan-table th.r, :root[dir="rtl"] .plan-table td.r { text-align: left; }
+/* Arabic money ("120,900 درهم") is wider than "AED 120,900": keep the headline figure on one line. */
+:root[dir="rtl"] .hero-value { white-space: nowrap; font-size: clamp(32px, 3.3vw, 46px); }

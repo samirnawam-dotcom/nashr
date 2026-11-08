@@ -35,7 +35,7 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   // Buyer pays from Bookings
   await p.click('[aria-label="Close"]'); await p.goto(BASE + '/#/bookings'); await p.waitForSelector('.table')
   out && await p.screenshot({ path: out + '/9-bookings.png' })
-  await p.click('.table tbody tr >> nth=0'); await p.waitForSelector('.sum')
+  await p.click(`.table tbody tr:has-text("${req.ref}")`); await p.waitForSelector('.sum')
   await p.selectOption('#card', 'pm_card_0002'); await p.click('button:has-text("Pay")'); await p.waitForSelector('.error')
   console.log('declined:', await p.locator('.error').textContent())
   await p.selectOption('#card', 'pm_card_4242'); await p.click('button:has-text("Pay")'); await p.waitForTimeout(800)
