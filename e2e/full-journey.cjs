@@ -90,6 +90,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
       await pub.click('.pl-quick button:has-text("Every day")')
       await pub.fill('#sa', from); await pub.fill('#ea', to); await pub.click('button:has-text("Add break")'); await pub.fill('#bt0', at)
       if (sale === 'quick_sale') await pub.click('.pl-sale-card:has-text("Quick sale")')
+      if (sale === 'fixed') await pub.click('.pl-sale-card:has-text("Fixed price")')
       await pub.fill('#sp', '2000'); await pub.fill('#cd', '6'); if (extra) await extra()
       await pub.shot(`f5-${sale}`)
       await pub.click('button:has-text("Save placement")'); await pub.waitForSelector('h1:has-text("is saved")')
@@ -97,6 +98,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     }
     await placement('Morning Drive', 'auction', '07:00', '09:00', '07:30', async () => { await pub.fill('#bn', '3500') })
     await placement('Evening Drive', 'quick_sale', '17:00', '19:00', '17:30')
+    await placement('Lunch Hour', 'fixed', '12:00', '13:00', '12:30')
     await pub.shot('f5-listings')
     const listed = await sql(`select p.name, count(*)::int n, min(s.starts_at) first from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                               where o.name = $1 group by p.name`, [`Palm Radio ${run}`])
@@ -189,6 +191,20 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await buy.goto(BASE + '/bookings'); await buy.click('.table tbody tr >> nth=0'); await buy.waitForSelector('.sum')
     await buy.selectOption('#card', 'pm_card_4242'); await buy.click('button:has-text("Pay")'); await buy.waitForSelector('main .page-title:has-text("Payment secured")')
     say()
+
+    step = '16 fixed price: book now, each side sees the other, publisher confirms, buyer pays'
+    await buy2.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy2.waitForSelector('.cv-table tbody tr:has-text("Lunch Hour")')
+    await buy2.click('.cv-table tbody tr:has-text("Lunch Hour") .cv-act >> nth=0'); await buy2.waitForSelector('.drawer h2')
+    if (!(await buy2.locator('.drawer-seller:has-text("Palm Radio")').count())) throw new Error('the buyer does not see who sells it')
+    await brief(buy2); await buy2.shot('f16-book'); await buy2.click('.drawer-f .btn.primary:has-text("Book for")')
+    const booked = await buy2.locator('.drawer .ok, .drawer .error').first().textContent(); if (!/Booked/.test(booked)) throw new Error(booked)
+    await nav(pub, 'Inbox'); await pub.waitForSelector('.tasks a:has-text("Booked at your fixed price")'); await pub.click('.tasks a:has-text("Booked at your fixed price")')
+    await pub.waitForSelector('.co-card:has-text("Oasis Retail")'); await pub.shot('f16-buyer-profile')
+    if (/@|\+971/.test(await pub.locator('.co-card').textContent())) throw new Error('contact details shown before purchase')
+    await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer')
+    await buy2.goto(BASE + '/bookings'); await buy2.click('.table tbody tr:has-text("pay now") >> nth=0'); await buy2.waitForSelector('.sum')
+    await buy2.selectOption('#card', 'pm_card_4242'); await buy2.click('button:has-text("Pay")'); await buy2.waitForSelector('main .page-title:has-text("Payment secured")')
+    say(booked)
 
     for (const p of [pub, buy, buy2, staff]) if (p.errors.length) throw new Error(`${p.who} errors: ${p.errors.join(' | ')}`)
     console.log('ALL GOOD')

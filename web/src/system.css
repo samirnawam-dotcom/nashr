@@ -562,3 +562,23 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 .dropzone:hover { border-color: var(--teal); background: var(--teal-1); }
 .dropzone:focus-within { box-shadow: var(--focus); }
 .dropzone.disabled { opacity: .6; cursor: progress; }
+
+/* Business profiles: who the other side is, before a deal (no contact details) */
+.co-card { display: grid; gap: 10px; }
+.co-head { display: flex; align-items: center; gap: 12px; }
+.co-head h3 { margin: 0; font-size: 17px; }
+.co-badge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--teal-1); color: var(--teal); font: 600 11px/1 var(--body); flex: none; }
+.co-badge.lg { width: 44px; height: 44px; border-radius: 12px; font-size: 15px; }
+.co-verified { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--teal); font-weight: 500; }
+.co-verified::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+.co-card p { margin: 0; overflow-wrap: anywhere; }
+.co-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 16px; margin: 0; }
+.co-facts dt { font-size: 12px; color: var(--slate); }
+.co-facts dd { margin: 2px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+.co-mini summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; flex-wrap: wrap; }
+.co-mini summary::-webkit-details-marker { display: none; }
+.co-mini summary b { font-weight: 600; }
+.co-mini p { margin: 4px 0 0; }
+.co-edit-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.co-preview { padding: 14px; border: 1px dashed var(--line-2); border-radius: var(--radius); background: var(--surface-2); }
+@media (max-width: 760px) { .co-edit-grid { grid-template-columns: minmax(0, 1fr); } }

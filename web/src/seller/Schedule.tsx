@@ -4,9 +4,10 @@ import { api } from '../api'
 import { dayLabel, time } from '../format'
 import { addDays, dubai, monthGrid, todayInDubai, weekOf } from '../calendar/layout'
 import { DealStatus, SLOT_STATUS, money, when } from './common'
-import { Bolt, Gavel, useLatest, useNarrow } from '../calendar/CalendarPage'
+import { SALE_TYPES, SaleIcon, saleLabel, useLatest, useNarrow } from '../calendar/CalendarPage'
 import { DateNav, FilterFold, GROUPS, groupOf, OpsList, OpsMonth, StatusChips, statusesOf, useAddress, type OpsDay } from '../calendar/ops'
 import { ltr, sep, t } from '../i18n'
+import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { tm } from '../i18n-server'
 
 type SSlot = { id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
@@ -62,9 +63,9 @@ export function SchedulePage() {
         {outlets.length > 1 && <select className="cal-input cv-outlet-pick" aria-label={t('Outlet')} value={a.outlet} onChange={e => update({ outlet: e.target.value })}>
           <option value="">{t('All outlets')}</option>{outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
         <StatusChips value={groups} onChange={v => update({ st: v.join(',') })} />
-        <div className="cv-group" role="group" aria-label={t('Sale type')}>{(['auction', 'quick_sale'] as const).map(v => { const on = sales.includes(v)
+        <div className="cv-group" role="group" aria-label={t('Sale type')}>{SALE_TYPES.map(v => { const on = sales.includes(v)
           return <button key={v} type="button" className={`chipf ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => update({ sale: (on ? sales.filter(x => x !== v) : [...sales, v]).join(',') })}>
-            {v === 'auction' ? <Gavel /> : <Bolt />}{v === 'auction' ? t('Auction') : t('Quick sale')}</button> })}</div>
+            <SaleIcon k={v} />{saleLabel(v)}</button> })}</div>
         <span className="spacer" />
         {active > 0 && <button type="button" className="btn cv-clear" onClick={() => { setQText(''); update({ st: '', sale: '', outlet: '', q: '' }) }}>{t('Clear all ({n})', { n: active })}</button>}
       </FilterFold>
@@ -131,10 +132,10 @@ function WeekGrid({ days, slots, onOpen }: { days: string[]; slots: SSlot[]; onO
 }
 
 type Panel = SSlot & { creativeDueAt: string; choiceDeadlineAt: string | null
-  bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean; acceptable?: boolean
+  bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean; acceptable?: boolean; profile?: CompanyProfile | null
     brief: { advertiser: string | null; industry: string | null; message: string | null; language: string | null; notes: string | null } | null }[]
   deals: { id: string; ref: string; status: string; amount: number; kind: string }[] }
-const KIND: Record<string, string> = { bid: 'Bid', auto: 'Auto-bid', buy_now: t("Buy now"), interest: 'Interest' }
+const KIND: Record<string, string> = { bid: 'Bid', auto: 'Auto-bid', buy_now: t("Buy now"), interest: 'Interest', book: 'Booking' }
 
 export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: () => void; onClose?: () => void }) {
   const [s, setS] = useState<Panel | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false)
@@ -160,7 +161,7 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
     <section><h3 style={{ fontSize: 15, marginBottom: 8 }}>{t("Bids and requests")}</h3>
       {s.bids.some(b => b.acceptable) && <p className="small">{t('Accept one buyer by {when} to book it. The others are told the slot has gone. Unanswered interest lapses then.', { when: when(s.closesAt) })}</p>}
       {!s.bids.length ? <p className="muted small">{t("None yet.")}</p> : <div className="table-wrap"><table className="table"><tbody>{s.bids.map(b => <tr key={b.id}>
-        <td>{b.company}<div className="small muted">{t(KIND[b.kind])} · {t(b.status.replace('_', ' '))}</div>
+        <td>{b.profile ? <CompanyCard p={b.profile} compact /> : b.company}<div className="small muted">{t(KIND[b.kind])} · {t(b.status.replace('_', ' '))}</div>
           {b.acceptable && b.brief && <div className="small brief-mini">{b.brief.advertiser && <div><b>{b.brief.advertiser}</b>{b.brief.industry ? `${sep}${t(b.brief.industry)}` : ''}</div>}
             {b.brief.message && <div className="muted">“{b.brief.message}”</div>}{b.brief.notes && <div className="muted">{b.brief.notes}</div>}</div>}</td>
         <td className="r num">{money(b.amount)}</td>

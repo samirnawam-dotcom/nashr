@@ -34,8 +34,12 @@ const LIST_DAYS = 28, PAGE = 50, OUTLET_PAGE = 50, HOUR = 64, MAX_COLS = 3
 
 export const Gavel = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8" /></svg>
 export const Bolt = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-export const SaleType = ({ t: kind }: { t: Slot['saleType'] }) =>
-  <span className="tag">{kind === 'auction' ? <Gavel /> : <Bolt />}{kind === 'auction' ? t('Auction') : t('Quick sale')}</span>
+export const Tag = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8zM7 7h.01" /></svg>
+/** The three ways a slot is sold, with one label and one icon each, used everywhere (SPEC 12.1). */
+export const SALE_TYPES = ['auction', 'quick_sale', 'fixed'] as const
+export const SaleIcon = ({ k }: { k: string }) => k === 'auction' ? <Gavel /> : k === 'fixed' ? <Tag /> : <Bolt />
+export const saleLabel = (k: string) => k === 'auction' ? t('Auction') : k === 'fixed' ? t('Fixed price') : t('Quick sale')
+export const SaleType = ({ t: kind }: { t: Slot['saleType'] }) => <span className="tag"><SaleIcon k={kind} />{saleLabel(kind)}</span>
 const ICON: Record<string, string> = {
   radio: 'M4 9h16v11H4zM8 9l9-5M8 14.5h.01M12 13h5M12 16h5', tv: 'M3 6h18v12H3zM8 21h8M12 18v3',
   print: 'M6 3h9l3 3v15H6zM9 9h6M9 13h6M9 17h4', digital: 'M3 5h18v11H3zM9 20h6M12 16v4', podcast: 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
@@ -50,6 +54,7 @@ export function status(s: Slot) {
   if (!s.available) return <span className="muted">{t('Not available')}</span>
   if (s.youLead) return <span className="dot lead">{t('You lead')}</span>
   if (s.youBid && s.saleType === 'quick_sale') return <span className="dot soon">{t('Interest sent')}</span>
+  if (s.saleType === 'fixed') return <span className="muted">{t('Book now')}</span>
   if (s.youBid && s.topBid) return <span className="dot outbid">{t('Outbid')}</span>
   const soon = s.saleType === 'auction' && closesIn(s.closesAt)
   if (soon) return <span className="on-air">{soon}</span>
@@ -267,8 +272,8 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
         {CHANNELS.map(c => <button key={c} type="button" className={`chipf ${on(s.f.channels, c) ? 'on' : ''}`} aria-pressed={on(s.f.channels, c)}
           onClick={() => update({ f: { channels: toggle(s.f.channels, c, CHANNELS) } })}><ChannelMark c={c} label /></button>)}</div>
       <div className="cv-group" role="group" aria-label={t('Sale type')}>{stacked && <span className="cv-label">{t('Sale type')}</span>}
-        {(['auction', 'quick_sale'] as const).map(v => <button key={v} type="button" className={`chipf ${on(s.f.saleTypes, v) ? 'on' : ''}`} aria-pressed={on(s.f.saleTypes, v)}
-          onClick={() => update({ f: { saleTypes: toggle(s.f.saleTypes, v, ['auction', 'quick_sale']) } })}>{v === 'auction' ? <Gavel /> : <Bolt />}{v === 'auction' ? t('Auction') : t('Quick sale')}</button>)}</div>
+        {SALE_TYPES.map(v => <button key={v} type="button" className={`chipf ${on(s.f.saleTypes, v) ? 'on' : ''}`} aria-pressed={on(s.f.saleTypes, v)}
+          onClick={() => update({ f: { saleTypes: toggle(s.f.saleTypes, v, [...SALE_TYPES]) } })}><SaleIcon k={v} />{saleLabel(v)}</button>)}</div>
       {stacked ? <><span className="cv-label">{t('Time of day')}</span>{dayparts}<span className="cv-label">{t('More filters')}</span>{moreFields}</> : <>
         <Popover label={<>{t('Time of day')}{s.f.dayparts?.length ? <span className="cv-count">{s.f.dayparts.length}</span> : null}</>} on={!!s.f.dayparts?.length}>{dayparts}</Popover>
         <Popover label={<>{t('More filters')}{more ? <span className="cv-count">{more}</span> : null}</>} on={more > 0}>{moreFields}</Popover>

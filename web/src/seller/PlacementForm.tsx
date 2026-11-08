@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { navigate } from '../nav'
 import { api } from '../api'
 import { addDays, todayInDubai } from '../calendar/layout'
-import { Bolt, ChannelMark, Gavel } from '../calendar/CalendarPage'
+import { Bolt, ChannelMark, Gavel, SaleIcon, saleLabel, Tag } from '../calendar/CalendarPage'
 import { LANGUAGE } from '../calendar/BidDrawer'
 import { dayLabel, money } from '../format'
 import { ltr, sep, t } from '../i18n'
@@ -74,7 +74,7 @@ function formats(channel: string): Format[] {
   }
 }
 
-type F = { outletId: string; format: string; name: string; description: string; specs: string; language: string; unit: 'day' | 'week'; saleType: 'auction' | 'quick_sale'
+type F = { outletId: string; format: string; name: string; description: string; specs: string; language: string; unit: 'day' | 'week'; saleType: 'auction' | 'quick_sale' | 'fixed' | 'fixed'
   days: number[]; startsAt: string; endsAt: string; startingPrice: string; anyBreakPrice: string; packagePrice: string; buyNowPrice: string; reservePrice: string
   autoAccept: boolean; creativeDays: string; closeDays: string; listing: 'rolling' | 'manual'; horizonWeeks: string; listNowWeeks: string; separation: boolean }
 
@@ -128,7 +128,7 @@ export function NewPlacementPage() {
     <div className="row-flex"><a className="btn primary" href="/schedule?view=list">{t('See it on the calendar')}</a><a className="btn" href="/listings/new">{t('Add another')}</a><a className="btn" href="/listings">{t('Go to listings')}</a></div>
   </main>
 
-  const week = f.unit === 'week', slotted = !week && breaks.length > 0, auction = f.saleType === 'auction'
+  const week = f.unit === 'week', slotted = !week && breaks.length > 0, auction = f.saleType === 'auction', fixed = f.saleType === 'fixed'
   const creativeH = Number(f.creativeDays) * 24, closeH = Number(f.closeDays) * 24
   const minClose = Math.ceil((creativeH + p.windows.sellerHours + p.windows.paymentHours) / 24)
   const price = aed(f.startingPrice), buyNow = aed(f.buyNowPrice), reserve = aed(f.reservePrice)
@@ -152,7 +152,7 @@ export function NewPlacementPage() {
         ...(f.startsAt ? { startsAt: f.startsAt } : {}), ...(f.endsAt && !week ? { endsAt: f.endsAt } : {}),
         breaks: slotted ? breaks.filter(b => b.label.trim()).map(b => ({ label: b.label.trim(), ...(b.at ? { at: b.at } : {}), ...(b.seconds ? { seconds: Number(b.seconds) } : {}) })) : [],
         startingPrice: price, anyBreakPrice: slotted ? aed(f.anyBreakPrice) : undefined, packagePrice: slotted && breaks.length > 1 ? aed(f.packagePrice) : undefined,
-        buyNowPrice: auction ? buyNow : undefined, reservePrice: auction ? reserve : undefined, autoAccept: auction && !!reserve && f.autoAccept,
+        buyNowPrice: auction ? buyNow : undefined, reservePrice: auction ? reserve : undefined, autoAccept: fixed ? f.autoAccept : auction && !!reserve && f.autoAccept,
         creativeLeadHours: creativeH, closeLeadHours: closeH, format: f.format || undefined, description: f.description.trim() || undefined, specs: f.specs.trim() || undefined,
         language: f.language, listing: f.listing, horizonWeeks: Number(f.horizonWeeks), separation: f.separation,
         ...(p!.company.payoutsEnabled && listDays > 0 ? { listFrom: todayInDubai(), listDays } : {}) }
@@ -221,9 +221,14 @@ export function NewPlacementPage() {
             <div className="pl-sale" role="radiogroup" aria-label={t('Sold as')}>
               <button type="button" role="radio" aria-checked={auction} className={`pl-sale-card ${auction ? 'on' : ''}`} onClick={() => set('saleType', 'auction')}>
                 <b><Gavel /> {t('Auction')}</b><span>{t('Buyers bid until bidding closes. You accept the top bid, or it is accepted for you at your reserve.')}</span></button>
-              <button type="button" role="radio" aria-checked={!auction} className={`pl-sale-card ${!auction ? 'on' : ''}`} onClick={() => set('saleType', 'quick_sale')}>
-                <b><Bolt /> {t('Quick sale')}</b><span>{t('A fixed price. Buyers show interest and you accept one of them.')}</span></button>
+              <button type="button" role="radio" aria-checked={fixed} className={`pl-sale-card ${fixed ? 'on' : ''}`} onClick={() => set('saleType', 'fixed')}>
+                <b><Tag /> {t('Fixed price')}</b><span>{t('Book now at your price. The first buyer to book takes it; you confirm within 24 hours, or automatically.')}</span></button>
+              <button type="button" role="radio" aria-checked={f.saleType === 'quick_sale'} className={`pl-sale-card ${f.saleType === 'quick_sale' ? 'on' : ''}`} onClick={() => set('saleType', 'quick_sale')}>
+                <b><Bolt /> {t('Quick sale')}</b><span>{t('A price buyers can offer on or above. Buyers show interest and you choose one of them.')}</span></button>
             </div>
+            {fixed && <><label className="switch"><input type="checkbox" role="switch" checked={f.autoAccept} onChange={e => set('autoAccept', e.target.checked)} />
+              <span className="switch-track" aria-hidden><span /></span><b>{t('Confirm bookings automatically')}</b></label>
+              <span className="small muted">{t('A booking at your price is confirmed at once and the buyer is asked to pay. Off: you confirm each one within 24 hours.')}</span></>}
             <div className="grid2">
               <div className="field"><label htmlFor="sp">{slotted ? (auction ? t('Starting price per {thing}', { thing: breakWord }) : t('Price per {thing}', { thing: breakWord })) : auction ? t('Starting price') : t('Price')}</label>
                 <div className="money-input"><span aria-hidden>{t('AED')}</span><input id="sp" inputMode="decimal" value={f.startingPrice} onChange={input('startingPrice')} /></div></div>
@@ -272,7 +277,7 @@ export function NewPlacementPage() {
         <aside className="pl-side">
           <section className="card pad pl-preview" aria-label={t('Preview')}>
             <span className="small muted">{t('How buyers see it')}</span>
-            <div className="row-flex"><ChannelMark c={channel} label />{auction ? <span className="sale auction"><Gavel /> {t('Auction')}</span> : <span className="sale quick"><Bolt /> {t('Quick sale')}</span>}</div>
+            <div className="row-flex"><ChannelMark c={channel} label /><span className="sale"><SaleIcon k={f.saleType} /> {saleLabel(f.saleType)}</span></div>
             <h3 dir="auto">{f.name || t('Name buyers see')}</h3>
             <p className="small muted">{outlet?.name}{sep}{week ? t('A whole week from {day}', { day: t(DAYS[(f.days[0] ?? 1) - 1]) }) : f.days.map(d => t(DAYS[d - 1])).join(sep) || '—'}
               {!week && f.startsAt ? ` · ${ltr(f.startsAt + (f.endsAt ? `–${f.endsAt}` : ''))}` : ''}</p>
@@ -351,11 +356,11 @@ export function ImportPlacementsPage() {
     setRows(all.slice(1).map((r, i) => {
       const outletName = at(r, 'outlet'), name = at(r, 'name')
       const outlet = p!.outlets.find(o => o.name.toLowerCase() === outletName.toLowerCase()) ?? (p!.outlets.length === 1 && !outletName ? p!.outlets[0] : undefined)
-      const sold = at(r, 'sold_as').toLowerCase().replace(/[\s-]+/g, '_'), days = parseDays(at(r, 'days') || 'mon-sun')
+      const sold = at(r, 'sold_as').toLowerCase().replace(/[\s-]+/g, '_').replace(/^fixed_price$/, 'fixed'), days = parseDays(at(r, 'days') || 'mon-sun')
       const price = aed(at(r, 'price')), start = at(r, 'start'), end = at(r, 'end')
       const breakTimes = at(r, 'breaks').split(/[;|]/).map(x => x.trim()).filter(Boolean), seconds = Number(at(r, 'seconds')) || undefined
       const problem = !outlet ? t('Outlet "{name}" is not one of yours.', { name: outletName }) : !name ? t('Name is missing.')
-        : !['auction', 'quick_sale'].includes(sold) ? t('Sold as must be auction or quick sale.') : !days ? t('Days are not readable (use Mon-Fri or Mon;Wed).')
+        : !['auction', 'quick_sale', 'fixed'].includes(sold) ? t('Sold as must be auction, fixed price or quick sale.') : !days ? t('Days are not readable (use Mon-Fri or Mon;Wed).')
         : !price ? t('Price is missing.') : (start && !hhmm(start)) || (end && !hhmm(end)) || breakTimes.some(b => !hhmm(b)) ? t('Times must look like 07:30.') : ''
       const closeDays = Number(at(r, 'close_days')) || 6, creativeDays = Number(at(r, 'creative_days')) || 2
       const body = problem ? undefined : JSON.parse(JSON.stringify({ outletId: outlet!.id, name, saleType: sold, days, startsAt: hhmm(start) ?? undefined, endsAt: hhmm(end) ?? undefined,

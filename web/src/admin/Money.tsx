@@ -59,7 +59,7 @@ export function PayoutsPage() {
 type Agg = { bookings: number; gmv: number; commission: number }
 type Losses = { refunds: number; refunded: number; from_buyers: number; charged_to_sellers: number; recovered_from_sellers: number }
 type R = { from: string; to: string; sellersStillOwe: number; refundLosses: Losses; byMonth: (Agg & { month: string })[]; byChannel: (Agg & { channel: string })[]; byOutlet: (Agg & { outlet: string; channel: string })[]; bySaleType: (Agg & { kind: string })[] }
-const KIND: Record<string, string> = { auction: 'Auction', buy_now: 'Buy now', quick_sale: 'Quick sale', choice: 'Next bid chosen' }
+const KIND: Record<string, string> = { auction: 'Auction', buy_now: 'Buy now', quick_sale: 'Quick sale', choice: 'Next bid chosen', fixed: 'Fixed price' }
 
 export function ReportsPage() {
   const year = new Date().getFullYear()

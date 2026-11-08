@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { dayLabel } from '../format'
 import { addDays, monthGrid, todayInDubai, weekOf } from '../calendar/layout'
-import { Bolt, CHANNELS, ChannelMark, Gavel, useNarrow } from '../calendar/CalendarPage'
+import { CHANNELS, ChannelMark, SALE_TYPES, SaleIcon, saleLabel, useNarrow } from '../calendar/CalendarPage'
 import { DateNav, FilterFold, GROUPS, OpsList, OpsMonth, OpsOutlets, StatusChips, statusesOf, useAddress, type OpsDay } from '../calendar/ops'
 import { navigate } from '../nav'
 import { t } from '../i18n'
@@ -42,8 +42,8 @@ export function AdminCalendarPage() {
         <div className="cv-group" role="group" aria-label={t('Channels')}>{CHANNELS.map(c => <button key={c} type="button" className={`chipf ${chans.includes(c) ? 'on' : ''}`} aria-pressed={chans.includes(c)}
           onClick={() => update({ ch: toggle(chans, c) })}><ChannelMark c={c} label /></button>)}</div>
         <StatusChips value={groups} onChange={v => update({ st: v.join(',') })} />
-        <div className="cv-group" role="group" aria-label={t('Sale type')}>{(['auction', 'quick_sale'] as const).map(v => <button key={v} type="button" className={`chipf ${sales.includes(v) ? 'on' : ''}`}
-          aria-pressed={sales.includes(v)} onClick={() => update({ sale: toggle(sales, v) })}>{v === 'auction' ? <Gavel /> : <Bolt />}{v === 'auction' ? t('Auction') : t('Quick sale')}</button>)}</div>
+        <div className="cv-group" role="group" aria-label={t('Sale type')}>{SALE_TYPES.map(v => <button key={v} type="button" className={`chipf ${sales.includes(v) ? 'on' : ''}`}
+          aria-pressed={sales.includes(v)} onClick={() => update({ sale: toggle(sales, v) })}><SaleIcon k={v} />{saleLabel(v)}</button>)}</div>
         <span className="spacer" />
         {active > 0 && <button type="button" className="btn cv-clear" onClick={() => { setQText(''); update({ st: '', sale: '', ch: '', q: '' }) }}>{t('Clear all ({n})', { n: active })}</button>}
       </FilterFold>

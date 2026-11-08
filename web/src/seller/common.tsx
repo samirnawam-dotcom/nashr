@@ -36,6 +36,7 @@ export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
       <span className={`task-k ${task.type}`}>{t(TASK[task.type] ?? task.type)}</span>
       <span className="task-body"><span><b>{task.outlet}</b>{sep}{task.label}</span><span className="muted small">{when(task.startsAt)}{task.buyer ? `${sep}${task.buyer}` : task.interested ? `${sep}${t('{n} buyers interested', { n: task.interested })}` : ''}</span>
         {task.kind === 'buy_now' && <span className="badge on">{t("This buyer will pay now")}</span>}
+        {task.kind === 'fixed' && <span className="badge on">{t('Booked at your fixed price')}</span>}
         {task.belowReserve && <span className="badge" style={{ color: 'var(--amber)' }}>{t("Below your reserve")}</span>}</span>
       <span className="num">{task.amount ? money(task.amount) : ''}</span>
       <span className={`small ${urgent(task.dueAt) ? 'soon' : 'muted'}`}>{due(task.dueAt)}</span>

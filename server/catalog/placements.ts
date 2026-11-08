@@ -13,7 +13,7 @@ const noContacts = (p: { name?: string; description?: string; specs?: string; br
 
 export type Break = { label: string; at?: string; seconds?: number }
 export type PlacementInput = {
-  outletId: string; name: string; saleType: 'auction' | 'quick_sale'; days: number[]
+  outletId: string; name: string; saleType: 'auction' | 'quick_sale' | 'fixed'; days: number[]
   startsAt?: string; endsAt?: string; breaks?: Break[]
   startingPrice: number; anyBreakPrice?: number; packagePrice?: number; buyNowPrice?: number; reservePrice?: number; autoAccept?: boolean
   creativeLeadHours: number; closeLeadHours: number
@@ -61,7 +61,8 @@ export async function createPlacement(db: Db, p: PlacementInput, actor: string, 
   await checkDeadlines(db, p, at)
   if (p.reservePrice && p.buyNowPrice && p.reservePrice > p.buyNowPrice) throw new MarketError('The reserve cannot be above the buy-now price.')
   if (p.buyNowPrice && p.buyNowPrice <= p.startingPrice) throw new MarketError('The buy-now price must be above the starting price.')
-  if (p.autoAccept && !p.reservePrice) throw new MarketError('Set a reserve price to accept bids automatically.')
+  if (p.autoAccept && p.saleType === 'auction' && !p.reservePrice) throw new MarketError('Set a reserve price to accept bids automatically.')
+  if (p.saleType !== 'auction' && (p.buyNowPrice || p.reservePrice)) throw new MarketError('Buy-now and reserve prices are for auctions only.')
   if (p.unit === 'week' && (p.breaks?.length || p.days.length !== 1)) throw new MarketError('A week-long placement starts on one day and has no breaks.')
   noContacts(p)
   const row = await one(db,
@@ -171,7 +172,7 @@ export async function updatePlacement(db: Db, placementId: string, sellerId: str
   if (!p) throw new MarketError('This placement is not yours.')
   await checkDeadlines(db, e, at)
   if (e.reservePrice && e.buyNowPrice && e.reservePrice > e.buyNowPrice) throw new MarketError('The reserve cannot be above the buy-now price.')
-  if (e.autoAccept && !e.reservePrice) throw new MarketError('Set a reserve price to accept bids automatically.')
+  if (e.autoAccept && p.sale_type === 'auction' && !e.reservePrice) throw new MarketError('Set a reserve price to accept bids automatically.')
   noContacts(e)
   await db.query(`update placements set name = $2, starting_price = $3, any_break_price = $4, package_price = $5, buy_now_price = $6, reserve_price = $7,
       auto_accept = $8, creative_lead_hours = $9, close_lead_hours = $10,

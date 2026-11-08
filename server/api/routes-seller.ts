@@ -1,6 +1,7 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { sellerDeal, sellerSlot } from './shapes.js'
+import { companyProfile } from './profiles.js'
 import { accept, acceptInterest, chooseBid, decline, MarketError } from '../marketplace/market.js'
 import { cancelBySeller, creativeMissed } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
@@ -14,7 +15,7 @@ const SELLER: ['seller'] = ['seller']
 const price = { type: 'integer', minimum: 100, maximum: 100_000_000_00 } // at least AED 1, in fils
 const time = { type: 'string', pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }
 const PLACEMENT = { type: 'object', additionalProperties: false, required: ['outletId', 'name', 'saleType', 'days', 'startingPrice', 'creativeLeadHours', 'closeLeadHours'],
-  properties: { outletId: { type: 'string', format: 'uuid' }, name: { type: 'string', minLength: 1, maxLength: 200 }, saleType: { enum: ['auction', 'quick_sale'] },
+  properties: { outletId: { type: 'string', format: 'uuid' }, name: { type: 'string', minLength: 1, maxLength: 200 }, saleType: { enum: ['auction', 'quick_sale', 'fixed'] },
     days: { type: 'array', minItems: 1, maxItems: 7, uniqueItems: true, items: { type: 'integer', minimum: 1, maximum: 7 } }, startsAt: time, endsAt: time,
     breaks: { type: 'array', maxItems: 24, items: { type: 'object', additionalProperties: false, required: ['label'],
       properties: { label: { type: 'string', minLength: 1, maxLength: 60 }, at: time, seconds: { type: 'integer', minimum: 1, maximum: 3600 } } } },
@@ -82,7 +83,8 @@ export function sellerRoutes(route: RouteFn) {
 
   route('GET', '/api/seller/deals/:id', SELLER, async ({ db, me }, req) => {
     const d = await ownDeal(db, req.params.id, me.actAs.companyId)
-    return { ...sellerDeal(d, await otherBids(db, d)), rating: await dealRating(db, d.id), separation: await separationConflict(db, d) }
+    return { ...sellerDeal(d, await otherBids(db, d)), rating: await dealRating(db, d.id), separation: await separationConflict(db, d),
+      buyerProfile: await companyProfile(db, d.buyer_id) }
   })
 
   route('POST', '/api/seller/deals/:id/accept', SELLER, async ({ db, at, me }, req) => {

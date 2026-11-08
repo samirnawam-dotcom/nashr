@@ -2,6 +2,9 @@ import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
 import { MarketError } from '../marketplace/market.js'
 import { sniffType, type Storage } from '../files/storage.js'
+import { containsContactDetails } from '../core/contact.js'
+import { audit } from '../core/audit.js'
+import { companyProfile } from './profiles.js'
 
 export const MAX_UPLOAD = 100 * 1024 * 1024 // ponytail: in-memory upload cap; TV masters go straight to S3 with presigned uploads later
 
@@ -10,6 +13,17 @@ export const MAX_UPLOAD = 100 * 1024 * 1024 // ponytail: in-memory upload cap; T
  * (creative, proof, invoice, issue evidence), and by Nashr staff. Everyone else gets "not found".
  */
 export function sharedRoutes(route: RouteFn, storage: Storage) {
+  // Your business profile, as the other side sees it before a deal (no contact details: those stay inside a paid booking).
+  route('GET', '/api/company/profile', ['buyer', 'seller'], async ({ db, me }) => companyProfile(db, me.actAs.companyId))
+  route('PUT', '/api/company/profile', ['buyer', 'seller'], async ({ db, at, me }, req) => {
+    const b = req.body
+    if (containsContactDetails([b.industry, b.about].filter(Boolean).join(' \n '))) throw new MarketError('Emails and phone numbers are not allowed in the profile.')
+    await db.query(`update companies set industry = $2, website = $3, about = $4 where id = $1`, [me.actAs.companyId, b.industry?.trim() || null, b.website?.trim() || null, b.about?.trim() || null])
+    await audit(db, `${me.role}:${me.actAs.companyId}`, 'company.profile_updated', 'company', me.actAs.companyId, null, at)
+    return companyProfile(db, me.actAs.companyId)
+  }, { type: 'object', additionalProperties: false, properties: { industry: { type: 'string', maxLength: 80 }, website: { type: 'string', maxLength: 300, pattern: '^(https?://.*)?$' },
+    about: { type: 'string', maxLength: 600 } } })
+
   route('POST', '/api/files', ['buyer', 'seller'], async ({ db, at, me }, req) => {
     const bytes = req.body
     if (!Buffer.isBuffer(bytes) || !bytes.length) throw new MarketError('Choose a file to upload.')

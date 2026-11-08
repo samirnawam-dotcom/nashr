@@ -7,6 +7,7 @@ import { PhotoBand } from '../PhotoBand'
 import { ltr, sep, t } from '../i18n'
 import { tm } from '../i18n-server'
 import { LANGUAGE } from '../calendar/BidDrawer'
+import { saleLabel } from '../calendar/CalendarPage'
 
 type Placement = { id: string; outlet: string; outletId: string; name: string; saleType: string; days: number[]; startsAt: string | null; endsAt: string | null
   breaks: { label: string; at?: string; seconds?: number }[]; startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null
@@ -37,7 +38,7 @@ export function ListingsPage() {
           <tbody>{p.placements.map(x => <tr key={x.id} style={x.archived ? { opacity: .55 } : undefined}>
             <td><b>{x.name}</b><div className="small muted">{x.outlet}{x.breaks.length ? ` · ${t('{n} breaks', { n: x.breaks.length })}` : ''}</div></td>
             <td className="small">{x.unit === 'week' ? t('A whole week from {day}', { day: t(DAYS[x.days[0] - 1]) }) : x.days.map(d => t(DAYS[d - 1])).join(sep)}{x.startsAt ? ` · ${ltr(x.startsAt.slice(0, 5) + (x.endsAt ? `–${x.endsAt.slice(0, 5)}` : ''))}` : ''}</td>
-            <td className="small">{x.saleType === 'auction' ? t('Auction') : t('Quick sale')}{x.reservePrice ? ` · ${t('reserve {price}', { price: money(x.reservePrice) })}` : ''}{x.autoAccept && <div className="small lead">{t('Accepts automatically at the reserve')}</div>}</td>
+            <td className="small">{saleLabel(x.saleType)}{x.reservePrice ? ` · ${t('reserve {price}', { price: money(x.reservePrice) })}` : ''}{x.autoAccept && <div className="small lead">{t('Accepts automatically at the reserve')}</div>}</td>
             <td className="r num">{money(x.startingPrice)}</td><td className="r num">{x.openSlots}</td>
             <td className="small">{x.listing === 'rolling' && !x.archived ? <span className="lead">{t('Kept {n} weeks ahead', { n: x.horizonWeeks })}</span> : <span className="num">{x.listedUntil ?? '—'}</span>}</td>
             <td className="r"><div className="row-flex" style={{ justifyContent: 'flex-end' }}>
@@ -92,7 +93,7 @@ export function EditPlacementPage({ id }: { id: string }) {
     try {
       const r = await api<{ slotsUpdated: number }>(`/seller/placements/${id}`, { method: 'PUT', body: JSON.parse(JSON.stringify({ name: f!.name.trim(),
         startingPrice: aed(f!.startingPrice), anyBreakPrice: slotted ? aed(f!.anyBreakPrice) : undefined, packagePrice: slotted ? aed(f!.packagePrice) : undefined,
-        buyNowPrice: auction ? buyNow : undefined, reservePrice: auction ? reserve : undefined, autoAccept: auction && !!reserve && f!.autoAccept,
+        buyNowPrice: auction ? buyNow : undefined, reservePrice: auction ? reserve : undefined, autoAccept: p!.saleType === 'fixed' ? f!.autoAccept : auction && !!reserve && f!.autoAccept,
         creativeLeadHours: Number(f!.creativeLeadHours), closeLeadHours: Math.round(Number(f!.closeLeadDays) * 24),
         description: f!.description, specs: f!.specs, language: f!.language, listing: f!.listing, horizonWeeks: Number(f!.horizonWeeks), separation: f!.separation })) })
       setSaved(r.slotsUpdated)
@@ -103,7 +104,7 @@ export function EditPlacementPage({ id }: { id: string }) {
     <main className="narrow">
       <p className="small"><a href="/listings">{t('Listings')}</a> › {p.name}</p>
       <h1>{t('Edit {name}', { name: p.name })}</h1>
-      <p className="muted">{p.outlet} · {auction ? t('Auction') : t('Quick sale')} · {p.days.map(d => t(DAYS_SHORT[d - 1])).join(sep)}{p.startsAt ? ` · ${ltr(p.startsAt.slice(0, 5) + (p.endsAt ? `–${p.endsAt.slice(0, 5)}` : ''))}` : ''}
+      <p className="muted">{p.outlet} · {saleLabel(p.saleType)} · {p.days.map(d => t(DAYS_SHORT[d - 1])).join(sep)}{p.startsAt ? ` · ${ltr(p.startsAt.slice(0, 5) + (p.endsAt ? `–${p.endsAt.slice(0, 5)}` : ''))}` : ''}
         {slotted ? ` · ${t('{n} breaks', { n: p.breaks.length })}` : ''}</p>
       <p className="notice">{t('Changes reach every future slot nobody has bid on, straight away. Slots with bids keep the terms their buyers bid on. To change days, times or breaks, add a new placement and archive this one.')}</p>
       <form className="form" onSubmit={save}>
@@ -126,6 +127,9 @@ export function EditPlacementPage({ id }: { id: string }) {
             {auction && <div className="field"><label htmlFor="ebn">{t('Buy-now price (optional)')}</label><input id="ebn" inputMode="decimal" value={f.buyNowPrice} onChange={set('buyNowPrice')} /></div>}
             {auction && <div className="field"><label htmlFor="erp">{t('Reserve (optional, hidden from buyers)')}</label><input id="erp" inputMode="decimal" value={f.reservePrice} onChange={set('reservePrice')} /></div>}
             {auction && <AutoAccept on={f.autoAccept} reserve={!!reserve} onChange={v => { setF({ ...f, autoAccept: v }); setSaved(null) }} />}
+            {p.saleType === 'fixed' && <div className="field span-2 auto-accept"><label className="switch"><input type="checkbox" role="switch" checked={f.autoAccept} onChange={e => { setF({ ...f, autoAccept: e.target.checked }); setSaved(null) }} />
+              <span className="switch-track" aria-hidden><span /></span><b>{t('Confirm bookings automatically')}</b></label>
+              <span className="small muted">{t('A booking at your price is confirmed at once and the buyer is asked to pay. Off: you confirm each one within 24 hours.')}</span></div>}
           </div>
         </div>
         <div className="card pad form section">

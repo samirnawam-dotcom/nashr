@@ -5,9 +5,10 @@ import { addDays, dubai, isAllDay } from './layout'
 import { SaleType, status } from './CalendarPage'
 import { SignInPrompt, useGuest } from '../guest'
 import { t } from '../i18n'
+import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 
 type Detail = Slot & { minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
-  details?: { description: string | null; specs: string | null; language: string | null; unit: string | null } }
+  details?: { description: string | null; specs: string | null; language: string | null; unit: string | null }; publisher?: CompanyProfile | null }
 export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
 export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government', 'Other']
 const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign'
@@ -67,8 +68,9 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
         <div><dt>{t('Creative due')}</dt><dd>{dayLabel(dubai(s.creativeDueAt).date, { weekday: 'short', day: 'numeric', month: 'short' })}, {time(s.creativeDueAt)}</dd></div>
       </dl>}
+      {s.publisher && <div className="drawer-seller"><span className="small muted">{t('Sold by')}</span><CompanyCard p={s.publisher} compact /></div>}
       <dl className="prices">
-        <div><dt>{s.saleType === 'auction' ? t('Starting price') : t('Asking price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>
+        <div><dt>{s.saleType === 'auction' ? t('Starting price') : s.saleType === 'fixed' ? t('Price') : t('Asking price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>
         {s.saleType === 'auction' && <div><dt>{t("Current top bid")}</dt><dd className="num">{s.topBid ? money(s.topBid) : t('No bids yet')}<small>{t('{n} bids · bidders anonymous', { n: s.bids })}</small></dd></div>}
         {s.saleType === 'auction' && <div><dt>{t("Minimum next bid")}</dt><dd className="num">{money(s.minNextBid)}<small>+3%</small></dd></div>}
         {s.buyNowPrice && <div><dt>{t("Buy now")}</dt><dd className="num">{money(s.buyNowPrice)}<small>{t("Request to book: the publisher must accept")}</small></dd></div>}
@@ -92,7 +94,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             <span className="small muted">{s.youLead
               ? t('You lead at {top}. Raising your maximum does not raise your bid; we only bid more when someone challenges you.', { top: money(s.topBid!) })
               : t('We bid {min} for you now, then only what it takes to stay ahead, in 3% steps, up to your maximum. Other buyers never see it. If you win, you pay the final bid, not your maximum.', { min: money(s.minNextBid) })}</span></div>}
-        </section> : <section className="form">
+        </section> : s.saleType === 'fixed' ? <p className="small">{t('A fixed price: the first buyer to book takes the slot. The publisher confirms within 24 hours, and you pay only then.')}</p> : <section className="form">
           <div className="field"><label htmlFor="offer">{t("Your offer (AED, optional, not below the asking price)")}</label><input id="offer" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
         </section>}
 
@@ -133,6 +135,9 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
                     r => r.leading ? t('Auto-bid is on. You lead at {top}; we bid for you up to {max}.', { top: money(r.topAmount), max: money(r.yourMax) }) : '')}>
                   {s.youLead && s.yourAutoMax ? t('Raise maximum to {amount}', { amount: money(toFils(max) || 0) }) : t('Start auto-bid up to {amount}', { amount: money(toFils(max) || 0) })}</button>
               : <button className="btn primary" disabled={busy || new Date() >= closes} onClick={() => send(`/slots/${s.id}/bids`, { amount: toFils(amount) }, r => r.leading ? t('Your bid is in. You lead at {top}.', { top: money(r.topAmount) }) : '')}>{t('Place bid {amount}', { amount: money(toFils(amount) || 0) })}</button>)
+            : s.saleType === 'fixed'
+              ? <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/book`, {}, r => r.status === 'accepted_pay_now'
+                  ? t('Booked and confirmed. Pay from Bookings to secure it.') : t('Booked. The publisher confirms within 24 hours; you pay only then.'))}>{t('Book for {price}', { price: money(s.startingPrice) })}</button>
             : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
           {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>

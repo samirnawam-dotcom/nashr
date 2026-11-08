@@ -5,6 +5,7 @@ import { dubai } from '../calendar/layout'
 import '../messages/messages.css'
 import { PhotoBand } from '../PhotoBand'
 import { t } from '../i18n'
+import { CompanyProfileEditor } from '../CompanyCard'
 
 const date = (iso: string) => dayLabel(dubai(iso).date, { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -24,6 +25,7 @@ export function CompanyPage() {
   return (
     <main className="narrow">
       <PhotoBand img="/brand/dash-buyer.jpg" title={c.name} sub={t('Your company on Nashr: tax details and the people who book.')} />
+      <CompanyProfileEditor audience="publishers" />
       <section className="card pad section form">
         <h2>{t('Tax details')}</h2>
         <p className="muted">{t('Publishers put your TRN on the tax invoices they send you, so you can reclaim the VAT. Leave it empty if your company is not VAT-registered.')}</p>

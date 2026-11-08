@@ -14,7 +14,7 @@ import './calendar.css'
  */
 
 export type OpsSlot = { id: string; outletId?: string; dealId: string | null; company: string | null; outlet: string; channel: string; placement: string; label: string; kind: string
-  saleType: 'auction' | 'quick_sale'; startsAt: string; endsAt: string | null; closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null
+  saleType: 'auction' | 'quick_sale' | 'fixed'; startsAt: string; endsAt: string | null; closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null
   reservePrice: number | null; topBid: number | null; bids: number }
 export type OpsDay = { date: string; slots: number; onSale: number; waiting: number; booked: number; off: number; fromPrice: number }
 export type Sort = 'time' | 'price_asc' | 'price_desc' | 'closing' | 'bids'

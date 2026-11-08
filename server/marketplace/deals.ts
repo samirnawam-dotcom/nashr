@@ -37,6 +37,7 @@ async function deadlineFor(db: Db, deal: any, status: string, at: Date): Promise
     case 'awaiting_seller': {
       const d = hours(at, await setting(db, 'seller_window_hours', at))
       return deal.kind === 'buy_now' ? earliest(d, slot.closes_at) : d // a buy-now request ends with the auction at the latest
+      // (a fixed-price booking keeps the full window: the slot is already off sale for everyone else)
     }
     case 'awaiting_payment': // ends at the creative deadline at the latest; buyers may upload creative from acceptance (SPEC 12.1)
       return earliest(hours(at, await setting(db, 'payment_window_hours', at)), slot.creative_due_at)

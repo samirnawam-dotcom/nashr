@@ -77,6 +77,14 @@ await list(await outlet(gulfNews, 'Gulf News', 'غلف نيوز', 'print', ['Ban
 await list(await outlet(khaleej, 'Khaleej Times', 'خليج تايمز', 'digital', ['Technology', 'Banking']), {
   name: 'Homepage takeover', saleType: 'quick_sale', days: [2, 4], startingPrice: AED(9_000), closeLeadHours: 96, creativeLeadHours: 24,
 })
+await list((await pool.query(`select id from outlets where name = 'Khaleej Times'`)).rows[0].id, {
+  name: 'Banner for a week', saleType: 'fixed', unit: 'week', days: [1], startingPrice: AED(6_500), closeLeadHours: 96, creativeLeadHours: 24,
+  description: 'Your banners across the site for seven days.', specs: 'MPU 300 × 250 and leaderboard 728 × 90, JPG, PNG or HTML5, up to 150 KB.',
+})
+await list((await pool.query(`select id from outlets where name = 'Gulf News'`)).rows[0].id, {
+  name: 'Half page', saleType: 'fixed', autoAccept: true, days: [2, 4], startingPrice: AED(11_000), closeLeadHours: 144, creativeLeadHours: 48,
+  description: 'A horizontal half page in one edition.', specs: '26 × 17 cm, PDF/X-1a, 300 dpi.',
+})
 await list(await outlet(majlis, 'The Majlis Podcast', 'المجلس', 'podcast', ['Banking', 'Technology']), {
   name: 'Weekly episode', saleType: 'auction', days: [4], startsAt: '06:00', startingPrice: AED(2_500),
   breaks: [{ label: 'Pre-roll' }, { label: 'Mid-roll' }, { label: 'Post-roll' }],
@@ -88,6 +96,7 @@ for (const [i, s] of slots.entries()) {
   if (i % 3) continue
   await tx(async c => {
     if (s.sale_type === 'quick_sale') return showInterest(c, { slotId: s.id, buyerId: rivals[i % 3], brief: BRIEF }, now)
+    if (s.sale_type === 'fixed') return // a fixed-price slot is booked outright, not bid on
     await placeBid(c, { slotId: s.id, buyerId: rivals[i % 3], amount: s.starting_price, brief: BRIEF }, now)
     if (i % 2 === 0) await placeBid(c, { slotId: s.id, buyerId: buyer, amount: Math.ceil(s.starting_price * 1.03 / 100) * 100, brief: BRIEF }, now)
     if (i % 4 === 0) await placeBid(c, { slotId: s.id, buyerId: rivals[(i + 1) % 3], amount: Math.ceil(s.starting_price * 1.07 / 100) * 100, brief: BRIEF }, now)

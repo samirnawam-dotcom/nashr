@@ -5,7 +5,7 @@
 export type Daypart = 'morning' | 'afternoon' | 'evening' | 'allday'
 export type SlotFilter = {
   channels?: string[]        // empty or missing: every channel
-  saleTypes?: string[]       // 'auction' | 'quick_sale'
+  saleTypes?: string[]       // 'auction' | 'quick_sale' | 'fixed'
   sector?: string            // the outlet accepts this sector (case-insensitive)
   maxPrice?: number          // fils, excluding VAT, compared with the current price (top bid, else starting price)
   dayparts?: Daypart[]       // Dubai time of day

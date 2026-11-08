@@ -4,6 +4,7 @@ import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
 import { t } from '../i18n'
 import { LogoPicker } from '../LogoPicker'
+import { CompanyProfileEditor } from '../CompanyCard'
 
 type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null; logoUrl: string | null }
 type P = { company: { name: string; trn: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean; rateCard: { fileId: string; name: string } | null }; outlets: Outlet[] }
@@ -37,6 +38,7 @@ export function ProfilePage() {
           <option value="generate">{t("Nashr issues them in our name and TRN")}</option><option value="upload">{t("We upload our own")}</option></select></div>
         <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy} onClick={() => act('PUT', '/seller/company', { ...tax, trn: tax.trn || undefined }, t("Tax details saved."))}>{t("Save")}</button>
       </section>
+      <CompanyProfileEditor audience="buyers" />
       <RateCard card={p.company.rateCard} onChange={load} />
       {p.outlets.map(o => <OutletForm key={o.id} o={o} busy={busy} onSave={b => act('PUT', `/seller/outlets/${o.id}`, b, t('{name} saved.', { name: o.name }))} />)}
       <OutletForm key={p.outlets.length} first={!p.outlets.length} busy={busy} onSave={b => act('POST', '/seller/outlets', b, t("Outlet added."))} />

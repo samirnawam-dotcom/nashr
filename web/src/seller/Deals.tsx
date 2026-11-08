@@ -6,11 +6,12 @@ import { DealStatus, money, when } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { Stars } from '../Stars'
 import { ltr, sep, t } from '../i18n'
+import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { tm } from '../i18n-server'
 import { Thread } from '../messages/Thread'
 
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
-  brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean; separation?: { industry: string; count: number } | null
+  brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean; separation?: { industry: string; count: number } | null; buyerProfile?: CompanyProfile | null
   money: { bid: number; mediaVat: number; fee: number; feeVat: number; youReceive: number; commissionBp: number }
   otherBids: { id: string; label: string; company: string; amount: number }[]; rating?: { score: number; comment: string | null } | null }
 type Detail = { channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
@@ -104,6 +105,7 @@ export function SellerDealPage({ id }: { id: string }) {
         {msg}
       </div>
 
+      {d.buyerProfile && <section className="card pad section"><CompanyCard p={d.buyerProfile} title={t('The buyer')} /></section>}
       {d.brief && <section className="card pad section">
         <h2>{t("Booking brief")}</h2>
         <dl className="facts">

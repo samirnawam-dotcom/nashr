@@ -1,7 +1,8 @@
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
+import { companyProfile } from './profiles.js'
 import { buyerDeal, buyerSlot } from './shapes.js'
-import { placeBid, requestBuyNow, showInterest, withdrawBuyNow } from '../marketplace/market.js'
+import { placeBid, requestBuyNow, showInterest, withdrawBuyNow, bookFixed } from '../marketplace/market.js'
 import { minNextBid } from '../core/money.js'
 import { audit } from '../core/audit.js'
 import { setting } from '../core/settings.js'
@@ -63,7 +64,7 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
     const r = (await db.query(
-      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
+      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.company_id seller_company, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, max(max_amount) filter (where max_amount > amount and kind in ('bid', 'auto')) auto_max,
@@ -72,12 +73,17 @@ export function buyerRoutes(route: RouteFn) {
     return { ...buyerSlot(r, company), youBid: mine.n > 0, creativeDueAt: r.creative_due_at,
       minNextBid: r.top_amount ? minNextBid(r.top_amount, await setting(db, 'min_step_bp', at)) : r.starting_price,
       yourMax: mine.max, yourAutoMax: mine.auto_max, briefOnFile: !!mine.has_brief,
-      details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit } }
+      details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit },
+      publisher: await companyProfile(db, r.seller_company) }
   })
 
   route('POST', '/api/slots/:id/bids', BUYER, async ({ db, at, me }, req) =>
     placeBid(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body.amount, maxAmount: req.body.maxAmount, brief: req.body.brief, campaignId: req.body.campaignId }, at),
     { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: money, maxAmount: money, brief, campaignId } })
+
+  route('POST', '/api/slots/:id/book', BUYER, async ({ db, at, me }, req) =>
+    buyerDeal(await bookFixed(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)),
+    { type: 'object', additionalProperties: false, properties: { brief, campaignId } })
 
   route('POST', '/api/slots/:id/buy-now', BUYER, async ({ db, at, me }, req) =>
     buyerDeal(await requestBuyNow(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)),

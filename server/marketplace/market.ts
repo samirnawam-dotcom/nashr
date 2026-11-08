@@ -126,6 +126,24 @@ export async function withdrawBuyNow(db: Db, dealId: string, buyerId: string, at
   return deal
 }
 
+/**
+ * Fixed price, book now: the first buyer to book takes the slot off sale at once (nobody else can book it while the publisher
+ * decides). The publisher confirms within its window, or the placement confirms bookings automatically.
+ */
+export async function bookFixed(db: Db, a: { slotId: string; buyerId: string; brief?: unknown; campaignId?: string }, at: Date) {
+  const slot = await lockSlot(db, a.slotId)
+  if (slot.sale_type !== 'fixed') throw new MarketError('This slot is not sold at a fixed price.')
+  if (slot.status !== 'open' || at >= slot.closes_at) throw new MarketError('Someone has just booked this slot, or it is no longer on sale.')
+  await assertMarketOpen(db, slot, at)
+  await requireBrief(db, slot, a.buyerId, a.brief)
+  await checkCampaign(db, a.campaignId, a.buyerId)
+  const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'book', amount: slot.starting_price, brief: a.brief, campaignId: a.campaignId }, at)
+  await db.query(`update slots set status = 'awaiting_seller' where id = $1`, [slot.id])
+  const deal = await openDeal(db, { ...slot, status: 'awaiting_seller' }, bid, 'fixed', `buyer:${a.buyerId}`, at)
+  if (slot.auto_accept) return accept(db, deal.id, 'system:auto-accept', at)
+  return deal
+}
+
 /** Quick sale: a buyer shows interest (optionally an offer, never below the floor). */
 export async function showInterest(db: Db, a: { slotId: string; buyerId: string; amount?: number; brief?: unknown; campaignId?: string }, at: Date) {
   const slot = await lockSlot(db, a.slotId)
@@ -276,7 +294,7 @@ export async function afterNoGo(db: Db, deal: any, at: Date) {
   await db.query(`update bids set status = 'not_selected' where slot_id = $1 and buyer_id = $2 and status in ('active', 'outbid')`, [slot.id, deal.buyer_id])
   await db.query(`update slots set status = 'awaiting_seller' where id = $1`, [slot.id]) // no longer booked
   await refreshConflicts(db, slot, at)
-  if (deal.kind === 'buy_now' || deal.kind === 'quick_sale') return relist(db, slot.id, at) // the other buyers were already told
+  if (deal.kind === 'buy_now' || deal.kind === 'quick_sale' || deal.kind === 'fixed') return relist(db, slot.id, at) // back on sale for the next buyer
   const remaining = await db.query(`select 1 from bids where slot_id = $1 and status in ('active', 'outbid') and buyer_id <> $2 limit 1`, [slot.id, deal.buyer_id])
   // round 1 is the original winner; the seller may then choose another bid up to max_choice_rounds times
   const window = await setting<number>(db, 'seller_window_hours', at)

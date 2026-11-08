@@ -1132,3 +1132,50 @@ describe('add placement as Omar described it', () => {
     expect((await call(sellerX, 'GET', `/api/seller/deals/${second}`)).json().separation).toEqual({ industry: BRIEF.industry, count: 1 })
   })
 })
+
+describe('fixed price, book now', () => {
+  const fixedSlot = async (autoAccept = false) => {
+    const outletId = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+    const r = (await call(sellerX, 'POST', '/api/seller/placements', { outletId, name: 'Fixed spot', saleType: 'fixed', days: [1, 2, 3, 4, 5], startsAt: '12:00', endsAt: '13:00',
+      startingPrice: AED(2_500), autoAccept, creativeLeadHours: 48, closeLeadHours: 144, listFrom: '2026-11-08', listDays: 14 })).json()
+    return (await pool.query(`select id from slots where placement_id = $1 order by starts_at limit 1`, [r.id])).rows[0].id as string
+  }
+
+  test('the first buyer takes it off sale; the publisher confirms; a decline puts it back on sale', async () => {
+    const slot = await fixedSlot()
+    const d = (await call(buyerA, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json()
+    expect(d).toMatchObject({ status: 'awaiting_publisher' })
+    expect((await call(buyerB, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json().error).toMatch('just booked')
+    expect((await call(buyerB, 'GET', `/api/slots/${slot}`)).json().available).toBe(false)
+    expect((await call(sellerX, 'GET', '/api/seller/inbox')).json()).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'decide', kind: 'fixed', amount: AED(2_500) })]))
+    await call(sellerX, 'POST', `/api/seller/deals/${d.id}/decline`, { reason: 'Programme moved' })
+    expect((await call(buyerB, 'GET', `/api/slots/${slot}`)).json()).toMatchObject({ available: true, saleType: 'fixed' })
+    expect((await call(buyerB, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json()).toMatchObject({ status: 'awaiting_publisher' })
+  })
+
+  test('with automatic confirmation the buyer is asked to pay at once; auctions-only prices are refused', async () => {
+    const slot = await fixedSlot(true)
+    expect((await call(buyerA, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json()).toMatchObject({ status: 'accepted_pay_now' })
+    const outletId = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+    expect((await call(sellerX, 'POST', '/api/seller/placements', { outletId, name: 'Bad', saleType: 'fixed', days: [1], startingPrice: AED(100), reservePrice: AED(200),
+      creativeLeadHours: 48, closeLeadHours: 144 })).json().error).toMatch('auctions only')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/book`, { brief: BRIEF })).json().error).toMatch('fixed price')
+  })
+})
+
+describe('business profiles both ways, never contact details', () => {
+  test('the publisher sees the buyer before deciding, and the buyer sees the publisher before booking', async () => {
+    expect((await call(buyerA, 'PUT', '/api/company/profile', { industry: 'Banking', about: 'Call us on 050 123 4567' })).json().error).toMatch('Emails and phone numbers')
+    expect((await call(buyerA, 'PUT', '/api/company/profile', { industry: 'Banking', website: 'https://northwind.ae', about: 'Business banking for growing companies.' })).json())
+      .toMatchObject({ name: 'Northwind Fintech', type: 'brand', industry: 'Banking', verified: true })
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const seen = (await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).json().buyerProfile
+    expect(seen).toMatchObject({ name: 'Northwind Fintech', industry: 'Banking', about: 'Business banking for growing companies.', record: { completed: 0 } })
+    const bidder = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json().bids[0].profile
+    expect(bidder.name).toBe('Northwind Fintech')
+    const pub = (await call(buyerB, 'GET', `/api/slots/${slotX}`)).json().publisher
+    expect(pub).toMatchObject({ name: 'Skyline FM', type: 'publisher', outlets: ['Skyline FM'] })
+    // no emails, phones or people anywhere in either profile
+    for (const p of [seen, bidder, pub]) expect(JSON.stringify(p)).not.toMatch(/@|\+971|sara|ali|email|phone/i)
+  })
+})
