@@ -65,6 +65,7 @@ const load_admin_Money = () => import('./admin/Money')
 const FundsPage = L(load_admin_Money, 'FundsPage')
 const PayoutsPage = L(load_admin_Money, 'PayoutsPage')
 const ReportsPage = L(load_admin_Money, 'ReportsPage')
+const AdminCalendarPage = L(() => import('./admin/Calendar'), 'AdminCalendarPage')
 const load_admin_System = () => import('./admin/System')
 const AuditPage = L(load_admin_System, 'AuditPage')
 const DirectoryAdminPage = L(load_admin_System, 'DirectoryAdminPage')
@@ -113,6 +114,7 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/access/, () => <AccessPage />],
   [/^\/accounts\/([\w-]+)$/, id => <AccountPage id={id} isFounder={founder} />],
   [/^\/accounts/, () => <AccountsPage />],
+  [/^\/calendar/, () => <AdminCalendarPage />],
   [/^\/deals\/([\w-]+)$/, id => <AdminDealPage id={id} />],
   [/^\/deals/, () => <AdminDealsPage />],
   [/^\/disputes/, () => <DisputesPage />],
@@ -137,7 +139,7 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/funds', t('Funds')],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')]],

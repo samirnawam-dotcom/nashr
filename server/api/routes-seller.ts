@@ -8,6 +8,7 @@ import { reviewCreative } from '../fulfilment/creative.js'
 import { offerFix } from '../fulfilment/issues.js'
 import { createPlacement, generateSlots, overlapWarnings, updatePlacement } from '../catalog/placements.js'
 import { dealRating } from './routes-ratings.js'
+import { byDay, listSlots, scopedQuery } from '../marketplace/search.js'
 
 const SELLER: ['seller'] = ['seller']
 const price = { type: 'integer', minimum: 100, maximum: 100_000_000_00 } // at least AED 1, in fils
@@ -51,6 +52,13 @@ export function sellerRoutes(route: RouteFn) {
      join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
      where o.company_id = $1 and ($2::timestamptz is null or s.starts_at >= $2) and ($3::timestamptz is null or s.starts_at < $3) order by s.starts_at`,
     [me.actAs.companyId, req.query.from ?? null, req.query.to ?? null])).rows.map(sellerSlot))
+
+  // The publisher's calendar at any size: a sorted, paged list and daily totals by status (marketplace/search.ts, seller scope).
+  route('GET', '/api/seller/slots/list', SELLER, async ({ db, me, at }, req) => {
+    const { total, rows } = await listSlots(db, scopedQuery(req.query, 'seller', me.actAs.companyId), req.query.sort ?? 'time', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
+    return { total, items: rows.map(sellerSlot) }
+  })
+  route('GET', '/api/seller/slots/days', SELLER, async ({ db, me, at }, req) => byDay(db, scopedQuery(req.query, 'seller', me.actAs.companyId), at))
 
   route('GET', '/api/seller/deals', SELLER, async ({ db, me }) =>
     (await db.query(`${DEAL_SQL} where d.seller_id = $1 order by d.created_at desc`, [me.actAs.companyId])).rows.map(d => sellerDeal(d)))

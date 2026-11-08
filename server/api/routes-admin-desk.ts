@@ -11,6 +11,8 @@ import { FOUNDER_ONLY } from './routes-admin.js'
 import { coverUrl, logoUrl } from './routes-covers.js'
 import { dealRating } from './routes-ratings.js'
 import { staffTwoStep } from '../auth/access.js'
+import { byDay, byOutlet, listSlots, scopedQuery } from '../marketplace/search.js'
+import { sellerSlot } from './shapes.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 const LIVE = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')` // paid bookings
@@ -66,6 +68,18 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel, sectors: o.sectors, logoUrl: logoUrl(o) })),
       deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, createdAt: d.created_at, label: d.label, outlet: d.outlet })),
       commissionHistory: commission.map(h => ({ bp: h.value, from: h.valid_from, by: h.changed_by })) }
+  })
+
+  // Calendar oversight (brief section 17): every slot on the platform, in every status, filtered, sorted and paged on the server.
+  route('GET', '/api/admin/slots/list', STAFF, async ({ db, at }, req) => {
+    const { total, rows } = await listSlots(db, scopedQuery(req.query, 'admin', null), req.query.sort ?? 'time', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
+    return { total, items: rows.map(r => ({ ...sellerSlot(r), outletId: r.outlet_id, company: r.company, dealId: r.deal_id })) }
+  })
+  route('GET', '/api/admin/slots/days', STAFF, async ({ db, at }, req) => byDay(db, scopedQuery(req.query, 'admin', null), at))
+  route('GET', '/api/admin/slots/outlets', STAFF, async ({ db, at }, req) => {
+    const { total, rows } = await byOutlet(db, scopedQuery(req.query, 'admin', null), req.query.sort ?? 'name', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
+    return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: logoUrl({ id: r.outlet_id, logo_key: r.logo_key }),
+      slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice) })) })) }
   })
 
   // Suspending signs the user out everywhere; their company's bookings carry on.

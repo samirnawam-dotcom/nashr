@@ -28,7 +28,7 @@ export const buyerDeal = (d: any) => {
 }
 
 export const sellerSlot = (r: any) => ({
-  id: r.id, outlet: r.outlet, channel: r.channel, sectors: r.sectors ?? [], audience: r.audience ?? null, placement: r.placement, label: r.label, kind: r.kind, saleType: r.sale_type,
+  id: r.id, outletId: r.outlet_id, dealId: r.deal_id ?? null, company: r.company ?? null, outlet: r.outlet, channel: r.channel, sectors: r.sectors ?? [], audience: r.audience ?? null, placement: r.placement, label: r.label, kind: r.kind, saleType: r.sale_type,
   startsAt: r.starts_at, endsAt: r.ends_at, closesAt: r.closes_at,
   status: r.status, startingPrice: r.starting_price, buyNowPrice: r.buy_now_price, reservePrice: r.reserve_price, topBid: r.top_amount, bids: r.bids,
 })

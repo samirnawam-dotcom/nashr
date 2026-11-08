@@ -982,3 +982,28 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).json().items.every((s: any) => s.youBid === false && s.youLead === false)).toBe(true)
   })
 })
+
+describe('the publisher and Nashr calendars: the same search, scoped', () => {
+  test('a publisher sees only its own slots, in every status; Nashr sees everything; status filters and daily counts', async () => {
+    const range = 'from=2026-11-09T00:00:00%2B04:00&to=2026-11-16T00:00:00%2B04:00'
+    expect((await call(sellerX, 'POST', `/api/seller/slots/${slotX}/block`, { blocked: true })).statusCode).toBe(200)
+    const mine = (await call(sellerX, 'GET', `/api/seller/slots/list?${range}`)).json()
+    expect(mine.total).toBe(1)
+    expect(mine.items[0]).toMatchObject({ id: slotX, status: 'blocked', outlet: 'Skyline FM', reservePrice: AED(4_000) })
+    // a scope or company in the address is ignored: the session decides
+    expect((await call(sellerX, 'GET', `/api/seller/slots/list?${range}&scope=admin&company=${sellerY.companyId}`)).json().total).toBe(1)
+    expect((await call(sellerX, 'GET', `/api/seller/slots/list?${range}&st=open`)).json().total).toBe(0)
+    expect((await call(sellerX, 'GET', `/api/seller/slots/days?${range}`)).json()).toMatchObject([{ slots: 1, onSale: 0, waiting: 0, booked: 0, off: 1 }])
+    expect((await call(buyerA, 'GET', `/api/seller/slots/list?${range}`)).statusCode).toBe(403)
+
+    const all = (await call(admin, 'GET', `/api/admin/slots/list?${range}`)).json()
+    expect(all.total).toBe(2) // Skyline FM's blocked slot and Gulf Radio's open one
+    expect(all.items.map((x: any) => x.company).sort()).toEqual(['Gulf Radio', 'Skyline FM'])
+    expect((await call(admin, 'GET', `/api/admin/slots/list?${range}&st=blocked`)).json().items.map((x: any) => x.id)).toEqual([slotX])
+    expect((await call(admin, 'GET', `/api/admin/slots/list?${range}&q=gulf%20radio`)).json().total).toBe(1) // the publisher's name is searchable
+    expect((await call(admin, 'GET', `/api/admin/slots/days?${range}`)).json()[0]).toMatchObject({ slots: 2, onSale: 1, off: 1 })
+    expect((await call(sellerX, 'GET', `/api/admin/slots/list?${range}`)).statusCode).toBe(403)
+    // the buyer's calendar still hides the publisher's blocked slot
+    expect((await call(buyerA, 'GET', `/api/slots/list?${range}`)).json().items.map((x: any) => x.id)).not.toContain(slotX)
+  })
+})

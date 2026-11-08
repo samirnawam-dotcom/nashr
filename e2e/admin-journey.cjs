@@ -49,6 +49,11 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   await p.click('button:has-text("View as this account")'); await p.waitForSelector('.viewbar'); await p.waitForSelector('.dash-lead'); await shot('a7-view-as')
   await p.click('button:has-text("Stop viewing")'); await p.waitForSelector('text=Payout account')
   // Money, reports, settings, audit, directory
+  // Calendar oversight: every publisher's slots in every status; the booked filter keeps only booked ones
+  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cv-table tbody tr'); await shot('a7b-calendar')
+  await p.click('.cv-filters button:has-text("Booked")'); await p.waitForTimeout(700)
+  if (await p.locator('.cv-table .st:not(.st-booked)').count()) throw new Error('the status filter let other statuses through')
+  await p.click('.cv-views button:has-text("Month")'); await p.waitForSelector('.cv-mcell')
   await p.click('.nav >> text=Funds'); await p.waitForSelector('.kpis'); await shot('a8-funds')
   if (!(await p.locator('text=Reconciled').count())) fail('Funds do not reconcile')
   await p.click('.nav >> text=Payouts'); await p.waitForSelector('main h1')

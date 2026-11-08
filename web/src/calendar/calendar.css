@@ -304,6 +304,7 @@ label.side-h { display: block; }
 /* Phones: search and a Filters button; filters in a sheet from the bottom */
 .cv-mobilebar { display: flex; gap: 8px; }
 .cv-mobilebar .search { flex: 1; min-width: 0; }
+.cv-mobilebar .cv-search { flex: 1 1 0; min-width: 0; width: auto; } .cv-filters-m > * { min-width: 0; } .cv-mobilebar > .btn { flex: none; }
 .cv-sheet { position: fixed; inset-inline: 0; bottom: 0; max-height: 88vh; overflow-y: auto; background: var(--surface); border-radius: 18px 18px 0 0; padding: 16px 16px 0;
   display: grid; gap: 12px; align-content: start; box-shadow: var(--shadow-3); }
 .cv-sheet .drawer-f { position: sticky; bottom: 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); }
@@ -347,3 +348,16 @@ label.side-h { display: block; }
 .cv-fold { justify-content: start; }
 .cv { grid-template-columns: minmax(0, 1fr); } .cv > * { min-width: 0; }
 .cv-b1 b { min-width: 0; flex: 0 1 auto; white-space: nowrap; }
+
+/* Publisher and Nashr calendars: the four status groups, each with its colour, dot and name */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.st::before, .st-dot { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--stc); flex: none; display: inline-block; }
+.st-on_sale { --stc: var(--teal-4); } .st-waiting { --stc: var(--amber); } .st-booked { --stc: var(--green); } .st-off { --stc: var(--faint); }
+.mix { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 2px; }
+.mix i { display: block; background: var(--stc); min-width: 3px; }
+.mix-n { display: flex; gap: 8px; }
+.mix-n .st { font-size: 12px; }
+.cv-mcell.ops { min-height: 104px; }
+.cv-nolink { cursor: default !important; }
+.cv-table .cv-slot, .cv-table td:nth-child(3) { white-space: nowrap; }
+.cv-filters-m { display: grid; gap: 10px; } .cv-filters-m .cv-filters.stacked { padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); }

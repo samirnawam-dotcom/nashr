@@ -8,7 +8,9 @@ import type { SlotFilter } from '../shared/slot-filter.js'
  */
 
 export type Query = SlotFilter & { from: string; to: string; me: string | null; open?: boolean; mine?: boolean; placement?: string; date?: string; outlet?: string
-  tmin?: number; tmax?: number } // a window of Dubai minutes in the day (a folded block in the grid)
+  tmin?: number; tmax?: number
+  // who is looking: buyers see the open market; a publisher sees its own outlets in every status; Nashr sees everything
+  scope?: 'buyer' | 'seller' | 'admin'; company?: string; statuses?: string[] } // a window of Dubai minutes in the day (a folded block in the grid)
 
 const OPEN_MARKET = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1) ? o.market`
 const DUBAI = `(s.starts_at at time zone 'Asia/Dubai')`
@@ -25,7 +27,11 @@ const DAYPART: Record<string, string> = {
 /** The FROM and WHERE every calendar query shares, with its parameters; `add` appends one more parameter. */
 export function where(q: Query, now: Date) {
   const params: unknown[] = [q.from, q.to], add = (v: unknown) => { params.push(v); return `$${params.length}` }
-  const w = [`s.starts_at >= $1`, `s.starts_at < $2`, `s.status <> 'blocked'`, OPEN_MARKET]
+  const scope = q.scope ?? 'buyer'
+  const w = [`s.starts_at >= $1`, `s.starts_at < $2`]
+  if (scope === 'buyer') w.push(`s.status <> 'blocked'`, OPEN_MARKET)
+  if (scope === 'seller') w.push(`o.company_id = ${add(q.company)}`)
+  if (q.statuses?.length) w.push(`s.status = any(${add(q.statuses)}::text[])`)
   if (q.open) w.push(`s.status = 'open'`, `s.closes_at > ${add(now)}`)
   if (q.channels?.length) w.push(`o.channel = any(${add(q.channels)}::text[])`)
   if (q.saleTypes?.length) w.push(`s.sale_type = any(${add(q.saleTypes)}::text[])`)
@@ -33,7 +39,7 @@ export function where(q: Query, now: Date) {
   if (q.maxPrice != null && Number.isFinite(q.maxPrice)) w.push(`${PRICE} <= ${add(q.maxPrice)}`)
   if (q.dayparts?.length) w.push(`(${q.dayparts.map(d => DAYPART[d] ?? 'false').join(' or ')})`)
   for (const word of (q.q ?? '').toLowerCase().split(/\s+/).filter(Boolean))
-    w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || coalesce(o.audience, '')), ${add(word)}) > 0`)
+    w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || coalesce(o.audience, '') || ' ' || coalesce(c.name, '')), ${add(word)}) > 0`)
   if (q.closingWithinHours != null && Number.isFinite(q.closingWithinHours)) w.push(`s.closes_at <= ${add(new Date(now.getTime() + q.closingWithinHours * 3_600_000))}`)
   if (q.mine && q.me) w.push(`exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = ${add(q.me)})`)
   if (q.placement) w.push(`p.id = ${add(q.placement)}`)
@@ -41,11 +47,12 @@ export function where(q: Query, now: Date) {
   if (q.date) w.push(`${DUBAI}::date = ${add(q.date)}::date`)
   if (q.tmin != null && Number.isFinite(q.tmin)) w.push(`${MINUTE} >= ${add(q.tmin)}`, `not ${ALL_DAY}`)
   if (q.tmax != null && Number.isFinite(q.tmax)) w.push(`${MINUTE} < ${add(q.tmax)}`)
-  return { from: `from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id`, where: `where ${w.join(' and ')}`, params, add }
+  return { from: `from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join companies c on c.id = o.company_id`, where: `where ${w.join(' and ')}`, params, add }
 }
 
 /** A slot row with its bid count and whether this buyer has bid, in one pass rather than a query per row. */
-const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.sectors, o.audience, o.logo_key, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine`
+const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.sectors, o.audience, o.logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
+  (select d.id from deals d where d.slot_id = s.id order by d.created_at desc limit 1) deal_id`
 const BID_COUNTS = (me: string) => `left join lateral (select count(*) n, bool_or(b.buyer_id = ${me}) mine from bids b where b.slot_id = s.id) bc on true`
 
 /** Matching slots in air-time order (the panel of one programme, and the old range read). */
@@ -125,9 +132,11 @@ export async function grid(db: Db, q: Query, by: 'day' | 'channel', now: Date, m
 export async function byDay(db: Db, q: Query, now: Date) {
   const w = where(q, now)
   return (await db.query(`select ${DUBAI}::date::text date, count(*)::int slots, count(distinct o.id)::int outlets, min(${PRICE}) from_price,
-      array_agg(distinct o.channel) channels
+      array_agg(distinct o.channel) channels, count(*) filter (where s.status = 'open')::int on_sale,
+      count(*) filter (where s.status in ('awaiting_seller', 'awaiting_choice'))::int waiting, count(*) filter (where s.status = 'booked')::int booked
     ${w.from} ${w.where} group by ${DUBAI}::date order by 1`, w.params)).rows
-    .map(r => ({ date: r.date, slots: r.slots, outlets: r.outlets, fromPrice: Number(r.from_price), channels: r.channels as string[] }))
+    .map(r => ({ date: r.date, slots: r.slots, outlets: r.outlets, fromPrice: Number(r.from_price), channels: r.channels as string[],
+      onSale: r.on_sale, waiting: r.waiting, booked: r.booked, off: r.slots - r.on_sale - r.waiting - r.booked }))
 }
 
 export type OutletSort = 'name' | 'price' | 'slots'
@@ -152,5 +161,11 @@ export function parseQuery(r: Record<string, string | undefined>, me: string | n
   return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max),
     dayparts: list(r.dp) as SlotFilter['dayparts'], q: r.q || undefined, closingWithinHours: num(r.soon),
     mine: r.mine === '1', open: r.open === '1', placement: r.placement || undefined, date: r.date || undefined, outlet: r.outlet || undefined,
-    tmin: num(r.tmin), tmax: num(r.tmax) }
+    tmin: num(r.tmin), tmax: num(r.tmax), statuses: list(r.st) }
+}
+
+/** The calendar query from a request, for one scope. The scope and company come from the session, never from the address. */
+export function scopedQuery(r: Record<string, string | undefined>, scope: 'seller' | 'admin', company: string | null): Query {
+  const from = r.from ?? new Date().toISOString(), to = r.to ?? new Date(Date.now() + 35 * 86_400_000).toISOString()
+  return { ...parseQuery(r, null, from, to), open: false, scope, company: company ?? undefined }
 }

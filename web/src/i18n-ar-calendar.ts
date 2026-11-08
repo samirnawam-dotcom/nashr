@@ -14,4 +14,10 @@ export const AR_CALENDAR: Record<string, string> = {
   'top bid': 'أعلى مزايدة', 'Make an offer': 'قدّم عرضًا', 'Show {n} more': 'عرض {n} أخرى', '{n} programmes': '{n} برامج', 'Open this day': 'افتح هذا اليوم',
   '+{n} more from {price}': '+{n} أخرى ابتداءً من {price}', 'programmes': 'برامج', '{n} slots': '{n} مساحات', '{n} outlets with slots this week': '{n} منصات لديها مساحات هذا الأسبوع',
   'Lowest price': 'أقل سعر', 'Most slots': 'الأكثر مساحات', 'Pages': 'الصفحات', 'Page {n} of {total}': 'الصفحة {n} من {total}', 'Nothing here any more.': 'لم يعد هنا شيء.',
+  // Publisher and Nashr calendars
+  'Every slot on Nashr, from every publisher, in every status.': 'كل مساحة على نشر، من كل ناشر، بكل حالاتها.', 'Search outlets, programmes, publishers': 'ابحث في المنصات والبرامج والناشرين',
+  'Dubai time. Prices exclude VAT. A booked or decided slot opens its deal.': 'بتوقيت دبي. الأسعار دون الضريبة. المساحة المحجوزة أو التي بُتّ فيها تفتح صفقتها.',
+  'No slots match.': 'لا مساحات مطابقة.', 'Reserve': 'السعر الأدنى', 'Bidding closes': 'إغلاق المزايدة', 'Your slots, bids and bookings. Dubai time.': 'مساحاتك ومزايداتها وحجوزاتها. بتوقيت دبي.',
+  'Search outlets and programmes': 'ابحث في المنصات والبرامج', 'All outlets': 'كل المنصات', 'Dubai time. Prices exclude VAT.': 'بتوقيت دبي. الأسعار دون الضريبة.',
+  'slot': 'مساحة', 'slots': 'مساحات', 'Waiting for a decision': 'بانتظار القرار', 'Publisher deciding': 'الناشر يقرر', 'Publisher choosing next bid': 'الناشر يختار المزايدة التالية',
 }

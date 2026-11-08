@@ -96,14 +96,14 @@ function span(view: View, date: string, narrow: boolean): [string, string] {
   return [date, addDays(date, LIST_DAYS)]
 }
 
-function useNarrow(px = 760) {
+export function useNarrow(px = 760) {
   const q = `(max-width: ${px}px)`
   const [narrow, set] = useState(() => matchMedia(q).matches)
   useEffect(() => { const m = matchMedia(q), f = () => set(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f) }, [q])
   return narrow
 }
 /** Fetch for the latest request only: a slow answer for a view you already left never overwrites the one on screen. */
-function useLatest() {
+export function useLatest() {
   const n = useRef(0)
   return <T,>(p: Promise<T>, done: (v: T) => void, fail?: (e: any) => void) => { const k = ++n.current; p.then(v => k === n.current && done(v), e => k === n.current && fail?.(e)) }
 }
@@ -226,7 +226,7 @@ export function CalendarPage() {
   )
 }
 
-const Chevron = ({ dir }: { dir: 'back' | 'fwd' }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden
+export const Chevron = ({ dir }: { dir: 'back' | 'fwd' }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden
   className="flip-rtl"><path d={dir === 'back' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} /></svg>
 
 // ---- filters ----------------------------------------------------------------------------------------------------------
@@ -283,7 +283,7 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
 }
 
 /** A button that opens a small panel below it; closes on a click elsewhere or Escape. */
-function Popover({ label, children, on, align, wide }: { label: React.ReactNode; children: React.ReactNode; on?: boolean; align?: 'end'; wide?: boolean }) {
+export function Popover({ label, children, on, align, wide }: { label: React.ReactNode; children: React.ReactNode; on?: boolean; align?: 'end'; wide?: boolean }) {
   const [open, setOpen] = useState(false), box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return

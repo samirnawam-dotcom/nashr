@@ -2,51 +2,89 @@ import { navigate } from '../nav'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { dayLabel, time } from '../format'
-import { addDays, dubai, todayInDubai, weekOf } from '../calendar/layout'
+import { addDays, dubai, monthGrid, todayInDubai, weekOf } from '../calendar/layout'
 import { DealStatus, SLOT_STATUS, money, when } from './common'
-import { PhotoBand } from '../PhotoBand'
+import { Bolt, Gavel, useLatest, useNarrow } from '../calendar/CalendarPage'
+import { DateNav, FilterFold, GROUPS, groupOf, OpsList, OpsMonth, StatusChips, statusesOf, useAddress, type OpsDay } from '../calendar/ops'
 import { ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 
-type SSlot = { id: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
+type SSlot = { id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
 
-/** Programme view: one row per placement, one column per day, each airing's breaks as chips (brief section 6). */
+type View = 'programme' | 'week' | 'list' | 'month'
+const VIEWS: [View, string][] = [['programme', t('Programme')], ['week', t('Week')], ['list', t('List')], ['month', t('Month')]]
+
+/**
+ * The publisher's calendar in four views: Programme (a row per placement), Week (days across, hours down), List (every slot,
+ * sorted and paged on the server) and Month (each day's mix of statuses). One filter bar for all four, kept in the address.
+ */
 export function SchedulePage() {
-  const [anchor, setAnchor] = useState(todayInDubai()), [slots, setSlots] = useState<SSlot[] | null>(null), [open, setOpen] = useState<string | null>(null)
-  const [error, setError] = useState(''), [view, setView] = useState<'programme' | 'week'>(() => { try { return localStorage.getItem('nashr:seller-view') === 'week' ? 'week' : 'programme' } catch { return 'programme' } })
-  const choose = (v: 'programme' | 'week') => { setView(v); try { localStorage.setItem('nashr:seller-view', v) } catch { /* fine */ } }
-  const days = weekOf(anchor)
-  const latest = useRef(0) // only the newest request may fill the grid, so a slow answer for the previous week can't overwrite this one
-  const load = () => { const n = ++latest.current
-    return api<SSlot[]>(`/seller/slots?from=${days[0]}T00:00:00%2B04:00&to=${addDays(days[6], 1)}T00:00:00%2B04:00`).then(x => n === latest.current && setSlots(x), e => n === latest.current && setError(e.message)) }
-  useEffect(() => { load() }, [anchor])
-  const rows = [...new Set((slots ?? []).map(s => `${s.outlet} · ${s.placement}`))].sort()
+  let saved = 'programme'; try { saved = localStorage.getItem('nashr:seller-view') ?? 'programme' } catch { /* private mode */ }
+  const [a, update] = useAddress({ view: saved, date: todayInDubai(), st: '', sale: '', outlet: '', q: '' })
+  const view = (VIEWS.some(v => v[0] === a.view) ? a.view : 'programme') as View
+  const [slots, setSlots] = useState<SSlot[] | null>(null), [days, setDays] = useState<OpsDay[]>([]), [open, setOpen] = useState<string | null>(null)
+  const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]), [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
+  const latest = useLatest(), narrow = useNarrow()
+  useEffect(() => { try { localStorage.setItem('nashr:seller-view', view) } catch { /* fine */ } }, [view])
+  useEffect(() => { api<{ outlets: { id: string; name: string }[] }>('/seller/profile').then(p => setOutlets(p.outlets), () => {}) }, [])
+  useEffect(() => { const k = setTimeout(() => qText !== a.q && update({ q: qText }), 300); return () => clearTimeout(k) }, [qText])
+  const week = weekOf(a.date)
+  const [from, to] = view === 'month' ? [monthGrid(a.date)[0][0], addDays(monthGrid(a.date).at(-1)![6], 1)] : view === 'list' ? [a.date, addDays(a.date, 28)] : [week[0], addDays(week[6], 1)]
+  const groups = a.st ? a.st.split(',') : [], sales = a.sale ? a.sale.split(',') : []
+  const qs = new URLSearchParams({ from: `${from}T00:00:00+04:00`, to: `${to}T00:00:00+04:00`, ...(groups.length ? { st: statusesOf(groups).join(',') } : {}),
+    ...(sales.length ? { sale: sales.join(',') } : {}), ...(a.outlet ? { outlet: a.outlet } : {}), ...(a.q.trim() ? { q: a.q.trim() } : {}) }).toString()
+  const load = () => {
+    if (view === 'programme' || view === 'week') latest(api<SSlot[]>(`/seller/slots?from=${week[0]}T00:00:00%2B04:00&to=${addDays(week[6], 1)}T00:00:00%2B04:00`), setSlots, e => setError(e.message))
+    if (view === 'month') latest(api<OpsDay[]>(`/seller/slots/days?${qs}`), setDays, e => setError(e.message))
+    setReload(n => n + 1)
+  }
+  useEffect(() => { load() }, [view, a.date, a.st, a.sale, a.outlet, a.q])
+  // Programme and week filter the week on screen in the browser, with the same rules the server uses for the list.
+  const words = a.q.toLowerCase().split(/\s+/).filter(Boolean)
+  const shown = (slots ?? []).filter(x => (!groups.length || groups.includes(groupOf(x.status))) && (!sales.length || sales.includes(x.saleType))
+    && (!a.outlet || x.outletId === a.outlet) && words.every(w => `${x.outlet} ${x.placement}`.toLowerCase().includes(w)))
+  const rows = [...new Set(shown.map(x => `${x.outlet} · ${x.placement}`))].sort()
+  const step = (n: number) => { if (view === 'month') { const d = new Date(a.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
+    update({ date: addDays(a.date, n * (view === 'list' ? 28 : 7)) }, true) }
+  const active = groups.length + sales.length + (a.outlet ? 1 : 0) + (a.q ? 1 : 0)
+  const title = view === 'month' ? dayLabel(a.date, { month: 'long', year: 'numeric' })
+    : `${dayLabel(from, { day: 'numeric', month: 'short' })} – ${dayLabel(addDays(to, -1), { day: 'numeric', month: 'short', year: 'numeric' })}`
   return (
-    <main>
-      <PhotoBand img="/brand/tv-wide.jpg" title={t("Calendar")} sub={t("Your slots by week, with bids, bookings and what is still on sale. Dubai time.")} />
-      <div className="page-h">
-        <div className="seg" role="tablist" aria-label={t('View')}>{([['programme', t('Programme')], ['week', t('Week')]] as const).map(([v, l]) =>
-          <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => choose(v)}>{l}</button>)}</div>
-        <div className="spacer" />
-        <div className="row-flex"><button className="btn" aria-label={t("Previous week")} onClick={() => setAnchor(addDays(anchor, -7))}>‹</button>
-          <button className="btn" onClick={() => setAnchor(todayInDubai())}>{t("This week")}</button>
-          <button className="btn" aria-label={t("Next week")} onClick={() => setAnchor(addDays(anchor, 7))}>›</button>
-          <b>{dayLabel(days[0], { day: 'numeric', month: 'short' })} – {dayLabel(days[6], { day: 'numeric', month: 'short', year: 'numeric' })}</b></div></div>
-      <div className="legend">{[['var(--teal-4)', 'On sale'], ['var(--amber)', 'Needs your decision'], ['var(--green)', 'Booked'], ['var(--faint)', 'Off sale or taken']].map(([c, l]) =>
-        <span key={l}><i style={{ background: c }} />{t(l)}</span>)}<span>{t("Dubai time")}</span></div>
+    <main className="cv">
+      <header className="cv-head">
+        <div className="cv-title"><h1>{t('Calendar')}</h1><p className="cv-range"><b>{title}</b><span className="muted">{t('Your slots, bids and bookings. Dubai time.')}</span></p></div>
+        <DateNav date={a.date} onDate={d => update({ date: d }, true)} onStep={step} />
+        <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l]) =>
+          <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
+      </header>
+      <FilterFold narrow={narrow} active={active} search={<input className="search cv-search" type="search" placeholder={t('Search outlets and programmes')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />}>
+        {outlets.length > 1 && <select className="cal-input cv-outlet-pick" aria-label={t('Outlet')} value={a.outlet} onChange={e => update({ outlet: e.target.value })}>
+          <option value="">{t('All outlets')}</option>{outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
+        <StatusChips value={groups} onChange={v => update({ st: v.join(',') })} />
+        <div className="cv-group" role="group" aria-label={t('Sale type')}>{(['auction', 'quick_sale'] as const).map(v => { const on = sales.includes(v)
+          return <button key={v} type="button" className={`chipf ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => update({ sale: (on ? sales.filter(x => x !== v) : [...sales, v]).join(',') })}>
+            {v === 'auction' ? <Gavel /> : <Bolt />}{v === 'auction' ? t('Auction') : t('Quick sale')}</button> })}</div>
+        <span className="spacer" />
+        {active > 0 && <button type="button" className="btn cv-clear" onClick={() => { setQText(''); update({ st: '', sale: '', outlet: '', q: '' }) }}>{t('Clear all ({n})', { n: active })}</button>}
+      </FilterFold>
       {error && <p className="error">{error}</p>}
-      {slots && !slots.length && <p className="muted empty">{t("Nothing listed this week.")} <a href="/listings">{t("List slots")}</a></p>}
-      {slots && slots.length > 0 && view === 'week' && <WeekGrid days={days} slots={slots} onOpen={setOpen} />}
-      {slots && slots.length > 0 && view === 'programme' && <div className="scroll-x"><table className="prog">
-        <thead><tr><th className="place">{t("Placement")}</th>{days.map(d => <th key={d}>{dayLabel(d)}</th>)}</tr></thead>
-        <tbody>{rows.map(r => <tr key={r}><th className="place">{r}</th>{days.map(d => <td key={d}>
-          {slots.filter(s => `${s.outlet} · ${s.placement}` === r && dubai(s.startsAt).date === d).map(s =>
-            <button key={s.id} className={`sl ${s.status}`} onClick={() => setOpen(s.id)}>
-              <b>{tm(s.label)}</b>{s.endsAt && <span className="muted"> · {time(s.startsAt)}</span>}
-              <div className="muted">{t(SLOT_STATUS[s.status])}{s.status !== 'open' ? '' : s.topBid ? ` · ${money(s.topBid)}` : s.bids ? ` · ${t('{n} interested', { n: s.bids })}` : ''}</div>
+      {(view === 'programme' || view === 'week') && slots && !shown.length && <div className="cv-empty"><p><b>{slots.length ? t('No slots match these filters this week.') : t('Nothing listed this week.')}</b></p>
+        <div className="row-flex">{!slots.length && <a className="btn primary" href="/listings">{t('List slots')}</a>}<button className="btn" onClick={() => step(1)}>{t('Show the next week')}</button></div></div>}
+      {view === 'week' && shown.length > 0 && <WeekGrid days={week} slots={shown} onOpen={setOpen} />}
+      {view === 'programme' && shown.length > 0 && <div className="card scroll-x"><table className="prog">
+        <thead><tr><th className="place">{t("Placement")}</th>{week.map(d => <th key={d} className={d === todayInDubai() ? 'today' : ''}>{dayLabel(d)}</th>)}</tr></thead>
+        <tbody>{rows.map(r => <tr key={r}><th className="place">{r}</th>{week.map(d => <td key={d}>
+          {shown.filter(x => `${x.outlet} · ${x.placement}` === r && dubai(x.startsAt).date === d).map(x =>
+            <button key={x.id} className={`sl ${x.status}`} onClick={() => setOpen(x.id)}>
+              <b>{tm(x.label)}</b>{x.endsAt && <span className="muted"> · {time(x.startsAt)}</span>}
+              <div className="muted">{t(SLOT_STATUS[x.status])}{x.status !== 'open' ? '' : x.topBid ? ` · ${money(x.topBid)}` : x.bids ? ` · ${t('{n} interested', { n: x.bids })}` : ''}</div>
             </button>)}
         </td>)}</tr>)}</tbody></table></div>}
+      {view === 'list' && <OpsList base="/seller/slots" qs={qs} who="seller" narrow={narrow} reload={reload} onOpen={x => setOpen(x.id)} />}
+      {view === 'month' && <OpsMonth narrow={narrow} date={a.date} days={days} onDay={d => update({ view: 'programme', date: d }, true)} />}
+      <footer className="cv-foot small muted"><span>{t('Dubai time. Prices exclude VAT.')}</span>
+        <span className="legend">{GROUPS.map(([k, , l]) => <span key={k} className={`st st-${k}`}>{t(l)}</span>)}</span></footer>
       {open && <div className="scrim" onClick={() => setOpen(null)}><aside className="drawer" role="dialog" aria-label={t("Slot")} onClick={e => e.stopPropagation()}>
         <SlotPanel id={open} onChange={load} onClose={() => setOpen(null)} /></aside></div>}
     </main>
