@@ -310,6 +310,9 @@ describe('buyer screens', () => {
     expect(pdf.body).toContain('(Tax invoice)')
     expect(pdf.body).toContain('(AED 5,775.00)')
     expect((await call(buyerB, 'GET', `/api/documents/${inv.id}/pdf`)).statusCode).toBe(404)
+    const arabic = await call(buyerA, 'GET', `/api/documents/${inv.id}/pdf?lang=ar`) // the whole document in Arabic
+    expect(arabic.headers['content-disposition']).toContain('-ar.pdf')
+    expect(arabic.body).toContain('IBMPlexSansArabic')
     // the registered address is the company's to keep, and goes on documents issued from now on
     expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '', address: 'Level 9, Gate Building, DIFC, Dubai' })).statusCode).toBe(200)
     expect((await call(buyerA, 'GET', '/api/buyer/company')).json()).toMatchObject({ address: 'Level 9, Gate Building, DIFC, Dubai' })

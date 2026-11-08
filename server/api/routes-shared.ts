@@ -76,10 +76,11 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
   route('GET', '/api/documents/:id', ALL, async ({ db, me }, req) => readDocument(db, me, req.params.id))
 
   // The same document as a PDF to download, file it or send it on (an uploaded invoice is the publisher's own file instead).
+  // ?lang=ar gives the whole document in Arabic, laid out right to left.
   route('GET', '/api/documents/:id/pdf', ALL, async ({ db, me }, req, reply) => {
-    const d = await readDocument(db, me, req.params.id)
-    return reply.type('application/pdf').header('content-disposition', `attachment; filename="${titleOf(d).replace(/ /g, '-')}-${d.number}.pdf"`)
-      .header('cache-control', 'private, no-store').send(documentPdf(d))
+    const d = await readDocument(db, me, req.params.id), lang = req.query.lang === 'ar' ? 'ar' : 'en'
+    return reply.type('application/pdf').header('content-disposition', `attachment; filename="${titleOf(d).replace(/ /g, '-')}-${d.number}${lang === 'ar' ? '-ar' : ''}.pdf"`)
+      .header('cache-control', 'private, no-store').send(documentPdf(d, lang))
   })
 
   // The bell.

@@ -19,9 +19,9 @@ const ARABIC: Record<'R' | 'B', () => Font> = (() => {
   }
 })()
 /** Glyphs for a line with Arabic, in display order; a character the font lacks shows as "?". */
-const arabicGlyphs = (s: string, face: Face) => {
+const arabicGlyphs = (s: string, face: Face, rtl: boolean) => {
   const font = ARABIC[face](), q = font.glyph(0x3f)
-  return visual(shape(s.replace(/[\r\n]/g, ' '))).map(code => ({ code, gid: font.glyph(code) || q }))
+  return visual(shape(s.replace(/[\r\n]/g, ' ')), rtl ? 'rtl' : undefined).map(code => ({ code, gid: font.glyph(code) || q }))
 }
 
 // Advance widths (1/1000 em) for character codes 32 to 126, from the Helvetica and Helvetica-Bold font metrics.
@@ -68,9 +68,10 @@ export class Page {
   // glyphs drawn from the embedded Arabic faces, with the text each stands for (widths and the copy-out map)
   private used: Record<Face, Map<number, string>> = { R: new Map(), B: new Map() }
   constructor(readonly width = 595.28, readonly height = 841.89) {}
-  text(s: string, x: number, y: number, size = 10, face: Face = 'R', grey = 0) {
+  /** `rtl`: the line belongs to a right-to-left document, so a mixed line reads from the right. */
+  text(s: string, x: number, y: number, size = 10, face: Face = 'R', grey = 0, rtl = false) {
     if (hasArabic(s)) {
-      const glyphs = arabicGlyphs(s, face)
+      const glyphs = arabicGlyphs(s, face, rtl)
       for (const g of glyphs) if (!this.used[face].has(g.gid)) this.used[face].set(g.gid, SOURCE.get(g.code) ?? String.fromCodePoint(g.code))
       const hex = glyphs.map(g => g.gid.toString(16).padStart(4, '0')).join('')
       this.ops.push(`${grey} g BT /${face === 'B' ? 'F4' : 'F3'} ${size} Tf ${x.toFixed(2)} ${(this.height - y).toFixed(2)} Td <${hex}> Tj ET`)
@@ -78,7 +79,7 @@ export class Page {
     }
     this.ops.push(`${grey} g BT /${face === 'B' ? 'F2' : 'F1'} ${size} Tf ${x.toFixed(2)} ${(this.height - y).toFixed(2)} Td (${esc(s)}) Tj ET`)
   }
-  right(s: string, xRight: number, y: number, size = 10, face: Face = 'R', grey = 0) { this.text(s, xRight - textWidth(s, size, face), y, size, face, grey) }
+  right(s: string, xRight: number, y: number, size = 10, face: Face = 'R', grey = 0, rtl = false) { this.text(s, xRight - textWidth(s, size, face), y, size, face, grey, rtl) }
   rule(x1: number, y: number, x2: number, weight = 0.5, grey = 0.8) {
     this.ops.push(`${grey} G ${weight} w ${x1.toFixed(2)} ${(this.height - y).toFixed(2)} m ${x2.toFixed(2)} ${(this.height - y).toFixed(2)} l S`)
   }

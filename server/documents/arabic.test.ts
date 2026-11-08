@@ -35,3 +35,17 @@ test('a PDF with Arabic embeds the Arabic face with a copy-out map; one without 
   offsets.forEach((o, i) => expect(pdf.slice(o, o + `${i + 1} 0 obj`.length)).toBe(`${i + 1} 0 obj`))
   expect(textWidth('إذاعة الخليج', 11, 'B')).toBeGreaterThan(40)
 })
+
+test('a whole document in Arabic: Arabic labels, the Arabic face, a right-to-left page; English stays as it was', async () => {
+  const { documentPdf } = await import('./render.js')
+  const d = { type: 'media_invoice', number: 'INV-2026-000021', dealRef: 'NSH-2026-000001', relatedNumber: null, onBehalf: true, taxDocument: true,
+    issuer: { name: 'Skyline FM', trn: '100000000000003', address: null }, recipient: { name: 'Northwind Fintech', trn: null, address: null },
+    items: [{ description: 'Skyline FM · Break 1 · 2026-11-15 · Order NSH-2026-000001', quantity: 1, unitPrice: 1300000 }],
+    note: 'Issued by Nashr on behalf of Skyline FM.', currency: 'AED', subtotal: 1300000, vatBp: 500, vat: 65000, total: 1365000, issuedAt: '2026-11-08T10:00:00Z' }
+  const ar = documentPdf(d, 'ar').toString('latin1'), en = documentPdf(d).toString('latin1')
+  expect(ar).toContain('/BaseFont /IBMPlexSansArabic-Bold')       // the title, فاتورة ضريبية
+  expect(ar).toMatch(/<[0-9a-f]{4}> <0641>/)                       // its letters copy out as Arabic (ف)
+  expect(ar).toContain('(INV-2026-000021) Tj')                     // the number stays as it is
+  expect(en).toContain('(Tax invoice) Tj')
+  expect(en).not.toContain('IBMPlexSansArabic')
+})

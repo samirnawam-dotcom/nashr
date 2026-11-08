@@ -64,10 +64,13 @@ const cls = (c: number): Cls => isArabic(c) && !(c >= 0x0660 && c <= 0x0669) && 
 const SEPARATORS = new Set([0x2d, 0x2b, 0x2c, 0x2e, 0x2f, 0x3a, 0x060c])
 const MIRROR: Record<number, number> = { 0x28: 0x29, 0x29: 0x28, 0x5b: 0x5d, 0x5d: 0x5b, 0x7b: 0x7d, 0x7d: 0x7b, 0x3c: 0x3e, 0x3e: 0x3c }
 
-/** One line in display order (left to right on the page). The paragraph takes the direction of its first strong letter. */
-export function visual(codes: number[]): number[] {
+/**
+ * One line in display order (left to right on the page). The paragraph takes the direction of its first strong letter,
+ * unless the document sets it (an Arabic document reads every line right to left).
+ */
+export function visual(codes: number[], direction?: 'rtl' | 'ltr'): number[] {
   const types = codes.map(cls)
-  const first = types.find(t => t === 'R' || t === 'L'), base = first === 'R' ? 1 : 0
+  const first = types.find(t => t === 'R' || t === 'L'), base = direction ? (direction === 'rtl' ? 1 : 0) : first === 'R' ? 1 : 0
   // a single separator between two digits belongs to the number (2026-11-15, 1,000.50)
   for (let i = 1; i < types.length - 1; i++)
     if (types[i] === 'N' && SEPARATORS.has(codes[i]) && types[i - 1] === 'EN' && types[i + 1] === 'EN') types[i] = 'EN'

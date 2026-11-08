@@ -1,9 +1,9 @@
-import { AR_BUYER } from './i18n-ar-buyer'
-import { AR_SELLER } from './i18n-ar-seller'
-import { AR_ADMIN } from './i18n-ar-admin'
-import { AR_UPGRADE } from './i18n-ar-upgrade'
-import { AR_CALENDAR } from './i18n-ar-calendar'
-import { AR_FLOW } from './i18n-ar-flow'
+import { AR_BUYER } from './i18n-ar-buyer.js'
+import { AR_SELLER } from './i18n-ar-seller.js'
+import { AR_ADMIN } from './i18n-ar-admin.js'
+import { AR_UPGRADE } from './i18n-ar-upgrade.js'
+import { AR_CALENDAR } from './i18n-ar-calendar.js'
+import { AR_FLOW } from './i18n-ar-flow.js'
 
 /*
  * Arabic for every string marked with t(). Modern Standard Arabic in a plain business register, the way UAE media

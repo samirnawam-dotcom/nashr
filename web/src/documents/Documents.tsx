@@ -37,7 +37,7 @@ export function DocumentsPage({ seller = false }: { seller?: boolean }) {
           <tbody>{shown.map(r => <tr key={r.id} onClick={() => (navigate(`/documents/${r.id}`))}>
             <td>{DOC_TYPE[r.type]}</td><td className="num">{r.number}</td><td className="num">{r.dealRef ?? '—'}</td>
             <td className="num">{day(r.issuedAt)}</td><td className="r num">{money(r.total, r.currency)}</td>
-            <td className="r"><a className="small" href={`/api/documents/${r.id}/pdf`} onClick={e => e.stopPropagation()} aria-label={t('PDF of {number}', { number: r.number })}>{t('PDF')}</a></td></tr>)}</tbody></table></div></>}
+            <td className="r"><a className="small" href={`/api/documents/${r.id}/pdf${isAr ? '?lang=ar' : ''}`} onClick={e => e.stopPropagation()} aria-label={t('PDF of {number}', { number: r.number })}>{t('PDF')}</a></td></tr>)}</tbody></table></div></>}
     </main>
   )
 }
@@ -57,7 +57,8 @@ export function DocumentPage({ id }: { id: string }) {
       <div className="row-flex no-print" style={{ marginBottom: 16 }}><a className="small" href="/documents" onClick={e => { if (history.length > 1) { e.preventDefault(); history.back() } }}>{t("Back")}</a><div className="spacer" />
         {d.fileId && <a className="btn" href={`/api/files/${d.fileId}`}>{t("Publisher's uploaded invoice")}</a>}
         <button className="btn" onClick={() => print()}>{t("Print")}</button>
-        <a className="btn primary" href={`/api/documents/${d.id}/pdf`}>{t("Download PDF")}</a></div>
+        <a className="btn primary" href={`/api/documents/${d.id}/pdf${isAr ? '?lang=ar' : ''}`}>{t("Download PDF")}</a>
+        <a className="small" href={`/api/documents/${d.id}/pdf${isAr ? '' : '?lang=ar'}`}>{isAr ? 'PDF in English' : 'PDF بالعربية'}</a></div>
       <article className="card doc">
         <div className="row-flex"><h1>{title}</h1><div className="spacer" /><span className="num">{d.number}</span></div>
         <p className="muted small">{t('Issued {date}', { date: dayLabel(dubai(d.issuedAt).date, { day: 'numeric', month: 'long', year: 'numeric' }) })}{d.dealRef ? ` · ${t('Order {ref}', { ref: d.dealRef })}` : ''}{d.relatedNumber ? ` · ${t('Credits {ref}', { ref: d.relatedNumber })}` : ''}</p>
