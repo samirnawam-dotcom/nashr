@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { Page, latin, textWidth, wrap } from './pdf.js'
 
-test('text the built-in fonts cannot draw becomes "?"; typographic punctuation is mapped', () => {
+test('text the built-in fonts cannot draw becomes "?" (lines with Arabic use the embedded face instead); typographic punctuation is mapped', () => {
   expect(latin('Café – “Nashr” نشر')).toBe('Café - "Nashr" ???')
 })
 
