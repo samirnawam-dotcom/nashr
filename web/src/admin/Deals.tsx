@@ -209,7 +209,7 @@ function CaseFile({ d, busy, act }: { d: File; busy: boolean; act: (m: string, p
         {OUTCOMES.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></div>
       {outcome === 'partial_refund' && <div className="field"><label htmlFor="amt">{t("Refund to the buyer (AED, incl. VAT)")}</label><input id="amt" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>}
       <div className="field"><label htmlFor="why">{t('Reason (both sides receive it)')}</label><textarea id="why" rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} /></div>
-      <p className="small muted">{t("Refunds at the publisher's fault: the card costs are deducted from their next payout. The decision is final and both sides are told.")}</p>
+      <p className="small muted">{t("Refunds at the publisher's fault: the card costs are deducted from their next payout. Both sides are told. The decision is final, except that within 10 working days either side can point to a clear mistake of fact and Nashr looks again.")}</p>
       <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy || !outcome || reason.trim().length < 5 || (outcome === 'partial_refund' && !(Number(amount) > 0))}
         onClick={() => confirm(t('Apply this outcome? Money moves at once.')) && act('POST', `/admin/deals/${d.id}/dispute`, { outcome, reason: reason.trim(), ...(outcome === 'partial_refund' ? { amount: Math.round(Number(amount) * 100) } : {}) }, t("Decision applied."))}>{t("Apply decision")}</button>
     </div>

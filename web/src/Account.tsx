@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PushAlerts } from './PushAlerts'
 import { api } from './api'
 import { AuthShell } from './Login'
 import { PhotoBand } from './PhotoBand'
@@ -149,5 +150,6 @@ export function MyAccountPage() {
       {EMAILS.map(([k, label, help]) => <label key={k} className="switch"><input type="checkbox" role="switch" checked={a.emails[k]} onChange={e => { const emails = { ...a.emails, [k]: e.target.checked }; setA({ ...a, emails }); save({ emails }, t('Email choices saved.')) }} />
         <span className="switch-track" aria-hidden><span /></span><span><b>{label}</b><span className="small muted" style={{ display: 'block' }}>{help}</span></span></label>)}
     </section>
+    <PushAlerts />
   </main>
 }

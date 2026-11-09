@@ -56,6 +56,15 @@ function choice(kind: string): 'bids' | 'alerts' | 'messages' | null {
   return null
 }
 
+/** What a notice says to one person, in their language: the bell's wording, a short title, and the page it opens. */
+export function noticeMessage(lang: Lang, role: string, kind: string, dealId: string | null, data: any) {
+  const t = tr(lang)
+  const said = noticeTexts(t, money(lang), day(lang))[kind]?.({ kind, dealId, data }) ?? t('You have a new notification on Nashr.')
+  const title = said.length > 90 ? said.slice(0, 87).replace(/\s+\S*$/, '') + '…' : said
+  return { said, title, url: site() + (noticeHref({ kind, dealId, data }, role) ?? '/') }
+}
+export const wantsNotice = (kind: string, prefs: any) => { const pick = choice(kind); return !pick || { bids: true, alerts: true, messages: true, ...prefs }[pick] !== false }
+
 /** A notification for a company becomes an email to each active person there who wants it. Called by notify(). */
 export async function queueNoticeEmails(db: Db, companyId: string, kind: string, dealId: string | null, data: any, at: Date) {
   const people = (await db.query(`select id, email, role, lang, email_prefs from users where company_id = $1 and status = 'active'`, [companyId])).rows
@@ -65,11 +74,9 @@ export async function queueNoticeEmails(db: Db, companyId: string, kind: string,
   for (const p of people) {
     if (pick && { bids: true, alerts: true, messages: true, ...p.email_prefs }[pick] === false) continue
     const lang: Lang = p.lang === 'ar' ? 'ar' : 'en', t = tr(lang)
-    const said = noticeTexts(t, money(lang), day(lang))[kind]?.({ kind, dealId, data }) ?? t('You have a new notification on Nashr.')
-    const href = noticeHref({ kind, dealId, data }, p.role) ?? '/'
-    const title = said.length > 90 ? said.slice(0, 87).replace(/\s+\S*$/, '') + '…' : said
+    const { said, title, url } = noticeMessage(lang, p.role, kind, dealId, data)
     const { html, text } = renderEmail(lang, {
-      title, paragraphs: [said, ...(ref ? [t('Order {ref}', { ref })] : [])], cta: { label: t('Open in Nashr'), url: site() + href },
+      title, paragraphs: [said, ...(ref ? [t('Order {ref}', { ref })] : [])], cta: { label: t('Open in Nashr'), url },
       footer: pick ? t('You get these emails because of your choices on Nashr. Change them under Your account.') : t('Nashr sends this email about your bookings, payments or account. It cannot be switched off.'),
     })
     await queue(db, { to: p.email, userId: p.id, companyId, kind, subject: title, text, html }, at)

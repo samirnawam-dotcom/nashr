@@ -14,3 +14,9 @@ const root = document.getElementById('root')!
 if (isAr) root.style.visibility = 'hidden'
 installNavigation()
 api<Me>('/me').then(m => m, () => null).then(me => { createRoot(root).render(<App initialMe={me} />); requestAnimationFrame(() => { root.style.visibility = '' }) })
+
+// The service worker: alerts while Nashr is closed, and an offline page (web/public/sw.js). Not in development (Vite reloads).
+if ('serviceWorker' in navigator && import.meta.env.PROD) addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}) })
+// The browser's "install" offer comes once, early: keep it for the Install button on the account page.
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.nashrInstall = e as any; dispatchEvent(new Event('nashr-install')) })
+

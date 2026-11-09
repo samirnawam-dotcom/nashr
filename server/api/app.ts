@@ -19,6 +19,7 @@ import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
 import { teamRoutes } from './routes-team.js'
+import { pushRoutes } from './routes-push.js'
 import { mailRoutes } from './routes-mail.js'
 import { userRoutes } from './routes-users.js'
 import { supportRoutes } from './routes-support.js'
@@ -182,6 +183,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   userRoutes(route)
   teamRoutes(route)
   mailRoutes(route)
+  pushRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   liveRoute(app, clock)
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
