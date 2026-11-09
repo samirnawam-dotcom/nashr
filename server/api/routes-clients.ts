@@ -71,13 +71,12 @@ export function clientRoutes(route: RouteFn) {
   route('GET', '/api/clients/:id', BUYER, async ({ db, me }, req) => {
     const c = (await db.query(`${TOTALS} and c.id = $2`, [me.actAs.companyId, req.params.id])).rows[0]
     if (!c) throw new NotFound()
-    const [deals, docs, campaigns] = await Promise.all([
-      db.query(`select d.id, d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, o.name outlet, o.channel from deals d join slots s on s.id = d.slot_id
-                join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.client_id = $1 order by s.starts_at desc`, [c.id]),
-      db.query(`select x.id, x.type, x.number, x.total, x.currency, x.issued_at, d.ref from documents x join deals d on d.id = x.deal_id
-                where d.client_id = $1 and x.recipient_id = $2 order by x.issued_at desc`, [c.id, me.actAs.companyId]),
-      db.query(`select id, name, budget, status from campaigns where client_id = $1 order by created_at desc`, [c.id]),
-    ])
+    // one connection runs one query at a time
+    const deals = await db.query(`select d.id, d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, o.name outlet, o.channel from deals d join slots s on s.id = d.slot_id
+                join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.client_id = $1 order by s.starts_at desc`, [c.id])
+    const docs = await db.query(`select x.id, x.type, x.number, x.total, x.currency, x.issued_at, d.ref from documents x join deals d on d.id = x.deal_id
+                where d.client_id = $1 and x.recipient_id = $2 order by x.issued_at desc`, [c.id, me.actAs.companyId])
+    const campaigns = await db.query(`select id, name, budget, status from campaigns where client_id = $1 order by created_at desc`, [c.id])
     return { ...card(c),
       bookingsList: deals.rows.map(d => ({ id: d.id, ref: d.ref, status: buyerStatus[d.status] ?? d.status, price: Number(d.amount), currency: d.currency,
         label: d.label, startsAt: d.starts_at, outlet: d.outlet, channel: d.channel })),

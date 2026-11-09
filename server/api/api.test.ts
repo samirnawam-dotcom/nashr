@@ -880,6 +880,11 @@ describe('Stripe (task B5) against an in-memory Stripe', () => {
     const post = (sig: { body: string; header: string }) => sapp.inject({ method: 'POST', url: '/api/stripe/webhook', payload: sig.body, headers: { 'content-type': 'application/json', 'stripe-signature': sig.header } })
     expect((await post({ body: good.body, header: good.header.replace(/v1=./, 'v1=0') })).statusCode).toBe(400)
     expect((await post(signed(ev, new Date(now.getTime() - 3_600_000)))).statusCode).toBe(400)
+    // Stripe says a different amount was paid than the buyer owed: not secured, staff alerted.
+    const wrong = signed({ id: 'evt_0', type: 'payment_intent.succeeded', data: { object: { id: piId, amount_received: 100, currency: 'aed' } } })
+    expect((await post(wrong)).json()).toEqual({ received: true, handled: 'mismatch' })
+    expect((await scall(buyerA, 'GET', `/api/deals/${deal}`)).json().status).toBe('accepted_pay_now')
+    expect((await pool.query(`select count(*)::int n from notifications where kind = 'ops.alert' and data->>'key' = 'payment.mismatch'`)).rows[0].n).toBeGreaterThan(0)
     expect((await post(good)).json()).toEqual({ received: true, handled: 'handled' })
     expect((await post(good)).json()).toEqual({ received: true, handled: 'duplicate' })
     expect((await scall(buyerA, 'GET', `/api/deals/${deal}`)).json().status).toBe('payment_secured')

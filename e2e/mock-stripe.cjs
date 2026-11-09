@@ -34,7 +34,7 @@ http.createServer(async (req, res) => {
     if (!pi) return send(res, 404, { error: 'no such payment' })
     pi.status = 'succeeded'; s.balance += pi.amount - fee(pi.amount)
     send(res, 200, { ok: true })
-    return webhook('payment_intent.succeeded', { id: pi.id })
+    return webhook('payment_intent.succeeded', { id: pi.id, amount_received: pi.amount, currency: pi.currency })
   }
   // Stripe's onboarding pages: the publisher "fills them in", Stripe tells Nashr, the publisher goes back.
   if (u.pathname === '/onboard') {

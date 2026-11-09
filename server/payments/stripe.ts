@@ -119,7 +119,7 @@ export function verifyWebhook(body: string, header: string | undefined, secret: 
 export function toProviderEvent(ev: any): { id: string; type: string; data: any } | null {
   const o = ev.data?.object ?? {}
   switch (ev.type) {
-    case 'payment_intent.succeeded': return { id: ev.id, type: 'charge.succeeded', data: { id: o.id } }
+    case 'payment_intent.succeeded': return { id: ev.id, type: 'charge.succeeded', data: { id: o.id, amount: o.amount_received ?? o.amount, currency: o.currency } }
     case 'payment_intent.payment_failed': return { id: ev.id, type: 'charge.failed', data: { id: o.id, failure: o.last_payment_error?.message ?? 'The payment did not go through.' } }
     case 'charge.dispute.created': return { id: ev.id, type: 'charge.dispute.created', data: { id: o.payment_intent, reason: o.reason, amount: o.amount } }
     case 'account.updated': return { id: ev.id, type: 'account.updated', data: { account: o.id, ready: !!(o.details_submitted && o.payouts_enabled) } }
