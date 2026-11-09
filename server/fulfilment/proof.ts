@@ -5,6 +5,7 @@ import { MarketError } from '../marketplace/market.js'
 import { setting } from '../core/settings.js'
 import { issueMediaInvoice } from '../documents/documents.js'
 import { assertOwnFiles } from '../files/attachments.js'
+import { family } from '../shared/media.js'
 
 // Proof required per channel (brief 12A-B). The seller cannot send proof until every item is there.
 export const PROOF_CHECKLIST: Record<string, { key: string; label: string }[]> = {
@@ -13,11 +14,13 @@ export const PROOF_CHECKLIST: Record<string, { key: string; label: string }[]> =
   radio: [{ key: 'as_run_log', label: 'the as-run log' }, { key: 'audio_clip', label: 'the audio clip' }],
   tv: [{ key: 'as_run_log', label: 'the as-run log' }, { key: 'video_clip', label: 'the video clip' }],
   podcast: [{ key: 'episode_link', label: 'the episode link' }, { key: 'ad_time', label: 'the time of the ad in the episode' }, { key: 'audio_clip', label: 'the audio clip' }],
+  newsletter: [{ key: 'screenshots', label: 'a screenshot of the sent email' }, { key: 'send_time', label: 'the send time' }],
+  social: [{ key: 'live_link', label: 'the link to the post' }, { key: 'screenshots', label: 'dated screenshots' }],
 }
 
 /** The channel's proof, plus a confirmation of the regulator's disclaimer when the buyer's brief required one. */
 export function checklistFor(channel: string, brief?: { disclaimer?: string } | null) {
-  return [...PROOF_CHECKLIST[channel], ...(brief?.disclaimer?.trim() ? [{ key: 'disclaimer', label: 'confirmation the required disclaimer was included' }] : [])]
+  return [...(PROOF_CHECKLIST[channel] ?? PROOF_CHECKLIST[family(channel)]), ...(brief?.disclaimer?.trim() ? [{ key: 'disclaimer', label: 'confirmation the required disclaimer was included' }] : [])]
 }
 
 export function missingProof(channel: string, items: Record<string, unknown>, brief?: { disclaimer?: string } | null) {

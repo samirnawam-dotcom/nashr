@@ -153,4 +153,4 @@ export function Funnel({ steps, title }: { steps: { label: string; value: number
   )
 }
 
-export const CHANNEL: Record<string, string> = { tv: t('TV'), radio: t('Radio'), print: t('Print'), digital: t('Digital'), podcast: t('Podcasts') }
+export { CHANNEL_NAME as CHANNEL } from './media'

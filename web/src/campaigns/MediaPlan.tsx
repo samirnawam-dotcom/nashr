@@ -5,10 +5,11 @@ import { dubai } from '../calendar/layout'
 import { Status } from '../bookings/Bookings'
 import './media-plan.css'
 import { locale, t } from '../i18n'
+import { CHANNEL_NAME } from '../media'
 
 type Detail = Campaign & { items: { outletId: string; outlet: string; channel: string; planned: number; committed: number }[]
   bookings: { id: string; ref: string; status: string; price: number; label: string; startsAt: string; outlet: string }[] }
-const CHANNEL: Record<string, string> = { tv: t('TV'), radio: t('Radio'), print: t('Print'), digital: t('Digital'), podcast: t('Podcast') }
+const CHANNEL = CHANNEL_NAME
 const today = () => new Date().toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })
 
 /**

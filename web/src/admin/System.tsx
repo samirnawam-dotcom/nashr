@@ -1,3 +1,4 @@
+import { CHANNELS, CHANNEL_NAME } from '../media'
 import { useState } from 'react'
 import { Loading, csv, date, money, useAct, useLoad, when } from './common'
 import { PhotoBand } from '../PhotoBand'
@@ -107,7 +108,7 @@ type O = { id: string; name: string; nameAr: string | null; channel: string; sec
 export function DirectoryAdminPage() {
   const quotes = useLoad<Q[]>('/admin/quotes'), outlets = useLoad<O[]>('/admin/outlets')
   const { act, busy, msg } = useAct(() => Promise.all([quotes.load(), outlets.load()]))
-  const blank = { id: '', name: '', channel: 'print', sectors: '', tier: '', audience: '', website: '', estLow: '', estHigh: '' }
+  const blank = { id: '', name: '', channel: 'newspaper', sectors: '', tier: '', audience: '', website: '', estLow: '', estHigh: '' }
   const [f, setF] = useState(blank)
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value })
   const aed = (v: string) => v ? Math.round(Number(v) * 100) : undefined
@@ -136,7 +137,7 @@ export function DirectoryAdminPage() {
           <h3>{f.id ? t('Edit {name}', { name: f.name }) : t('Add an outlet not on Nashr')}</h3>
           {f.id && (() => { const cur = outlets.data?.find(x => x.id === f.id); return cur && <CoverPicker key={cur.id} url={cur.coverUrl} channel={cur.channel} endpoint={`/admin/outlets/${cur.id}/cover`} onChange={() => outlets.load()} /> })()}
           <div className="field"><label htmlFor="on">{t("Name")}</label><input id="on" value={f.name} onChange={set('name')} /></div>
-          {!f.id && <div className="field"><label htmlFor="oc">{t("Channel")}</label><select id="oc" value={f.channel} onChange={set('channel')}>{['print', 'digital', 'radio', 'tv', 'podcast'].map(c => <option key={c} value={c}>{t(c)}</option>)}</select></div>}
+          {!f.id && <div className="field"><label htmlFor="oc">{t("Channel")}</label><select id="oc" value={f.channel} onChange={set('channel')}>{CHANNELS.map(c => <option key={c} value={c}>{CHANNEL_NAME[c]}</option>)}</select></div>}
           <div className="field"><label htmlFor="os">{t("Sectors (comma-separated)")}</label><input id="os" value={f.sectors} onChange={set('sectors')} /></div>
           <div className="grid2"><div className="field"><label htmlFor="ot">{t("Tier")}</label><input id="ot" value={f.tier} onChange={set('tier')} /></div>
             <div className="field"><label htmlFor="oa">{t("Audience")}</label><input id="oa" value={f.audience} onChange={set('audience')} /></div></div>

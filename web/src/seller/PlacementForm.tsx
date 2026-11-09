@@ -51,18 +51,31 @@ function formats(channel: string): Format[] {
       { key: 'sponsorship', name: t('Programme sponsorship'), about: t('Billboards at the start and end of each episode'), days: EVERY_DAY, startsAt: '20:00', endsAt: '21:00',
         description: t('A 5-second billboard before and after the episode, and your logo on screen during it.'), specs: t('5-second billboard, MP4 1920 × 1080, and a logo as PNG.'), creativeDays: 3, closeDays: 7 },
     ]
-    case 'print': return [
+    case 'newspaper': case 'print': return [
       { key: 'full_page', name: t('Full page'), about: t('A full page in one edition'), days: EVERY_DAY, description: t('A full page in one edition.'), specs: t('26 × 36 cm, PDF/X-1a, 300 dpi.'), creativeDays: 3, closeDays: 7 },
       { key: 'half_page', name: t('Half page'), about: t('A horizontal half page in one edition'), days: EVERY_DAY, description: t('A horizontal half page in one edition.'), specs: t('26 × 17 cm, PDF/X-1a, 300 dpi.'), creativeDays: 3, closeDays: 7 },
       { key: 'front_strip', name: t('Front-page strip'), about: t('The strip across the bottom of the front page'), days: EVERY_DAY, description: t('The strip across the bottom of the front page, one edition.'), specs: t('25 cm × 5 columns, PDF/X-1a, 300 dpi.'), creativeDays: 3, closeDays: 7 },
+    ]
+    case 'magazine': return [
       { key: 'weekly_page', name: t('Magazine page'), about: t('A page in a weekly issue, sold by the week'), unit: 'week', days: [4], description: t('A full page in one weekly issue.'), specs: t('21 × 28 cm with 3 mm bleed, PDF/X-1a, 300 dpi.'), creativeDays: 5, closeDays: 9 },
+      { key: 'spread', name: t('Double-page spread'), about: t('Two facing pages in one issue'), unit: 'week', days: [4], description: t('Two facing pages in one weekly issue.'), specs: t('42 × 28 cm with 3 mm bleed, PDF/X-1a, 300 dpi.'), creativeDays: 5, closeDays: 9 },
     ]
     case 'digital': return [
       { key: 'takeover', name: t('Homepage takeover'), about: t('The whole homepage for 24 hours'), days: EVERY_DAY, description: t('Your brand on the homepage skin and the main banner for 24 hours.'), specs: t('Skin 1920 × 1080 and MPU 300 × 250, HTML5 or JPG, up to 150 KB.'), creativeDays: 2, closeDays: 6 },
       { key: 'banner_week', name: t('Banner for a week'), about: t('Run-of-site banners, Monday to Sunday'), unit: 'week', days: [1], description: t('Your banners across the site for seven days.'), specs: t('MPU 300 × 250 and leaderboard 728 × 90, JPG, PNG or HTML5, up to 150 KB.'), creativeDays: 2, closeDays: 6 },
-      { key: 'newsletter', name: t('Newsletter sponsorship'), about: t('A featured block in one newsletter send'), days: [2, 4], startsAt: '08:00', description: t('A featured block in one send to the newsletter list.'), specs: t('Logo 600 × 200 PNG, 40 words of text and a link.'), creativeDays: 2, closeDays: 6 },
       { key: 'article', name: t('Sponsored article'), about: t('A labelled article that stays published'), days: WEEKDAYS, description: t('An article labelled "Sponsored", published on the day and shared once on social media.'), specs: t('600–800 words and 3 images (JPG, 1600 px wide).'), creativeDays: 4, closeDays: 8 },
       { key: 'contest', name: t('Sponsored contest'), about: t('A contest page for seven days'), unit: 'week', days: [1], description: t('A contest page with your prize for seven days, promoted twice.'), specs: t('Prize text (100 words), hero image 1200 × 630 and a link to the terms.'), creativeDays: 3, closeDays: 7 },
+    ]
+    case 'newsletter': return [
+      { key: 'newsletter', name: t('Newsletter sponsorship'), about: t('A featured block in one newsletter send'), days: [2, 4], startsAt: '08:00', description: t('A featured block in one send to the newsletter list.'), specs: t('Logo 600 × 200 PNG, 40 words of text and a link.'), creativeDays: 2, closeDays: 6 },
+      { key: 'dedicated', name: t('Dedicated send'), about: t('A whole email about your brand'), days: [3], startsAt: '10:00', description: t('One email to the whole list about your brand only.'), specs: t('Subject line, 300 words, 2 images (1200 px wide) and a link.'), creativeDays: 3, closeDays: 7 },
+    ]
+    case 'social': return [
+      { key: 'ig_post', name: t('Instagram post'), about: t('A branded post in the feed'), days: EVERY_DAY, startsAt: '18:00', description: t('One branded feed post, labelled as a paid partnership.'), specs: t('Square or 4:5 image or carousel, caption of up to 150 words.'), creativeDays: 2, closeDays: 5 },
+      { key: 'ig_reel', name: t('Instagram Reel'), about: t('A branded short video'), days: EVERY_DAY, startsAt: '18:00', description: t('One branded Reel of up to 60 seconds, labelled as a paid partnership.'), specs: t('9:16 MP4, up to 60 seconds, or a brief for the outlet to film.'), creativeDays: 4, closeDays: 7 },
+      { key: 'story', name: t('Story set'), about: t('Three stories with a link'), days: EVERY_DAY, startsAt: '12:00', description: t('Three stories in a row with a link sticker to your page.'), specs: t('Three 9:16 images or videos, up to 15 seconds each, and a link.'), creativeDays: 2, closeDays: 5 },
+      { key: 'tiktok', name: t('TikTok video'), about: t('A branded TikTok'), days: EVERY_DAY, startsAt: '19:00', description: t('One branded TikTok video, labelled as paid.'), specs: t('9:16 MP4, up to 60 seconds, or a brief for the outlet to film.'), creativeDays: 4, closeDays: 7 },
+      { key: 'x_post', name: t('X post'), about: t('A post on X with a link'), days: EVERY_DAY, startsAt: '09:00', description: t('One post on X with your message and link.'), specs: t('Up to 280 characters, one image (1600 × 900) and a link.'), creativeDays: 1, closeDays: 4 },
     ]
     case 'podcast': return [
       { key: 'positions', title: t('Ad positions in an episode'), name: t('Weekly episode'), about: t('Pre-roll, mid-roll and post-roll, each sold on its own'), days: [2], startsAt: '06:00',
@@ -194,8 +207,8 @@ export function NewPlacementPage() {
 
           <section className="card pad form">
             <h2>{t('When it runs')}</h2>
-            {(channel === 'print' || channel === 'digital') && <div className="seg pl-unit" role="radiogroup" aria-label={t('Sold by')}>
-              <button type="button" role="radio" aria-checked={!week} className={!week ? 'on' : ''} onClick={() => set('unit', 'day')}>{channel === 'print' ? t('Each edition') : t('Each day')}</button>
+            {['newspaper', 'magazine', 'print', 'digital', 'newsletter'].includes(channel) && <div className="seg pl-unit" role="radiogroup" aria-label={t('Sold by')}>
+              <button type="button" role="radio" aria-checked={!week} className={!week ? 'on' : ''} onClick={() => set('unit', 'day')}>{['newspaper', 'magazine', 'print'].includes(channel) ? t('Each edition') : t('Each day')}</button>
               <button type="button" role="radio" aria-checked={week} className={week ? 'on' : ''} onClick={() => { set('unit', 'week'); set('days', f.days.slice(0, 1).length ? f.days.slice(0, 1) : [1]) }}>{t('A whole week')}</button></div>}
             <div className="field"><span className="small muted">{week ? t('The week starts on') : t('Days')}</span>
               <div className="days">{DAYS.map((d, i) => <label key={d} className={f.days.includes(i + 1) ? 'on' : ''}>
@@ -204,8 +217,8 @@ export function NewPlacementPage() {
                 <button type="button" onClick={() => set('days', EVERY_DAY)}>{t('Every day')}</button>
                 <button type="button" onClick={() => set('days', [6, 7])}>{t('Weekend')}</button></div>}</div>
             {!week && <div className="grid2">
-              <div className="field"><label htmlFor="sa">{channel === 'print' ? t('Edition time (optional)') : channel === 'podcast' || channel === 'digital' ? t('Goes live at (optional)') : t('Programme starts')}</label><input id="sa" type="time" value={f.startsAt} onChange={input('startsAt')} /></div>
-              {channel !== 'print' && channel !== 'podcast' && <div className="field"><label htmlFor="ea">{t('Ends')}</label><input id="ea" type="time" value={f.endsAt} onChange={input('endsAt')} /></div>}
+              <div className="field"><label htmlFor="sa">{['newspaper', 'magazine', 'print'].includes(channel) ? t('Edition time (optional)') : ['podcast', 'digital', 'newsletter', 'social'].includes(channel) ? t('Goes live at (optional)') : t('Programme starts')}</label><input id="sa" type="time" value={f.startsAt} onChange={input('startsAt')} /></div>
+              {!['newspaper', 'magazine', 'print', 'podcast', 'newsletter', 'social'].includes(channel) && <div className="field"><label htmlFor="ea">{t('Ends')}</label><input id="ea" type="time" value={f.endsAt} onChange={input('endsAt')} /></div>}
             </div>}
             {!week && <span className="small muted">{t('Dubai time. Leave empty for the whole day. Overnight like 23:00–02:00 works.')}</span>}
             {!week && <div className="field"><span className="small muted">{channel === 'podcast' ? t('Positions: each one is sold on its own. Leave none to sell the whole episode.') : t('Ad breaks: each one is sold on its own. Leave none to sell the whole slot.')}</span>

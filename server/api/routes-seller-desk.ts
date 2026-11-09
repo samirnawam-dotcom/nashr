@@ -18,6 +18,7 @@ import { setting } from '../core/settings.js'
 import { companyProfile } from './profiles.js'
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import { coverUrl, logoUrl } from './routes-covers.js'
+import { MEDIA } from '../shared/media.js'
 
 const SELLER: ['seller'] = ['seller']
 const HELD = `('secured', 'in_review', 'issue_open', 'disputed')`
@@ -239,7 +240,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   })
 
   const outletBody = { type: 'object', additionalProperties: false, properties: {
-    name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] },
+    name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: [...MEDIA] },
     sectors: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 60 } }, description: { type: 'string', maxLength: 2000 },
     website: { type: 'string', maxLength: 300, pattern: '^https?://' }, audience: { type: 'string', maxLength: 300 },
     audiences: { type: 'array', maxItems: 12, uniqueItems: true, items: { enum: AUDIENCE_KEYS } },

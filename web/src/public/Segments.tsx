@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Slot } from '../api'
 import { closesIn, dayLabel, money, time } from '../format'
 import { addDays, dubai, todayInDubai } from '../calendar/layout'
-import { ChannelMark, CHANNEL_NAME } from '../calendar/CalendarPage'
+import { ChannelMark, CHANNEL_NAME, CHANNELS } from '../calendar/CalendarPage'
 import { AUDIENCES } from '../../../server/shared/audiences'
 import { outletSlug, useMeta } from '../seo'
 import { useGuest } from '../guest'
@@ -21,7 +21,6 @@ type Row = { outletId: string; outlet: string; channel: string; logoUrl: string 
 type Reach = { audience: string; slots: number; outlets: number; fromPrice: number; channels: string[] }
 const WEEKS = 8
 const range = () => { const from = todayInDubai(), to = addDays(from, WEEKS * 7); return `from=${from}T00:00:00%2B04:00&to=${to}T00:00:00%2B04:00&open=1` }
-const CHANNELS = ['radio', 'tv', 'print', 'digital', 'podcast']
 
 // The audiences in three families, so twelve choices read as three short lists.
 const FAMILIES: [string, string, string[]][] = [

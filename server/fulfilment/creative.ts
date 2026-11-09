@@ -3,6 +3,7 @@ import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
 import { MarketError } from '../marketplace/market.js'
+import { family } from '../shared/media.js'
 
 // File rules per channel. A file that breaks them is a technical issue, which never counts as a change round (owner, SPEC 11.1 #9).
 export const CREATIVE_SPECS: Record<string, { types: string[]; maxMb: number }> = {
@@ -29,7 +30,7 @@ export async function uploadCreative(db: Db, a: { dealId: string; buyerId: strin
   const prev = await latest(db, d.id)
   if (prev?.status === 'approved') throw new MarketError('The creative is already approved.')
   if (prev?.status === 'pending') throw new MarketError('The publisher is still reviewing your last file.')
-  const spec = CREATIVE_SPECS[d.channel]
+  const spec = CREATIVE_SPECS[family(d.channel)]
   const problem = !spec.types.includes(a.fileType) ? `This file type isn't accepted for ${d.channel}. Use ${spec.types.join(', ')}.`
     : a.fileSize > spec.maxMb * 1024 * 1024 ? `The file is larger than ${spec.maxMb} MB.` : null
   const c = await one(db, `insert into creatives (deal_id, version, file_key, file_type, file_size, status, reason, uploaded_at, reviewed_at)

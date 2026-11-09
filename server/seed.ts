@@ -48,7 +48,7 @@ const from = new Date(Date.parse(today.date + 'T00:00:00Z') + offset * 86_400_00
 const DETAILS: Record<string, { description: string; specs: string }> = {
   radio: { description: 'A 30-second spot in one ad break of the programme.', specs: 'MP3 or WAV, 30 seconds, broadcast-ready.' },
   tv: { description: 'A 30-second spot in one ad break of the programme.', specs: 'MP4 (H.264), 1920 × 1080, 30 seconds, loudness −23 LUFS.' },
-  print: { description: 'A page in one edition.', specs: 'PDF/X-1a, 300 dpi, sizes on the rate card.' },
+  newspaper: { description: 'A page in one edition.', specs: 'PDF/X-1a, 300 dpi, sizes on the rate card.' },
   digital: { description: 'Your brand on the site for the day.', specs: 'JPG, PNG or HTML5, up to 150 KB.' },
   podcast: { description: 'A host-read or produced ad in one position of the episode.', specs: 'MP3, 48 kHz, or a script for the host to read.' },
 }
@@ -72,7 +72,7 @@ await list(await outlet(dubaiOne, 'Dubai One TV', 'دبي ون', 'tv', ['Banking
   name: 'Market Open', saleType: 'auction', days: [1, 2, 3, 4, 5], startsAt: '10:00', endsAt: '10:30', startingPrice: AED(12_000), buyNowPrice: AED(18_000),
   breaks: [{ label: 'Break 1', at: '10:10', seconds: 30 }, { label: 'Break 2', at: '10:25', seconds: 30 }],
 })
-await list(await outlet(gulfNews, 'Gulf News', 'غلف نيوز', 'print', ['Banking', 'Real estate', 'Retail']), {
+await list(await outlet(gulfNews, 'Gulf News', 'غلف نيوز', 'newspaper', ['Banking', 'Real estate', 'Retail']), {
   name: 'Full page', saleType: 'auction', days: [1, 3, 5], startingPrice: AED(20_000), buyNowPrice: AED(32_000), closeLeadHours: 144, creativeLeadHours: 48,
 })
 await list(await outlet(khaleej, 'Khaleej Times', 'خليج تايمز', 'digital', ['Technology', 'Banking']), {
@@ -118,12 +118,12 @@ for (const [i, s] of slots.entries()) {
 // Directory profiles, and outlets not on Nashr yet with Nashr's estimated range (brief section 7, level 3).
 await pool.query(`update outlets set tier = 'Tier 1', audience = 'Business commuters, 25-45', description = 'Dubai''s business radio. Markets, money and the morning drive.', website = 'https://example.com/skyline' where name = 'Skyline FM'`)
 await pool.query(`update outlets set tier = 'Tier 1', audience = 'Decision makers, UAE nationals and expats', description = 'English-language daily with a strong business section.' where name = 'Gulf News'`)
-for (const [name, channel, sectors, low, high] of [['Arabian Business', 'print', ['Banking', 'Real estate'], 18_000, 26_000], ['Dubai Eye 103.8', 'radio', ['Retail', 'Hospitality'], 2_500, 4_000],
+for (const [name, channel, sectors, low, high] of [['Arabian Business', 'magazine', ['Banking', 'Real estate'], 18_000, 26_000], ['Dubai Eye 103.8', 'radio', ['Retail', 'Hospitality'], 2_500, 4_000],
   ['The National', 'digital', ['Technology', 'Banking'], 7_000, 12_000]] as const)
   await pool.query(`insert into outlets (name, channel, sectors, est_low, est_high) values ($1, $2, $3, $4, $5)`, [name, channel, sectors, AED(low), AED(high)])
 
 // Saudi outlets stay in the directory as "Coming soon" until KSA opens (brief section 14).
-for (const [name, nameAr, channel, low, high] of [['Rotana FM', 'روتانا إف إم', 'radio', 4_000, 7_000], ['Arab News', 'عرب نيوز', 'print', 15_000, 25_000]] as const)
+for (const [name, nameAr, channel, low, high] of [['Rotana FM', 'روتانا إف إم', 'radio', 4_000, 7_000], ['Arab News', 'عرب نيوز', 'newspaper', 15_000, 25_000]] as const)
   await pool.query(`insert into outlets (name, name_ar, channel, market, sectors, est_low, est_high, est_currency) values ($1, $2, $3, 'SA', '{Banking,Retail}', $4, $5, 'SAR')`,
     [name, nameAr, channel, low * 100, high * 100])
 

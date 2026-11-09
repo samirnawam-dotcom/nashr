@@ -18,6 +18,7 @@ import { dealRating } from './routes-ratings.js'
 import { staffTwoStep } from '../auth/access.js'
 import { byDay, byOutlet, listSlots, scopedQuery } from '../marketplace/search.js'
 import { sellerSlot } from './shapes.js'
+import { MEDIA } from '../shared/media.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 const LIVE = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')` // paid bookings
@@ -250,7 +251,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
       website: o.website, description: o.description, estLow: o.est_low, estHigh: o.est_high, onNashr: !!o.company_id, coverUrl: coverUrl(o), logoUrl: logoUrl(o) })))
 
   const outletBody = { type: 'object', additionalProperties: false, properties: {
-    name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] },
+    name: { type: 'string', minLength: 1, maxLength: 200 }, nameAr: { type: 'string', maxLength: 200 }, channel: { enum: [...MEDIA] },
     sectors: { type: 'array', maxItems: 20, items: { type: 'string', maxLength: 60 } }, tier: { type: 'string', maxLength: 60 }, audience: { type: 'string', maxLength: 300 },
     website: { type: 'string', maxLength: 300, pattern: '^https?://' }, description: { type: 'string', maxLength: 2000 },
     estLow: { type: 'integer', minimum: 1 }, estHigh: { type: 'integer', minimum: 1 } } }

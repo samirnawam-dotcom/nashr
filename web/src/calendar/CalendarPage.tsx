@@ -12,6 +12,8 @@ import { AUDIENCES } from '../../../server/shared/audiences'
 import { isAr, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 import './calendar.css'
+import { CHANNELS, CHANNEL_NAME, ICON } from '../media'
+export { CHANNELS, CHANNEL_NAME }
 
 /*
  * The calendar, built for a marketplace of 1000+ outlets. The server filters, sorts, pages and summarises (marketplace/search.ts);
@@ -28,8 +30,6 @@ type DayTotal = { date: string; slots: number; outlets: number; fromPrice: numbe
 type OutletRow = { outletId: string; outlet: string; channel: string; logoUrl: string | null; slots: number; fromPrice: number; days: { date: string; slots: number; fromPrice: number }[] }
 type State = { view: View; date: string; f: SlotFilter; mine: boolean; all: boolean; sort: Sort; osort: OSort }
 
-export const CHANNELS = ['radio', 'tv', 'print', 'digital', 'podcast'] as const
-export const CHANNEL_NAME: Record<string, string> = { print: t('Print'), digital: t('Digital'), radio: t('Radio'), tv: t('TV'), podcast: t('Podcast') }
 const VIEWS: [View, string, string][] = [['list', t('List'), 'l'], ['day', t('Day'), 'd'], ['week', t('Week'), 'w'], ['month', t('Month'), 'm'], ['outlets', t('By outlet'), 'o']]
 const SORTS: [Sort, string][] = [['time', t('Air time')], ['closing', t('Closing soonest')], ['price_asc', t('Price: low to high')], ['price_desc', t('Price: high to low')], ['bids', t('Most bids')]]
 const LIST_DAYS = 28, PAGE = 50, OUTLET_PAGE = 50, HOUR = 64, MAX_COLS = 3
@@ -42,10 +42,6 @@ export const SALE_TYPES = ['auction', 'quick_sale', 'fixed'] as const
 export const SaleIcon = ({ k }: { k: string }) => k === 'auction' ? <Gavel /> : k === 'fixed' ? <Tag /> : <Bolt />
 export const saleLabel = (k: string) => k === 'auction' ? t('Auction') : k === 'fixed' ? t('Fixed price') : t('Quick sale')
 export const SaleType = ({ t: kind }: { t: Slot['saleType'] }) => <span className="tag"><SaleIcon k={kind} />{saleLabel(kind)}</span>
-const ICON: Record<string, string> = {
-  radio: 'M4 9h16v11H4zM8 9l9-5M8 14.5h.01M12 13h5M12 16h5', tv: 'M3 6h18v12H3zM8 21h8M12 18v3',
-  print: 'M6 3h9l3 3v15H6zM9 9h6M9 13h6M9 17h4', digital: 'M3 5h18v11H3zM9 20h6M12 16v4', podcast: 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
-}
 /** The channel's colour and icon: colour helps the eye, the icon and the name carry the meaning (never colour alone). */
 export const ChannelMark = ({ c, label }: { c: string; label?: boolean }) => <span className={`ch ch-${c}`}>
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden><path d={ICON[c] ?? ICON.digital} /></svg>

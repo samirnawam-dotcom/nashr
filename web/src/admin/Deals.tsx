@@ -8,6 +8,7 @@ import { ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 import { api } from '../api'
 import { Bubbles, type Msg } from '../messages/Thread'
+import { art, CHANNELS, CHANNEL_NAME } from '../media'
 
 type Row = { id: string; ref: string; status: string; kind: string; amount: number; currency: string; commission_bp: number | null; next_deadline_at: string | null
   created_at: string; buyer: string; seller: string; outlet: string; channel: string; label: string; starts_at: string }
@@ -30,7 +31,7 @@ export function AdminDealsPage() {
         <select className="btn" aria-label={t("Status")} value={f.status} onChange={e => set('status', e.target.value)}><option value="">{t("All statuses")}</option>
           {Object.entries(DEAL_STATUS).map(([k, [l]]) => <option key={k} value={k}>{t(l)}</option>)}</select>
         <select className="btn" aria-label={t("Channel")} value={f.channel} onChange={e => set('channel', e.target.value)}><option value="">{t('All channels')}</option>
-          {['radio', 'tv', 'print', 'digital', 'podcast'].map(c => <option key={c} value={c}>{t(c === 'tv' ? 'TV' : c[0].toUpperCase() + c.slice(1))}</option>)}</select>
+          {CHANNELS.map(c => <option key={c} value={c}>{CHANNEL_NAME[c]}</option>)}</select>
         <select className="btn" aria-label={t("Sold as")} value={f.kind} onChange={e => set('kind', e.target.value)}><option value="">{t('Any way of selling')}</option>
           {[['auction', 'Auction'], ['buy_now', 'Buy now'], ['fixed', 'Fixed price'], ['quick_sale', 'Quick sale'], ['choice', 'Next bid chosen']].map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select>
         <label className="small muted" htmlFor="df">{t('Airs from')}</label><input id="df" className="search" type="date" value={f.from} onChange={e => set('from', e.target.value)} />
@@ -85,7 +86,7 @@ export function AdminDealPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/deals">{t("Deals")}</a> › {d.ref}</p>
-      <div className="profile-cover slim" aria-hidden><img src={`/brand/${d.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
+      <div className="profile-cover slim" aria-hidden><img src={art(d.channel)} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{d.outlet} · {d.label}</h1>
         <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> {t('buys from')} <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}

@@ -2,11 +2,12 @@ import { audit } from '../core/audit.js'
 import { MarketError } from '../marketplace/market.js'
 import { NotFound, type RouteFn } from './app.js'
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
+import { MEDIA } from '../shared/media.js'
 
 const MAX_SEARCHES = 20
 // The same fields as the calendar's filter (server/shared/slot-filter.ts); anything else is refused.
 export const filterSchema = { type: 'object', additionalProperties: false, properties: {
-  channels: { type: 'array', maxItems: 5, uniqueItems: true, items: { enum: ['print', 'digital', 'radio', 'tv', 'podcast'] } },
+  channels: { type: 'array', maxItems: 8, uniqueItems: true, items: { enum: [...MEDIA] } },
   saleTypes: { type: 'array', maxItems: 3, uniqueItems: true, items: { enum: ['auction', 'quick_sale', 'fixed'] } },
   sector: { type: 'string', minLength: 1, maxLength: 60 },
   maxPrice: { type: 'integer', minimum: 1 },

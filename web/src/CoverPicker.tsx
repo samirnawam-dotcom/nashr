@@ -2,9 +2,9 @@ import { useRef, useState } from 'react'
 import { ApiError } from './api'
 import { t } from './i18n'
 import { tm } from './i18n-server'
+import { art, CHANNEL_NAME } from './media'
 
 const W = 1600, H = 500, MIN_WIDTH = 1000
-const CHANNEL_NAME: Record<string, string> = { tv: 'TV', radio: 'radio', print: 'print', digital: 'digital', podcast: 'podcast' }
 
 /**
  * The cover photo on an outlet's directory card and page. The photo is cropped to the cover's shape and resized in the
@@ -42,7 +42,7 @@ export function CoverPicker({ url, channel, endpoint, onChange }: { url: string 
 
   return (
     <div className="cover-picker">
-      <div className="cover-preview"><img src={cover ?? `/brand/${channel}-wide.jpg`} width={W} height={H} alt="" />
+      <div className="cover-preview"><img src={cover ?? art(channel)} width={W} height={H} alt="" />
         {!cover && <span className="cover-default">{t('Default {channel} photo', { channel: t(CHANNEL_NAME[channel] ?? channel) })}</span>}</div>
       <div className="row-flex">
         <label className={`btn ${busy ? 'disabled' : ''}`}>

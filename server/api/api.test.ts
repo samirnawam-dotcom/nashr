@@ -247,7 +247,7 @@ describe('buyer screens', () => {
     app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from(bytes), headers: { cookie: who.cookie, 'content-type': type, 'x-file-name': name } })
 
   test('directory: three price levels, each labelled; off-platform outlets ask for a quote', async () => {
-    const off = (await pool.query(`insert into outlets (name, channel, est_low, est_high) values ('Arabian Business', 'print', $1, $2) returning id`, [AED(8_000), AED(12_000)])).rows[0].id
+    const off = (await pool.query(`insert into outlets (name, channel, est_low, est_high) values ('Arabian Business', 'magazine', $1, $2) returning id`, [AED(8_000), AED(12_000)])).rows[0].id
     const outletX = (await pool.query(`select o.id from outlets o where company_id = $1`, [sellerX.companyId])).rows[0].id
     // three completed sales on Nashr make a typical price
     const bid = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
@@ -1025,7 +1025,7 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
       await tx(c => generateSlots(c, placement, '2026-11-09', 7, now))
     }
     await add('Evening TV', 'tv', '19:00', '20:00', 9_000, 'auction', '{Automotive}')
-    await add('Daily Paper', 'print', undefined, undefined, 12_000, 'quick_sale', '{Real estate,Banking}')
+    await add('Daily Paper', 'newspaper', undefined, undefined, 12_000, 'quick_sale', '{Real estate,Banking}')
     await add('Lunch Podcast', 'podcast', '13:00', '13:30', 1_200, 'quick_sale', '{Retail}')
   }
   const range = 'from=2026-11-09T00:00:00%2B04:00&to=2026-11-16T00:00:00%2B04:00'
@@ -1035,7 +1035,7 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     const all = (await call(buyerA, 'GET', `/api/slots?${range}`)).json()
     expect(all.length).toBeGreaterThan(20)
     const cases: [string, any][] = [
-      ['ch=tv,print', { channels: ['tv', 'print'] }], ['sale=quick_sale', { saleTypes: ['quick_sale'] }], ['sector=banking', { sector: 'banking' }],
+      ['ch=tv,newspaper', { channels: ['tv', 'newspaper'] }], ['sale=quick_sale', { saleTypes: ['quick_sale'] }], ['sector=banking', { sector: 'banking' }],
       [`max=${AED(5_000)}`, { maxPrice: AED(5_000) }], ['dp=morning', { dayparts: ['morning'] }], ['dp=allday,evening', { dayparts: ['allday', 'evening'] }],
       ['dp=afternoon', { dayparts: ['afternoon'] }], ['q=business%20markets', { q: 'business markets' }], ['q=paper', { q: 'paper' }],
       [`ch=radio,podcast&sale=quick_sale&max=${AED(2_000)}`, { channels: ['radio', 'podcast'], saleTypes: ['quick_sale'], maxPrice: AED(2_000) }],

@@ -9,11 +9,12 @@ import { LogoPicker } from '../LogoPicker'
 import { CompanyProfileEditor } from '../CompanyCard'
 import { AudiencePicker } from '../Audiences'
 import { INDUSTRIES } from '../calendar/BidDrawer'
+import { MEDIA, MEDIA_LABEL } from '../../../server/shared/media'
 
 type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null; logoUrl: string | null
   audiences: string[]; blockedIndustries: string[]; blockedAdvertisers: string[]; reach: number | null }
 type P = { company: { name: string; trn: string | null; address: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean; rateCard: { fileId: string; name: string } | null }; outlets: Outlet[] }
-const CHANNELS = [['radio', 'Radio'], ['tv', 'TV'], ['print', 'Print'], ['digital', 'Digital'], ['podcast', 'Podcast']]
+const CHANNELS = MEDIA.map(m => [m, MEDIA_LABEL[m]])
 
 export function ProfilePage() {
   const [p, setP] = useState<P | null>(null), [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)

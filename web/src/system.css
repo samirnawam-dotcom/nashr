@@ -771,3 +771,4 @@ a.avatar { text-decoration: none; }
 h1, h2, h3, .sec-h { letter-spacing: -.02em; }
 .side .lang-switch, .side .lang-switch.on-dark { color: var(--slate); }
 .side .lang-switch:hover { background: var(--surface-2); color: var(--ink); }
+.ch-fill.ch-newspaper { background: #c47a0a; } .ch-fill.ch-magazine { background: #a0601a; } .ch-fill.ch-newsletter { background: #2e7d9a; } .ch-fill.ch-social { background: #e0662b; }
