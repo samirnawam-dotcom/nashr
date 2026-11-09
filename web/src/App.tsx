@@ -36,6 +36,10 @@ const DocumentPage = L(load_documents_Documents, 'DocumentPage')
 const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
 const HelpPage = L(() => import('./Help'), 'HelpPage')
 const SupportPage = L(() => import('./admin/Support'), 'SupportPage')
+const CoverageReviewPage = L(() => import('./admin/Coverage'), 'CoverageReviewPage')
+const CoverageReviewItem = L(() => import('./admin/Coverage'), 'CoverageReviewItem')
+const CoverageListPage = L(() => import('./seller/Coverage'), 'CoverageListPage')
+const CoverageFormPage = L(() => import('./seller/Coverage'), 'CoverageFormPage')
 const UsersPage = L(() => import('./admin/Users'), 'UsersPage')
 const EmailsPage = L(() => import('./admin/Emails'), 'EmailsPage')
 const UserPage = L(() => import('./admin/Users'), 'UserPage')
@@ -131,6 +135,9 @@ const SELLER: Routes = [
   [/^\/listings\/new$/, () => <NewPlacementPage />],
   [/^\/listings\/import$/, () => <ImportPlacementsPage />],
   [/^\/listings/, () => <ProductsPage />],
+  [/^\/coverage\/new$/, () => <CoverageFormPage />],
+  [/^\/coverage\/([\w-]+)$/, id => <CoverageFormPage id={id} />],
+  [/^\/coverage/, () => <CoverageListPage />],
   [/^\/profile/, () => <ProfilePage />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <DocumentsPage seller />],
@@ -150,6 +157,8 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/deals/, () => <AdminDealsPage />],
   [/^\/disputes/, () => <DisputesPage />],
   [/^\/support/, () => <SupportPage />],
+  [/^\/coverage-review\/([\w-]+)$/, id => <CoverageReviewItem id={id} />],
+  [/^\/coverage-review/, () => <CoverageReviewPage />],
   [/^\/funds/, () => <FundsPage />],
   [/^\/payouts/, () => <PayoutsPage />],
   [/^\/directory/, () => <DirectoryAdminPage />],
@@ -175,11 +184,11 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/coverage-review', t('Coverage')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
-  seller: [['/home', t('Dashboard')], ['/listings', t('Products')], ['/schedule', t('Calendar')], ['/inbox', t('Requests')], ['/messages', t('Messages')], ['/deals', t('Transactions')], ['/earnings', t('Balances')], ['/profile', t('Your business')], ['/help', t('Help')]],
+  seller: [['/home', t('Dashboard')], ['/listings', t('Products')], ['/coverage', t('Coverage')], ['/schedule', t('Calendar')], ['/inbox', t('Requests')], ['/messages', t('Messages')], ['/deals', t('Transactions')], ['/earnings', t('Balances')], ['/profile', t('Your business')], ['/help', t('Help')]],
 }
 // The phone's bottom bar: the five places people go most.
 const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/listings', '/schedule', '/inbox', '/messages'] 
@@ -202,6 +211,7 @@ const ICON: Record<string, string> = {
   '/users': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   '/emails': 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6',
   '/support': 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  '/coverage': 'M4 6h16v12H4zM8 10h8M8 14h5M17 3v3M7 3v3', '/coverage-review': 'M4 6h16v12H4zM8 12l2.5 2.5L16 9',
   '/disputes': 'M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   '/funds': 'M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18', '/payouts': 'M4 8h14l-3-3M20 16H6l3 3',
   '/audiences': 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-5-5.9',

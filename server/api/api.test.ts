@@ -1693,3 +1693,36 @@ test("the calendar side panel: a slot's bids, and its booking's creative under A
   expect(p.assets[0].creatives[0]).toMatchObject({ version: 1, status: 'pending', fileId: f.id })
   expect((await call(sellerY, 'GET', `/api/seller/slots/${slotX}`)).statusCode).toBe(404)
 })
+
+test('media coverage submissions: draft, submit with checks, Nashr approves and it goes on sale on its dates; changes and rejection', async () => {
+  const outlet = (await pool.query(`select o.id from outlets o where o.company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
+  const full = { name: 'Market Close', type: 'tv', episode: 'Economy special', format: 'live', durationMin: 30, frequency: 'once', dates: ['2026-11-20', '2026-11-27'],
+    time: '18:00', venue: 'Dubai studio', kinds: ['interview', 'segment'], angle: 'UAE economic outlook and private sector growth.', reach: 250_000,
+    deliverables: ['mention', 'article'], platforms: ['tv', 'website'], social: { instagram: AED(1_500) }, price: AED(20_000), saleType: 'fixed' }
+  let c = (await call(sellerX, 'POST', '/api/seller/coverage', { outletId: outlet, data: { name: 'Market Close' } })).json()
+  expect(c.status).toBe('draft')
+  expect((await call(sellerX, 'POST', `/api/seller/coverage/${c.id}/submit`)).json().error).toMatch('Choose the type')
+  expect((await call(sellerX, 'PUT', `/api/seller/coverage/${c.id}`, { outletId: outlet, data: { ...full, description: 'Call 050 123 4567' } })).json().error).toMatch('phone')
+  expect((await call(sellerY, 'PUT', `/api/seller/coverage/${c.id}`, { outletId: outlet, data: full })).statusCode).toBe(404)
+  await call(sellerX, 'PUT', `/api/seller/coverage/${c.id}`, { outletId: outlet, data: full })
+  c = (await call(sellerX, 'POST', `/api/seller/coverage/${c.id}/submit`)).json()
+  expect(c.status).toBe('submitted')
+  expect((await call(sellerX, 'PUT', `/api/seller/coverage/${c.id}`, { outletId: outlet, data: full })).json().error).toMatch('cannot be changed')
+  expect((await call(admin, 'GET', '/api/admin/coverage')).json().map((x: any) => x.id)).toContain(c.id)
+  expect((await call(sellerX, 'GET', '/api/admin/coverage')).statusCode).toBe(403)
+  expect((await call(admin, 'POST', `/api/admin/coverage/${c.id}/decide`, { decision: 'changes' })).json().error).toMatch('what needs changing')
+
+  const d = (await call(admin, 'POST', `/api/admin/coverage/${c.id}/decide`, { decision: 'approve' })).json()
+  expect(d).toMatchObject({ status: 'approved', slots: 2 })
+  const slots = (await pool.query(`select sale_type, starting_price, label from slots where placement_id = $1 order by starts_at`, [d.placementId])).rows
+  expect(slots).toHaveLength(2)
+  expect(slots[0]).toMatchObject({ sale_type: 'fixed', starting_price: AED(21_500) })   // base price plus the social add-on
+  expect((await call(sellerX, 'GET', `/api/seller/coverage/${c.id}`)).json()).toMatchObject({ status: 'approved', placementId: d.placementId })
+
+  const two = (await call(sellerX, 'POST', '/api/seller/coverage', { outletId: outlet, data: full })).json()
+  await call(sellerX, 'POST', `/api/seller/coverage/${two.id}/submit`)
+  expect((await call(admin, 'POST', `/api/admin/coverage/${two.id}/decide`, { decision: 'changes', note: 'Add the guest list.' })).json().status).toBe('changes_requested')
+  expect((await call(sellerX, 'PUT', `/api/seller/coverage/${two.id}`, { outletId: outlet, data: { ...full, venue: 'Abu Dhabi' } })).statusCode).toBe(200)
+  await call(sellerX, 'POST', `/api/seller/coverage/${two.id}/submit`)
+  expect((await call(admin, 'POST', `/api/admin/coverage/${two.id}/decide`, { decision: 'reject', note: 'Not a fit for the marketplace.' })).json().status).toBe('rejected')
+})
