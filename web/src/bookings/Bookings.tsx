@@ -12,6 +12,7 @@ import { isAr, ltr, t } from '../i18n'
 import { useNeedsTwoStep } from '../twoStep'
 import { tm } from '../i18n-server'
 import { Thread } from '../messages/Thread'
+import { CardPay } from '../payments/CardPay'
 
 type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null; client?: string | null }
 
@@ -48,8 +49,6 @@ export function BookingsPage() {
   )
 }
 
-// Test cards (brief section 11) while payments run against the test provider.
-const CARDS = [['pm_card_4242', t('Visa •••• 4242')], ['pm_card_3155', t('Visa •••• 3155 (bank asks to confirm)')], ['pm_card_0002', t('Visa •••• 0002 (declined)')]]
 
 type Detail = Deal & { channel: string; placement: string; creativeDueAt: string; rating: Rating | null; clientId?: string | null
   timeline: { at: string; event: string; status: string }[]
@@ -88,7 +87,7 @@ function Tracker({ status, timeline }: { status: string; timeline: { at: string;
 }
 
 export function BookingPage({ id }: { id: string }) {
-  const [d, setD] = useState<Detail | null>(null), [card, setCard] = useState(CARDS[0][0])
+  const [d, setD] = useState<Detail | null>(null)
   const [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
   const [issue, setIssue] = useState<null | { reason: string; note: string }>(null), [withdrawing, setWithdrawing] = useState(false)
   const [terms, setTerms] = useState<null | { allowed: boolean; reason?: string; free?: boolean; paid?: number; publisherKeeps?: number; processing?: number; refund?: number }>(null)
@@ -198,10 +197,9 @@ export function BookingPage({ id }: { id: string }) {
         </dl>
         {d.status === 'accepted_pay_now' && <>
           <p>{d.nextDeadlineAt ? t('The publisher accepted. Please pay by {date}.', { date: when(d.nextDeadlineAt) }) : t('The publisher accepted. Please pay.')}</p>
-          <div className="field"><label htmlFor="card">{t("Card")}</label><select id="card" value={card} onChange={e => setCard(e.target.value)}>{CARDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <p className="small muted">{t('The money is held securely and released to the publisher only after you approve proof that the ad ran. You get a payment receipt from Nashr and a tax invoice from the publisher.')} {t('By paying you agree to the')} <a href="/terms">{t('terms')}</a> {t('and the')} <a href="/refunds">{t('refund and cancellation policy')}</a>.</p>
           {needsTwoStep ? <p className="warn small">{t('Before paying, turn on two-step sign-in to protect your account.')} <a href="/account">{t('Turn it on')}</a></p>
-          : <button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/pay`, { paymentMethod: card })}>{t('Pay {amount}', { amount: money(d.total, d.currency) })}</button>}
+          : <CardPay dealId={d.id} label={t('Pay {amount}', { amount: money(d.total, d.currency) })} onDone={load} />}
         </>}
         {d.status === 'awaiting_publisher' && <p className="muted">{t("Waiting for the publisher's decision. You'll be asked to pay once they accept.")}</p>}
         {d.status === 'awaiting_publisher' && d.kind === 'buy_now' && (!withdrawing

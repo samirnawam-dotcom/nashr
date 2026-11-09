@@ -24,6 +24,25 @@ export function ProfilePage() {
     setBusy(true); setError(''); setNote('')
     try { await api(path, { method, body }); setNote(done); await load() } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
+  // With Stripe, connecting opens Stripe's own pages (bank details and identity), then comes back here; without it (the demo),
+  // the account is verified at once.
+  async function connect() {
+    setBusy(true); setError(''); setNote('')
+    try {
+      const r = await api<{ url?: string; ok?: boolean }>('/seller/payouts/connect', { method: 'POST', body: {} })
+      if (r.url) { location.href = r.url; return }
+      setNote(t('Payout account verified.')); await load()
+    } catch (e: any) { setError(e.message) } finally { setBusy(false) }
+  }
+  useEffect(() => {
+    const back = new URLSearchParams(location.search).get('payouts')
+    if (!back) return
+    history.replaceState(null, '', location.pathname)
+    if (back === 'retry') { setError(t('The payout set-up link expired. Press Connect payout account to continue where you left off.')); return }
+    api<{ payoutsEnabled: boolean }>('/seller/payouts/refresh', { method: 'POST', body: {} }).then(r => {
+      setNote(r.payoutsEnabled ? t('Payout account verified.') : t('Thanks. Stripe is checking your details; this page updates once your payout account is verified.')); load()
+    }, e => setError(e.message))
+  }, [])
   const needsTwoStep = useNeedsTwoStep(!!p && !p.company.payoutsEnabled)
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   return (
@@ -35,7 +54,7 @@ export function ProfilePage() {
         {p.company.payoutsEnabled ? <p className="lead">{t("● Verified. Released money is transferred to it automatically.")}</p> : <>
           <p>{t("Connect the bank account Nashr pays you into. Verification is done by the payment provider; Nashr never sees your bank login.")}</p>
           {needsTwoStep ? <p className="warn small">{t('Before connecting where your money goes, turn on two-step sign-in to protect your account.')} <a href="/account">{t('Turn it on')}</a></p>
-          : <button className="btn primary" disabled={busy} onClick={() => act('POST', '/seller/payouts/connect', {}, t("Payout account verified."))}>{t("Connect payout account")}</button>}</>}
+          : <button className="btn primary" disabled={busy} onClick={connect}>{t("Connect payout account")}</button>}</>}
       </section>
       <section className="card pad section form">
         <h2>{t("Tax and invoices")}</h2>

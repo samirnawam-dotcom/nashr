@@ -127,10 +127,36 @@ DATABASE_URL=postgres://... LOAD_BASE=http://localhost:3000 npx tsx scripts/load
 | `LOG_REQUESTS` | `1` (default in production) | One JSON line per request |
 
 Edge (CloudFront or the load balancer) headers for the web app:
-- `Content-Security-Policy: default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'`
+- `Content-Security-Policy: default-src 'self'; script-src 'self' https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; connect-src 'self' https://api.stripe.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.stripe.com; frame-ancestors 'none'` (Stripe's card fields and bank confirmation load from Stripe)
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains`
 
 See `docs/security-review.md` for the review and what is still open.
+
+## 6a. Turning on Stripe (test mode first)
+
+Until the three Stripe keys are set, Nashr runs with test cards and no real money moves. To switch to Stripe:
+
+1. In the Stripe dashboard, in **test mode**, enable **Connect** (Express accounts). Note the publishable key (`pk_test_…`) and secret key (`sk_test_…`).
+2. Add a webhook endpoint `https://<your domain>/api/stripe/webhook`. Choose these events, and tick **"Listen to events on Connected accounts"** for `account.updated`:
+   - `payment_intent.succeeded`
+   - `payment_intent.payment_failed`
+   - `charge.dispute.created`
+   - `account.updated`
+
+   Note its signing secret (`whsec_…`).
+3. On the server, add the keys to `/etc/nashr.env` (never to the repository or a chat), then restart: `systemctl restart nashr`.
+   ```
+   STRIPE_SECRET_KEY=sk_test_...
+   STRIPE_PUBLISHABLE_KEY=pk_test_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   ```
+4. Check:
+   - Pay a booking with `4242 4242 4242 4242`, then with `4000 0025 0000 3155`. The second asks the bank to confirm; the booking turns "Payment secured" when Stripe's webhook arrives.
+   - As a publisher, press **Connect payout account**. Stripe's onboarding opens and comes back to the profile.
+   - `/api/health` stays green: the ledger must match the Stripe balance.
+5. For live money, repeat with the live keys (`sk_live_…`) and a live webhook endpoint, after the lawyer has reviewed the terms.
+
+**Tested without Stripe:** `e2e/stripe-journey.cjs` runs the whole flow in a browser against a mock Stripe (`e2e/mock-stripe.cjs`). It covers the card form, a declined card, 3-D Secure, the signed webhook, the receipt, and payout onboarding. Start the API against the mock with `STRIPE_API_BASE=http://localhost:12111` and the three keys `sk_test_mock`, `pk_test_mock`, `whsec_mock`. `STRIPE_API_BASE` is refused in production.
 
 ## 7. Secrets and access
 

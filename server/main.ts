@@ -15,7 +15,10 @@ function provider(): PaymentProvider {
   if (sk) {
     if (!pk || !whsec) throw new Error('Set STRIPE_PUBLISHABLE_KEY and STRIPE_WEBHOOK_SECRET together with STRIPE_SECRET_KEY.')
     if (process.env.NODE_ENV === 'production' && !sk.startsWith('sk_live_')) console.warn('Running in production with Stripe TEST keys: no real money moves.')
-    return new StripeProvider(sk)
+    // STRIPE_API_BASE points at a mock Stripe for end-to-end tests (e2e/mock-stripe.cjs); never in production.
+    const base = process.env.STRIPE_API_BASE
+    if (base && process.env.NODE_ENV === 'production') throw new Error('STRIPE_API_BASE is for tests only.')
+    return new StripeProvider(sk, fetch, base ?? undefined)
   }
   if (process.env.NODE_ENV === 'production') throw new Error('Set the Stripe keys (STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET) before running in production.')
   return new FakeProvider()

@@ -268,7 +268,8 @@ server {
 
   add_header X-Content-Type-Options nosniff always;
   add_header Referrer-Policy same-origin always;
-  add_header Content-Security-Policy "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-ancestors 'none'" always;
+  # Stripe's card fields and bank confirmation load from Stripe's own domains.
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com; frame-src https://js.stripe.com https://hooks.stripe.com; connect-src 'self' https://api.stripe.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://*.stripe.com; frame-ancestors 'none'" always;
 ${PROXY}
   location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; try_files \$uri =404; }
   location / { try_files \$uri \$uri.html \$uri/index.html /app.html; }
