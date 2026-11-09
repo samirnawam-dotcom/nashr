@@ -1,0 +1,53 @@
+/* Your business: a status strip, a menu of sections, one section at a time */
+.biz { display: grid; gap: 16px; max-width: 1180px; }
+.biz-status { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.biz-status button { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: center; width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line);
+  background: var(--surface); box-shadow: var(--shadow-1); text-align: start; font: inherit; color: var(--ink); cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+.biz-status button:hover { box-shadow: var(--shadow-2); }
+.biz-status button.on { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal-2); }
+.biz-status button > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.biz-status b { font-size: 14.5px; }
+.biz-status .small { color: var(--slate); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.biz-dot { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; }
+.ok .biz-dot, .biz-dot.ok { background: var(--green-1); color: var(--green); }
+.todo .biz-dot { background: var(--amber-1); color: var(--amber); }
+.biz-grid { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 16px; align-items: start; }
+.biz-nav { position: sticky; top: 16px; display: grid; gap: 2px; padding: 8px; border-radius: 16px; border: 1px solid var(--line); }
+.biz-nav button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px; background: none; color: var(--slate); font: 500 14.5px var(--body); text-align: start; cursor: pointer; }
+.biz-nav button:hover { background: var(--surface-2); color: var(--ink); }
+.biz-nav button.on { background: var(--teal-1); color: var(--teal); font-weight: 600; }
+.biz-nav button > span:nth-child(2) { flex: 1; }
+.biz-need { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+.biz-n { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); color: var(--slate); }
+.biz-body { display: grid; gap: 12px; min-width: 0; }
+.biz-body > p { margin: 0; }
+.biz-body > .card, .biz-sec { margin: 0; }
+.biz-sec { display: grid; gap: 14px; border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+.biz-sec h2 { font: 650 19px var(--display); margin: 0; }
+.biz-sec-h { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
+.biz-sec-h p { margin: 4px 0 0; }
+.biz-outlets { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.biz-outlets button { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 14px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--surface); text-align: start; font: inherit; color: var(--ink); cursor: pointer; }
+.biz-outlets button:hover { border-color: var(--teal-2); background: var(--teal-1); }
+.biz-outlets img, .biz-logo { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; }
+.biz-logo { display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font: 650 16px var(--display); }
+.biz-o { display: grid; gap: 2px; min-width: 0; }
+.biz-o b { font-size: 15.5px; }
+.biz-edit { font-size: 13px; font-weight: 600; color: var(--teal); }
+.biz-back { justify-self: start; }
+.biz-tabs { justify-self: start; }
+.biz-tabs button.on { background: var(--teal); color: #fff; }
+.biz-save { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.biz-images { display: grid; gap: 16px; }
+.biz-ok { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
+.biz-ok p { margin: 4px 0 10px; }
+@media (max-width: 1000px) { .biz-status { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 820px) {
+  .biz-grid { grid-template-columns: minmax(0, 1fr); }
+  .biz-nav { position: static; display: flex; overflow-x: auto; scrollbar-width: none; }
+  .biz-nav button { flex: none; }
+}
+@media (max-width: 480px) { .biz-status { grid-template-columns: minmax(0, 1fr); } }
+.biz .grid2 { gap: 14px 16px; align-items: start; }
+.biz-sec.form { gap: 16px; }

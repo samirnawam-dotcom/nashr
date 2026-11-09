@@ -81,15 +81,15 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     say(await pub.locator('main h1').first().textContent(), '/', await buy.locator('main h1').first().textContent())
 
     step = '4 publisher: outlet, payouts, tax'
-    await nav(pub, 'Your business'); await pub.waitForSelector('h2:has-text("Payout account")')
-    if (!(await pub.locator('#n-new').count())) await pub.click('button:has-text("outlet")')
-    await pub.fill('#n-new', `Palm Radio ${run}`); await pub.selectOption('#c-new', 'radio'); await pub.check('#sec-new-Banking'); await pub.check('#sec-new-Retail')
-    await pub.fill('#au-new', 'Commuters 25-45'); await pub.fill('#d-new', 'Drive-time radio across the Emirates.')
+    await nav(pub, 'Your business'); await pub.waitForSelector('.biz-nav')
+    if (!(await pub.locator('#n-new').count())) { await pub.click('.biz-nav button:has-text("Outlets")'); await pub.click('button:has-text("Add outlet")') }
+    await pub.fill('#n-new', `Palm Radio ${run}`); await pub.selectOption('#c-new', 'radio'); await pub.fill('#d-new', 'Drive-time radio across the Emirates.')
+    await pub.click('.biz-tabs button:has-text("Audience")'); await pub.check('#sec-new-Banking'); await pub.check('#sec-new-Retail'); await pub.fill('#au-new', 'Commuters 25-45')
     await pub.click('button:has-text("Add outlet")'); await pub.waitForSelector('text=Outlet added.')
     // connecting payouts needs two-step sign-in: the publisher turns it on from its account page first
-    await twoStepViaPage(pub, BASE); await nav(pub, 'Your business'); await pub.waitForSelector('h2:has-text("Payout account")')
+    await twoStepViaPage(pub, BASE); await nav(pub, 'Your business'); await pub.click('.biz-nav button:has-text("Payout account")'); await pub.waitForSelector('h2:has-text("Payout account")')
     await pub.click('button:has-text("Connect payout account")'); await pub.waitForSelector('text=Payout account verified.')
-    await pub.fill('#trn', '100123456700003'); await pub.click('section:has(#trn) button:has-text("Save")'); await pub.waitForSelector('text=Tax details saved.')
+    await pub.click('.biz-nav button:has-text("Tax and invoices")'); await pub.fill('#trn', '100123456700003'); await pub.click('section:has(#trn) button:has-text("Save")'); await pub.waitForSelector('text=Tax details saved.')
     await pub.shot('f4-profile'); say()
 
     step = '5 publisher: placements listed'
