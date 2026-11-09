@@ -1303,4 +1303,6 @@ export const AR_FLOW: Record<string, string> = {
   "Add a placement first; then put it on sale here.": "أضف مساحة إعلانية أولًا، ثم اعرضها للبيع هنا.",
   "The placement's days and times decide which slots appear. The price is the placement's own; change it here for these dates only.": "أيام المساحة الإعلانية وأوقاتها تحدد المواعيد التي تظهر. السعر هو سعرها؛ غيّره هنا لهذه التواريخ فقط.",
   "Add {placement} on {day}": "أضف {placement} في {day}",
+  "Expand the menu": "وسّع القائمة",
+  "Collapse the menu": "صغّر القائمة",
 }

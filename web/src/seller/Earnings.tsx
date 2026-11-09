@@ -19,7 +19,7 @@ export function EarningsPage() {
   const paid = e.payouts.reduce((n, p) => n + p.amount, 0)
   return (
     <main>
-      <PhotoBand img="/brand/digital-wide.jpg" title={t("Earnings")} sub={t("Money is held while a booking runs and released to you when the buyer approves proof.")} />
+      <PhotoBand img="/brand/digital-wide.jpg" title={t("Balances")} sub={t("Money is held while a booking runs and released to you when the buyer approves proof.")} />
       <dl className="kpis">
         <div className="card"><dt>{t("Held for bookings in progress")}</dt><dd className="num">{money(held)}</dd></div>
         <div className="card"><dt>{t("Released, to be paid out")}</dt><dd className="num">{money(e.available)}</dd></div>

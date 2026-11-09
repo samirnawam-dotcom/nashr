@@ -776,3 +776,36 @@ h1, h2, h3, .sec-h { letter-spacing: -.02em; }
 .ch-fill.ch-newspaper { background: #c47a0a; } .ch-fill.ch-magazine { background: #a0601a; } .ch-fill.ch-newsletter { background: #2e7d9a; } .ch-fill.ch-social { background: #e0662b; }
 /* small phones: the guest header keeps its button inside the screen */
 @media (max-width: 420px) { .guest-actions { gap: 4px; min-width: 0; } .guest-actions .btn.signal, .guest-actions a.btn.signal { padding: 0 10px; font-size: 13px; } }
+
+/* Page header (replaces the photo banner): title and purpose on the left, actions on the right, no image */
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; margin-bottom: 18px; }
+.page-head-copy { flex: 1 1 320px; min-width: 0; }
+.page-head h1 { font: 700 clamp(26px, 3vw, 34px)/1.08 var(--display); letter-spacing: -.03em; margin: 0; color: var(--ink); }
+.page-head p { margin: 6px 0 0; color: var(--slate); font-size: 15px; line-height: 1.5; max-width: 70ch; }
+.page-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* The sidebar in two versions: expanded (labels) and collapsed (icons with tooltips); the toggle sits by the wordmark */
+.side-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-inline-end: 2px; }
+.side-top .logo { padding-bottom: 6px; }
+.side-toggle { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border: 1px solid var(--line-2); border-radius: 9px; background: var(--surface); color: var(--slate); cursor: pointer; }
+.side-toggle:hover { background: var(--surface-2); color: var(--ink); }
+[dir="rtl"] .side-toggle svg { transform: scaleX(-1); }
+.side { transition: padding .18s var(--ease, ease); }
+.shell { transition: grid-template-columns .18s var(--ease, ease); }
+.side-nav a { position: relative; }
+.side-me .avatar { text-decoration: none; }
+.side .signout { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.shell.min { grid-template-columns: 76px minmax(0, 1fr); }
+.shell.min .side { padding-inline: 12px; align-items: stretch; }
+.shell.min .side-top { flex-direction: column; gap: 10px; padding: 0; }
+.shell.min .side-top .logo .latin { display: none; }
+.shell.min .side-top .logo { padding: 4px 0 0; justify-content: center; }
+.shell.min .side-l, .shell.min .side-me .who, .shell.min .side-me .spacer, .shell.min .side-nav .soon { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.shell.min .side-group { margin: 10px 8px 6px; height: 1px; overflow: hidden; color: transparent; background: var(--line); }
+.shell.min .side-nav a { justify-content: center; padding: 10px 0; }
+.shell.min .side-nav .nav-badge { position: absolute; top: 3px; inset-inline-end: 6px; min-width: 17px; height: 17px; font-size: 10px; padding: 0 4px; }
+.shell.min .side-me { flex-direction: column; gap: 8px; padding: 6px 0; }
+.shell.min .side-actions { flex-direction: column; align-items: center; gap: 6px; }
+.shell.min .side .signout { width: 40px; padding: 0; }
+@media (max-width: 900px) { .side-toggle { display: none; } }
+@media (prefers-reduced-motion: reduce) { .side, .shell { transition: none; } }

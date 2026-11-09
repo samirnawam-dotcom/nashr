@@ -238,6 +238,9 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   const unread = useUnread(!!me && (me.role === 'buyer' || me.role === 'seller'), full)
   // open requests for a publisher, shown on Requests in the menu (refreshed every minute)
   const [requests, setRequests] = useState(0)
+  // The sidebar in two versions (owner's feedback): expanded with labels, or collapsed to icons; remembered on this device
+  const [mini, setMini] = useState(() => { try { return localStorage.getItem('nashr:side-min') === '1' } catch { return false } })
+  const toggleMini = () => setMini(m => { try { localStorage.setItem('nashr:side-min', m ? '0' : '1') } catch { /* private mode */ } return !m })
   useEffect(() => { if (me?.role !== 'seller') return
     const get = () => api<unknown[]>('/seller/inbox').then(r => setRequests(r.length), () => {}); get(); const x = setInterval(get, 60_000); return () => clearInterval(x) }, [me?.role])
   // Screens behind sign-in stay out of search results; public pages set their own metadata.
@@ -283,17 +286,21 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   const signOut = async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null); resetLive() }
   const hit = routesFor(me.role).map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
   return (
-    <div className="shell">
-      <aside className="side">
-        <Wordmark href={`${home}`} />
+    <div className={`shell ${mini ? 'min' : ''}`}>
+      <aside className="side" aria-label={t('Menu')}>
+        <div className="side-top"><Wordmark href={`${home}`} />
+          <button type="button" className="side-toggle" onClick={toggleMini} aria-expanded={!mini} aria-label={mini ? t('Expand the menu') : t('Collapse the menu')} title={mini ? t('Expand the menu') : t('Collapse the menu')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={mini ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} /></svg></button></div>
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
-          <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-            <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a></Fragment>)}</nav>
+          <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''} title={mini ? l : undefined}>
+            <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a></Fragment>)}</nav>
         <div className="side-foot">
-          <div className="side-me"><span className="avatar" aria-hidden>{initials}</span>
+          <div className="side-me"><a className="avatar" href="/account" title={mini ? `${me.company.name} · ${t('Your account')}` : undefined} aria-label={t('Your account')}>{initials}</a>
             <a className="who" href="/account" title={t('Your account')}><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role} · {t('Your account')}</span></a><span className="spacer" /><Bell role={me.role} /></div>
-          <div className="side-actions"><button className="btn signout" onClick={signOut}>{t("Sign out")}</button><LangSwitch className="on-dark" /></div>
+          <div className="side-actions"><button className="btn signout" onClick={signOut} title={mini ? t('Sign out') : undefined} aria-label={t('Sign out')}>
+            <svg className="so-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 4h4v16h-4M10 17l5-5-5-5M15 12H4" /></svg>
+            <span className="side-l">{t("Sign out")}</span></button><LangSwitch className="on-dark" /></div>
         </div>
       </aside>
       <div className="shell-main">
