@@ -1676,3 +1676,20 @@ test('counter offers: the publisher names another price; the buyer agrees (accep
   expect(b).toMatchObject({ price: AED(6_000), counter: null, status: 'accepted_pay_now' })
   expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/counter`, { amount: AED(7_000) })).json().error).toMatch('waiting on you')
 })
+
+test("the calendar side panel: a slot's bids, and its booking's creative under Assets; only the publisher sees it", async () => {
+  await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+  let p = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
+  expect(p.bids).toHaveLength(1)
+  expect(p.assets).toEqual([])
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+  const f = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('ID3 fake audio'), headers: { cookie: buyerA.cookie, 'content-type': 'audio/mpeg', 'x-file-name': 'spot.mp3' } })).json()
+  await call(buyerA, 'POST', `/api/deals/${deal}/creative`, { fileId: f.id })
+  p = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
+  expect(p.status).toBe('booked')
+  expect(p.assets).toHaveLength(1)
+  expect(p.assets[0]).toMatchObject({ dealId: deal, proof: null })
+  expect(p.assets[0].creatives[0]).toMatchObject({ version: 1, status: 'pending', fileId: f.id })
+  expect((await call(sellerY, 'GET', `/api/seller/slots/${slotX}`)).statusCode).toBe(404)
+})

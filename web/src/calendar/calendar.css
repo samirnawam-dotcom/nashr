@@ -378,3 +378,36 @@ label.side-h { display: block; }
 .cv-add h2 { font: 650 18px var(--display); margin: 0; }
 .cv-add-grid { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 760px) { .cv-add-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Bid status chips on the publisher's calendar (owner's design): open for bids, bidding (n), pending, bid accepted */
+.bchip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; line-height: 1; padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+  color: var(--slate); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
+.bchip i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.bchip.b-open { color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal-2); background: var(--surface); }
+.bchip.b-open i { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
+.bchip.b-bid { color: #fff; background: var(--teal); box-shadow: none; }
+.bchip.b-bid i { animation: bchip-pulse 1.8s ease-in-out infinite; }
+.bchip.b-pend { color: var(--amber); background: var(--amber-1); box-shadow: none; }
+.bchip.b-acc { color: var(--green); background: var(--green-1); box-shadow: none; }
+.bchip.b-off { color: var(--faint); background: var(--surface-3); box-shadow: none; }
+@keyframes bchip-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .bchip.b-bid i { animation: none; } }
+.sl .sl-st { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 4px; font-size: 12px; }
+.wk-ev .wk-l2 { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+.wk-ev .bchip { font-size: 10.5px; padding: 3px 6px; }
+
+/* The slot side panel: state, then Details / Bids / Assets */
+.sp-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.sp-state .bchip { font-size: 12.5px; padding: 5px 10px; }
+.sp-tabs { justify-self: start; }
+.sp-body { display: grid; gap: 16px; align-content: start; min-height: 120px; }
+.sp-h { font-size: 15px; margin: 0 0 8px; }
+.sp-facts { margin: 0; }
+.sp-assets { display: grid; gap: 8px; }
+.sp-files { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sp-files li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.sp-files li > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.sp-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--teal-1); color: var(--teal); display: grid; place-items: center; font: 600 13px var(--display); }
+/* an empty day: click to put the product on sale from that date */
+.cv-add-day { display: grid; place-items: center; width: 100%; min-height: 44px; border: 1px dashed var(--line-2); border-radius: 10px; background: none; color: var(--faint); font-size: 18px; cursor: pointer; opacity: .55; }
+.cv-add-day:hover, .cv-add-day:focus-visible { opacity: 1; color: var(--teal); border-color: var(--teal); background: var(--teal-1); }
