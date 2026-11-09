@@ -135,28 +135,34 @@ export function planRoutes(route: RouteFn) {
   const totals = `select c.*, c.launch_date::text launch_text,
       coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${BOOKED}), 0)::bigint committed,
       coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status = 'awaiting_seller'), 0)::bigint pending,
-      coalesce((select sum(i.planned_amount) from campaign_items i where i.campaign_id = c.id), 0)::bigint planned
+      coalesce((select sum(i.planned_amount) from campaign_items i where i.campaign_id = c.id), 0)::bigint planned,
+      (select name from clients where id = c.client_id) client
     from campaigns c where c.buyer_id = $1`
   const card = (c: any) => ({ id: c.id, name: c.name, budget: c.budget, launchDate: c.launch_text, objective: c.objective, audience: c.audience,
-    message: c.message, status: c.status, committed: c.committed, pending: c.pending, planned: c.planned, remaining: c.budget - c.committed })
+    message: c.message, status: c.status, clientId: c.client_id, client: c.client, committed: c.committed, pending: c.pending, planned: c.planned, remaining: c.budget - c.committed })
   const campaignBody = { type: 'object', additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 200 }, budget: { type: 'integer', minimum: 1 }, launchDate: { type: 'string', format: 'date' },
     objective: { type: 'string', maxLength: 500 }, audience: { type: 'string', maxLength: 500 }, message: { type: 'string', maxLength: 2000 },
-    status: { enum: ['active', 'completed'] } } }
+    status: { enum: ['active', 'completed'] }, clientId: { type: ['string', 'null'], format: 'uuid' } } }
+  const ownClient = async (db: any, id: string | null | undefined, buyerId: string) => {
+    if (id && !(await db.query(`select 1 from clients where id = $1 and buyer_id = $2`, [id, buyerId])).rowCount) throw new MarketError('Choose one of your clients.')
+  }
 
   route('GET', '/api/campaigns', BUYER, async ({ db, me }) =>
     (await db.query(`${totals} order by c.status, c.created_at desc`, [me.actAs.companyId])).rows.map(card))
 
   route('POST', '/api/campaigns', BUYER, async ({ db, at, me }, req) => {
     const b = req.body
-    const c = (await db.query(`insert into campaigns (buyer_id, name, budget, launch_date, objective, audience, message, created_at)
-                               values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
-      [me.actAs.companyId, b.name, b.budget, b.launchDate ?? null, b.objective ?? null, b.audience ?? null, b.message ?? null, at])).rows[0]
+    await ownClient(db, b.clientId, me.actAs.companyId)
+    const c = (await db.query(`insert into campaigns (buyer_id, name, budget, launch_date, objective, audience, message, created_at, client_id)
+                               values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
+      [me.actAs.companyId, b.name, b.budget, b.launchDate ?? null, b.objective ?? null, b.audience ?? null, b.message ?? null, at, b.clientId ?? null])).rows[0]
     return { id: c.id }
   }, { ...campaignBody, required: ['name', 'budget'] })
 
   route('PUT', '/api/campaigns/:id', BUYER, async ({ db, me }, req) => {
-    const b = req.body, cols = { name: 'name', budget: 'budget', launchDate: 'launch_date', objective: 'objective', audience: 'audience', message: 'message', status: 'status' }
+    const b = req.body, cols = { name: 'name', budget: 'budget', launchDate: 'launch_date', objective: 'objective', audience: 'audience', message: 'message', status: 'status', clientId: 'client_id' }
+    await ownClient(db, b.clientId, me.actAs.companyId)
     const set = Object.entries(cols).filter(([k]) => k in b)
     if (!set.length) throw new MarketError('Nothing to change.')
     const r = await db.query(`update campaigns set ${set.map(([, c], i) => `${c} = $${i + 3}`).join(', ')} where id = $1 and buyer_id = $2`,

@@ -35,4 +35,7 @@ export type Price = { level: 'typical' | 'rate' | 'estimate'; label: string; fro
 export type Outlet = { id: string; slug?: string; name: string; nameAr: string | null; channel: string; sectors: string[]; logoUrl: string | null; coverUrl?: string | null; rating?: RatingSummary
   tier: string | null; audience: string | null; market: string; comingSoon: boolean; onNashr: boolean; price: Price }
 export type Campaign = { id: string; name: string; budget: number; launchDate: string | null; objective: string | null; audience: string | null
-  message: string | null; status: 'active' | 'completed'; committed: number; pending: number; planned: number; remaining: number }
+  message: string | null; status: 'active' | 'completed'; committed: number; pending: number; planned: number; remaining: number; clientId?: string | null; client?: string | null }
+/** A client an agency books for. Budget and amounts in fils, excl. VAT; remaining counts requests still waiting on publishers. */
+export type Client = { id: string; name: string; industry: string | null; trn: string | null; address: string | null; budget: number | null; budgetStop: boolean
+  status: 'active' | 'archived'; committed: number; pending: number; paid: number; bookings: number; remaining: number | null }

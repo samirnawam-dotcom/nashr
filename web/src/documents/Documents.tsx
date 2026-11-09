@@ -10,7 +10,7 @@ import { isAr, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 
 export const DOC_TYPE: Record<string, string> = { order: t('Order'), receipt: t('Payment receipt'), media_invoice: t('Tax invoice (media)'), commission_invoice: t('Commission invoice'), credit_note: t('Credit note') }
-type Row = { id: string; type: string; number: string; total: number; currency: string; issuedAt: string; dealId: string | null; dealRef: string | null }
+type Row = { id: string; type: string; number: string; total: number; currency: string; issuedAt: string; dealId: string | null; dealRef: string | null; client?: string | null }
 
 const day = (iso: string) => dayLabel(dubai(iso).date, { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -19,7 +19,9 @@ export function DocumentsPage({ seller = false }: { seller?: boolean }) {
   const [rows, setRows] = useState<Row[] | null>(null), [error, setError] = useState(''), [type, setType] = useState('')
   useEffect(() => { api<Row[]>('/documents').then(setRows, e => setError(e.message)) }, [])
   const types = [...new Set((rows ?? []).map(r => r.type))]
-  const shown = (rows ?? []).filter(r => !type || r.type === type)
+  const [client, setClient] = useState('')
+  const clients = [...new Set((rows ?? []).map(r => r.client).filter(Boolean))] as string[]
+  const shown = (rows ?? []).filter(r => (!type || r.type === type) && (!client || r.client === client))
   return (
     <main>
       <p className="small">{seller ? <a href="/earnings">{t('Earnings')}</a> : <a href="/bookings">{t('Bookings')}</a>} {isAr ? '‹' : '›'} {t("Receipts and invoices")}</p>
@@ -30,12 +32,14 @@ export function DocumentsPage({ seller = false }: { seller?: boolean }) {
         <div className="toolbar" style={{ marginTop: 20 }}>
           <div className="seg" role="radiogroup" aria-label={t('Document type')}>
             {['', ...types].map(k => <button key={k} type="button" role="radio" aria-checked={type === k} className={type === k ? 'on' : ''} onClick={() => setType(k)}>{k ? DOC_TYPE[k] : t('All')}</button>)}</div>
+          {clients.length > 0 && <select className="btn" aria-label={t('Client')} value={client} onChange={e => setClient(e.target.value)}><option value="">{t('All clients')}</option>
+            {clients.map(c => <option key={c} value={c}>{c}</option>)}</select>}
           <div className="spacer" />
-          <button className="btn" onClick={() => csv(`nashr-documents${type ? '-' + type : ''}.csv`, shown.map(r => ({ document: DOC_TYPE[r.type], number: r.number, order: r.dealRef ?? '',
+          <button className="btn" onClick={() => csv(`nashr-documents${type ? '-' + type : ''}.csv`, shown.map(r => ({ document: DOC_TYPE[r.type], number: r.number, order: r.dealRef ?? '', ...(clients.length ? { client: r.client ?? '' } : {}),
             date: r.issuedAt.slice(0, 10), total: (r.total / 100).toFixed(2), currency: r.currency })))}>{t('Download CSV')}</button></div>
-        <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Document")}</th><th>{t("Number")}</th><th>{t("Order")}</th><th>{t("Date")}</th><th className="r">{t("Total")}</th><th><span className="sr-only">{t('PDF')}</span></th></tr></thead>
+        <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Document")}</th><th>{t("Number")}</th><th>{t("Order")}</th>{clients.length > 0 && <th>{t('Client')}</th>}<th>{t("Date")}</th><th className="r">{t("Total")}</th><th><span className="sr-only">{t('PDF')}</span></th></tr></thead>
           <tbody>{shown.map(r => <tr key={r.id} onClick={() => (navigate(`/documents/${r.id}`))}>
-            <td>{DOC_TYPE[r.type]}</td><td className="num">{r.number}</td><td className="num">{r.dealRef ?? '—'}</td>
+            <td>{DOC_TYPE[r.type]}</td><td className="num">{r.number}</td><td className="num">{r.dealRef ?? '—'}</td>{clients.length > 0 && <td className="small"><bdi>{r.client ?? '—'}</bdi></td>}
             <td className="num">{day(r.issuedAt)}</td><td className="r num">{money(r.total, r.currency)}</td>
             <td className="r"><a className="small" href={`/api/documents/${r.id}/pdf${isAr ? '?lang=ar' : ''}`} onClick={e => e.stopPropagation()} aria-label={t('PDF of {number}', { number: r.number })}>{t('PDF')}</a></td></tr>)}</tbody></table></div></>}
     </main>
@@ -43,7 +47,8 @@ export function DocumentsPage({ seller = false }: { seller?: boolean }) {
 }
 
 type Doc = { id: string; type: string; number: string; dealRef: string | null; relatedNumber: string | null; onBehalf: boolean; taxDocument: boolean
-  issuer: { name: string; trn: string | null; address: string | null }; recipient: { name: string; trn: string | null; address: string | null }; items: { description: string; amount?: number; quantity?: number; unitPrice?: number }[]; note: string | null
+  issuer: { name: string; trn: string | null; address: string | null }; recipient: { name: string; trn: string | null; address: string | null }
+  client?: { name: string; trn: string | null; address: string | null } | null; items: { description: string; amount?: number; quantity?: number; unitPrice?: number }[]; note: string | null
   currency: string; subtotal: number; vatBp: number; vat: number; total: number; issuedAt: string; fileId: string | null }
 
 /** A printable rendering of the stored document; the row is the record (SPEC 11.2). */
@@ -65,7 +70,8 @@ export function DocumentPage({ id }: { id: string }) {
         <div className="parties">
           <div><div className="small muted">{t("From")}</div><b>{d.issuer.name}</b>{d.issuer.address && <div className="small addr">{d.issuer.address}</div>}{d.issuer.trn && <div className="small">{t('TRN')} {ltr(d.issuer.trn)}</div>}
             {d.onBehalf && !d.note && <div className="small muted">{t("Issued by Nashr on the publisher's behalf")}</div>}</div>
-          <div><div className="small muted">{t("To")}</div><b>{d.recipient.name}</b>{d.recipient.address && <div className="small addr">{d.recipient.address}</div>}{d.recipient.trn && <div className="small">{t('TRN')} {ltr(d.recipient.trn)}</div>}</div>
+          <div><div className="small muted">{t("To")}</div><b>{d.recipient.name}</b>{d.recipient.address && <div className="small addr">{d.recipient.address}</div>}{d.recipient.trn && <div className="small">{t('TRN')} {ltr(d.recipient.trn)}</div>}
+            {d.client && <div className="small muted">{t('For client: {name}', { name: d.client.name })}{d.client.trn ? ` · ${t('TRN')} ` : ''}{d.client.trn && ltr(d.client.trn)}</div>}</div>
         </div>
         <table><thead><tr><th>{t("Description")}</th><th style={{ textAlign: isAr ? 'left' : 'right' }}>{t('Amount')}</th></tr></thead>
           <tbody>{d.items.map((i, n) => <tr key={n}><td>{tm(i.description)}</td><td className="num" style={{ textAlign: isAr ? 'left' : 'right' }}>{money(i.amount ?? (i.unitPrice ?? 0) * (i.quantity ?? 1), d.currency)}</td></tr>)}</tbody></table>

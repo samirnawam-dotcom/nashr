@@ -173,6 +173,10 @@ await pool.query(`insert into access_requests (name, email, phone, role, company
   ('Karim Haddad', 'karim@city1016.ae', '+971559876543', 'Sales manager', 'City 101.6', 'media_outlet', now())`)
 await pool.query(`insert into quote_requests (outlet_id, buyer_id, message, created_at) select id, $1, 'Full page in the first week of December, banking section.', now() from outlets where name = 'Arabian Business'`, [buyer])
 
+// Clients the demo buyer books for (as an agency would): two with budgets, the past bookings shared between them.
+const cards = (await pool.query(`insert into clients (buyer_id, name, industry, budget, budget_stop, trn, created_at) values ($1, 'Northwind Business Cards', 'Banking', 30000000, false, '100345678900003', now()) returning id`, [buyer])).rows[0].id
+const loans = (await pool.query(`insert into clients (buyer_id, name, industry, budget, budget_stop, created_at) values ($1, 'Northwind Home Finance', 'Real estate', 26000000, true, now()) returning id`, [buyer])).rows[0].id
+await pool.query(`update deals set client_id = case when (select count(*) from deals e where e.buyer_id = deals.buyer_id and e.ref < deals.ref) % 2 = 0 then $2::uuid else $3::uuid end where buyer_id = $1`, [buyer, cards, loans])
 const n = (await pool.query(`select count(*)::int n from slots`)).rows[0].n
 await pool.query(`update users set can_manage = true where role in ('buyer', 'seller')`) // demo users manage their own teams
 // demo accounts have accepted the current terms (real people accept them when they join, and again when they change)

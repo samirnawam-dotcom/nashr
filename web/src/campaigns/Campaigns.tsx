@@ -1,6 +1,6 @@
 import { navigate } from '../nav'
 import { useEffect, useState } from 'react'
-import { api, type Campaign, type Outlet } from '../api'
+import { api, type Campaign, type Client, type Outlet } from '../api'
 import { dayLabel, money } from '../format'
 import { dubai } from '../calendar/layout'
 import { Status } from '../bookings/Bookings'
@@ -14,25 +14,29 @@ const Bar = ({ c }: { c: Campaign }) => <div className="bar" title={t("Committed
 
 export function CampaignsPage() {
   const [list, setList] = useState<Campaign[] | null>(null), [error, setError] = useState('')
-  const [form, setForm] = useState<null | { name: string; budget: string; launchDate: string; objective: string }>(null), [busy, setBusy] = useState(false)
+  const [form, setForm] = useState<null | { name: string; budget: string; launchDate: string; objective: string; clientId: string }>(null), [busy, setBusy] = useState(false)
+  const [clients, setClients] = useState<Client[]>([])
   const load = () => api<Campaign[]>('/campaigns').then(setList, e => setError(e.message))
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); api<Client[]>('/clients').then(c => setClients(c.filter(x => x.status === 'active')), () => {}) }, [])
   async function create() {
     setBusy(true); setError('')
     try {
       const { id } = await api('/campaigns', { method: 'POST', body: { name: form!.name, budget: toFils(form!.budget),
-        ...(form!.launchDate ? { launchDate: form!.launchDate } : {}), ...(form!.objective ? { objective: form!.objective } : {}) } })
+        ...(form!.launchDate ? { launchDate: form!.launchDate } : {}), ...(form!.objective ? { objective: form!.objective } : {}), ...(form!.clientId ? { clientId: form!.clientId } : {}) } })
       navigate(`/campaigns/${id}`)
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   return (
     <main>
       <PhotoBand img="/brand/campaigns-wide.jpg" title={t("Campaigns")} sub={t("Plan outlets against a budget. Bids and requests tagged to a campaign count against it.")}>
-        <button className="btn primary" onClick={() => setForm({ name: '', budget: '', launchDate: '', objective: '' })}>{t("New campaign")}</button>
+        <button className="btn primary" onClick={() => setForm({ name: '', budget: '', launchDate: '', objective: '', clientId: '' })}>{t("New campaign")}</button>
       </PhotoBand>
       {form && <section className="card pad form" style={{ maxWidth: 560, marginBottom: 20 }}>
         <h3>{t("New campaign")}</h3>
         <div className="field"><label htmlFor="cn">{t("Name")}</label><input id="cn" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+        {clients.length > 0 && <div className="field"><label htmlFor="ccl">{t('For client')}</label><select id="ccl" value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })}>
+          <option value="">{t('No client')}</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <span className="small muted">{t('Everything booked in this campaign is for this client.')}</span></div>}
         <div className="field"><label htmlFor="cb">{t("Budget (AED, excl. VAT)")}</label><input id="cb" inputMode="decimal" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} /></div>
         <div className="field"><label htmlFor="cl">{t("Launch date")}</label><input id="cl" type="date" value={form.launchDate} onChange={e => setForm({ ...form, launchDate: e.target.value })} /></div>
         <div className="field"><label htmlFor="co">{t("Objective")}</label><input id="co" value={form.objective} onChange={e => setForm({ ...form, objective: e.target.value })} placeholder={t("Awareness, launch, footfall…")} /></div>
@@ -44,7 +48,7 @@ export function CampaignsPage() {
       {list && !list.length && !form && <p className="muted empty">{t("No campaigns yet. Create one to plan outlets and track spend against a budget.")}</p>}
       {list && list.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Campaign")}</th><th>{t("Launch")}</th><th className="r">{t("Budget")}</th><th className="r">{t("Committed")}</th><th style={{ width: 200 }} /><th>{t("Status")}</th></tr></thead>
         <tbody>{list.map(c => <tr key={c.id} onClick={() => (navigate(`/campaigns/${c.id}`))}>
-          <td><b>{c.name}</b>{c.objective && <div className="small muted">{c.objective}</div>}</td><td className="num">{c.launchDate ? dayLabel(c.launchDate) : '—'}</td>
+          <td><b>{c.name}</b>{(c.client || c.objective) && <div className="small muted">{[c.client, c.objective].filter(Boolean).join(' · ')}</div>}</td><td className="num">{c.launchDate ? dayLabel(c.launchDate) : '—'}</td>
           <td className="r num">{money(c.budget)}</td><td className="r num">{money(c.committed)}</td><td><Bar c={c} /></td>
           <td className="small">{c.status === 'active' ? t('Active') : t('Completed')}</td></tr>)}</tbody></table></div>}
     </main>

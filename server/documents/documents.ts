@@ -37,7 +37,10 @@ type Doc = { type: string; issuerId: string | null; recipientId: string; dealId:
 
 async function issue(db: Db, d: Doc, at: Date) {
   const number = d.number ?? await nextNumber(db, d.type, d.issuerId, at)
-  const lines = { ...(await parties(db, d.issuerId, d.recipientId, at)), items: d.items, note: d.note ?? null }
+  // A booking made for an agency's client names the client on the agency's documents (the agency stays the party billed).
+  const client = (await db.query(`select c.name, c.trn, c.address from deals x join clients c on c.id = x.client_id where x.id = $1 and x.buyer_id = $2`,
+    [d.dealId, d.recipientId])).rows[0] ?? null
+  const lines = { ...(await parties(db, d.issuerId, d.recipientId, at)), items: d.items, note: d.note ?? null, client }
   return one(db, `insert into documents (type, number, issuer_id, recipient_id, deal_id, related_id, on_behalf, tax_document, currency,
                     subtotal, vat_bp, vat, total, lines, file_key, issued_at)
                   values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,

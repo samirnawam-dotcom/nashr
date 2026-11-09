@@ -60,9 +60,9 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
   // Documents: the issuer and the recipient may read one; Nashr staff may read all (SPEC 11.2).
   const ALL: ['buyer', 'seller', 'admin'] = ['buyer', 'seller', 'admin']
   route('GET', '/api/documents', ['buyer', 'seller'], async ({ db, me }) =>
-    (await db.query(`select x.id, x.type, x.number, x.total, x.currency, x.issued_at, x.deal_id, d.ref from documents x left join deals d on d.id = x.deal_id
+    (await db.query(`select x.id, x.type, x.number, x.total, x.currency, x.issued_at, x.deal_id, d.ref, case when x.recipient_id = $1 then x.lines->'client'->>'name' end client from documents x left join deals d on d.id = x.deal_id
                      where $1 in (x.recipient_id, x.issuer_id) or (x.type = 'order' and d.seller_id = $1) order by x.issued_at desc limit 500`, [me.actAs.companyId])).rows
-      .map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at, dealId: x.deal_id, dealRef: x.ref })))
+      .map(x => ({ id: x.id, type: x.type, number: x.number, total: x.total, currency: x.currency, issuedAt: x.issued_at, dealId: x.deal_id, dealRef: x.ref, client: x.client ?? null })))
 
   /** One document as its reader may see it, or not found. */
   async function readDocument(db: any, me: any, id: string) {
@@ -73,7 +73,7 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
     if (!x) throw new NotFound()
     const party = (p: any) => ({ name: p.name, trn: p.trn ?? null, address: p.address ?? null })
     return { id: x.id, type: x.type, number: x.number, dealRef: x.ref, relatedNumber: x.related_number, onBehalf: x.on_behalf, taxDocument: x.tax_document,
-      issuer: party(x.lines.issuer), recipient: party(x.lines.recipient), items: x.lines.items, note: x.lines.note,
+      issuer: party(x.lines.issuer), recipient: party(x.lines.recipient), client: x.lines.client && (staff || x.recipient_id === me.actAs.companyId) ? party(x.lines.client) : null, items: x.lines.items, note: x.lines.note,
       currency: x.currency, subtotal: Number(x.subtotal), vatBp: x.vat_bp, vat: Number(x.vat), total: Number(x.total), issuedAt: x.issued_at,
       fileId: x.file_key ? x.file_key.replace(/^files\//, '') : null }
   }

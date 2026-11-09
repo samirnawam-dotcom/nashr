@@ -19,6 +19,7 @@ import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
 import { teamRoutes } from './routes-team.js'
+import { clientRoutes } from './routes-clients.js'
 import { pushRoutes } from './routes-push.js'
 import { mailRoutes } from './routes-mail.js'
 import { userRoutes } from './routes-users.js'
@@ -172,6 +173,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   sellerRoutes(route)
   adminRoutes(route)
   planRoutes(route)
+  clientRoutes(route)
   sellerDeskRoutes(route, deps)
   adminDeskRoutes(route, deps)
   dashboardRoutes(route)

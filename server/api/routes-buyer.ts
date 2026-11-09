@@ -20,7 +20,7 @@ import { logoUrl } from './routes-covers.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const money = { type: 'integer', minimum: 1 }
-const campaignId = { type: 'string', format: 'uuid' }
+const campaignId = { type: 'string', format: 'uuid' }, clientId = { type: 'string', format: 'uuid' }
 const brief = { type: 'object', additionalProperties: false, properties: {
   advertiser: { type: 'string', maxLength: 200 }, industry: { type: 'string', maxLength: 100 }, message: { type: 'string', maxLength: 2000 },
   language: { enum: ['arabic', 'english', 'bilingual'] }, landingUrl: { type: 'string', maxLength: 500 }, draftFileKey: { type: 'string', maxLength: 300 },
@@ -28,7 +28,7 @@ const brief = { type: 'object', additionalProperties: false, properties: {
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.
 const DEAL_SQL = `select d.*, (select e.note from deal_events e where e.deal_id = d.id and e.event in ('decline', 'expire', 'lapse', 'cancel_by_seller', 'cancel_by_buyer', 'creative_missed', 'proof_missed', 'supersede') order by e.id desc limit 1) status_note,
-  s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
+  s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, (select name from clients where id = d.client_id) client, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
                   join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies sc on sc.id = d.seller_id`
 
 // Only markets that are open can be browsed or booked; KSA is "coming soon" (brief section 14).
@@ -83,16 +83,16 @@ export function buyerRoutes(route: RouteFn) {
   })
 
   route('POST', '/api/slots/:id/bids', BUYER, async ({ db, at, me }, req) =>
-    placeBid(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body.amount, maxAmount: req.body.maxAmount, brief: req.body.brief, campaignId: req.body.campaignId }, at),
-    { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: money, maxAmount: money, brief, campaignId } })
+    placeBid(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body.amount, maxAmount: req.body.maxAmount, brief: req.body.brief, campaignId: req.body.campaignId, clientId: req.body.clientId }, at),
+    { type: 'object', required: ['amount'], additionalProperties: false, properties: { amount: money, maxAmount: money, brief, campaignId, clientId } })
 
   route('POST', '/api/slots/:id/book', BUYER, async ({ db, at, me }, req) =>
-    buyerDeal(await bookFixed(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)),
-    { type: 'object', additionalProperties: false, properties: { brief, campaignId } })
+    buyerDeal(await bookFixed(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId, clientId: req.body?.clientId }, at)),
+    { type: 'object', additionalProperties: false, properties: { brief, campaignId, clientId } })
 
   route('POST', '/api/slots/:id/buy-now', BUYER, async ({ db, at, me }, req) =>
-    buyerDeal(await requestBuyNow(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)),
-    { type: 'object', additionalProperties: false, properties: { brief, campaignId } })
+    buyerDeal(await requestBuyNow(db, { slotId: req.params.id, buyerId: me.actAs.companyId, brief: req.body?.brief, campaignId: req.body?.campaignId, clientId: req.body?.clientId }, at)),
+    { type: 'object', additionalProperties: false, properties: { brief, campaignId, clientId } })
 
   // What the buyer would owe if every bid it leads wins and every request is accepted (SPEC G13: a warning, never a block).
   route('GET', '/api/buyer/exposure', BUYER, async ({ db, me }) => {
@@ -124,9 +124,9 @@ export function buyerRoutes(route: RouteFn) {
   }, { type: 'object', required: ['trn'], additionalProperties: false, properties: { trn: { type: 'string', pattern: '^(\\d{15})?$' }, address: { type: 'string', maxLength: 300 } } })
 
   route('POST', '/api/slots/:id/interest', BUYER, async ({ db, at, me }, req) => {
-    const b = await showInterest(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body?.amount, brief: req.body?.brief, campaignId: req.body?.campaignId }, at)
+    const b = await showInterest(db, { slotId: req.params.id, buyerId: me.actAs.companyId, amount: req.body?.amount, brief: req.body?.brief, campaignId: req.body?.campaignId, clientId: req.body?.clientId }, at)
     return { id: b.id, amount: b.amount }
-  }, { type: 'object', additionalProperties: false, properties: { amount: money, brief, campaignId } })
+  }, { type: 'object', additionalProperties: false, properties: { amount: money, brief, campaignId, clientId } })
 
   route('GET', '/api/deals', BUYER, async ({ db, me }) =>
     (await db.query(`${DEAL_SQL} where d.buyer_id = $1 order by d.created_at desc`, [me.actAs.companyId])).rows.map(buyerDeal))
@@ -144,7 +144,7 @@ export function buyerRoutes(route: RouteFn) {
       q(`select id, type, number, total, currency, issued_at from documents where deal_id = $1 and recipient_id = (select buyer_id from deals where id = $1) order by issued_at`),
     ])
     const proof = proofs[0]
-    return { ...buyerDeal(d), channel: d.channel, placement: d.placement, kind: d.kind, creativeDueAt: d.creative_due_at, campaignId: d.campaign_id,
+    return { ...buyerDeal(d), channel: d.channel, placement: d.placement, kind: d.kind, creativeDueAt: d.creative_due_at, campaignId: d.campaign_id, clientId: d.client_id,
       timeline: events.map(e => ({ at: e.at, event: e.event, status: e.to_status })),
       creatives: creatives.map(c => ({ version: c.version, status: c.status, reason: c.reason, fileId: c.file_key.replace(/^files\//, ''),
         fileType: c.file_type, uploadedAt: c.uploaded_at, reviewedAt: c.reviewed_at })),

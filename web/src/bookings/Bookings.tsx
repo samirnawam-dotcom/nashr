@@ -1,7 +1,7 @@
 import { navigate } from '../nav'
 import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
-import { api, upload, type Rating } from '../api'
+import { api, upload, type Client, type Rating } from '../api'
 import { dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
 import { DOC_TYPE } from '../documents/Documents'
@@ -13,7 +13,7 @@ import { useNeedsTwoStep } from '../twoStep'
 import { tm } from '../i18n-server'
 import { Thread } from '../messages/Thread'
 
-type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null }
+type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null; client?: string | null }
 
 const STATUS: Record<string, [string, string]> = {
   awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Payment secured', 'lead'],
@@ -24,8 +24,10 @@ export const Status = ({ s }: { s: string }) => <span className={`dot ${STATUS[s
 const when = (iso: string) => `${dayLabel(dubai(iso).date)} · ${time(iso)}`
 
 export function BookingsPage() {
-  const [deals, setDeals] = useState<Deal[] | null>(null), [error, setError] = useState('')
+  const [deals, setDeals] = useState<Deal[] | null>(null), [error, setError] = useState(''), [client, setClient] = useState('')
   useEffect(() => { api<Deal[]>('/deals').then(setDeals, e => setError(e.message)) }, [])
+  const clients = [...new Set((deals ?? []).map(d => d.client).filter(Boolean))] as string[]
+  const shown = (deals ?? []).filter(d => !client || d.client === client)
   return (
     <main>
       <PhotoBand img="/brand/bookings-wide.jpg" title={t("Bookings")} sub={t("Every booking from bid to proof, with your payment held until you approve that the ad ran.")}>
@@ -33,10 +35,13 @@ export function BookingsPage() {
       </PhotoBand>
       {error && <p className="error">{error}</p>}
       {deals && !deals.length && <p className="muted empty">{t("No bookings yet. Bid on a slot in the calendar, or send a buy-now request.")}</p>}
+      {clients.length > 0 && <div className="toolbar" style={{ marginTop: 20 }}>
+        <select className="btn" aria-label={t('Client')} value={client} onChange={e => setClient(e.target.value)}><option value="">{t('All clients')}</option>
+          {clients.map(c => <option key={c} value={c}>{c}</option>)}</select></div>}
       {deals && deals.length > 0 && <div className="table-wrap card"><table className="table">
-        <thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Airs")}</th><th className="r">{t("Total")}</th><th>{t("Status")}</th></tr></thead>
-        <tbody>{deals.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
-          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="num">{when(d.startsAt)}</td>
+        <thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th>{clients.length > 0 && <th>{t('Client')}</th>}<th>{t("Airs")}</th><th className="r">{t("Total")}</th><th>{t("Status")}</th></tr></thead>
+        <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
+          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td>{clients.length > 0 && <td className="small"><bdi>{d.client ?? '—'}</bdi></td>}<td className="num">{when(d.startsAt)}</td>
           <td className="r num">{money(d.total, d.currency)}</td><td><Status s={d.status} /></td></tr>)}</tbody>
       </table></div>}
     </main>
@@ -46,7 +51,7 @@ export function BookingsPage() {
 // Test cards (brief section 11) while payments run against the test provider.
 const CARDS = [['pm_card_4242', t('Visa •••• 4242')], ['pm_card_3155', t('Visa •••• 3155 (bank asks to confirm)')], ['pm_card_0002', t('Visa •••• 0002 (declined)')]]
 
-type Detail = Deal & { channel: string; placement: string; creativeDueAt: string; rating: Rating | null
+type Detail = Deal & { channel: string; placement: string; creativeDueAt: string; rating: Rating | null; clientId?: string | null
   timeline: { at: string; event: string; status: string }[]
   creatives: { version: number; status: string; reason: string | null; fileId: string; fileType: string; uploadedAt: string }[]
   proof: { submittedAt: string; note: string | null; items: { key: string; label: string; value: unknown }[] } | null
@@ -116,6 +121,7 @@ export function BookingPage({ id }: { id: string }) {
       <p className="small"><a href="/bookings">{t(t("Bookings"))}</a> {isAr ? '‹' : '›'} {t('Order {ref}', { ref: d.ref })}</p>
       <div className="profile-cover slim" aria-hidden><img src={`/brand/${d.channel}-wide.jpg`} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="page-title"><div><h1>{d.outlet}, {d.label}</h1><p className="muted">{when(d.startsAt)} · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p></div><Status s={d.status} /></div>
+      <ClientLine id={d.id} clientId={d.clientId ?? null} onSaved={load} />
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">
       {['released', 'complete'].includes(d.status) && <RateBooking id={d.id} outlet={d.outlet} rating={d.rating} onSaved={load} />}
@@ -257,4 +263,21 @@ function RateBooking({ id, outlet, rating, onSaved }: { id: string; outlet: stri
     <div className="row-flex"><button className="btn primary" disabled={busy || !score}>{rating ? t("Save rating") : t("Submit rating")}</button>
       {rating && <button type="button" className="btn" onClick={() => setEdit(false)}>{t("Cancel")}</button>}</div>
   </form>
+}
+
+/** Which client a booking is for (agencies). Set it here if it was not chosen when booking; documents issued from now on name it. */
+function ClientLine({ id, clientId, onSaved }: { id: string; clientId: string | null; onSaved: () => void }) {
+  const [clients, setClients] = useState<Client[] | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false)
+  useEffect(() => { api<Client[]>('/clients').then(setClients, () => setClients([])) }, [])
+  if (!clients?.length) return null
+  const usable = clients.filter(c => c.status === 'active' || c.id === clientId)
+  async function pick(v: string) {
+    setBusy(true); setError('')
+    try { await api(`/deals/${id}/client`, { method: 'PUT', body: { clientId: v || null } }); onSaved() } catch (e: any) { setError(e.message) } finally { setBusy(false) }
+  }
+  return <div className="row-flex small client-line"><label htmlFor="bk-client">{t('For client')}</label>
+    <select id="bk-client" className="btn" value={clientId ?? ''} disabled={busy} onChange={e => pick(e.target.value)}><option value="">{t('No client')}</option>
+      {usable.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+    {clientId && <a href={`/clients/${clientId}`}>{t('Open client')}</a>}
+    {error && <span className="error" role="alert">{error}</span>}</div>
 }

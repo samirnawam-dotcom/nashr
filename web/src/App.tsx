@@ -28,6 +28,9 @@ const load_campaigns_Campaigns = () => import('./campaigns/Campaigns')
 const CampaignPage = L(load_campaigns_Campaigns, 'CampaignPage')
 const CampaignsPage = L(load_campaigns_Campaigns, 'CampaignsPage')
 const MediaPlanPage = L(() => import('./campaigns/MediaPlan'), 'MediaPlanPage')
+const load_clients = () => import('./clients/Clients')
+const ClientsPage = L(load_clients, 'ClientsPage')
+const ClientPage = L(load_clients, 'ClientPage')
 const load_documents_Documents = () => import('./documents/Documents')
 const DocumentPage = L(load_documents_Documents, 'DocumentPage')
 const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
@@ -99,6 +102,8 @@ const BUYER: Routes = [
   [/^\/campaigns\/([\w-]+)\/plan$/, id => <MediaPlanPage id={id} />],
   [/^\/campaigns\/([\w-]+)$/, id => <CampaignPage id={id} />],
   [/^\/campaigns/, () => <CampaignsPage />],
+  [/^\/clients\/([\w-]+)$/, id => <ClientPage id={id} />],
+  [/^\/clients/, () => <ClientsPage />],
   [/^\/results/, () => <ResultsPage />],
   [/^\/bookings\/([\w-]+)$/, id => <BookingPage id={id} />],
   [/^\/bookings/, () => <BookingsPage />],
@@ -172,7 +177,7 @@ const NAV: Record<string, string[][]> = {
   admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
-  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
+  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
   seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/messages', t('Messages')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')], ['/help', t('Help')]],
 }
 // The phone's bottom bar: the five places people go most.
@@ -183,7 +188,7 @@ const ICON: Record<string, string> = {
   '/dashboard': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
   '/calendar': 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   '/schedule': 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
-  '/directory': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', '/campaigns': 'M5 21V4M5 4h11l-2 4 2 4H5',
+  '/directory': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', '/campaigns': 'M5 21V4M5 4h11l-2 4 2 4H5', '/clients': 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 6',
   '/bookings': 'M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4zM10 7v12', '/home': 'M4 11 12 4l8 7M6 10v10h12V10',
   '/': 'M4 11 12 4l8 7M6 10v10h12V10', '/sign-in': 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4',
   '/inbox': 'M4 13h5l1 3h4l1-3h5M5 5h14l1 8v6H4v-6z', '/messages': 'M4 5h16v11H9l-5 4zM8 9h8M8 12h5',

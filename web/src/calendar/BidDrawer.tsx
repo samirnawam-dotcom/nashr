@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Campaign, type Slot } from '../api'
+import { api, type Campaign, type Client, type Slot } from '../api'
 import { dayLabel, money, time } from '../format'
 import { addDays, dubai, isAllDay } from './layout'
 import { SaleType, status } from './CalendarPage'
@@ -13,7 +13,7 @@ type Detail = Slot & { yourDeal?: { id: string; status: string; kind: string } |
 export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
 export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government',
   'Crypto & trading', 'Alcohol & nightlife', 'Lottery & gaming', 'Other']
-const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign'
+const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign', LAST_CLIENT = 'nashr:last-client'
 const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Date(s.startsAt).getTime()) / 1000)
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
 
@@ -32,6 +32,20 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   const [campaignId, setCampaignId] = useState(() => { try { return localStorage.getItem(LAST_CAMPAIGN) ?? '' } catch { return '' } })
   useEffect(() => { if (!guest) api<Campaign[]>('/campaigns').then(c => { const active = c.filter(x => x.status === 'active'); setCampaigns(active)
     if (!active.some(x => x.id === campaignId)) setCampaignId('') }, () => {}) }, [])
+  // Agencies: the client the booking is for (its budget, its brand safety, its receipts). A campaign made for a client decides it.
+  const [clients, setClients] = useState<Client[]>([])
+  const [clientId, setClientId] = useState(() => { try { return localStorage.getItem(LAST_CLIENT) ?? '' } catch { return '' } })
+  useEffect(() => { if (!guest) api<Client[]>('/clients').then(c => { const active = c.filter(x => x.status === 'active'); setClients(active)
+    if (!active.some(x => x.id === clientId)) setClientId('') }, () => {}) }, [])
+  const campaignClient = campaigns.find(c => c.id === campaignId)?.clientId ?? ''
+  const forClient = campaignClient || clientId
+  function pickClient(id: string) {
+    const was = clients.find(c => c.id === forClient), next = clients.find(c => c.id === id)
+    setClientId(id)
+    // the brief follows the client unless the buyer typed another advertiser
+    if (next && (!brief.advertiser || brief.advertiser === was?.name))
+      setBrief({ ...brief, advertiser: next.name, ...(next.industry && INDUSTRIES.includes(next.industry) ? { industry: next.industry } : {}) })
+  }
 
   const load = () => api<Detail>(`/slots/${slotId}`).then(d => { setS(d); setAmount(String(d.minNextBid / 100))
     if (d.yourAutoMax) { setAuto(true); setMax('') } }, e => setError(e.message))
@@ -49,11 +63,11 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
     setBusy(true); setError(''); setDone(''); setWarn('')
     try {
       const b = s!.briefOnFile ? {} : { brief: { ...brief, landingUrl: brief.landingUrl || undefined, notes: brief.notes || undefined, disclaimer: brief.disclaimer?.trim() || undefined } }
-      const r = await api<any>(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}) } })
+      const r = await api<any>(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}), ...(forClient && !campaignClient ? { clientId: forClient } : {}) } })
       if (r?.beatenByAutoBid) message = () => ''
       if (r?.beatenByAutoBid) setWarn(t("Your bid is in, but another buyer's auto-bid is higher, so you are not leading. The top bid is now {top}. Bid at least {min}, or set a higher maximum.", { top: money(r.topAmount), min: money(r.minNextBid) }))
       message = typeof message === 'string' ? message : message(r)
-      try { localStorage.setItem(LAST_CAMPAIGN, campaignId) } catch { /* fine */ }
+      try { localStorage.setItem(LAST_CAMPAIGN, campaignId); localStorage.setItem(LAST_CLIENT, clientId) } catch { /* fine */ }
       if (!s!.briefOnFile) try { localStorage.setItem(LAST_BRIEF, JSON.stringify(brief)) } catch { /* private mode: nothing to remember */ }
       if (message) setDone(message); onDone(); await load()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
@@ -110,6 +124,12 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           <div className="field"><label htmlFor="offer">{t("Your offer (AED, optional, not below the asking price)")}</label><input id="offer" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
         </section>}
 
+        {clients.length > 0 && <div className="field"><label htmlFor="client">{t('For client')}</label>
+          <select id="client" value={forClient} disabled={!!campaignClient} onChange={e => pickClient(e.target.value)}><option value="">{t('No client')}</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}{c.remaining != null ? ` · ${t('{amount} left', { amount: money(c.remaining) })}` : ''}</option>)}</select>
+          {campaignClient && <span className="small muted">{t('Set by the campaign.')}</span>}
+          {(() => { const c = clients.find(x => x.id === forClient); return c?.budgetStop && c.remaining != null
+            ? <span className="small muted">{t('Bids and bookings over this client\'s budget are refused.')}</span> : null })()}</div>}
         {!s.briefOnFile && <section className="form">
           <h3>{t("Booking brief")}</h3>
           <div className="field"><label htmlFor="adv">{t("Advertiser or brand")}</label><input id="adv" value={brief.advertiser} onChange={e => setBrief({ ...brief, advertiser: e.target.value })} /></div>

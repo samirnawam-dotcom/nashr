@@ -72,11 +72,12 @@ export async function transition(db: Db, dealId: string, event: string, actor: s
 export async function openDeal(db: Db, slot: any, bid: any, kind: string, actor: string, at: Date) {
   const seller = await one(db, `select o.company_id from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
   const deal = await one(db,
-    `insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at, campaign_id)
+    `insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at, campaign_id, client_id)
      values ($1, $2, $3, $4, $5, 'awaiting_seller', $6, $7, $8,
-             -- an auto-bid placed by the system carries the campaign of the buyer's own last tagged bid
-             coalesce($9::uuid, (select campaign_id from bids where slot_id = $1 and buyer_id = $3 and campaign_id is not null order by seq desc limit 1))) returning *`,
-    [slot.id, bid.id, bid.buyer_id, seller.company_id, kind, bid.amount, slot.currency, at, bid.campaign_id ?? null])
+             -- an auto-bid placed by the system carries the campaign and client of the buyer's own last tagged bid
+             coalesce($9::uuid, (select campaign_id from bids where slot_id = $1 and buyer_id = $3 and campaign_id is not null order by seq desc limit 1)),
+             coalesce($10::uuid, (select client_id from bids where slot_id = $1 and buyer_id = $3 and client_id is not null order by seq desc limit 1))) returning *`,
+    [slot.id, bid.id, bid.buyer_id, seller.company_id, kind, bid.amount, slot.currency, at, bid.campaign_id ?? null, bid.client_id ?? null])
   const deadline = await deadlineFor(db, deal, 'awaiting_seller', at)
   await db.query(`update deals set next_deadline_at = $2 where id = $1`, [deal.id, deadline])
   await db.query(`insert into deal_events (deal_id, at, event, from_status, to_status, actor) values ($1, $2, 'opened', null, 'awaiting_seller', $3)`,

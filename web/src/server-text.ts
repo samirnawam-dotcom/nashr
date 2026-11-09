@@ -158,6 +158,14 @@ export const SERVER_AR: Record<string, string> = {
   'Payment for Order {}: {} · {} · {}': 'دفعة الطلب {1}: {2} · {3} · {4}', '{} · {} · {} · Order {}': '{1} · {2} · {3} · الطلب {4}', 'Order {}': 'الطلب {1}', 'Nashr commission ({}%) on Order {}': 'عمولة نشر ({1}%) على الطلب {2}',
   'Credit for invoice {}': 'إشعار دائن للفاتورة {1}', 'Received by Nashr on behalf of {}. This is not a tax invoice.': 'استلمتها نشر نيابة عن {1}. هذه ليست فاتورة ضريبية.',
   'Issued by Nashr on behalf of {}.': 'أصدرتها نشر نيابة عن {1}.', 'Paid by deduction from your payout.': 'سُدّدت بالخصم من تحويلك.',
+  "Add the client's name.": "أضف اسم العميل.",
+  "A UAE TRN has 15 digits.": "الرقم الضريبي في الإمارات من 15 رقمًا.",
+  "Leave out email addresses and phone numbers.": "لا تكتب عناوين البريد الإلكتروني وأرقام الهواتف.",
+  "You already have a client with this name.": "لديك عميل بهذا الاسم بالفعل.",
+  "Choose one of your active clients.": "اختر أحد عملائك النشطين.",
+  "Choose one of your clients.": "اختر أحد عملائك.",
+  "This campaign is for another client.": "هذه الحملة لعميل آخر.",
+  "This would take {} over its budget: {} is left.": "سيتجاوز هذا ميزانية {1}: المتبقي {2}.",
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
