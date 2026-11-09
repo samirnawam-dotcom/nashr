@@ -17,7 +17,9 @@ export function supportRoutes(route: RouteFn) {
   route('GET', '/api/help/rules', 'public', async ({ db, at }) => {
     const keys = ['seller_window_hours', 'payment_window_hours', 'proof_due_working_days', 'review_working_days', 'issue_response_hours',
       'free_cancel_hours', 'cancel_fee_bp', 'max_creative_rounds', 'dispute_decision_working_days']
-    return Object.fromEntries(await Promise.all(keys.map(async k => [k, await setting(db, k, at)])))
+    const out: Record<string, unknown> = {}
+    for (const k of keys) out[k] = await setting(db, k, at) // one query at a time on this connection
+    return out
   })
 
   route('POST', '/api/support', ['buyer', 'seller'], async ({ db, at, me }, req) => {

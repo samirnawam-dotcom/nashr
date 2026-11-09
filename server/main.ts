@@ -3,7 +3,7 @@ import { runOutbox } from './core/mail.js'
 import { recordError, watch } from './core/watch.js'
 import { reconcile } from './payments/payments.js'
 import { migrate } from './core/migrate.js'
-import { pool } from './core/db.js'
+import { afterCommitSettled, pool } from './core/db.js'
 import { sweep } from './marketplace/sweeper.js'
 import { runMoneyOps } from './payments/payments.js'
 import { FakeProvider, type PaymentProvider } from './payments/provider.js'
@@ -52,6 +52,7 @@ if (process.env.STAFF_TWO_STEP === 'off') console.warn('WARNING: STAFF_TWO_STEP=
 for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => {
   timers.forEach(clearInterval)
   await app.close()
+  await afterCommitSettled() // phone alerts already on their way go out first
   await pool.end()
   process.exit(0)
 })

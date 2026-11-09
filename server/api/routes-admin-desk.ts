@@ -1,3 +1,4 @@
+import { inTurn } from '../core/db.js'
 import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
 import { audit } from '../core/audit.js'
@@ -136,14 +137,14 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
         join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join bids b on b.id = d.bid_id where d.id = $1`, [req.params.id])).rows[0]
     if (!d) throw new NotFound()
     const q = async (sql: string) => (await db.query(sql, [d.id])).rows
-    const [events, ledger, ops, creatives, proofs, issues, docs] = await Promise.all([
-      q(`select at, event, from_status, to_status, actor, note from deal_events where deal_id = $1 order by id`),
-      q(`select at, debit, credit, amount, currency, ref from ledger_entries where deal_id = $1 order by id`),
-      q(`select ref, kind, amount, currency, status, failure, provider_id, created_at, updated_at from money_ops where deal_id = $1 order by created_at`),
-      q(`select version, status, reason, file_key, uploaded_at from creatives where deal_id = $1 order by version`),
-      q(`select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at`),
-      q(`select reason, note, evidence, offer, status, opened_at, closed_at from issues where deal_id = $1 order by opened_at`),
-      q(`select id, type, number, total, issued_at from documents where deal_id = $1 order by issued_at`),
+    const [events, ledger, ops, creatives, proofs, issues, docs] = await inTurn(q, [
+      `select at, event, from_status, to_status, actor, note from deal_events where deal_id = $1 order by id`,
+      `select at, debit, credit, amount, currency, ref from ledger_entries where deal_id = $1 order by id`,
+      `select ref, kind, amount, currency, status, failure, provider_id, created_at, updated_at from money_ops where deal_id = $1 order by created_at`,
+      `select version, status, reason, file_key, uploaded_at from creatives where deal_id = $1 order by version`,
+      `select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at`,
+      `select reason, note, evidence, offer, status, opened_at, closed_at from issues where deal_id = $1 order by opened_at`,
+      `select id, type, number, total, issued_at from documents where deal_id = $1 order by issued_at`,
     ])
     const s = split(d.amount, { commissionBp: d.commission_bp ?? 0, mediaVatBp: d.media_vat_bp ?? d.vat_preview, feeVatBp: d.fee_vat_bp ?? 0 })
     return { rating: await dealRating(db, d.id), id: d.id, ref: d.ref, status: d.status, kind: d.kind, outlet: d.outlet, channel: d.channel, label: d.label, startsAt: d.starts_at,

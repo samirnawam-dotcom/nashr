@@ -49,14 +49,18 @@ const isUpload = (method: string, url: string) => {
   return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/(cover|logo)$/.test(path))
 }
 
-// ponytail: in-memory, per process. Move to Postgres or a shared store when running more than one instance.
-const hits = new Map<string, { n: number; reset: number }>()
-export const resetRateLimits = () => hits.clear() // tests run many sign-ins inside one fake minute
-export function rateLimit(key: string, max: number, now: number) {
-  if (hits.size > 10_000) for (const [k, v] of hits) if (v.reset < now) hits.delete(k) // keep memory bounded
-  const h = hits.get(key)
-  if (!h || h.reset < now) { hits.set(key, { n: 1, reset: now + 60_000 }); return true }
-  return ++h.n <= max
+// Attempt limits (sign-in, resets, two-step codes): counted in Postgres, so every copy of the API shares them. The count is
+// written on its own, outside the request's transaction, so a refused attempt still counts. Windows are one minute.
+export const resetRateLimits = () => pool.query(`truncate rate_limits`) // tests run many sign-ins inside one fake minute
+export async function rateLimit(key: string, max: number, now: number) {
+  const at = new Date(now)
+  const { n } = (await pool.query(`insert into rate_limits (key, n, reset_at) values ($1, 1, $2::timestamptz + interval '1 minute')
+    on conflict (key) do update set
+      n = case when rate_limits.reset_at <= $2 then 1 else rate_limits.n + 1 end,
+      reset_at = case when rate_limits.reset_at <= $2 then $2::timestamptz + interval '1 minute' else rate_limits.reset_at end
+    returning n`, [key, at])).rows[0]
+  if (Math.random() < 0.01) pool.query(`delete from rate_limits where reset_at < $1::timestamptz - interval '1 hour'`, [at]).catch(() => {}) // keep the table small
+  return n <= max
 }
 
 export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; storage?: Storage; log?: boolean; stripe?: StripeConfig }) {

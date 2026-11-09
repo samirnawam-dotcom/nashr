@@ -62,7 +62,7 @@ const call = (who: Who | null, method: any, url: string, payload?: unknown) =>
 beforeEach(async () => {
   now = T('2026-11-01T08:00:00Z')
   await reset()
-  resetRateLimits()
+  await resetRateLimits()
   provider.reset()
   founder = await staff('omar@nashr.ae', 'founder')
   admin = await staff('ops@nashr.ae', 'admin')
@@ -1535,6 +1535,20 @@ describe('pre-launch review fixes', () => {
 })
 
 describe('users and tracking for Nashr', () => {
+  test('attempt limits are shared by every copy of the API', async () => {
+    // two copies of the server behind one load balancer: the sixth access request from one address is refused, whichever copy gets it
+    const other = buildApp({ provider, clock: () => now })
+    const ask = (a: typeof app, i: number) => a.inject({ method: 'POST', url: '/api/access-requests', remoteAddress: '10.9.9.9',
+      payload: { name: 'X', email: `x${i}@shared.ae`, phone: '+971500000000', role: 'Manager', company: `Shared ${i}`, companyType: 'brand' } })
+    const codes = [] as number[]
+    for (let i = 0; i < 6; i++) codes.push((await ask(i % 2 ? other : app, i)).statusCode)
+    expect(codes.slice(0, 5).every(c => c !== 429)).toBe(true)
+    expect(codes[5]).toBe(429)
+    // a minute later the window has passed
+    now = new Date(now.getTime() + 61_000)
+    expect((await ask(other, 7)).statusCode).not.toBe(429)
+  })
+
   test('every sign-in attempt is recorded; ten failures lock the account for 15 minutes', async () => {
     // guesses spread over ten addresses (the per-address limits never trip): the account itself locks
     const from = (n: number, password: string) => app.inject({ method: 'POST', url: '/api/auth/login', remoteAddress: `10.0.0.${n}`, payload: { email: 'ali@alfuttaim.ae', password } })

@@ -1,3 +1,4 @@
+import { inTurn } from '../core/db.js'
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { companyProfile } from './profiles.js'
@@ -135,13 +136,13 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/deals/:id', BUYER, async ({ db, me }, req) => {
     const d = await ownDeal(db, req.params.id, me.actAs.companyId)
     const q = async (sql: string) => (await db.query(sql, [d.id])).rows
-    const [events, creatives, proofs, issues, prerun, docs] = await Promise.all([
-      q(`select at, event, to_status from deal_events where deal_id = $1 order by id`),
-      q(`select version, status, reason, file_key, file_type, uploaded_at, reviewed_at from creatives where deal_id = $1 order by version`),
-      q(`select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at desc limit 1`),
-      q(`select reason, note, offer, status, opened_at, closed_at from issues where deal_id = $1 order by opened_at desc limit 1`),
-      q(`select requested_at, buyer_confirmed_at from prerun_checks where deal_id = $1`),
-      q(`select id, type, number, total, currency, issued_at from documents where deal_id = $1 and recipient_id = (select buyer_id from deals where id = $1) order by issued_at`),
+    const [events, creatives, proofs, issues, prerun, docs] = await inTurn(q, [
+      `select at, event, to_status from deal_events where deal_id = $1 order by id`,
+      `select version, status, reason, file_key, file_type, uploaded_at, reviewed_at from creatives where deal_id = $1 order by version`,
+      `select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at desc limit 1`,
+      `select reason, note, offer, status, opened_at, closed_at from issues where deal_id = $1 order by opened_at desc limit 1`,
+      `select requested_at, buyer_confirmed_at from prerun_checks where deal_id = $1`,
+      `select id, type, number, total, currency, issued_at from documents where deal_id = $1 and recipient_id = (select buyer_id from deals where id = $1) order by issued_at`,
     ])
     const proof = proofs[0]
     return { ...buyerDeal(d), channel: d.channel, placement: d.placement, kind: d.kind, creativeDueAt: d.creative_due_at, campaignId: d.campaign_id, clientId: d.client_id,

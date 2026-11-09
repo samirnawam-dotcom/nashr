@@ -1,3 +1,4 @@
+import { inTurn } from '../core/db.js'
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
@@ -123,14 +124,14 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
         join companies c on c.id = d.seller_id where d.id = $1 and d.seller_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
     if (!d) throw new NotFound()
     const q = async (sql: string) => (await db.query(sql, [d.id])).rows
-    const [events, creatives, proofs, issues, prerun, docs] = await Promise.all([
-      q(`select at, event, to_status, note from deal_events where deal_id = $1 order by id`),
-      q(`select version, status, reason, file_key, file_type, file_size, uploaded_at from creatives where deal_id = $1 order by version`),
-      q(`select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at desc limit 1`),
-      q(`select reason, note, evidence, offer, status, opened_at from issues where deal_id = $1 order by opened_at desc limit 1`),
-      q(`select requested_at, seller_confirmed_at from prerun_checks where deal_id = $1`),
-      q(`select id, type, number, total, currency, issued_at from documents where deal_id = $1 and (issuer_id = (select seller_id from deals where id = $1)
-           or recipient_id = (select seller_id from deals where id = $1) or (type = 'media_invoice' and on_behalf) or type = 'order') order by issued_at`),
+    const [events, creatives, proofs, issues, prerun, docs] = await inTurn(q, [
+      `select at, event, to_status, note from deal_events where deal_id = $1 order by id`,
+      `select version, status, reason, file_key, file_type, file_size, uploaded_at from creatives where deal_id = $1 order by version`,
+      `select items, note, submitted_at from proofs where deal_id = $1 order by submitted_at desc limit 1`,
+      `select reason, note, evidence, offer, status, opened_at from issues where deal_id = $1 order by opened_at desc limit 1`,
+      `select requested_at, seller_confirmed_at from prerun_checks where deal_id = $1`,
+      `select id, type, number, total, currency, issued_at from documents where deal_id = $1 and (issuer_id = (select seller_id from deals where id = $1)
+           or recipient_id = (select seller_id from deals where id = $1) or (type = 'media_invoice' and on_behalf) or type = 'order') order by issued_at`,
     ])
     const p = proofs[0], i = issues[0]
     return {

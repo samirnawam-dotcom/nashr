@@ -17,7 +17,7 @@ An independent read-only review of the API, auth, files, payments and front end.
 | 9 | Low | No security headers | **Fixed for the API:** nosniff, frame-deny, CSP `default-src 'none'`, same-origin policies, HSTS in production. The web app's CSP is set at the edge (runbook) |
 | 11 | Low | One side of a deal could put the other side's file id into proof or issue evidence, then download it (needs the file's random id) | **Fixed.** Only your own uploads can be attached, and downloads tie each kind of attachment to the side that sends it |
 | 12 | Low | A single slot in a market that is not open could be opened by id | **Fixed.** Slot list and slot detail show open markets only |
-| 10 | Note | The provider webhook handler trusts event contents | **Open, for B5.** When Stripe is wired, verify the signature on the raw body and check the amount against the operation before marking a charge paid |
+| 10 | Note | The provider webhook handler trusts event contents | **Fixed.** Stripe's signature is checked on the raw body (and stale events refused), and the amount and currency must match the charge before a booking is marked paid; a mismatch alerts staff |
 
 **Checked and found sound:**
 - view-as is read-only
@@ -33,4 +33,4 @@ An independent read-only review of the API, auth, files, payments and front end.
 **Still to do before launch:**
 - An external penetration test against the staging environment once AWS and Stripe are set up.
 - Edge headers for the web app: CSP allowing self and Google Fonts, plus HSTS.
-- Move the rate limiter to a shared store before running more than one instance.
+- Done: attempt limits are counted in Postgres and shared by every instance. Still per instance: live updates (move to Postgres LISTEN/NOTIFY before scaling out).

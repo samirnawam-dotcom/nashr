@@ -1,4 +1,4 @@
-import { pool } from '../core/db.js'
+import { afterCommitSettled, pool } from '../core/db.js'
 import { createPlacement, generateSlots, type PlacementInput } from '../catalog/placements.js'
 
 export const AED = (n: number) => n * 100
@@ -6,7 +6,8 @@ export const T = (iso: string) => new Date(iso)
 export const BRIEF = { advertiser: 'Northwind Fintech', industry: 'Banking', message: 'Business cards for growing companies', language: 'english', creativeToFollow: true }
 
 export async function reset() {
-  await pool.query(`truncate staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues, prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
+  await afterCommitSettled() // the last test's phone alerts finish before the tables are wiped
+  await pool.query(`truncate rate_limits, staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues, prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
   await pool.query(`delete from settings where valid_from > '2000-01-01'`)
   // most tests pay without setting up an authenticator; the two-step tests switch this back on
   await pool.query(`insert into settings (key, value, valid_from, changed_by) values ('two_step_for_money', 'false', '2000-01-02', 'test')`)

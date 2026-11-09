@@ -25,7 +25,7 @@ Decisions made while building (flag to owner if they disagree):
 - [x] B2 Ledger (double-entry) + reconciliation query.
 - [x] B3 Charge on "Confirm payment", release + transfer, refunds (full/partial), cancellation rules. On payment secured: mark the slot's remaining bids not_selected.
 - [x] B4 Webhook intake, idempotent.
-- [ ] B5 Stripe implementation (when the owner has a test account).
+- [x] B5 Stripe implementation: card fields with 3-D Secure, signed webhooks (amount checked), Connect Express payout onboarding, fees in the ledger. Tested against a mock Stripe (`e2e/stripe-journey.cjs`); waits only for the owner's test keys (runbook 6a).
 
 ### Checkpoint B: full booking scenario (brief 1) reconciles to the fils ✅ (48 tests)
 Brief scenarios covered so far: 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12 (partial refund, make-good), 13, 21, 22, 25.
@@ -47,7 +47,7 @@ Brief scenarios now covered: 1–13, 21–26. Decisions made while building:
 
 ### Checkpoint D: API ✅ (80 tests)
 `npm start` runs the API plus the sweeper and money-ops jobs every minute; it refuses to start in production with the fake provider.
-Still open from D: sending emails (invite links, notifications) needs the email service chosen (SPEC 10); the rate limiter is per process.
+Since closed: email is built (own SMTP client and outbox; switched on by the SMTP settings); attempt limits are kept in Postgres and shared by every copy of the API.
 
 ## Phase E: Screens (after Figma approval)
 - [x] E1 Buyer: calendar day/week/month, bid drawer, payment, bookings, directory, outlet profile.
@@ -106,10 +106,34 @@ Decisions made while building (flag to owner if they disagree):
     refund-losses report; dispute decisions notify both sides; money-check test
 - [x] F2 Security review (`docs/security-review.md`: 1 high, 3 medium, 5 low found and fixed; Stripe webhook signature open for B5),
   monitoring (`/api/health`, JSON logs, graceful shutdown), restore drill (`scripts/restore-drill.sh`, passed, tamper test caught), `docs/runbook.md`
-- [ ] F3 Pilot: plan written (`docs/pilot-plan.md`); running it needs Stripe live (B5), AWS, email service, brand files, legal sign-off and the pilot companies
+- [ ] F3 Pilot: plan written (`docs/pilot-plan.md`); running it needs the owner's items below and the pilot companies
 
 - [x] UI upgrade (`docs/design/ui-direction.md`): studio-teal shell with bilingual wordmark, sign-in hero, saffron on-air signal,
   status pills, visible focus, readable small text; phones fixed (menu, calendar day list, filters, scrolling tables)
 
 ### Checkpoint F: launch readiness (software side) ✅ (104 tests + 3 e2e journeys)
-Waiting on the owner: Stripe test then live account (B5), AWS account and budget, email service, brand files, accountant and legal sign-off, pilot companies.
+
+## Phase G: after the pilot plan (owner requests, in order)
+- [x] Account self-service, admin tables and CSV, admin interventions, dispute case file, live updates
+- [x] Staff sign-in as any user (reason, 1 hour, logged), pilot scorecard, auction-close notices, help and Contact Nashr
+- [x] Invoice-grade documents with addresses; whole documents and PDFs in Arabic; auto-bid rises to the reserve
+- [x] Two-step sign-in for everyone; pre-launch review fixes; dispute policy and terms by version; self-service reset; Users admin and sign-in tracking
+- [x] Self-serve teams with enforced rights; email (outbox, SMTP, bilingual, preferences, staff Emails page)
+- [x] Phone app and push alerts; disputes final except a clear mistake of fact within 10 working days
+- [x] Agencies with clients: client per booking, budgets (guide or stop), brand safety by client, client documents and reports
+- [x] Launch readiness: staff alerts (watch job), backups and weekly restore drill as server timers (`BACKUPS=off` on demo servers), load test
+- [x] Stripe test mode (B5 above); webhook amount check; shared attempt limits; one query at a time per connection
+
+### Checkpoint G ✅ (197 tests + 5 e2e journeys: buyer, seller, admin, full, Stripe)
+
+## Waiting on the owner
+- Stripe test keys in `/etc/nashr.env` (runbook 6a), then live keys after legal review
+- SMTP settings so emails are sent
+- Lawyer review of the terms, dispute policy and refund policy, including holding buyers' money for publishers in the UAE
+- Native Arabic review of screens, emails and PDFs
+- Before launch: remove `STAFF_TWO_STEP=off`; on the production server keep backups on and set `BACKUP_RSYNC`
+- Pilot companies and brand files
+
+## On hold by decision
+- Athena, the planning assistant (brief section 21: build once there is enough real booking data)
+- Opening Saudi Arabia (a founder setting, `open_markets`; SAR prices and the Saudi weekend are built in)
