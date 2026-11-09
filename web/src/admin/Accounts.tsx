@@ -10,7 +10,7 @@ type C = { id: string; name: string; type: string; trn: string | null; vatRegist
   users: number; suspended: number; gmv: number; commissionBp: number | null }
 
 export function AccountsPage() {
-  const [type, setType] = useState(''), [q, setQ] = useState('')
+  const [type, setType] = useState(''), [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') ?? '')
   const { data, error } = useLoad<C[]>(`/admin/companies${type ? `?type=${type}` : ''}`, [type])
   if (!data) return <Loading error={error} />
   const shown = data.filter(c => !q || c.name.toLowerCase().includes(q.toLowerCase()))

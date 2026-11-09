@@ -8,8 +8,8 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   const errors = []; p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
   await p.goto(BASE + '/#/sign-in')
   await p.fill('#email', 'demo@northwind.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
-  await p.waitForSelector('.dash-lead') // the buyer dashboard is home
-  await twoStepViaPage(p, BASE); await p.goto(BASE + '/dashboard'); await p.waitForSelector('.dash-lead') // paying needs two-step sign-in
+  await p.waitForSelector('.pt-kpis') // the buyer dashboard is home
+  await twoStepViaPage(p, BASE); await p.goto(BASE + '/dashboard'); await p.waitForSelector('.pt-kpis') // paying needs two-step sign-in
   await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cv-head')
   // The week of 16 Nov (everything open): week grid, then the day, then the list filtered to radio auctions
   await p.goto(BASE + '/calendar?view=week&date=2026-11-16'); await p.waitForSelector('.cv-block')

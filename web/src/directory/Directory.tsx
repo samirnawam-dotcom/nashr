@@ -37,7 +37,7 @@ export function Waitlist({ topic, label }: { topic: 'KSA' | 'Athena'; label: str
 export function DirectoryPage() {
   useMeta({ ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], [t("Directory"), '/directory']])] })
   const [outlets, setOutlets] = useState<Outlet[] | null>(null), [error, setError] = useState('')
-  const [q, setQ] = useState(''), [channel, setChannel] = useState(''), [onlyNashr, setOnlyNashr] = useState(false), [market, setMarket] = useState('AE')
+  const [q, setQ] = useState(''), [channel, setChannel] = useState(() => new URLSearchParams(location.search).get('channel') ?? ''), [onlyNashr, setOnlyNashr] = useState(false), [market, setMarket] = useState('AE')
   const [view, setView] = useState<'grid' | 'list'>(() => (localStorage.getItem('nashr:dir-view') as any) || 'grid')
   useEffect(() => { api<Outlet[]>('/directory').then(setOutlets, e => setError(e.message)) }, [])
   useEffect(() => { try { localStorage.setItem('nashr:dir-view', view) } catch { /* fine */ } }, [view])

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { DEAL_STATUS, Loading, date, money, useAct, useLoad } from './common'
-import { CHANNEL, Delta, Funnel, Hero, RankedBars, StatTile, WeekColumns, compact } from '../charts'
+import { CHANNEL, Funnel, RankedBars } from '../charts'
+import { Change, KI, Kpi, Ring, Trend } from '../seller/Portal'
+import '../seller/portal.css'
 import { PhotoBand } from '../PhotoBand'
 import { locale, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
@@ -18,9 +20,11 @@ function SystemAlerts() {
   if (!a) return null
   const run = (k: string, label: string) => { const r = a.runs[k]
     return <span className={r && !r.ok ? 'outbid' : ''}>{label}: {r ? `${r.ok ? t('passed') : t('failed')} ${date(r.at)}` : t('not yet')}</span> }
-  return <section className={`card pad section sys-alerts ${a.open.length ? 'bad' : ''}`} aria-live="polite">
-    <h2>{a.open.length === 1 ? t('One problem needs a person') : a.open.length ? t('{n} problems need a person', { n: a.open.length }) : t('All systems normal')}</h2>
-    {a.open.length > 0 && <ul>{a.open.map(x => <li key={x.key}><b>{tm(x.detail)}</b> <span className="small muted">{t('since {date}', { date: date(x.since) })}</span></li>)}</ul>}
+  if (!a.open.length) return <span className="ov-pill good" title={t('Staff get a bell, email and phone alert when a problem starts and when it clears.')}>{t('All systems normal')}
+    {a.watchingBackups && <span className="small"> · {run('backup', t('Last backup'))}</span>}</span>
+  return <section className="card pad sys-alerts bad ov-alerts" aria-live="polite">
+    <h2>{a.open.length === 1 ? t('One problem needs a person') : t('{n} problems need a person', { n: a.open.length })}</h2>
+    <ul>{a.open.map(x => <li key={x.key}><b>{tm(x.detail)}</b> <span className="small muted">{t('since {date}', { date: date(x.since) })}</span></li>)}</ul>
     <p className="small muted">{a.watchingBackups ? <>{run('backup', t('Last backup'))} · {run('restore_drill', t('Last restore drill'))}.</> : t('Backups are not watched on this server (BACKUP_DIR is not set).')}
       {' '}{t('Staff get a bell, email and phone alert when a problem starts and when it clears.')}</p>
   </section>
@@ -46,59 +50,73 @@ export function AdminOverview() {
     [o.support_open, t("Questions from buyers and publishers"), '/support', true],
     [o.quotes_open, t("Quote requests"), '/directory', false],
   ] as const
+  const waiting = attention.filter(([n]) => n > 0), quiet = attention.filter(([n]) => !n)
   const ORDER = ['awaiting_seller', 'awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out']
   const statuses = ORDER.filter(s => o.byStatus[s]).map(s => ({ label: t(DEAL_STATUS[s]?.[0] ?? s), value: o.byStatus[s], href: `/deals?status=${s}` }))
+  const pct = (now: number, before: number) => before > 0 ? Math.round((now - before) / before * 100) : null
+  const channel90 = d.byChannel.reduce((n, c) => n + c.value, 0)
   return (
-    <main className="dash">
-      <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? t("Ledger reconciles with the payment provider.")
-        : <>{t('Ledger cash {ledger} does not match the payment provider ({provider}).', { ledger: money(o.reconcile.ledgerCash), provider: money(o.reconcile.providerCash) })} <a href="/funds">{t('Open Funds')}</a></>}</p>
-      <SystemAlerts />
-      <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-admin.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>{t("Overview")}</h1><span className="muted">{new Date().toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
-        <div className="spacer" /><a className="btn" href="/reports">{t("Reports")}</a><a className="btn" href="/deals">{t("All deals")}</a></div>
+    <main className="pt">
+      <div className="pt-head">
+        <div><h1>{t("Overview")}</h1><p className="muted">{new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })} · {t('Click any card for detail.')}</p></div>
+        <div className="pt-filters"><a className="btn" href="/reports">{t("Reports")}</a><a className="btn primary" href="/deals">{t("All deals")}</a></div>
+      </div>
+      <div className="ov-health">
+        <a href="/funds" className={`ov-pill ${o.reconcile.ok ? 'good' : 'bad'}`}>{o.reconcile.ok ? t("Ledger reconciles with the payment provider.")
+          : t('Ledger cash {ledger} does not match the payment provider ({provider}).', { ledger: money(o.reconcile.ledgerCash), provider: money(o.reconcile.providerCash) })}</a>
+        <SystemAlerts />
+      </div>
 
-      <section className="dash-lead">
-        <Hero label={t("Booked value, last 30 days")} value={money(d.gmv.last30)}>
-          <Delta now={d.gmv.last30} before={d.gmv.prev30} />
-          <span className="stat-sub">{t("Price of bookings paid, excluding VAT.")}</span>
-          <dl className="kv" style={{ marginTop: 8 }}>
-            <dt>{t("Commission earned (30 days)")}</dt><dd>{money(d.commission.last30)}</dd>
-            <dt>{t("Take rate (90 days)")}</dt><dd>{d.takeRate == null ? '—' : ltr(`${(d.takeRate * 100).toFixed(1)}%`)}</dd>
-            <dt>{t("Publishers live")}</dt><dd>{o.publishers_live}</dd>
-            <dt>{t("Buyer companies")}</dt><dd>{o.buyers}</dd>
-          </dl>
-        </Hero>
-        <WeekColumns weeks={d.gmv.weeks} title={t("Booked value by week (excluding VAT)")} valueName={t("Booked value")} />
+      <section className="pt-kpis">
+        <Kpi main href="/deals" icon={KI.trend} label={t('Booked value, last 30 days')} value={money(d.gmv.last30)}><Change v={pct(d.gmv.last30, d.gmv.prev30)} /></Kpi>
+        <Kpi href="/reports" icon={KI.layers} label={t('Commission, last 30 days')} value={money(d.commission.last30)}><Change v={pct(d.commission.last30, d.commission.prev30)} /></Kpi>
+        <Kpi href="/funds" icon={KI.shield} label={t('Held for bookings')} value={money(d.money.held)}><em>{t('Paid by buyers, not yet released')}</em></Kpi>
+        <Kpi href="/calendar" icon={KI.hammer} label={t('Open slots with bids')} value={t('{n} of {total}', { n: d.live.withBids, total: d.live.openSlots })}><em>{t('{n} bids this week', { n: d.live.bids7d })}</em></Kpi>
+        <Kpi href="/accounts" icon={KI.users} label={t('Active buyers')} value={String(d.live.activeBuyers)}><em>{t('{p} publishers live · {b} buyer companies', { p: o.publishers_live, b: o.buyers })}</em></Kpi>
       </section>
 
-      <div className="stats">
-        <StatTile label={t("Commission, last 30 days")} value={compact(d.commission.last30)} delta={<Delta now={d.commission.last30} before={d.commission.prev30} />} spark={d.commission.weeks.map(w => w.value)} href="/reports" />
-        <StatTile label={t("Held for bookings")} value={compact(d.money.held)} sub={t("Paid by buyers, not yet released")} href="/funds" />
-        <StatTile label={t("Open slots with bids")} value={t('{n} of {total}', { n: d.live.withBids, total: d.live.openSlots })} sub={t('{n} bids this week', { n: d.live.bids7d })} />
-        <StatTile label={t("Active buyers")} value={String(d.live.activeBuyers)} sub={t("bid in the last 30 days")} />
-      </div>
+      <section className="card pad">
+        <div className="pt-card-h"><h2>{t("Needs attention")}</h2><span className="muted small">{waiting.length ? t('{n} kinds of work waiting', { n: waiting.length }) : t('Nothing waiting')}</span></div>
+        <ul className="attn-list ov-attn">{[...waiting, ...quiet].map(([n, label, href, hot]) => <li key={label} className={n ? (hot ? 'hot' : 'has') : 'none'}>
+          <a href={href}><b className="num">{n}</b><span>{t(label)}</span>{n > 0 && <span className="btn task-act">{t('Open')}</span>}</a></li>)}</ul>
+      </section>
 
-      <div className="dash-grid">
-        <section className="panel span-4"><div className="panel-h"><h2>{t("Needs attention")}</h2></div>
-          <ul className="attn-list">{attention.map(([n, label, href, hot]) => <li key={label} className={n ? (hot ? 'hot' : 'has') : 'none'}>
-            <a href={href}><b className="num">{n}</b><span>{t(label)}</span>{n > 0 && <span className="btn task-act">{t('Open')}</span>}</a></li>)}</ul></section>
-        <section className="panel span-4"><Funnel title={t("Bookings opened in the last 30 days")} steps={d.funnel.map(f => ({ ...f, label: t(f.label) }))} /></section>
-        <section className="panel span-4"><div className="panel-h"><h2>{t("Money position")}</h2><div className="spacer" /><a href="/funds">{t("Funds")}</a></div>
-          <dl className="kv">
-            <dt>{t("Held for bookings")}</dt><dd>{money(d.money.held)}</dd>
-            <dt>{t("Owed to publishers")}</dt><dd>{money(d.money.owedToPublishers)}</dd>
-            <dt>{t("VAT on commission")}</dt><dd>{money(d.money.vat)}</dd>
-            <dt>{t("Card processing fees")}</dt><dd>{money(d.money.fees)}</dd>
-            <dt className="total">{t("Commission earned (all time)")}</dt><dd className="total">{money(d.money.revenue)}</dd>
-          </dl></section>
+      <section className="pt-row">
+        <div className="card pad"><div className="pt-card-h"><h2>{t('Booked value by week')}</h2><span className="muted small">{t('excluding VAT')}</span></div>
+          <Trend data={d.gmv.weeks.map(w => ({ date: w.week, value: w.value }))} label={t('Booked value by week, excluding VAT')} />
+          <p className="small muted">{t('Take rate (90 days)')}: <b className="num">{d.takeRate == null ? '—' : ltr(`${(d.takeRate * 100).toFixed(1)}%`)}</b></p></div>
+        <div className="card pad"><div className="pt-card-h"><h2>{t('Booked value by channel')}</h2><span className="muted small">{t('last 90 days')}</span></div>
+          <Ring parts={d.byChannel.map(c => ({ label: CHANNEL[c.channel] ?? c.channel, value: c.value, href: '/deals' }))} total={channel90} caption={t('Booked value')} empty={t('No paid bookings in the last 90 days.')} /></div>
+      </section>
 
-        <section className="panel span-4"><RankedBars title={t("Booked value by channel (90 days)")} items={d.byChannel.map(c => ({ label: CHANNEL[c.channel] ?? c.channel, sub: t(c.count === 1 ? '1 booking' : '{n} bookings', { n: c.count }), value: c.value }))} /></section>
-        <section className="panel span-4"><RankedBars title={t("Top publishers (90 days)")} items={d.topPublishers.map(p => ({ label: p.label, sub: t(p.count === 1 ? '1 booking' : '{n} bookings', { n: p.count }), value: p.value }))} /></section>
-        <section className="panel span-4"><RankedBars title={t("Top buyers (90 days)")} items={d.topBuyers.map(p => ({ label: p.label, sub: t(p.count === 1 ? '1 booking' : '{n} bookings', { n: p.count }), value: p.value }))} /></section>
+      <section className="pt-row ov-3">
+        <div className="card pad"><Funnel title={t("Bookings opened in the last 30 days")} steps={d.funnel.map(f => ({ ...f, label: t(f.label) }))} /></div>
+        <div className="card pad"><div className="pt-card-h"><h2>{t("Money position")}</h2><a href="/funds">{t("Funds")} ›</a></div>
+          <ul className="ov-money">
+            <li><a href="/funds"><span>{t("Held for bookings")}</span><b className="num">{money(d.money.held)}</b></a></li>
+            <li><a href="/payouts"><span>{t("Owed to publishers")}</span><b className="num">{money(d.money.owedToPublishers)}</b></a></li>
+            <li><a href="/reports"><span>{t("VAT on commission")}</span><b className="num">{money(d.money.vat)}</b></a></li>
+            <li><a href="/reports"><span>{t("Card processing fees")}</span><b className="num">{money(d.money.fees)}</b></a></li>
+            <li className="total"><a href="/reports"><span>{t("Commission earned (all time)")}</span><b className="num">{money(d.money.revenue)}</b></a></li>
+          </ul></div>
+        <div className="card pad"><RankedBars title={t("All deals by status")} format={v => String(v)} empty={t("No deals yet.")} items={statuses} /></div>
+      </section>
 
-        <section className="panel"><RankedBars title={t("All deals by status")} format={v => String(v)} empty={t("No deals yet.")} items={statuses} /></section>
-      </div>
+      <section className="pt-row ov-2">
+        <div className="card pad"><div className="pt-card-h"><h2>{t('Top publishers')}</h2><span className="muted small">{t('last 90 days')}</span></div><Leaders rows={d.topPublishers} /></div>
+        <div className="card pad"><div className="pt-card-h"><h2>{t('Top buyers')}</h2><span className="muted small">{t('last 90 days')}</span></div><Leaders rows={d.topBuyers} /></div>
+      </section>
     </main>
   )
+}
+
+/** A ranked table: each company with its bookings and value, opening its accounts. */
+function Leaders({ rows }: { rows: { label: string; value: number; count: number }[] }) {
+  if (!rows.length) return <p className="muted">{t('No paid bookings yet.')}</p>
+  const top = Math.max(...rows.map(r => r.value))
+  return <ul className="ov-lead">{rows.map((r, i) => <li key={r.label}><a href={`/accounts?q=${encodeURIComponent(r.label)}`}>
+    <span className="ov-rank num">{i + 1}</span><span className="ov-name"><b>{r.label}</b><span className="small muted">{t(r.count === 1 ? '1 booking' : '{n} bookings', { n: r.count })}</span>
+      <span className="pt-bar"><i style={{ width: `${Math.round(r.value / top * 100)}%` }} /></span></span><b className="num">{money(r.value)}</b></a></li>)}</ul>
 }
 
 type AR = { id: string; name: string; email: string; phone: string; role: string; company: string; company_type: string; status: string; reason: string | null; created_at: string; invite_pending?: boolean }

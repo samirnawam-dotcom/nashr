@@ -83,3 +83,60 @@
   .pt-payouts > div { padding: 0; } .pt-payouts > div + div { border-inline-start: 0; border-top: 1px solid var(--line); padding-top: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .pt-kpi { transition: none; } .pt-kpi:hover { transform: none; } }
+/* figure cards: icon, name and an arrow showing the card opens its detail */
+.pt-kh { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--slate); font-weight: 500; }
+.pt-kh > span { flex: 1; min-width: 0; }
+.pt-kh svg { flex: none; }
+.pt-go { opacity: .45; transition: opacity .15s, transform .15s; }
+.pt-kpi:hover .pt-go { opacity: 1; transform: translate(1px, -1px); }
+.pt-kpi.main .pt-kh { color: rgba(255, 255, 255, .85); }
+.pt-ring li a { display: contents; color: inherit; text-decoration: none; }
+.pt-ring li:has(a):hover span { color: var(--teal); text-decoration: underline; text-underline-offset: 3px; }
+.pt-ring li:has(a) { cursor: pointer; }
+.pt-pair { display: flex; flex-wrap: wrap; gap: 6px; }
+.pt-av.hot { background: var(--amber-1); color: var(--amber); }
+.pt-chip.warn { color: var(--amber); background: var(--amber-1); }
+a.pt-what { color: inherit; text-decoration: none; }
+a.pt-what:hover b { color: var(--teal); }
+.pt-budgets { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pt-budgets a { display: grid; gap: 6px; padding: 10px; border-radius: 12px; color: inherit; text-decoration: none; }
+.pt-budgets a:hover { background: var(--surface-2); }
+.pt-b-h { display: flex; justify-content: space-between; gap: 10px; }
+.pt-bar { height: 8px; border-radius: 8px; background: var(--surface-3); overflow: hidden; }
+.pt-bar i { display: block; height: 100%; border-radius: 8px; background: var(--teal); }
+.pt-bar i.warn { background: var(--amber); }
+.pt-row > .card { min-width: 0; }
+/* Staff overview */
+.ov-health { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ov-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 500; text-decoration: none; }
+.ov-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.ov-pill.good { color: var(--green); background: var(--green-1); }
+.ov-pill.bad { color: var(--red); background: var(--red-1); }
+.ov-alerts { flex-basis: 100%; }
+.ov-attn { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 0; }
+.ov-attn li { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.ov-attn li a { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; color: var(--ink); text-decoration: none; min-height: 64px; }
+.ov-attn li a:hover { background: var(--surface-2); }
+.ov-attn li b { font: 700 22px var(--display); }
+.ov-attn li.hot { border-color: rgba(220, 38, 38, .25); background: var(--red-1); }
+.ov-attn li.hot b { color: var(--red); }
+.ov-attn li.has b { color: var(--teal); }
+.ov-attn li.none { opacity: .62; }
+.ov-attn li.none b { color: var(--faint); }
+.ov-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ov-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ov-money { list-style: none; margin: 0; padding: 0; display: grid; }
+.ov-money a { display: flex; justify-content: space-between; gap: 12px; padding: 10px 6px; border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14.5px; }
+.ov-money li:first-child a { border-top: 0; }
+.ov-money a:hover { background: var(--surface-2); }
+.ov-money a span { color: var(--slate); }
+.ov-money .total a { font-weight: 700; border-top: 2px solid var(--line-2); }
+.ov-money .total a span { color: var(--ink); }
+.ov-lead { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ov-lead a { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 8px; border-radius: 12px; color: var(--ink); text-decoration: none; }
+.ov-lead a:hover { background: var(--surface-2); }
+.ov-rank { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font-weight: 700; font-size: 13px; }
+.ov-name { display: grid; gap: 3px; min-width: 0; }
+@media (max-width: 1100px) { .ov-3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .ov-2 { grid-template-columns: minmax(0, 1fr); } }
+.pt-row > .card { display: grid; align-content: start; gap: 4px; }
