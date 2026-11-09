@@ -30,13 +30,13 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   await p.reload(); await p.waitForSelector('text=Waiting for your review'); await shot('s4-creative')
   await p.click('.section button:has-text("Approve")'); await p.waitForSelector('text=Creative approved')
   // Calendar, slot panel, take a slot off sale and back
-  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cv-head')
-  await p.click('.cv-views button:has-text("Programme")'); await p.waitForSelector('.prog, .cv-empty')
+  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cc-head')
+  await p.click('.cv-views button:has-text("Week")'); await p.waitForSelector('.cw, .cv-empty')
   // Move forward to the first week with at least two slots still on sale (which week that is depends on today's date)
   await p.click('.cv-nav [aria-label="Next"]'); await p.waitForTimeout(800)
-  for (let i = 0; i < 4 && await p.locator('.sl.open').count() < 2; i++) { await p.click('.cv-nav [aria-label="Next"]'); await p.waitForTimeout(800) }
+  for (let i = 0; i < 4 && await p.locator('.cc-ev:has(.bchip.b-open)').count() < 2; i++) { await p.click('.cv-nav [aria-label="Next"]'); await p.waitForTimeout(800) }
   await shot('s5-calendar')
-  await p.click('.sl.open >> nth=1'); await p.waitForSelector('.drawer h2'); await shot('s6-slot')
+  await p.click('.cc-ev:has(.bchip.b-open) >> nth=1'); await p.waitForSelector('.sp-head h2'); await shot('s6-slot')
   const off = p.locator('button:has-text("Take off sale")')
   if (await off.count()) { await off.click(); await p.waitForSelector('button:has-text("Put back on sale")'); await p.click('button:has-text("Put back on sale")'); await p.waitForSelector('button:has-text("Take off sale")') }
   await p.click('[aria-label="Close"]')

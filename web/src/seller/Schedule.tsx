@@ -5,7 +5,9 @@ import { dayLabel, time } from '../format'
 import { addDays, dubai, monthGrid, todayInDubai, weekOf } from '../calendar/layout'
 import { DealStatus, SLOT_STATUS, money, when } from './common'
 import { SALE_TYPES, SaleIcon, saleLabel, useLatest, useNarrow } from '../calendar/CalendarPage'
-import { DateNav, FilterFold, GROUPS, groupOf, OpsList, OpsMonth, StatusChips, statusesOf, useAddress, type OpsDay } from '../calendar/ops'
+import { DateNav, FilterFold, GROUPS, groupOf, OpsList, StatusChips, statusesOf, useAddress } from '../calendar/ops'
+import { CHANNEL_NAME, ICON, art } from '../media'
+import { family } from '../../../server/shared/media'
 import { ltr, sep, t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { tm } from '../i18n-server'
@@ -13,7 +15,7 @@ import { tm } from '../i18n-server'
 type SSlot = { id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
 
-type View = 'programme' | 'week' | 'list' | 'month'
+type View = 'day' | 'week' | 'list' | 'month'
 type Product = { id: string; name: string; outlet: string; saleType: string; startingPrice: number; archived: boolean; unit: 'day' | 'week' }
 
 /**
@@ -51,12 +53,8 @@ function AddToCalendar({ products, date, product, onClose, onDone }: { products:
     <button type="button" className="btn primary" style={{ justifySelf: 'start' }} disabled={busy || !id || !(Number(price) > 0)} onClick={save}>{t('Put on sale')}</button>
   </section>
 }
-const VIEWS: [View, string][] = [['programme', t('Programme')], ['week', t('Week')], ['list', t('List')], ['month', t('Month')]]
+const VIEWS: [View, string][] = [['day', t('Day')], ['week', t('Week')], ['month', t('Month')], ['list', t('List')]]
 
-/**
- * The publisher's calendar in four views: Programme (a row per placement), Week (days across, hours down), List (every slot,
- * sorted and paged on the server) and Month (each day's mix of statuses). One filter bar for all four, kept in the address.
- */
 /** The owner's bid status for a slot: open for bids, bidding (n), pending your decision, bid accepted; anything else as it is. */
 export function bidState(s: { status: string; saleType: string; bids: number }): [string, string] {
   if (s.status === 'open') return !s.bids ? [s.saleType === 'auction' ? t('Open for bids') : t('On sale'), 'open']
@@ -73,47 +71,61 @@ export function BidChip({ s }: { s: { status: string; saleType: string; bids: nu
 }
 
 export function SchedulePage() {
-  let saved = 'programme'; try { saved = localStorage.getItem('nashr:seller-view') ?? 'programme' } catch { /* private mode */ }
-  const [a, update] = useAddress({ view: saved, date: todayInDubai(), st: '', sale: '', outlet: '', q: '' })
-  const view = (VIEWS.some(v => v[0] === a.view) ? a.view : 'programme') as View
-  const [slots, setSlots] = useState<SSlot[] | null>(null), [days, setDays] = useState<OpsDay[]>([]), [open, setOpen] = useState<string | null>(null)
+  let saved = 'day'; try { saved = localStorage.getItem('nashr:seller-view') ?? 'day' } catch { /* private mode */ }
+  const [a, update] = useAddress({ view: saved === 'programme' ? 'day' : saved, date: todayInDubai(), st: '', sale: '', outlet: '', q: '' })
+  const view = (VIEWS.some(v => v[0] === a.view) ? a.view : 'day') as View
+  const [slots, setSlots] = useState<SSlot[] | null>(null), [open, setOpen] = useState<string | null>(null)
   const [adding, setAdding] = useState<false | { date: string; product?: string }>(false), [products, setProducts] = useState<Product[]>([])
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]), [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
-  const latest = useLatest(), narrow = useNarrow()
+  const latest = useLatest(), narrow = useNarrow(), wide = useWide()
   useEffect(() => { try { localStorage.setItem('nashr:seller-view', view) } catch { /* fine */ } }, [view])
   useEffect(() => { api<{ outlets: { id: string; name: string }[]; placements: Product[] }>('/seller/profile').then(p => { setOutlets(p.outlets); setProducts(p.placements.filter(x => !x.archived)) }, () => {}) }, [])
   useEffect(() => { const k = setTimeout(() => qText !== a.q && update({ q: qText }), 300); return () => clearTimeout(k) }, [qText])
-  const week = weekOf(a.date)
-  const [from, to] = view === 'month' ? [monthGrid(a.date)[0][0], addDays(monthGrid(a.date).at(-1)![6], 1)] : view === 'list' ? [a.date, addDays(a.date, 28)] : [week[0], addDays(week[6], 1)]
+  const week = weekOf(a.date), grid = monthGrid(a.date)
+  const [from, to] = view === 'month' ? [grid[0][0], addDays(grid.at(-1)![6], 1)] : view === 'list' ? [a.date, addDays(a.date, 28)] : view === 'day' ? [a.date, addDays(a.date, 1)] : [week[0], addDays(week[6], 1)]
   const groups = a.st ? a.st.split(',') : [], sales = a.sale ? a.sale.split(',') : []
   const qs = new URLSearchParams({ from: `${from}T00:00:00+04:00`, to: `${to}T00:00:00+04:00`, ...(groups.length ? { st: statusesOf(groups).join(',') } : {}),
     ...(sales.length ? { sale: sales.join(',') } : {}), ...(a.outlet ? { outlet: a.outlet } : {}), ...(a.q.trim() ? { q: a.q.trim() } : {}) }).toString()
   const load = () => {
-    if (view === 'programme' || view === 'week') latest(api<SSlot[]>(`/seller/slots?from=${week[0]}T00:00:00%2B04:00&to=${addDays(week[6], 1)}T00:00:00%2B04:00`), setSlots, e => setError(e.message))
-    if (view === 'month') latest(api<OpsDay[]>(`/seller/slots/days?${qs}`), setDays, e => setError(e.message))
+    if (view !== 'list') latest(api<SSlot[]>(`/seller/slots?from=${from}T00:00:00%2B04:00&to=${to}T00:00:00%2B04:00`), setSlots, e => setError(e.message))
     setReload(n => n + 1)
   }
-  useEffect(() => { load() }, [view, a.date, a.st, a.sale, a.outlet, a.q])
-  // Programme and week filter the week on screen in the browser, with the same rules the server uses for the list.
+  useEffect(() => { setSlots(null); load() }, [view, from, to])
+  // Day, week and month filter what is on screen in the browser, with the same rules the server uses for the list.
   const words = a.q.toLowerCase().split(/\s+/).filter(Boolean)
   const shown = (slots ?? []).filter(x => (!groups.length || groups.includes(groupOf(x.status))) && (!sales.length || sales.includes(x.saleType))
     && (!a.outlet || x.outletId === a.outlet) && words.every(w => `${x.outlet} ${x.placement}`.toLowerCase().includes(w)))
-  const rows = [...new Set(shown.map(x => `${x.outlet} · ${x.placement}`))].sort()
   const step = (n: number) => { if (view === 'month') { const d = new Date(a.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
-    update({ date: addDays(a.date, n * (view === 'list' ? 28 : 7)) }, true) }
+    update({ date: addDays(a.date, n * (view === 'list' ? 28 : view === 'day' ? 1 : 7)) }, true) }
   const active = groups.length + sales.length + (a.outlet ? 1 : 0) + (a.q ? 1 : 0)
-  const title = view === 'month' ? dayLabel(a.date, { month: 'long', year: 'numeric' })
+  const title = view === 'month' ? dayLabel(a.date, { month: 'long', year: 'numeric' }) : view === 'day' ? dayLabel(a.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : `${dayLabel(from, { day: 'numeric', month: 'short' })} – ${dayLabel(addDays(to, -1), { day: 'numeric', month: 'short', year: 'numeric' })}`
+  const count = (k: string) => shown.filter(x => bidState(x)[1] === k).length
+  const outletName = outlets.length === 1 ? outlets[0].name : ''
+  const openSlot = (id: string) => setOpen(id)
+  const toDay = (d: string) => update({ view: 'day', date: d }, true)
+  const panel = open && <SlotPanel key={open} id={open} onChange={load} onClose={() => setOpen(null)} />
   return (
-    <main className="cv">
-      <header className="cv-head">
-        <div className="cv-title"><h1>{t('Calendar')}</h1><p className="cv-range"><b>{title}</b><span className="muted">{t('Your slots, bids and bookings. Dubai time.')}</span></p></div>
-        <DateNav date={a.date} onDate={d => update({ date: d }, true)} onStep={step} />
-        <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l]) =>
-          <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
+    <main className="cv cc">
+      <header className="cc-head">
+        <div className="cc-title"><h1>{outletName ? t('{outlet} content calendar', { outlet: outletName }) : t('Content calendar')}</h1>
+          <p className="muted">{t('Plan, manage and sell your programming line-up. Dubai time, prices excluding VAT.')}</p></div>
         <button type="button" className="btn primary" aria-expanded={!!adding} onClick={() => setAdding(adding ? false : { date: a.date })}>+ {t('Add to calendar')}</button>
       </header>
+      <nav className="cc-tabs" aria-label={t('Publisher pages')}>
+        <a className="on" aria-current="page" href="/schedule"><TabSvg d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />{t('Calendar')}</a>
+        <a href="/listings"><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" />{t('Listings')} {products.length > 0 && <span className="cc-n">{products.length}</span>}</a>
+        <a href="/coverage"><TabSvg d="M4 6h16v12H4zM8 10h8M8 14h5" />{t('Coverage')}</a>
+      </nav>
       {adding && <AddToCalendar key={`${adding.date}-${adding.product ?? ''}`} products={products} date={adding.date} product={adding.product} onClose={() => setAdding(false)} onDone={load} />}
+
+      <div className="cc-bar">
+        <DateNav date={a.date} onDate={d => update({ date: d }, true)} onStep={step} />
+        <b className="cc-range">{title}</b>
+        <span className="spacer" />
+        <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l]) =>
+          <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
+      </div>
       <FilterFold narrow={narrow} active={active} search={<input className="search cv-search" type="search" placeholder={t('Search outlets and programmes')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />}>
         {outlets.length > 1 && <select className="cal-input cv-outlet-pick" aria-label={t('Outlet')} value={a.outlet} onChange={e => update({ outlet: e.target.value })}>
           <option value="">{t('All outlets')}</option>{outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
@@ -124,76 +136,113 @@ export function SchedulePage() {
         <span className="spacer" />
         {active > 0 && <button type="button" className="btn cv-clear" onClick={() => { setQText(''); update({ st: '', sale: '', outlet: '', q: '' }) }}>{t('Clear all ({n})', { n: active })}</button>}
       </FilterFold>
+      {view !== 'list' && slots && <p className="cc-sum" aria-live="polite">
+        <span><b className="num">{shown.length}</b> {t('items')}</span>
+        <span className="s-acc"><b className="num">{count('acc')}</b> {t('Bid accepted')}</span>
+        <span className="s-pend"><b className="num">{count('pend')}</b> {t('Pending')}</span>
+        <span className="s-bid"><b className="num">{count('bid')}</b> {t('Bidding')}</span>
+        <span className="s-open"><b className="num">{count('open')}</b> {t('Open for bids')}</span></p>}
       {error && <p className="error">{error}</p>}
-      {(view === 'programme' || view === 'week') && slots && !shown.length && <div className="cv-empty"><p><b>{slots.length ? t('No slots match these filters this week.') : t('Nothing listed this week.')}</b></p>
-        <div className="row-flex">{!slots.length && <a className="btn primary" href="/listings">{t('List slots')}</a>}<button className="btn" onClick={() => step(1)}>{t('Show the next week')}</button></div></div>}
-      {view === 'week' && shown.length > 0 && <WeekGrid days={week} slots={shown} onOpen={setOpen} />}
-      {view === 'programme' && shown.length > 0 && <div className="card scroll-x"><table className="prog">
-        <thead><tr><th className="place">{t("Placement")}</th>{week.map(d => <th key={d} className={d === todayInDubai() ? 'today' : ''}>{dayLabel(d)}</th>)}</tr></thead>
-        <tbody>{rows.map(r => { const prod = products.find(x => `${x.outlet} · ${x.name}` === r)?.id
-          return <tr key={r}><th className="place">{r}</th>{week.map(d => { const here = shown.filter(x => `${x.outlet} · ${x.placement}` === r && dubai(x.startsAt).date === d)
-          return <td key={d}>
-          {!here.length && d >= todayInDubai() && <button type="button" className="cv-add-day" aria-label={t('Add {placement} on {day}', { placement: r, day: dayLabel(d) })}
-            onClick={() => { setAdding({ date: d, product: prod }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>+</button>}
-          {here.map(x =>
-            <button key={x.id} className={`sl ${x.status}`} onClick={() => setOpen(x.id)}>
-              <b>{tm(x.label)}</b>{x.endsAt && <span className="muted"> · {time(x.startsAt)}</span>}
-              <div className="sl-st"><BidChip s={x} />{x.status === 'open' && x.topBid ? <span className="num">{money(x.topBid)}</span> : null}</div>
-            </button>)}
-        </td> })}</tr> })}</tbody></table></div>}
-      {view === 'list' && <OpsList base="/seller/slots" qs={qs} who="seller" narrow={narrow} reload={reload} onOpen={x => setOpen(x.id)} />}
-      {view === 'month' && <OpsMonth narrow={narrow} date={a.date} days={days} onDay={d => update({ view: 'programme', date: d }, true)} />}
-      <footer className="cv-foot small muted"><span>{t('Dubai time. Prices exclude VAT.')}</span>
-        <span className="legend">{GROUPS.map(([k, , l]) => <span key={k} className={`st st-${k}`}>{t(l)}</span>)}</span></footer>
-      {open && <div className="scrim" onClick={() => setOpen(null)}><aside className="drawer" role="dialog" aria-label={t("Slot")} onClick={e => e.stopPropagation()}>
-        <SlotPanel id={open} onChange={load} onClose={() => setOpen(null)} /></aside></div>}
+
+      <div className={`cc-body ${open && wide ? 'docked' : ''}`}>
+        <div className="cc-main">
+          {view !== 'list' && !slots && <p className="muted">{t('Loading…')}</p>}
+          {view !== 'list' && slots && !shown.length && <div className="cv-empty"><p><b>{slots.length ? t('No slots match these filters.') : view === 'day' ? t('Nothing listed on this day.') : t('Nothing listed in this period.')}</b></p>
+            <div className="row-flex">{!slots.length && <button className="btn primary" onClick={() => setAdding({ date: a.date })}>+ {t('Add to calendar')}</button>}<button className="btn" onClick={() => step(1)}>{t('Show the next one')}</button></div></div>}
+          {view === 'day' && shown.length > 0 && <DayList slots={shown} open={open} onOpen={openSlot} />}
+          {view === 'week' && shown.length > 0 && <WeekGrid days={week} slots={shown} open={open} onOpen={openSlot} onAdd={d => setAdding({ date: d })} />}
+          {view === 'month' && slots && <MonthGrid date={a.date} grid={grid} slots={shown} open={open} onOpen={openSlot} onDay={toDay} />}
+          {view === 'list' && <OpsList base="/seller/slots" qs={qs} who="seller" narrow={narrow} reload={reload} onOpen={x => setOpen(x.id)} />}
+          <footer className="cv-foot small muted"><span>{t('Dubai time. Prices exclude VAT.')}</span>
+            <span className="legend">{GROUPS.map(([k, , l]) => <span key={k} className={`st st-${k}`}>{t(l)}</span>)}</span></footer>
+        </div>
+        {open && wide && <aside className="cc-panel card" aria-label={t('Slot')}>{panel}</aside>}
+      </div>
+      {open && !wide && <div className="scrim" onClick={() => setOpen(null)}><aside className="drawer" role="dialog" aria-label={t("Slot")} onClick={e => e.stopPropagation()}>{panel}</aside></div>}
     </main>
   )
 }
 
+const TabSvg = ({ d }: { d: string }) => <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
+const ChIcon = ({ c, size = 16 }: { c: string; size?: number }) => <svg className="cc-ic" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON[c] ?? ICON.digital} /></svg>
+/** Wide screens keep the slot panel docked beside the calendar, as in the owner's design; smaller ones open it over the page. */
+function useWide() {
+  const q = '(min-width: 1280px)', [w, setW] = useState(() => typeof matchMedia === 'function' && matchMedia(q).matches)
+  useEffect(() => { const m = matchMedia(q), f = () => setW(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f) }, [])
+  return w
+}
+const secs = (s: SSlot) => s.endsAt ? Math.round((Date.parse(s.endsAt) - Date.parse(s.startsAt)) / 1000) : 0
+const mins = (s: SSlot) => Math.round(secs(s) / 60)
+const length = (s: SSlot) => { const m = mins(s); return !secs(s) ? '' : secs(s) < 90 ? t('{n} sec', { n: secs(s) }) : m < 60 ? t('{n} min', { n: m }) : m % 60 ? t('{h} h {m} min', { h: Math.floor(m / 60), m: m % 60 }) : m >= 1440 ? t('{n} days', { n: Math.round(m / 1440) }) : t('{n} h', { n: m / 60 }) }
+const price = (s: SSlot) => s.topBid ?? s.startingPrice
+
+/** A day as the owner drew it: hours down the side, one tinted card per slot with its type, length, bid status and price. */
+function DayList({ slots, open, onOpen }: { slots: SSlot[]; open: string | null; onOpen: (id: string) => void }) {
+  const hours = [...new Set(slots.map(s => Math.floor(dubai(s.startsAt).minutes / 60)))].sort((x, y) => x - y)
+  return <div className="cc-day card">{hours.map(h => <div className="cc-hour" key={h}>
+    <span className="cc-hl num">{ltr(`${String(h).padStart(2, '0')}:00`)}</span>
+    <div className="cc-hitems">{slots.filter(s => Math.floor(dubai(s.startsAt).minutes / 60) === h).map(s =>
+      <button key={s.id} type="button" className={`cc-ev f-${family(s.channel)} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}>
+        <ChIcon c={s.channel} size={20} />
+        <img className="cc-thumb" src={art(s.channel, 'card')} alt="" width={84} height={52} loading="lazy" decoding="async" />
+        <span className="cc-what"><b>{s.placement}</b><span className="small muted">{tm(s.label)}{sep}{CHANNEL_NAME[s.channel] ?? s.channel}{sep}{s.outlet}</span></span>
+        <span className="cc-chips"><span className="cc-pill">{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</span>{length(s) && <span className="cc-pill">{length(s)}</span>}
+          <span className="cc-pill">{saleLabel(s.saleType)}</span></span>
+        <BidChip s={s} />
+        <span className="cc-price num">{money(price(s))}</span>
+      </button>)}</div></div>)}</div>
+}
+
 /**
- * The week as a calendar (owner feedback: like Google Calendar): days across, hours down, each slot at its time and length.
- * Slots without a time (print pages, digital takeovers) sit in an all-day lane at the top. Slots at the same time share the column.
+ * The week as the owner drew it: days across, the hours that have something down the side, and each slot as a tinted card with
+ * its bid status in the day and hour it airs. Whole-day items and package offers sit in a row at the top.
  */
-function WeekGrid({ days, slots, onOpen }: { days: string[]; slots: SSlot[]; onOpen: (id: string) => void }) {
-  const HOUR = 72, MIN_LEN = 30, mins = (iso: string) => dubai(iso).minutes
-  // Single breaks sit at their time; whole-day items and package offers (any break, all breaks) go in the lane at the top.
-  // a day or longer (a week's banner, a weekly issue) is an all-day item, whatever time it starts
+function WeekGrid({ days, slots, open, onOpen, onAdd }: { days: string[]; slots: SSlot[]; open: string | null; onOpen: (id: string) => void; onAdd: (d: string) => void }) {
   const long = (s: SSlot) => !s.endsAt || Date.parse(s.endsAt) - Date.parse(s.startsAt) >= 86_400_000
   const timed = slots.filter(s => !long(s) && s.kind === 'single'), allDay = slots.filter(s => long(s) || s.kind !== 'single')
-  const starts = timed.map(s => mins(s.startsAt)), from = Math.max(0, Math.floor((Math.min(...starts, 8 * 60)) / 60) - 1)
-  const to = Math.min(24, Math.ceil(Math.max(...timed.map(s => mins(s.startsAt) + Math.max(MIN_LEN, (Date.parse(s.endsAt!) - Date.parse(s.startsAt)) / 60000)), 18 * 60) / 60) + 1)
-  const hours = Array.from({ length: to - from }, (_, i) => from + i), today = todayInDubai()
-  /** Side-by-side lanes for slots that overlap on one day. */
-  const lanes = (list: SSlot[]) => { const end: number[] = [], out = new Map<string, [number, number]>()
-    const sorted = [...list].sort((a, b) => mins(a.startsAt) - mins(b.startsAt))
-    for (const s of sorted) { const st = mins(s.startsAt), en = st + Math.max(MIN_LEN, (Date.parse(s.endsAt!) - Date.parse(s.startsAt)) / 60000)
-      let lane = end.findIndex(e => e <= st); if (lane < 0) { lane = end.length; end.push(en) } else end[lane] = en; out.set(s.id, [lane, 0]) }
-    for (const [id, [l]] of out) out.set(id, [l, end.length]); return out }
-  const chip = (s: SSlot, style?: React.CSSProperties) => <button key={s.id} className={`wk-ev sl ${s.status}`} style={style} onClick={() => onOpen(s.id)}
-    title={`${s.outlet} · ${s.placement} · ${tm(s.label)} · ${t(SLOT_STATUS[s.status])}`}>
-    <span className="wk-l1"><b>{tm(s.label)}</b> {style ? time(s.startsAt) : s.placement}</span>
-    <span className="wk-l2"><BidChip s={s} />{s.status === 'open' && s.topBid ? <span className="num muted">{money(s.topBid)}</span> : null}</span></button>
-  return <div className="wk scroll-x" role="grid" aria-label={t('Week')}>
-    <div className="wk-inner" style={{ ['--hour' as string]: `${HOUR}px` }}>
-      <div className="wk-head"><span />{days.map(d => <span key={d} className={d === today ? 'today' : ''}>{dayLabel(d)}</span>)}</div>
-      {allDay.length > 0 && <div className="wk-allday"><span className="small muted">{t('All day and packages')}</span>{days.map(d => <div key={d}>{allDay.filter(s => dubai(s.startsAt).date === d)
-        .sort((a, b) => a.placement.localeCompare(b.placement) || a.kind.localeCompare(b.kind) || a.startsAt.localeCompare(b.startsAt)).map(s => chip(s))}</div>)}</div>}
-      <div className="wk-body" style={{ height: hours.length * HOUR }}>
-        <div className="wk-hours">{hours.map(h => <span key={h} style={{ top: (h - from) * HOUR }}>{ltr(`${String(h).padStart(2, '0')}:00`)}</span>)}</div>
-        {days.map(d => { const list = timed.filter(s => dubai(s.startsAt).date === d), l = lanes(list)
-          return <div key={d} className={`wk-day ${d === today ? 'today' : ''}`}>{list.map(s => { const [lane, n] = l.get(s.id)!, st = mins(s.startsAt)
-            const len = Math.max(MIN_LEN, (Date.parse(s.endsAt!) - Date.parse(s.startsAt)) / 60000)
-            return chip(s, { top: (st / 60 - from) * HOUR + 1, height: len / 60 * HOUR - 3, insetInlineStart: `calc(${(lane / n) * 100}% + 2px)`, width: `calc(${100 / n}% - 4px)` }) })}</div> })}
-      </div>
+  const hourOf = (s: SSlot) => Math.floor(dubai(s.startsAt).minutes / 60)
+  const hours = [...new Set(timed.map(hourOf))].sort((x, y) => x - y), today = todayInDubai()
+  const card = (s: SSlot) => <button key={s.id} type="button" className={`wk-ev cc-ev f-${family(s.channel)} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}
+    title={`${s.outlet} · ${s.placement} · ${tm(s.label)} · ${bidState(s)[0]}`}>
+    <span className="wk-l1"><ChIcon c={s.channel} size={13} /><b>{s.placement}</b></span>
+    <span className="wk-l2 muted">{tm(s.label)}{s.kind === 'single' && !long(s) ? ` · ${time(s.startsAt)}` : ''}</span>
+    <span className="wk-l3"><BidChip s={s} /></span></button>
+  const row = (label: string, pick: (d: string) => SSlot[], key: string) => <div className="cw-row" key={key}>
+    <span className="cw-t num">{label}</span>
+    {days.map(d => <div key={d} className={`cw-cell ${d === today ? 'today' : ''}`}>{pick(d).sort((x, y) => x.startsAt.localeCompare(y.startsAt) || x.placement.localeCompare(y.placement)).map(card)}</div>)}</div>
+  return <div className="cw card scroll-x" role="grid" aria-label={t('Week')}>
+    <div className="cw-inner">
+      <div className="cw-row cw-head"><span />{days.map(d => <span key={d} className={d === today ? 'today' : ''}>{dayLabel(d)}
+        {d >= today && <button type="button" className="wk-add" aria-label={t('Add to calendar on {day}', { day: dayLabel(d) })} onClick={() => onAdd(d)}>+</button>}</span>)}</div>
+      {allDay.length > 0 && row(t('All day and packages'), d => allDay.filter(s => dubai(s.startsAt).date === d), 'all')}
+      {hours.map(h => row(ltr(`${String(h).padStart(2, '0')}:00`), d => timed.filter(s => dubai(s.startsAt).date === d && hourOf(s) === h), String(h)))}
     </div>
+  </div>
+}
+
+const RANK: Record<string, number> = { pend: 0, bid: 1, acc: 2, open: 3, off: 4 }
+/** The month as the owner drew it: each day shows its first slots with their bid status, and how many more there are. */
+function MonthGrid({ date, grid, slots, open, onOpen, onDay }: { date: string; grid: string[][]; slots: SSlot[]; open: string | null; onOpen: (id: string) => void; onDay: (d: string) => void }) {
+  const today = todayInDubai(), month = date.slice(0, 7), byDay = new Map<string, SSlot[]>()
+  for (const s of slots) { const d = dubai(s.startsAt).date; byDay.set(d, [...(byDay.get(d) ?? []), s]) }
+  return <div className="cc-month card scroll-x" role="grid" aria-label={t('Month')}>
+    <div className="cc-mhead">{grid[0].map(d => <span key={d}>{dayLabel(d, { weekday: 'short' })}</span>)}</div>
+    {grid.map(w => <div className="cc-mrow" key={w[0]}>{w.map(d => { const list = (byDay.get(d) ?? []).sort((x, y) => RANK[bidState(x)[1]] - RANK[bidState(y)[1]] || x.startsAt.localeCompare(y.startsAt))
+      return <div key={d} className={`cv-mcell ${d.slice(0, 7) !== month ? 'out' : ''} ${d === today ? 'today' : ''}`}>
+        <button type="button" className="cc-mday num" onClick={() => onDay(d)} aria-label={t('Open {day}', { day: dayLabel(d) })}>{Number(d.slice(8))}</button>
+        {list.slice(0, 2).map(s => <button key={s.id} type="button" className={`cc-mev ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)} title={`${s.placement} · ${tm(s.label)}`}>
+          <span className="cc-mt"><ChIcon c={s.channel} size={13} /><b>{s.placement} · {tm(s.label)}</b></span>
+          <span className="cc-mm"><span className="num muted">{time(s.startsAt)}</span><BidChip s={s} /></span></button>)}
+        {list.length > 2 && <button type="button" className="cc-more" onClick={() => onDay(d)}>{t('+{n} more', { n: list.length - 2 })}</button>}
+      </div> })}</div>)}
   </div>
 }
 
 type Panel = SSlot & { creativeDueAt: string; choiceDeadlineAt: string | null
   bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean; acceptable?: boolean; profile?: CompanyProfile | null
     brief: { advertiser: string | null; industry: string | null; message: string | null; language: string | null; notes: string | null } | null }[]
-  deals: { id: string; ref: string; status: string; amount: number; kind: string }[]
+  placementId?: string; channel: string
+  deals: { id: string; ref: string; status: string; amount: number; kind: string; buyer?: string }[]
   assets?: { dealId: string; ref: string; creatives: { version: number; status: string; fileId: string; fileType: string; uploadedAt: string }[]
     proof: { submittedAt: string; files: { key: string; fileId: string }[] } | null }[] }
 const KIND: Record<string, string> = { bid: 'Bid', auto: 'Auto-bid', buy_now: t("Buy now"), interest: 'Interest', book: 'Booking' }
@@ -204,6 +253,24 @@ const CREATIVE_STATUS: Record<string, string> = { pending: 'Waiting for your rev
  * The side panel for one slot (owner's calendar): its bid status, then Details, Bids and Assets as tabs. It opens on Bids
  * when something waits on the publisher there, otherwise on Details.
  */
+const TAKEN = ['awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out']
+/** The owner's bid summary: how many bids, the highest, and who the slot went to at what price. */
+function BidSummary({ s, onBids }: { s: Panel; onBids: () => void }) {
+  const live = s.bids.filter(b => b.status !== 'withdrawn'), top = live.reduce((x, b) => Math.max(x, b.amount), 0)
+  const won = s.deals.find(d => TAKEN.includes(d.status)), waiting = s.deals.find(d => d.status === 'awaiting_seller')
+  return <section className="sp-sum">
+    <div className="sp-sum-h"><h3>{t('Bid summary')}</h3>{live.length > 0 && <button type="button" className="btn" onClick={onBids}>{t('View bids')}</button>}</div>
+    <ul>
+      <li><TabSvg d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /><span>{live.length === 1 ? t('1 bid') : t('{n} bids', { n: live.length })}</span></li>
+      {won && <li className="acc"><TabSvg d="M5 12.5l4.5 4.5L19 7.5" /><span>{t('Accepted:')} <b className="num">{money(won.amount)}</b></span></li>}
+      {waiting && !won && <li className="pend"><TabSvg d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><span>{t('Waiting for your decision:')} <a href={`/deals/${waiting.id}`}><b className="num">{money(waiting.amount)}</b></a></span></li>}
+      {top > 0 && <li><TabSvg d="M4 18l6-6 4 4 6-8" /><span>{t('Highest bid:')} <b className="num">{money(top)}</b></span></li>}
+      {(won ?? waiting)?.buyer && <li><TabSvg d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" /><span>{t('Buyer:')} <b>{(won ?? waiting)!.buyer}</b></span></li>}
+      {!live.length && !won && <li className="muted"><span>{s.status === 'open' ? t('No bids yet. Buyers see this slot on the calendar now.') : t('No bids.')}</span></li>}
+    </ul>
+  </section>
+}
+
 export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: () => void; onClose?: () => void }) {
   const [s, setS] = useState<Panel | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [tab, setTab] = useState<'' | 'details' | 'bids' | 'assets'>('')
   const load = () => api<Panel>(`/seller/slots/${id}`).then(setS, e => setError(e.message))
@@ -219,9 +286,12 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
   const on = tab || (waiting ? 'bids' : 'details')
   const TABS: [typeof on, string][] = [['details', t('Details')], ['bids', s.bids.length ? t('Bids ({n})', { n: s.bids.length }) : t('Bids')], ['assets', files ? t('Assets ({n})', { n: files }) : t('Assets')]]
   return <>
-    <header className="drawer-h"><div><h2>{s.outlet} · {s.label}</h2><p className="muted small">{s.placement} · {when(s.startsAt)}</p></div>
-      {onClose && <button className="btn" onClick={onClose} aria-label={t("Close")}>✕</button>}</header>
+    <header className="sp-head">
+      <img src={art(s.channel, 'card')} alt="" width={96} height={72} decoding="async" />
+      <div className="sp-head-t"><h2>{s.placement}</h2><p className="muted small">{tm(s.label)}{sep}{s.outlet}</p><p className="small">{when(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</p></div>
+      {onClose && <button className="btn icon" onClick={onClose} aria-label={t("Close")}>✕</button>}</header>
     <div className="sp-state"><BidChip s={{ status: s.status, saleType: s.saleType, bids: s.bids.filter(b => ['active', 'outbid', 'selected'].includes(b.status)).length }} />
+      <b className="sp-price num">{money(s.topBid ?? s.startingPrice)}</b>
       <span className="small muted">{s.saleType === 'auction' ? t('Auction') : s.saleType === 'quick_sale' ? t('Quick sale') : t('Fixed price')}
         {s.status === 'open' && s.saleType === 'auction' ? ` · ${t('bidding closes {when}', { when: when(s.closesAt) })}` : ''}</span></div>
     {s.status === 'awaiting_choice' && <p className="warn">{s.choiceDeadlineAt ? t('The winner did not go ahead. Choose another bid by {when}, or let it relist as a quick sale.', { when: when(s.choiceDeadlineAt) }) : t('The winner did not go ahead. Choose another bid, or let it relist as a quick sale.')}</p>}
@@ -230,19 +300,19 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
 
     <div id="sp-body" role="tabpanel" aria-labelledby={`sp-${on}`} className="sp-body">
     {on === 'details' && <>
+      <ul className="sp-rows">
+        <li><TabSvg d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /><span>{dayLabel(dubai(s.startsAt).date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span></li>
+        <li><TabSvg d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><span>{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? ` – ${time(s.endsAt)}` : ''}{s.endsAt && mins(s) < 5 ? ` · ${length(s)}` : ''} {t('(UAE)')}</span></li>
+        <li><ChIcon c={s.channel} size={17} /><span>{CHANNEL_NAME[s.channel] ?? s.channel}{sep}{s.placement}</span></li>
+        <li><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" /><span>{t('Sale closes {when}', { when: when(s.closesAt) })}</span></li>
+        <li><TabSvg d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" /><span>{t('Creative due {when}', { when: when(s.creativeDueAt) })}</span></li>
+      </ul>
       <dl className="prices">
         <div><dt>{s.saleType === 'auction' ? t('Starting price') : t('Price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>
-        {s.topBid != null && s.status === 'open' && <div><dt>{t('Top bid')}</dt><dd className="num">{money(s.topBid)}</dd></div>}
         {s.reservePrice && <div><dt>{t("Reserve (buyers don't see it)")}</dt><dd className="num">{money(s.reservePrice)}</dd></div>}
         {s.buyNowPrice && <div><dt>{t("Buy now")}</dt><dd className="num">{money(s.buyNowPrice)}</dd></div>}
       </dl>
-      <dl className="facts sp-facts">
-        <div><dt>{t('Airs')}</dt><dd>{when(s.startsAt)}{s.endsAt ? ` – ${time(s.endsAt)}` : ''}</dd></div>
-        <div><dt>{t('Sale closes')}</dt><dd>{when(s.closesAt)}</dd></div>
-        <div><dt>{t("Creative due")}</dt><dd>{when(s.creativeDueAt)}</dd></div>
-      </dl>
-      {s.deals.length > 0 && <section><h3 className="sp-h">{t("Bookings")}</h3>
-        <ul className="timeline">{s.deals.map(d => <li key={d.id}><a href={`/deals/${d.id}`} className="num">{d.ref}</a><span><DealStatus s={d.status} /> · {money(d.amount)}</span></li>)}</ul></section>}
+      <BidSummary s={s} onBids={() => setTab('bids')} />
     </>}
 
     {on === 'bids' && <section>
@@ -269,8 +339,12 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
       </section>))}
     </div>
     {error && <p className="error" role="alert">{error}</p>}
-    {(s.status === 'open' || s.status === 'blocked') && !s.bids.length && <footer className="drawer-f">
-      <button className="btn" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/block`, { blocked: s.status === 'open' })}>{s.status === 'open' ? t('Take off sale') : t('Put back on sale')}</button></footer>}
+    <footer className="sp-foot">
+      {s.placementId && <a className="btn" href={`/listings/${s.placementId}/edit`}><TabSvg d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />{t('Edit')}</a>}
+      {s.placementId && <a className="btn" href={`/listings/new?from=${s.placementId}`}><TabSvg d="M8 8h12v12H8zM4 16V4h12" />{t('Duplicate')}</a>}
+      {(s.status === 'open' || s.status === 'blocked') && !s.bids.length &&
+        <button className="btn sp-wide" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/block`, { blocked: s.status === 'open' })}>{s.status === 'open' ? t('Take off sale') : t('Put back on sale')}</button>}
+    </footer>
   </>
 }
 
