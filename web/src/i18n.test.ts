@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { AR } from './i18n-ar'
 import { SERVER_AR } from './i18n-server'
 import { AUDIENCES } from '../../server/shared/audiences'
-import { INDUSTRY_PAGES } from './public/Segments'
+import { INDUSTRY_PAGES } from './public/industries'
 
 const SRC = new URL('.', import.meta.url).pathname
 const files = (dir: string): string[] => readdirSync(dir).flatMap(f => { const p = join(dir, f); return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(f) && !/\.test\./.test(f) ? [p] : [] })

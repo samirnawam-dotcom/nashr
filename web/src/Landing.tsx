@@ -6,7 +6,7 @@ import { isAr, t } from './i18n'
 import { dayLabel, money } from './format'
 import { api } from './api'
 import { AUDIENCES } from '../../server/shared/audiences'
-import { INDUSTRY_PAGES } from './public/Segments'
+import { INDUSTRY_PAGES } from './public/industries'
 
 /**
  * The first page visitors see. One bold element — the live programme board in the control room — and everything
