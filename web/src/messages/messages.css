@@ -79,7 +79,7 @@
   .msg { max-width: 88%; }
 }
 /* The unread count next to "Messages" in the navigation */
-.nav-badge { margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--signal); color: #1c1300; font-size: 11.5px; font-weight: 700; display: inline-grid; place-items: center; }
+.nav-badge { margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--signal); color: #ffffff; font-size: 11.5px; font-weight: 700; display: inline-grid; place-items: center; }
 .tabbar .nav-badge { position: absolute; top: 4px; margin: 0; inset-inline-start: calc(50% + 6px); min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
 .tabbar a { position: relative; }
 .staff-thread { max-height: 560px; border-radius: var(--radius); }

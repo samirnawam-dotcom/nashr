@@ -5,9 +5,9 @@
   /* Placeholder brand: Omar's approved teal, a deep "studio" teal for the shell, and a saffron on-air signal used only
      for live and urgent moments. Swap these when the brand files arrive; nothing else hard-codes a colour. */
   --bg: #f6f7f6; --surface: #fff; --ink: #17212b; --slate: #56616e; --faint: #66717f; --line: #e1e5e4;
-  --teal: #0f6b6b; --teal-1: #eef6f5; --teal-2: #d3e9e7; --teal-3: #a3d0cc; --teal-4: #5fa9a4;
-  --studio: #0a4545; --studio-2: #0d5858; --on-studio: #e7f2f1; --on-studio-dim: #a8c9c6;
-  --signal: #e5a21b; --signal-ink: #6b4500; --signal-1: #fdf3dc;
+  --teal: #6b3cf6; --teal-1: #eef6f5; --teal-2: #d3e9e7; --teal-3: #a3d0cc; --teal-4: #5fa9a4;
+  --studio: #1e1650; --studio-2: #2a1f6e; --on-studio: #e7f2f1; --on-studio-dim: #a8c9c6;
+  --signal: #6b3cf6; --signal-ink: #3a15b8; --signal-1: #fdf3dc;
   --green: #1d7a46; --green-1: #e7f4ec; --amber: #8f5200; --amber-1: #fbf0dd; --red: #a8291f; --red-1: #fbebe9;
   --radius: 8px; --radius-lg: 14px; --focus: 0 0 0 3px var(--surface), 0 0 0 5px var(--teal);
   --display: "Geist", system-ui, sans-serif; --body: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
@@ -32,7 +32,7 @@ h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.2; }
 .nav a:hover { color: var(--on-studio); }
 .nav a.active { color: #fff; border-color: var(--signal); font-weight: 500; }
 .nav .soon { font-size: 11px; font-weight: 500; color: var(--studio); background: var(--on-studio-dim); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px; }
-.topbar .btn { background: transparent; color: var(--on-studio); border-color: rgba(231, 242, 241, .28); }
+.topbar .btn { background: transparent; color: var(--on-studio); border-color: rgba(241, 238, 252, .28); }
 .topbar .btn:hover { background: var(--studio-2); }
 .topbar .who { font-size: 13px; color: var(--on-studio-dim); }
 .menu-btn { display: none; }
@@ -77,7 +77,7 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 
 /* "On air": the one bright signal. Live bidding, closing soon, you lead. */
 .on-air { display: inline-flex; align-items: center; gap: 6px; color: var(--signal-ink); background: var(--signal-1); border-radius: 999px; padding: 2px 10px 2px 8px; font-size: 12px; font-weight: 600; }
-.on-air::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px rgba(229, 162, 27, .25); }
+.on-air::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px rgba(107, 60, 246, .25); }
 
 /* Sign-in and access pages: the studio hero on the left, the form on the right */
 .auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr); background: var(--surface); }
@@ -87,7 +87,7 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 .auth-hero h2 { font: 600 clamp(24px, 2.4vw, 34px)/1.2 var(--display); max-width: 18ch; letter-spacing: -.015em; }
 .auth-hero p { color: var(--on-studio-dim); max-width: 46ch; margin: 14px 0 0; }
 .auth-channels { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
-.auth-channels span { border: 1px solid rgba(231, 242, 241, .3); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.auth-channels span { border: 1px solid rgba(241, 238, 252, .3); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
 .auth-form { display: grid; place-items: center; padding: 40px 24px; }
 .auth-form form { width: min(400px, 100%); display: grid; gap: 16px; }
 .auth-form h1 { font-size: 28px; }
@@ -98,8 +98,8 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
   .menu-btn { display: inline-flex; }
   .topbar .nav { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; gap: 0; background: var(--studio); padding: 8px 16px 16px; box-shadow: 0 12px 24px rgba(10, 69, 69, .25); }
   .topbar.open .nav { display: flex; }
-  .topbar .nav a { padding: 12px 4px; border-bottom: 1px solid rgba(231, 242, 241, .12); }
-  .topbar .nav a.active { border-color: rgba(231, 242, 241, .12); color: var(--signal); }
+  .topbar .nav a { padding: 12px 4px; border-bottom: 1px solid rgba(241, 238, 252, .12); }
+  .topbar .nav a.active { border-color: rgba(241, 238, 252, .12); color: var(--signal); }
   .topbar .nav .nav-signout { display: block; border-bottom: 0; }
   .topbar .who, .topbar .signout { display: none; }
   main { padding: 20px 16px; }

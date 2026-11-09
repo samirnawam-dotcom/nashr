@@ -1,5 +1,5 @@
 /* Dashboards: figures and charts. Point = brand teal, context = quiet gray, grid = hairline, text never in the data colour. */
-:root { --mark: var(--teal); --mark-context: #b4c0be; --mark-track: var(--teal-2); --grid: #e8ecea; }
+:root { --mark: var(--teal); --mark-context: #c9c1ec; --mark-track: var(--teal-2); --grid: #ecebf3; }
 
 .dash { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 .dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; }
@@ -43,7 +43,7 @@ a.stat:hover { border-color: var(--teal-3); }
 .chart-plot { position: relative; width: 100%; }
 .chart svg { display: block; overflow: visible; }
 .chart .grid { stroke: var(--grid); stroke-width: 1; }
-.chart .axis { stroke: #c9d1cf; stroke-width: 1; }
+.chart .axis { stroke: #d6d1ec; stroke-width: 1; }
 .chart .tick { fill: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
 .col path { fill: var(--mark-context); transition: fill .12s; }
 .col.now path { fill: var(--mark); }
@@ -53,7 +53,7 @@ a.stat:hover { border-color: var(--teal-3); }
 .tip { position: absolute; top: 0; transform: translate(-50%, -8px); background: var(--ink); color: #fff; border-radius: 8px; padding: 6px 10px; display: grid;
   font-size: 12px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(23, 33, 43, .18); }
 .tip b { font: 600 14px var(--display); }
-.tip span { color: #c9d4dc; }
+.tip span { color: #d6d1ec; }
 .chart-table summary { font-size: 12px; color: var(--slate); cursor: pointer; width: max-content; }
 .chart-table .table { margin-top: 8px; font-size: 13px; }
 

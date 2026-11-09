@@ -1,20 +1,20 @@
 /* The media plan: one A4 sheet, printable as a PDF. Ink on paper; the brand shows in the wordmark and the channel mix only. */
 .plan-page { max-width: 900px; margin: 0 auto; }
 .plan-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
-.plan-sheet { background: #fff; color: #0e1d21; border: 1px solid var(--line); border-radius: 16px; padding: 44px 48px; box-shadow: var(--shadow-2, 0 12px 30px -18px rgba(6, 38, 42, .3));
+.plan-sheet { background: #fff; color: #0d0c1d; border: 1px solid var(--line); border-radius: 16px; padding: 44px 48px; box-shadow: var(--shadow-2, 0 12px 30px -18px rgba(11, 10, 26, .3));
   display: grid; gap: 28px; font-size: 13.5px; }
-.plan-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; border-bottom: 2px solid #0e1d21; padding-bottom: 20px; }
+.plan-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; border-bottom: 2px solid #0d0c1d; padding-bottom: 20px; }
 .plan-mark { display: inline-flex; align-items: baseline; gap: 8px; }
 .plan-mark b { font: 700 18px var(--display); letter-spacing: -.01em; }
 .plan-mark i { font: 700 20px "Reem Kufi", serif; font-style: normal; color: #b07a08; }
-.plan-kicker { margin: 18px 0 2px; font-size: 12px; color: #4d5c61; }
+.plan-kicker { margin: 18px 0 2px; font-size: 12px; color: #5e5b72; }
 .plan-head h1 { margin: 0; font: 700 30px/1.1 var(--display); letter-spacing: -.03em; }
-.plan-meta { margin: 6px 0 0; color: #4d5c61; }
-.plan-date { margin: 0; color: #4d5c61; white-space: nowrap; font-size: 12.5px; }
-.plan-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid #d9e1df; border-radius: 10px; }
+.plan-meta { margin: 6px 0 0; color: #5e5b72; }
+.plan-date { margin: 0; color: #5e5b72; white-space: nowrap; font-size: 12.5px; }
+.plan-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid #e4e2ec; border-radius: 10px; }
 .plan-kpis div { display: grid; gap: 4px; padding: 14px 16px; }
-.plan-kpis div + div { border-left: 1px solid #d9e1df; }
-.plan-kpis span { font-size: 12px; color: #4d5c61; }
+.plan-kpis div + div { border-left: 1px solid #e4e2ec; }
+.plan-kpis span { font-size: 12px; color: #5e5b72; }
 .plan-kpis b { font: 700 19px var(--body, "IBM Plex Sans", sans-serif); letter-spacing: -.01em; }
 .plan-sheet h2 { font: 650 15px var(--display); margin: 0 0 10px; }
 .mix-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; background: #fff; }
@@ -22,20 +22,20 @@
 .plan-mix ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 10px 0 0; padding: 0; }
 .plan-mix li { display: inline-flex; align-items: center; gap: 6px; }
 .plan-mix li i { width: 10px; height: 10px; border-radius: 3px; }
-.plan-mix li span { color: #4d5c61; }
-.mix-radio { background: #0f6b6b; } .mix-tv { background: #2f8f86; } .mix-print { background: #e5a21b; } .mix-digital { background: #7aa8a2; } .mix-podcast { background: #0a4545; }
+.plan-mix li span { color: #5e5b72; }
+.mix-radio { background: #6b3cf6; } .mix-tv { background: #2f8f86; } .mix-print { background: #6b3cf6; } .mix-digital { background: #7aa8a2; } .mix-podcast { background: #1e1650; }
 .plan-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.plan-table th { text-align: left; font-weight: 500; font-size: 12px; color: #4d5c61; border-bottom: 1px solid #0e1d21; padding: 6px 8px 6px 0; }
+.plan-table th { text-align: left; font-weight: 500; font-size: 12px; color: #5e5b72; border-bottom: 1px solid #0d0c1d; padding: 6px 8px 6px 0; }
 .plan-table td { border-bottom: 1px solid #e3e9e7; padding: 8px 8px 8px 0; vertical-align: top; }
-.plan-table tfoot td { border-bottom: 0; border-top: 1px solid #0e1d21; font-weight: 650; }
+.plan-table tfoot td { border-bottom: 0; border-top: 1px solid #0d0c1d; font-weight: 650; }
 .plan-table .r { text-align: right; }
-.plan-foot { border-top: 1px solid #d9e1df; padding-top: 14px; color: #4d5c61; font-size: 11.5px; line-height: 1.6; }
+.plan-foot { border-top: 1px solid #e4e2ec; padding-top: 14px; color: #5e5b72; font-size: 11.5px; line-height: 1.6; }
 @media (max-width: 700px) {
   .plan-sheet { padding: 24px 18px; }
   .plan-head { flex-direction: column; }
   .plan-kpis { grid-template-columns: 1fr 1fr; }
   .plan-kpis div:nth-child(3) { border-left: 0; }
-  .plan-kpis div:nth-child(n+3) { border-top: 1px solid #d9e1df; }
+  .plan-kpis div:nth-child(n+3) { border-top: 1px solid #e4e2ec; }
   .plan-sheet .plan-table { display: block; overflow-x: auto; }
 }
 @page { size: A4; margin: 14mm; }
@@ -48,5 +48,5 @@
   .plan-table tr, .plan-kpis, .plan-mix { break-inside: avoid; }
   .mix-bar i, .plan-mix li i { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
-.plan-mix .plan-note { margin: 8px 0 0; color: #4d5c61; font-size: 11.5px; }
+.plan-mix .plan-note { margin: 8px 0 0; color: #5e5b72; font-size: 11.5px; }
 .statement-month { min-width: 9em; text-align: center; }
