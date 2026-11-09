@@ -40,7 +40,7 @@ const UsersPage = L(() => import('./admin/Users'), 'UsersPage')
 const EmailsPage = L(() => import('./admin/Emails'), 'EmailsPage')
 const UserPage = L(() => import('./admin/Users'), 'UserPage')
 const load_seller_Dashboard = () => import('./seller/Dashboard')
-const InboxPage = L(load_seller_Dashboard, 'InboxPage')
+const RequestsPage = L(() => import('./seller/Requests'), 'RequestsPage')
 const SellerDashboard = L(load_seller_Dashboard, 'SellerDashboard')
 const PortalDashboard = L(() => import('./seller/Portal'), 'PortalDashboard')
 const load_seller_Schedule = () => import('./seller/Schedule')
@@ -118,7 +118,7 @@ const BUYER: Routes = [
 ]
 const SELLER: Routes = [
   [/^\/home/, () => <PortalDashboard />],
-  [/^\/inbox/, () => <InboxPage />],
+  [/^\/inbox/, () => <RequestsPage />],
   [/^\/schedule/, () => <SchedulePage />],
   [/^\/slots\/([\w-]+)$/, id => <SlotPage id={id} />],
   [/^\/deals\/([\w-]+)$/, id => <SellerDealPage id={id} />],

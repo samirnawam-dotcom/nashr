@@ -3,7 +3,7 @@ import { NotFound, type RouteFn } from './app.js'
 import { sellerDeal, sellerSlot } from './shapes.js'
 import { companyProfile } from './profiles.js'
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
-import { accept, acceptInterest, chooseBid, decline, MarketError } from '../marketplace/market.js'
+import { accept, acceptInterest, chooseBid, counter, decline, MarketError } from '../marketplace/market.js'
 import { cancelBySeller, creativeMissed } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
 import { reviewCreative } from '../fulfilment/creative.js'
@@ -100,6 +100,14 @@ export function sellerRoutes(route: RouteFn) {
     await decline(db, req.params.id, req.body.reason, `seller:${me.actAs.companyId}`, at)
     return { ok: true }
   }, reason)
+
+  // Counter offer: another price for the buyer to agree to; the request stays with the publisher until then.
+  route('POST', '/api/seller/deals/:id/counter', SELLER, async ({ db, at, me }, req) => {
+    await ownDeal(db, req.params.id, me.actAs.companyId)
+    await counter(db, req.params.id, req.body.amount, req.body.note ?? null, `seller:${me.actAs.companyId}`, at)
+    return sellerDeal(await ownDeal(db, req.params.id, me.actAs.companyId))
+  }, { type: 'object', required: ['amount'], additionalProperties: false, properties: {
+    amount: { type: 'integer', minimum: 100, maximum: 100_000_000_00 }, note: { type: 'string', maxLength: 500 } } })
 
   route('POST', '/api/seller/slots/:id/choose', SELLER, async ({ db, at, me }, req) => {
     await ownSlot(db, req.params.id, me.actAs.companyId)

@@ -101,9 +101,3 @@ export function SellerDashboard() {
   )
 }
 
-export function InboxPage() {
-  const [tasks, setTasks] = useState<Task[] | null>(null), [error, setError] = useState('')
-  useEffect(() => { api<Task[]>('/seller/inbox').then(setTasks, e => setError(e.message)) }, [])
-  return <main><PhotoBand img="/brand/radio-wide.jpg" title={t("Inbox")} sub={t("Everything waiting on you, soonest deadline first.")} />
-    {error && <p className="error">{error}</p>}{tasks && <TaskList tasks={tasks} />}</main>
-}

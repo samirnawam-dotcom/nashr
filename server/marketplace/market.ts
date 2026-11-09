@@ -357,6 +357,51 @@ export async function decline(db: Db, dealId: string, reason: string, actor: str
 }
 
 /**
+ * Counter offer (owner's brief): instead of accepting or declining a request, the publisher names another price. The request stays
+ * with the publisher and keeps its deadline; the buyer agrees (the booking is accepted at that price) or keeps their offer.
+ */
+export async function counter(db: Db, dealId: string, amount: number, note: string | null, actor: string, at: Date) {
+  const deal = await one(db, `select d.*, s.label, o.name outlet from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
+    join outlets o on o.id = p.outlet_id where d.id = $1 for update of d`, [dealId])
+  if (deal.status !== 'awaiting_seller') throw new MarketError('Only a request waiting on you can get a counter offer.')
+  if (deal.next_deadline_at && new Date(deal.next_deadline_at) <= at) throw new MarketError('This request has expired.')
+  if (amount === Number(deal.amount)) throw new MarketError('A counter offer needs a different price. To take this price, accept the request.')
+  const clean = note?.trim() || null
+  await db.query(`update deals set counter_amount = $2, counter_note = $3, countered_at = $4 where id = $1`, [dealId, amount, clean, at])
+  await db.query(`insert into deal_events (deal_id, at, event, from_status, to_status, actor, note) values ($1, $2, 'counter', $3, $3, $4, $5)`,
+    [dealId, at, deal.status, actor, clean])
+  await audit(db, actor, 'deal.countered', 'deal', dealId, { from: Number(deal.amount), to: amount }, at)
+  await notify(db, deal.buyer_id, 'deal.countered', dealId, { outlet: deal.outlet, label: deal.label, amount, was: Number(deal.amount) }, at)
+}
+
+/** The buyer's answer to a counter offer: agree, and the booking is accepted at that price; or keep the first offer for the publisher to decide. */
+export async function answerCounter(db: Db, dealId: string, buyerId: string, agree: boolean, actor: string, at: Date) {
+  const deal = await one(db, `select * from deals where id = $1 and buyer_id = $2 for update`, [dealId, buyerId])
+  if (deal.status !== 'awaiting_seller' || deal.counter_amount == null) throw new MarketError('There is no counter offer to answer.')
+  const amount = Number(deal.counter_amount)
+  await db.query(`update deals set counter_amount = null, counter_note = null, countered_at = null${agree ? ', amount = $2' : ''} where id = $1`,
+    agree ? [dealId, amount] : [dealId])
+  await db.query(`insert into deal_events (deal_id, at, event, from_status, to_status, actor, note) values ($1, $2, $3, $4, $4, $5, null)`,
+    [dealId, at, agree ? 'counter_agreed' : 'counter_refused', deal.status, actor])
+  if (!agree) {
+    await audit(db, actor, 'deal.counter_refused', 'deal', dealId, { amount }, at)
+    await notify(db, deal.seller_id, 'deal.counter_refused', dealId, { amount, was: Number(deal.amount) }, at)
+    return
+  }
+  if (deal.client_id && amount > Number(deal.amount)) { // a client whose budget is set to stop still refuses what would take it over
+    const client = await one(db, `select * from clients where id = $1 for update`, [deal.client_id])
+    if (client.budget != null && client.budget_stop) {
+      const { used } = await one(db, `select coalesce(sum(amount), 0)::bigint used from deals where client_id = $1 and status in ${BOOKED}`, [deal.client_id])
+      if (Number(used) > Number(client.budget))
+        throw new MarketError(`This would take ${client.name} over its budget: ${aed(Math.max(0, Number(client.budget) - Number(used) + amount))} is left.`)
+    }
+  }
+  await audit(db, actor, 'deal.counter_agreed', 'deal', dealId, { from: Number(deal.amount), to: amount }, at)
+  await notify(db, deal.seller_id, 'deal.counter_agreed', dealId, { amount }, at)
+  return accept(db, dealId, actor, at)
+}
+
+/**
  * After a decline, expiry or lapse (owner feedback, SPEC 11.1 #7): a refused buy-now request just ends and the auction carries on;
  * an accepted buy-now or quick sale that is not paid is relisted.
  * Otherwise the seller may choose any remaining bid within their window, at most `max_choice_rounds` times, then the slot is relisted.

@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { Decide, type Counter } from './Decide'
 import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
@@ -15,7 +16,7 @@ import { art } from '../media'
 type SDeal = { id: string; ref: string; status: string; label: string; startsAt: string; nextDeadlineAt: string | null; buyer: { company: string }
   brief: any; paymentFailed: boolean; checks: { categoryAccepted: boolean; landingPageMissing: boolean; creativeToFollow: boolean } | null; belowReserve: boolean; separation?: { industry: string; count: number } | null; buyerProfile?: CompanyProfile | null
   money: { bid: number; mediaVat: number; fee: number; feeVat: number; youReceive: number; commissionBp: number }
-  otherBids: { id: string; label: string; company: string; amount: number }[]; rating?: { score: number; comment: string | null } | null }
+  otherBids: { id: string; label: string; company: string; amount: number }[]; counter?: Counter; rating?: { score: number; comment: string | null } | null }
 type Detail = { dispute?: Dispute | null; channel: string; creativeDueAt: string; slotId: string; slotStatus: string; invoiceMode: string; placeholder: boolean; rejectReasons: string[]
   proofChecklist: { key: string; label: string }[]; adHasRun: boolean
   timeline: { at: string; event: string; status: string; note: string | null }[]
@@ -50,7 +51,7 @@ export function SellerDealsPage() {
   )
 }
 
-const EVENT: Record<string, string> = { opened: 'Request received', withdraw: 'The buyer withdrew the request', accept: 'You accepted', decline: 'You declined', expire: 'Expired without a decision', supersede: 'Another request was accepted',
+const EVENT: Record<string, string> = { opened: 'Request received', counter: 'You offered another price', counter_agreed: 'The buyer agreed to your price', counter_refused: 'The buyer kept their offer', withdraw: 'The buyer withdrew the request', accept: 'You accepted', decline: 'You declined', expire: 'Expired without a decision', supersede: 'Another request was accepted',
   pay: 'Buyer paid', lapse: 'Buyer did not pay in time', submit_proof: 'You sent proof', approve: 'Buyer approved', auto_release: 'Released automatically', report_issue: 'Buyer reported an issue',
   resolve: 'Corrected proof accepted', make_good: 'Make-good agreed', partial_refund: 'Partial refund agreed', escalate: 'Escalated to Nashr', release: 'Nashr released', refund: 'Refunded',
   paid_out: 'Paid to your bank', cancel_by_buyer: 'Buyer cancelled', cancel_by_seller: 'You cancelled', creative_missed: 'Released: creative not received', proof_missed: 'Refunded: proof not sent in time' }
@@ -94,12 +95,7 @@ export function SellerDealPage({ id }: { id: string }) {
           {d.belowReserve && <p className="warn">{t("This is below your reserve price. You can still accept it.")}</p>}
           {d.separation && <p className="warn">{t('Competitive separation: another {industry} advertiser is already booked with this outlet on the same day. You can still accept it.', { industry: t(d.separation.industry) })}</p>}
           {d.nextDeadlineAt && <p className="small muted">{t('Decide by {when} or the request expires.', { when: when(d.nextDeadlineAt) })}</p>}
-          {form?.k !== 'decline' ? <div className="row-flex">
-            <button className="btn primary" disabled={busy} onClick={() => act(`/seller/deals/${d.id}/accept`, {}, t("Accepted. The buyer has been asked to pay."))}>{t("Accept")}</button>
-            <button className="btn" onClick={() => setForm({ k: 'decline', reason: '' })}>{t("Decline")}</button></div>
-          : <div className="form"><div className="field"><label htmlFor="dr">{t("Reason (the buyer sees it)")}</label><textarea id="dr" rows={2} value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} /></div>
-            <div className="row-flex"><button className="btn primary" disabled={busy || !form.reason.trim()} onClick={() => act(`/seller/deals/${d.id}/decline`, { reason: form.reason }, t("Declined."))}>{t("Decline")}</button>
-              <button className="btn" onClick={() => setForm(null)}>{t("Back")}</button></div></div>}
+          <Decide dealId={d.id} price={d.money.bid} counter={d.counter ?? null} onDone={said => { setNote(said); load() }} />
         </>}
         {d.status === 'awaiting_payment' && d.paymentFailed && <p className="warn">{d.nextDeadlineAt ? t("Payment pending: the buyer's card was declined and they've been asked to update it. The booking lapses at {when} if they don't pay.", { when: when(d.nextDeadlineAt) }) : t("Payment pending: the buyer's card was declined and they've been asked to update it.")}</p>}
         {d.status === 'awaiting_payment' && !d.paymentFailed && <p className="muted">{d.nextDeadlineAt ? t('Waiting for the buyer to pay (by {when}). They can send creative already.', { when: when(d.nextDeadlineAt) }) : t('Waiting for the buyer to pay. They can send creative already.')}</p>}

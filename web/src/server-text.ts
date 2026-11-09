@@ -180,6 +180,9 @@ export const SERVER_AR: Record<string, string> = {
   "No backup has been made yet.": "لم تُنشأ أي نسخة احتياطية بعد.",
   "The last restore drill failed: a backup may not restore. Check: journalctl -u nashr-restore-drill.": "فشلت آخر تجربة استعادة: قد لا تُستعاد نسخة احتياطية. راجع: journalctl -u nashr-restore-drill.",
   "No restore drill has passed for over a week.": "لم تنجح أي تجربة استعادة منذ أكثر من أسبوع.",
+  "Only a request waiting on you can get a counter offer.": "لا يمكن تقديم عرض مقابل إلا على طلب ينتظر قرارك.",
+  "A counter offer needs a different price. To take this price, accept the request.": "العرض المقابل يحتاج سعرًا مختلفًا. لتأخذ هذا السعر، اقبل الطلب.",
+  "There is no counter offer to answer.": "لا يوجد عرض مقابل للرد عليه.",
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

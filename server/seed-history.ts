@@ -6,7 +6,8 @@ import { generateSlots } from './catalog/placements.js'
 import { accept, acceptInterest, closeAuction, decline, MarketError, placeBid, requestBuyNow, showInterest } from './marketplace/market.js'
 import { approve, confirmPayment, runMoneyOps } from './payments/payments.js'
 import { uploadCreative, reviewCreative, CREATIVE_SPECS } from './fulfilment/creative.js'
-import { submitProof, PROOF_CHECKLIST } from './fulfilment/proof.js'
+import { submitProof, checklistFor } from './fulfilment/proof.js'
+import { family } from './shared/media.js'
 import { FakeProvider } from './payments/provider.js'
 import { sweep } from './marketplace/sweeper.js'
 
@@ -79,7 +80,7 @@ export async function seedHistory(o: { now: Date; demoBuyer: string; rivals: str
       if (rand() < 0.05) continue // never paid: the booking lapses when the timers run
       const paidAt = t(decidedAt.getTime() + (1 + rand() * 20) * H)
       await confirmPayment(provider, { dealId: deal.id, buyerId: buyer, paymentMethod: 'pm_card_4242' }, paidAt)
-      const spec = CREATIVE_SPECS[s.channel]
+      const spec = CREATIVE_SPECS[family(s.channel)]
       const sentAt = t(paidAt.getTime() + (1 + rand() * 12) * H)
       if (sentAt < new Date(s.creative_due_at)) {
         await tx(c => uploadCreative(c, { dealId: deal.id, buyerId: buyer, fileKey: `seed/${deal.id}`, fileType: spec.types[0], fileSize: 2_000_000 }, sentAt))
@@ -87,7 +88,7 @@ export async function seedHistory(o: { now: Date; demoBuyer: string; rivals: str
       }
       // After the run: proof, then the buyer approves (recent ones are still waiting for review).
       const proofAt = t(starts.getTime() + (2 + rand() * 20) * H)
-      const items = Object.fromEntries(PROOF_CHECKLIST[s.channel].map(i => [i.key, `${i.label} for ${s.label}`]))
+      const items = Object.fromEntries(checklistFor(s.channel).map(i => [i.key, `${i.label} for ${s.label}`]))
       await tx(c => submitProof(c, { dealId: deal.id, sellerId: deal.seller_id, items }, proofAt))
       if (rand() < 0.06) continue
       const approvedAt = t(proofAt.getTime() + (4 + rand() * 60) * H)

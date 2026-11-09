@@ -119,8 +119,8 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
 
   // What a company's own team settings allow each person (self-serve teams): paying, deciding on bookings, managing the team
   const NEEDS: Record<string, 'pay' | 'decide' | 'manage'> = {
-    'POST /api/deals/:id/pay': 'pay', 'POST /api/deals/:id/cancel': 'pay',
-    'POST /api/seller/deals/:id/accept': 'decide', 'POST /api/seller/deals/:id/decline': 'decide', 'POST /api/seller/slots/:id/choose': 'decide',
+    'POST /api/deals/:id/pay': 'pay', 'POST /api/deals/:id/cancel': 'pay', 'POST /api/deals/:id/counter': 'pay',
+    'POST /api/seller/deals/:id/accept': 'decide', 'POST /api/seller/deals/:id/decline': 'decide', 'POST /api/seller/deals/:id/counter': 'decide', 'POST /api/seller/slots/:id/choose': 'decide',
     'POST /api/seller/slots/:id/accept-interest': 'decide', 'POST /api/seller/deals/:id/cancel': 'decide', 'POST /api/seller/deals/:id/issues/offer': 'decide',
     'PUT /api/buyer/company': 'manage', 'PUT /api/seller/company': 'manage', 'POST /api/seller/payouts/connect': 'manage',
     'POST /api/team': 'manage', 'PUT /api/team/:id': 'manage', 'POST /api/team/:id/remove': 'manage', 'POST /api/team/:id/restore': 'manage', 'POST /api/team/:id/invite': 'manage',

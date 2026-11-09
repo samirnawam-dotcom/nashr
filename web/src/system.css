@@ -534,6 +534,8 @@ main .table td a:not(.btn):hover { text-decoration: underline; text-underline-of
 .team li:last-child { border-bottom: 0; }
 .team li > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
 .confirm-box { margin-top: 8px; padding: 12px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+.counter-box { display: grid; gap: 6px; margin-top: 8px; padding: 12px 14px; border-radius: var(--radius); background: var(--teal-1); border: 1px solid var(--teal-2); }
+.counter-box p { margin: 0; }
 .order-link { display: inline-flex; align-items: center; gap: 8px; justify-self: start; margin-top: 4px; }
 /* An on/off switch: a real checkbox, drawn as a track and knob. */
 .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }

@@ -22,11 +22,11 @@ export const due = (iso: string | null) => {
 export { money }
 
 export type Task = { type: string; dealId: string | null; ref: string | null; slotId: string; outlet: string; label: string; startsAt: string
-  buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null; belowReserve?: boolean; interested?: number }
-const ACTION: Record<string, string> = { interest: 'Review', decide: 'Decide', choose: 'Choose a bid', creative: 'Review', creative_missing: 'Decide', proof: 'Send proof',
+  buyer: string | null; amount: number | null; dueAt: string | null; kind: string | null; belowReserve?: boolean; interested?: number; counter?: number | null }
+export const ACTION: Record<string, string> = { interest: 'Review', decide: 'Decide', choose: 'Choose a bid', creative: 'Review', creative_missing: 'Decide', proof: 'Send proof',
   issue: 'Respond', prerun: 'Confirm', invoice: 'Upload' }
 const urgent = (iso: string | null) => !!iso && new Date(iso).getTime() - Date.now() < 24 * 3_600_000
-const TASK: Record<string, string> = { interest: 'Buyer interested', decide: 'Accept or decline', choose: 'Choose the next bid', creative: 'Review creative', creative_missing: 'Creative not received',
+export const TASK: Record<string, string> = { interest: 'Buyer interested', decide: 'Accept or decline', choose: 'Choose the next bid', creative: 'Review creative', creative_missing: 'Creative not received',
   proof: 'Send proof', issue: 'Respond to an issue', prerun: 'Confirm the pre-run check', invoice: 'Upload your invoice' }
 
 export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {

@@ -24,6 +24,7 @@ export const buyerDeal = (d: any) => {
   return {
     id: d.id, ref: d.ref, kind: d.kind, status: buyerStatus[d.status] ?? d.status, outlet: d.outlet, label: d.label, startsAt: d.starts_at,
     currency: d.currency, price: d.amount, vat: s.mediaVat, total: s.buyerPays, nextDeadlineAt: d.next_deadline_at, reason: d.status_note ?? null, client: d.client ?? null,
+    counter: d.counter_amount != null ? { price: Number(d.counter_amount), note: d.counter_note ?? null, at: d.countered_at } : null,
   }
 }
 
@@ -41,6 +42,7 @@ export const sellerDeal = (d: any, bids: any[] = []) => {
     buyer: { company: d.buyer_name },           // company name and ad details only, never contact details (brief section 6)
     brief: d.brief, checks: d.brief ? briefChecks(d.brief, { channel: d.channel, sectors: d.sectors }) : null,
     belowReserve: d.reserve_price != null && d.amount < d.reserve_price, paymentFailed: !!d.payment_failed,
+    counter: d.counter_amount != null ? { amount: Number(d.counter_amount), note: d.counter_note ?? null, at: d.countered_at } : null,
     money: { bid: d.amount, mediaVat: s.mediaVat, fee: s.fee, feeVat: s.feeVat, youReceive: s.payout, commissionBp: rates.commissionBp },
     otherBids: bids.map((b, i) => ({ id: b.id, label: `Bidder ${String.fromCharCode(66 + i)}`, company: b.buyer_name, amount: b.amount })),
   }

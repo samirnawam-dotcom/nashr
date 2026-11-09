@@ -18,9 +18,9 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
   const shot = async n => out && (await p.waitForTimeout(300), await p.screenshot({ path: `${out}/${n}.png`, fullPage: true }))
   await p.goto(BASE + '/#/sign-in'); await p.fill('#email', 'sales@skyline.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
-  await p.waitForSelector('.dash-lead'); await shot('s1-dashboard')
-  await p.click('.nav >> text=Inbox'); await p.waitForSelector('.tasks'); await shot('s2-inbox')
-  await p.click(`.tasks a[href="/deals/${dealId}"]`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')
+  await p.waitForSelector('.pt-kpis'); await shot('s1-dashboard')
+  await p.click('.nav >> text=Requests'); await p.waitForSelector('.rq-item'); await shot('s2-inbox')
+  await p.goto(BASE + `/deals/${dealId}`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')
   await p.click('button:has-text("Accept")'); await p.waitForSelector('text=Accepted. The buyer')
   // The buyer pays and sends creative
   await twoStepViaApi(buyer, BASE) // paying needs two-step sign-in
@@ -46,14 +46,14 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   if (await p.locator('.cv-table .st:not(.st-on_sale)').count()) throw new Error('the status filter let other statuses through')
   await p.click('.cv-views button:has-text("Month")'); await p.waitForSelector('.cv-mcell'); await shot('s6c-month')
   // A new placement, listed straight away
-  await p.click('.nav >> text=Listings'); await p.waitForSelector('table'); await p.click('a:has-text("Add placement")'); await p.waitForSelector('.pl-format')
+  await p.click('.nav >> text=Products'); await p.waitForSelector('.pr-row'); await p.click('a:has-text("Add product")'); await p.waitForSelector('.pl-format')
   await p.click('.pl-format:has-text("Programme sponsorship")'); await p.fill('#n', 'Weekend Brunch'); await p.click('.pl-sale-card:has-text("Quick sale")')
   await p.click('.pl-quick button:has-text("Weekend")'); await p.fill('#sa', '10:00'); await p.fill('#ea', '12:00')
   await p.fill('#sp', '1800'); await shot('s7-new-placement')
   await p.click('button:has-text("Save placement")'); await p.waitForSelector('h1:has-text("is saved")')
-  await p.click('a:has-text("Go to listings")'); await p.waitForSelector('td:has-text("Weekend Brunch")'); await shot('s8-listings')
-  await p.click('.nav >> text=Earnings'); await p.waitForSelector('.kpis'); await shot('s9-earnings')
-  await p.click('.nav >> text=Profile'); await p.waitForSelector('text=Payout account'); await shot('s10-profile')
+  await p.click('a:has-text("Go to products")'); await p.waitForSelector('.pr-row:has-text("Weekend Brunch")'); await shot('s8-listings')
+  await p.click('.nav >> text=Balances'); await p.waitForSelector('.kpis'); await shot('s9-earnings')
+  await p.click('.nav >> text=Your business'); await p.waitForSelector('text=Payout account'); await shot('s10-profile')
   const sp = p.context().request
   const d = await (await sp.get(`${BASE}/api/seller/deals/${dealId}`)).json()
   if (d.status !== 'secured') fail(`Expected secured, got ${d.status}`)

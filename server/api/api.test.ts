@@ -1653,3 +1653,26 @@ test('putting a product on the calendar at a chosen price: open slots nobody has
   expect((await call(sellerX, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: 5 })).statusCode).toBe(400)
   expect((await call(sellerY, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: AED(3_000) })).statusCode).toBe(404)
 })
+
+test('counter offers: the publisher names another price; the buyer agrees (accepted at that price) or keeps their offer', async () => {
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  const first = (await call(buyerA, 'GET', `/api/deals/${deal}`)).json().price
+  expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/counter`, { amount: first })).json().error).toMatch('different price')
+  expect((await call(sellerY, 'POST', `/api/seller/deals/${deal}/counter`, { amount: AED(6_000) })).statusCode).toBe(404)
+  expect((await call(buyerA, 'POST', `/api/deals/${deal}/counter`, { agree: true })).json().error).toMatch('no counter offer')
+
+  let s = (await call(sellerX, 'POST', `/api/seller/deals/${deal}/counter`, { amount: AED(6_000), note: 'Drive time sells at this price.' })).json()
+  expect(s.counter).toMatchObject({ amount: AED(6_000), note: 'Drive time sells at this price.' })
+  expect(s.status).toBe('awaiting_seller')
+  let b = (await call(buyerA, 'GET', `/api/deals/${deal}`)).json()
+  expect(b.counter.price).toBe(AED(6_000))
+  expect((await call(buyerA, 'GET', '/api/notifications')).json().items.map((n: any) => n.kind)).toContain('deal.countered')
+
+  b = (await call(buyerA, 'POST', `/api/deals/${deal}/counter`, { agree: false })).json()   // keeps the first offer
+  expect(b).toMatchObject({ price: first, counter: null, status: 'awaiting_publisher' })
+
+  await call(sellerX, 'POST', `/api/seller/deals/${deal}/counter`, { amount: AED(6_000) })
+  b = (await call(buyerA, 'POST', `/api/deals/${deal}/counter`, { agree: true })).json()    // agrees: accepted at the new price
+  expect(b).toMatchObject({ price: AED(6_000), counter: null, status: 'accepted_pay_now' })
+  expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/counter`, { amount: AED(7_000) })).json().error).toMatch('waiting on you')
+})

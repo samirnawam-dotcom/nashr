@@ -15,7 +15,8 @@ import { Thread } from '../messages/Thread'
 import { CardPay } from '../payments/CardPay'
 import { art } from '../media'
 
-type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null; client?: string | null }
+type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null; client?: string | null
+  counter?: { price: number; note: string | null; at: string } | null }
 
 const STATUS: Record<string, [string, string]> = {
   awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Payment secured', 'lead'],
@@ -59,7 +60,7 @@ type Detail = Deal & { channel: string; placement: string; creativeDueAt: string
   prerun: { requestedAt: string; confirmedAt: string | null } | null
   documents: { id: string; type: string; number: string; total: number; currency: string; issuedAt: string }[] }
 
-const EVENT: Record<string, string> = { opened: t('Request sent'), withdraw: t('You withdrew the request'), accept: t('Publisher accepted'), decline: t('Not selected'), expire: t('Publisher did not reply in time'),
+const EVENT: Record<string, string> = { opened: t('Request sent'), counter: t('Publisher offered another price'), counter_agreed: t('You agreed to the new price'), counter_refused: t('You kept your offer'), withdraw: t('You withdrew the request'), accept: t('Publisher accepted'), decline: t('Not selected'), expire: t('Publisher did not reply in time'),
   supersede: t('Slot went to another buyer'), pay: t('Payment secured'), lapse: t('Payment window passed'), submit_proof: t('Proof sent'), approve: t('You approved the proof'),
   auto_release: t('Released automatically after the review window'), report_issue: t('You reported an issue'), resolve: t('Corrected proof sent'), make_good: t('Make-good agreed'),
   partial_refund: t('Partial refund agreed'), escalate: t('Escalated to Nashr'), release: t('Nashr released the payment'), refund: t('Refunded'), paid_out: t('Publisher paid'),
@@ -202,7 +203,14 @@ export function BookingPage({ id }: { id: string }) {
           {needsTwoStep ? <p className="warn small">{t('Before paying, turn on two-step sign-in to protect your account.')} <a href="/account">{t('Turn it on')}</a></p>
           : <CardPay dealId={d.id} label={t('Pay {amount}', { amount: money(d.total, d.currency) })} onDone={load} />}
         </>}
-        {d.status === 'awaiting_publisher' && <p className="muted">{t("Waiting for the publisher's decision. You'll be asked to pay once they accept.")}</p>}
+        {d.status === 'awaiting_publisher' && d.counter && <div className="counter-box">
+          <p><b>{t('The publisher offered {amount} instead of {was}.', { amount: money(d.counter.price, d.currency), was: money(d.price, d.currency) })}</b></p>
+          {d.counter.note && <p className="small">“{d.counter.note}”</p>}
+          <p className="small muted">{t('Agree and the booking is accepted at that price; you pay next. Keep your offer and the publisher decides on it.')}</p>
+          <div className="row-flex"><button className="btn primary" disabled={busy} onClick={() => act(`/deals/${d.id}/counter`, { agree: true }, t('Agreed. The booking is accepted.'))}>{t('Agree to {amount}', { amount: money(d.counter.price, d.currency) })}</button>
+            <button className="btn" disabled={busy} onClick={() => act(`/deals/${d.id}/counter`, { agree: false }, t('You kept your offer.'))}>{t('Keep my offer')}</button></div>
+        </div>}
+        {d.status === 'awaiting_publisher' && !d.counter && <p className="muted">{t("Waiting for the publisher's decision. You'll be asked to pay once they accept.")}</p>}
         {d.status === 'awaiting_publisher' && d.kind === 'buy_now' && (!withdrawing
           ? <button className="btn" disabled={busy} onClick={() => setWithdrawing(true)}>{t('Withdraw request…')}</button>
           : <div className="form confirm-box"><p>{t('Withdraw your buy-now request? The slot stays on sale, and you can bid or ask again.')}</p>

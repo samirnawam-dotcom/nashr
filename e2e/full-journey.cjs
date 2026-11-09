@@ -39,6 +39,12 @@ const signIn = async (p, email, code) => {
   await p.waitForSelector('nav.nav, .shell-main main', { timeout: 15000 })
 }
 const nav = async (p, label) => { await p.click(`.nav a:has-text("${label}")`); await p.waitForLoadState('networkidle') }
+// Requests: pick one in the list, then open it (its booking, or the slot for an interest)
+const openTask = async (p, has) => {
+  await p.click(has ? `.rq-item:has-text("${has}")` : '.rq-item >> nth=0')
+  const link = p.locator('.rq-detail a:has-text("Open the booking")')
+  if (await link.count()) await link.first().click(); else await p.click('.rq-detail .row-flex .btn.primary')
+}
 const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (await p.evaluate(async () => (await (await fetch('/api/notifications')).json()))) }
 
 ;(async () => {
@@ -75,13 +81,13 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     say(await pub.locator('main h1').first().textContent(), '/', await buy.locator('main h1').first().textContent())
 
     step = '4 publisher: outlet, payouts, tax'
-    await nav(pub, 'Profile'); await pub.waitForSelector('h2:has-text("Payout account")')
+    await nav(pub, 'Your business'); await pub.waitForSelector('h2:has-text("Payout account")')
     if (!(await pub.locator('#n-new').count())) await pub.click('button:has-text("outlet")')
-    await pub.fill('#n-new', `Palm Radio ${run}`); await pub.selectOption('#c-new', 'radio'); await pub.fill('#s-new', 'Banking, Retail')
+    await pub.fill('#n-new', `Palm Radio ${run}`); await pub.selectOption('#c-new', 'radio'); await pub.check('#sec-new-Banking'); await pub.check('#sec-new-Retail')
     await pub.fill('#au-new', 'Commuters 25-45'); await pub.fill('#d-new', 'Drive-time radio across the Emirates.')
     await pub.click('button:has-text("Add outlet")'); await pub.waitForSelector('text=Outlet added.')
     // connecting payouts needs two-step sign-in: the publisher turns it on from its account page first
-    await twoStepViaPage(pub, BASE); await nav(pub, 'Profile'); await pub.waitForSelector('h2:has-text("Payout account")')
+    await twoStepViaPage(pub, BASE); await nav(pub, 'Your business'); await pub.waitForSelector('h2:has-text("Payout account")')
     await pub.click('button:has-text("Connect payout account")'); await pub.waitForSelector('text=Payout account verified.')
     await pub.fill('#trn', '100123456700003'); await pub.click('section:has(#trn) button:has-text("Save")'); await pub.waitForSelector('text=Tax details saved.')
     await pub.shot('f4-profile'); say()
@@ -89,7 +95,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '5 publisher: placements listed'
     // The placement form as Omar described it: a format, what the buyer gets, specs, sale type, kept on sale 8 weeks ahead
     const placement = async (name, sale, from, to, at, extra) => {
-      await nav(pub, 'Listings'); await pub.click('a:has-text("Add placement")'); await pub.waitForSelector('.pl-format')
+      await nav(pub, 'Products'); await pub.click('a:has-text("Add product")'); await pub.waitForSelector('.pl-format')
       await pub.click('.pl-format:has-text("Something else")'); await pub.fill('#n', name)
       await pub.fill('#ds', 'A 30-second spot in one ad break of the programme.'); await pub.fill('#sx', 'MP3, 30 seconds')
       await pub.click('.pl-quick button:has-text("Every day")')
@@ -126,8 +132,8 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
 
     step = '8 publisher receives it'
     const pn = await bell(pub); say('bell:', pn.items?.map?.(n => n.kind).join(',') ?? JSON.stringify(pn).slice(0, 120))
-    await nav(pub, 'Inbox'); await pub.waitForSelector('.tasks a'); await pub.shot('f8-inbox')
-    await pub.click('.tasks a >> nth=0'); await pub.waitForSelector('text=Booking brief'); await pub.shot('f8-request')
+    await nav(pub, 'Requests'); await pub.waitForSelector('.rq-item'); await pub.shot('f8-inbox')
+    await openTask(pub); await pub.waitForSelector('text=Booking brief'); await pub.shot('f8-request')
 
     step = '9 publisher accepts on screen'
     await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer'); const dealUrl = pub.url(); say(dealUrl)
@@ -155,7 +161,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '13 buyer approves proof, money released'
     await buy.reload(); await buy.waitForSelector('button:has-text("Approve proof")'); await buy.click('button:has-text("Approve proof")')
     await buy.waitForSelector('main .page-title:has-text("Released")'); await buy.shot('f13-released')
-    await nav(pub, 'Earnings'); await pub.shot('f13-earnings'); say()
+    await nav(pub, 'Balances'); await pub.shot('f13-earnings'); say()
 
     step = '14 auction: two buyers bid, bidding closes, publisher picks'
     await buy.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy.waitForSelector('.cv-table tbody tr:has-text("Morning Drive")')
@@ -178,7 +184,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await sql(`update slots set closes_at = now() - interval '1 minute' where id = $1`, [target])
     for (let i = 0; i < 30 && !(await sql(`select 1 from deals where slot_id = $1`, [target])).length; i++) await pub.waitForTimeout(2000)
     const ad = (await sql(`select id, status from deals where slot_id = $1`, [target]))[0]; if (!ad) throw new Error('bidding closed but no deal was opened')
-    await nav(pub, 'Inbox'); await pub.shot('f14-inbox'); await pub.goto(BASE + `/deals/${ad.id}`); await pub.waitForSelector('button:has-text("Accept")'); await pub.shot('f14-choose')
+    await nav(pub, 'Requests'); await pub.shot('f14-inbox'); await pub.goto(BASE + `/deals/${ad.id}`); await pub.waitForSelector('button:has-text("Accept")'); await pub.shot('f14-choose')
     await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer')
     await buy2.goto(BASE + `/bookings/${ad.id}`); await buy2.waitForSelector('.sum'); await buy2.selectOption('#card', 'pm_card_4242'); await buy2.click('button:has-text("Pay")')
     await buy2.waitForSelector('main .page-title:has-text("Payment secured")'); say(ad.status)
@@ -188,9 +194,9 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await buy.click('.cv-table tbody tr:has-text("Evening Drive") .cv-act >> nth=0'); await buy.waitForSelector('.drawer h2'); await brief(buy)
     await buy.click('.drawer-f .btn.primary'); await buy.waitForSelector('.drawer .ok, .drawer .error'); say(await buy.locator('.drawer .ok, .drawer .error').first().textContent())
     const qn = await bell(pub); say('publisher bell:', JSON.stringify(qn).slice(0, 200))
-    await nav(pub, 'Inbox'); await pub.shot('f15-inbox')
-    await pub.waitForSelector('.tasks a:has-text("Buyer interested")', { timeout: 10000 }).catch(() => { throw new Error('the publisher has no task for the interest') })
-    await pub.click('.tasks a:has-text("Buyer interested")'); await pub.waitForSelector('.brief-mini'); await pub.shot('f15-slot')
+    await nav(pub, 'Requests'); await pub.shot('f15-inbox')
+    await pub.waitForSelector('.rq-item:has-text("Buyer interested")', { timeout: 10000 }).catch(() => { throw new Error('the publisher has no task for the interest') })
+    await openTask(pub, 'Buyer interested'); await pub.waitForSelector('.brief-mini'); await pub.shot('f15-slot')
     await pub.click('td button:has-text("Accept")'); await pub.waitForURL(/\/deals\//); await pub.waitForSelector('text=Booking brief'); await pub.shot('f15-deal')
     const qb = await bell(buy); if (!JSON.stringify(qb).includes('deal.awaiting_payment')) throw new Error('the buyer was not told')
     await buy.goto(BASE + '/bookings'); await buy.click('.table tbody tr >> nth=0'); await buy.waitForSelector('.sum')
@@ -203,7 +209,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     if (!(await buy2.locator('.drawer-seller:has-text("Palm Radio")').count())) throw new Error('the buyer does not see who sells it')
     await brief(buy2); await buy2.shot('f16-book'); await buy2.click('.drawer-f .btn.primary:has-text("Book for")')
     const booked = await buy2.locator('.drawer .ok, .drawer .error').first().textContent(); if (!/Booked/.test(booked)) throw new Error(booked)
-    await nav(pub, 'Inbox'); await pub.waitForSelector('.tasks a:has-text("Booked at your fixed price")'); await pub.click('.tasks a:has-text("Booked at your fixed price")')
+    await nav(pub, 'Requests'); await pub.waitForSelector('.rq-item:has-text("Booked at your fixed price")'); await openTask(pub, 'Booked at your fixed price')
     await pub.waitForSelector('.co-card:has-text("Oasis Retail")'); await pub.shot('f16-buyer-profile')
     if (/@|\+971/.test(await pub.locator('.co-card').textContent())) throw new Error('contact details shown before purchase')
     await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer')

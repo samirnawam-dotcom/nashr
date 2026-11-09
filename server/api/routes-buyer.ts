@@ -5,7 +5,7 @@ import { companyProfile } from './profiles.js'
 import { containsContactDetails } from '../core/contact.js'
 import { requireTwoStepForMoney } from '../auth/two-step.js'
 import { buyerDeal, buyerSlot } from './shapes.js'
-import { placeBid, requestBuyNow, showInterest, withdrawBuyNow, bookFixed } from '../marketplace/market.js'
+import { answerCounter, placeBid, requestBuyNow, showInterest, withdrawBuyNow, bookFixed } from '../marketplace/market.js'
 import { minNextBid } from '../core/money.js'
 import { audit } from '../core/audit.js'
 import { setting } from '../core/settings.js'
@@ -193,6 +193,13 @@ export function buyerRoutes(route: RouteFn) {
     const d = await ownDeal(db, req.params.id, me.actAs.companyId)
     return buyerCancelTerms(db, d, at)
   })
+
+  // The buyer's answer to a publisher's counter offer: agree (accepted at that price, pay next) or keep the first offer.
+  route('POST', '/api/deals/:id/counter', BUYER, async ({ db, at, me }, req) => {
+    await ownDeal(db, req.params.id, me.actAs.companyId)
+    await answerCounter(db, req.params.id, me.actAs.companyId, req.body.agree, `buyer:${me.actAs.companyId}`, at)
+    return buyerDeal(await ownDeal(db, req.params.id, me.actAs.companyId))
+  }, { type: 'object', required: ['agree'], additionalProperties: false, properties: { agree: { type: 'boolean' } } })
 
   route('POST', '/api/deals/:id/cancel', BUYER, async ({ db, at, me }, req) => {
     await ownDeal(db, req.params.id, me.actAs.companyId)

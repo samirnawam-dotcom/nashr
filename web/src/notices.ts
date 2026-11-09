@@ -10,6 +10,9 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
   return {
   'deal.awaiting_payment': () => t('The publisher accepted. Pay to secure the slot.'),
   'deal.declined': () => t('Your request was not selected.'),
+  'deal.countered': n => t('The publisher offered {slot} at {amount} instead of {was}. Agree to book it, or keep your offer.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}`, amount: aedOf(n.data?.amount), was: aedOf(n.data?.was) }),
+  'deal.counter_agreed': n => t('The buyer agreed to your price of {amount}. The booking is accepted; they pay next.', { amount: aedOf(n.data?.amount) }),
+  'deal.counter_refused': n => t('The buyer kept their offer of {was} instead of {amount}. Accept or decline it.', { amount: aedOf(n.data?.amount), was: aedOf(n.data?.was) }),
   'deal.lapsed': () => t('The payment window passed and the booking lapsed.'),
   'deal.secured': () => t('Payment is secured.'),
   'deal.cancelled': () => t('The booking was cancelled.'),
