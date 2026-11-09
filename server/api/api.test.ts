@@ -1076,6 +1076,13 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect((await call(buyerA, 'GET', `/api/slots/outlets?${range}&open=1&sort=price&limit=2&offset=4`)).json().items.map((o: any) => o.outlet)).toEqual(['Daily Paper'])
     // a guest sees the same calendar, without anything about bids of their own
     expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).json().items.every((s: any) => s.youBid === false && s.youLead === false)).toBe(true)
+    // the Audiences pages: per audience, what is open, from how many publishers, from what price, on which channels (guests too)
+    await pool.query(`update outlets set audiences = '{commuters,executives}' where name = 'Gulf Radio'`)
+    const reach = (await call(null, 'GET', `/api/slots/audiences?${range}&open=1`)).json()
+    const commuters = reach.find((r: any) => r.audience === 'commuters')
+    expect(commuters).toMatchObject({ outlets: 1, channels: ['radio'] })
+    expect(commuters.slots).toBeGreaterThan(0)
+    expect(commuters.slots).toBe((await call(null, 'GET', `/api/slots/outlets?${range}&open=1&aud=commuters`)).json().items.reduce((n: number, o: any) => n + o.slots, 0))
   })
 })
 

@@ -158,6 +158,14 @@ export async function byOutlet(db: Db, q: Query, sort: OutletSort, offset: numbe
   return { total: (rows[0]?.total as number) ?? 0, rows }
 }
 
+/** Per audience: open slots, outlets, the lowest current price and the channels that reach it (the public Audiences pages). */
+export async function byAudience(db: Db, q: Query, now: Date) {
+  const w = where({ ...q, audiences: undefined }, now)
+  return (await db.query(`select a audience, count(*)::int slots, count(distinct o.id)::int outlets, min(${PRICE}) from_price,
+      array_agg(distinct o.channel order by o.channel) channels
+    ${w.from} cross join lateral unnest(${AUDIENCES_SQL}) a ${w.where} group by a`, w.params)).rows
+}
+
 /** Calendar filters from a query string: ?ch=radio,tv&sale=auction&sector=…&max=500000&dp=morning&q=…&soon=24&mine=1&open=1 */
 /** The longest period one calendar request may cover (a month view with its edge weeks is 42 days); public routes must stay cheap. */
 const MAX_RANGE_DAYS = 62

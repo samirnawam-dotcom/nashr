@@ -16,7 +16,7 @@ import { confirmPreRun } from '../fulfilment/prerun.js'
 import { checklistFor } from '../fulfilment/proof.js'
 import { MarketError } from '../marketplace/market.js'
 import { dealRating } from './routes-ratings.js'
-import { byDay, byOutlet, grid, listSlots, parseQuery, programmes, slots as searchSlots } from '../marketplace/search.js'
+import { byAudience, byDay, byOutlet, grid, listSlots, parseQuery, programmes, slots as searchSlots } from '../marketplace/search.js'
 import { logoUrl } from './routes-covers.js'
 
 const BUYER: ['buyer'] = ['buyer']
@@ -57,6 +57,8 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/programmes', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => programmes(db, query(me, req.query), at))
   route('GET', '/api/slots/grid', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => grid(db, query(me, req.query), req.query.by === 'channel' ? 'channel' : 'day', at))
   route('GET', '/api/slots/days', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => byDay(db, query(me, req.query), at))
+  route('GET', '/api/slots/audiences', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) =>
+    (await byAudience(db, query(me, req.query), at)).map(r => ({ audience: r.audience, slots: r.slots, outlets: r.outlets, fromPrice: Number(r.from_price), channels: r.channels })))
   route('GET', '/api/slots/outlets', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const { total, rows } = await byOutlet(db, query(me, req.query), req.query.sort ?? 'name', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
     return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: logoUrl({ id: r.outlet_id, logo_key: r.logo_key }),
