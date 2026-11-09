@@ -3,10 +3,28 @@ import { DEAL_STATUS, Loading, date, money, useAct, useLoad } from './common'
 import { CHANNEL, Delta, Funnel, Hero, RankedBars, StatTile, WeekColumns, compact } from '../charts'
 import { PhotoBand } from '../PhotoBand'
 import { locale, ltr, t } from '../i18n'
+import { tm } from '../i18n-server'
 
 type O = { access_pending: number; resets_pending: number; held_60: number; quotes_open: number; support_open: number; disputes_overdue: number; disputes: number; issues: number; failed_ops: number; pending_ops: number; gmv_month: number
   bookings_month: number; publishers_live: number; buyers: number; revenue: number; held: number
   reconcile: { ledgerCash: number; providerCash: number; ok: boolean }; byStatus: Record<string, number> }
+
+type Alerts = { watchingBackups: boolean; open: { key: string; detail: string; since: string }[]; cleared: { key: string; detail: string; cleared: string }[]
+  runs: Record<string, { ok: boolean; detail: string | null; at: string }> }
+
+/** What the watch found: open problems first, then the last backup and restore drill. Quiet when all is well. */
+function SystemAlerts() {
+  const { data: a } = useLoad<Alerts>('/admin/alerts')
+  if (!a) return null
+  const run = (k: string, label: string) => { const r = a.runs[k]
+    return <span className={r && !r.ok ? 'outbid' : ''}>{label}: {r ? `${r.ok ? t('passed') : t('failed')} ${date(r.at)}` : t('not yet')}</span> }
+  return <section className={`card pad section sys-alerts ${a.open.length ? 'bad' : ''}`} aria-live="polite">
+    <h2>{a.open.length === 1 ? t('One problem needs a person') : a.open.length ? t('{n} problems need a person', { n: a.open.length }) : t('All systems normal')}</h2>
+    {a.open.length > 0 && <ul>{a.open.map(x => <li key={x.key}><b>{tm(x.detail)}</b> <span className="small muted">{t('since {date}', { date: date(x.since) })}</span></li>)}</ul>}
+    <p className="small muted">{a.watchingBackups ? <>{run('backup', t('Last backup'))} · {run('restore_drill', t('Last restore drill'))}.</> : t('Backups are not watched on this server (BACKUP_DIR is not set).')}
+      {' '}{t('Staff get a bell, email and phone alert when a problem starts and when it clears.')}</p>
+  </section>
+}
 
 type Weeks = { week: string; value: number }[]
 type Dash = {
@@ -34,6 +52,7 @@ export function AdminOverview() {
     <main className="dash">
       <p className={`recon ${o.reconcile.ok ? 'ok' : 'bad'}`} role="status">{o.reconcile.ok ? t("Ledger reconciles with the payment provider.")
         : <>{t('Ledger cash {ledger} does not match the payment provider ({provider}).', { ledger: money(o.reconcile.ledgerCash), provider: money(o.reconcile.providerCash) })} <a href="/funds">{t('Open Funds')}</a></>}</p>
+      <SystemAlerts />
       <div className="dash-head photo-head"><img className="dash-photo" src="/brand/dash-admin.jpg" width={1600} height={400} alt="" decoding="async" fetchPriority="high" /><h1>{t("Overview")}</h1><span className="muted">{new Date().toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span>
         <div className="spacer" /><a className="btn" href="/reports">{t("Reports")}</a><a className="btn" href="/deals">{t("All deals")}</a></div>
 

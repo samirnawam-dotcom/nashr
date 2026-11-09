@@ -18,6 +18,8 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
   'access.staff_signed_in': n => t("Nashr's team signed in to your account as {user} to help. Reason: {reason}", { user: n.data?.user ?? '', reason: n.data?.reason ?? '' }),
   'support.new': n => t('New question from {company}.', { company: n.data?.company ?? '' }),
   'support.replied': () => t('Nashr answered your question.'),
+  'ops.alert': n => t('Needs attention: {detail}', { detail: n.data?.detail ?? '' }),
+  'ops.cleared': n => t('Cleared: {detail}', { detail: n.data?.detail ?? '' }),
   'access.two_step_reset': n => t('Nashr turned off two-step sign-in for {user}. Reason: {reason}', { user: n.data?.user ?? '', reason: n.data?.reason ?? '' }),
   'access.reset_issued': n => t('Nashr issued a password reset link for {user}, who asked for one.', { user: n.data?.user ?? '' }),
   'chargeback.closed': n => n.data?.won ? t("The bank decided a chargeback for Nashr. Decide the dispute now.") : t("The bank decided a chargeback for the buyer. The booking is closed as refunded."),
@@ -68,5 +70,5 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
 
 /** The page a notification opens, for the person's role. */
 export function noticeHref(n: N, role: string): string | undefined {
-  return n.kind === 'support.new' ? '/support' : n.kind === 'support.replied' ? '/help' : n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
+  return n.kind === 'support.new' ? '/support' : n.kind.startsWith('ops.') ? '/admin' : n.kind === 'support.replied' ? '/help' : n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
 }

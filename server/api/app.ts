@@ -20,6 +20,7 @@ import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
 import { teamRoutes } from './routes-team.js'
 import { clientRoutes } from './routes-clients.js'
+import { recordError } from '../core/watch.js'
 import { pushRoutes } from './routes-push.js'
 import { mailRoutes } from './routes-mail.js'
 import { userRoutes } from './routes-users.js'
@@ -108,6 +109,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
     if (err.validation) return reply.code(400).send({ error: 'Some fields are missing or not valid.', details: err.validation.map((v: any) => v.instancePath || v.params?.missingProperty) })
     if (err.statusCode >= 400 && err.statusCode < 500) return reply.code(err.statusCode).send({ error: err.statusCode === 415 ? 'Send JSON.' : err.message })
     console.error(new Date().toISOString(), req.method, req.url, err) // unexpected: keep the cause in the server log, never in the response
+    recordError(`${req.method} ${req.routeOptions?.url ?? req.url.split('?')[0]}`) // staff are alerted when these pile up
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })
 

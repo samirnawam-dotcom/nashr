@@ -72,6 +72,10 @@ EOF
 fi
 PORT="$(grep '^PORT=' "$ENVF" | cut -d= -f2)"
 grep -q '^SITE_URL=' "$ENVF" || echo "SITE_URL=https://${DOMAIN}" >> "$ENVF"   # canonical address for the sitemap
+# Nightly backups (kept 14 days) and a weekly restore drill; the app alerts staff if either fails or stops.
+grep -q '^BACKUP_DIR=' "$ENVF" || printf 'BACKUP_DIR=/var/backups/nashr\nBACKUP_KEEP_DAYS=14\n' >> "$ENVF"
+mkdir -p /var/backups/nashr && chown nashr:nashr /var/backups/nashr && chmod 700 /var/backups/nashr
+PSQL -qc "alter role nashr createdb"   # the restore drill restores into a new database, then drops it
 PSQL -tAc "select 1 from pg_database where datname='nashr'" | grep -q 1 || runuser -u postgres -- env -u PGHOST createdb -h /var/run/postgresql -p "$PGPORT" -O nashr nashr
 
 say "Code ($BRANCH)"
@@ -125,9 +129,51 @@ ReadWritePaths=${DATA}
 [Install]
 WantedBy=multi-user.target
 EOF
+for job in backup restore-drill; do
+  cat > /etc/systemd/system/nashr-${job}.service <<EOF
+[Unit]
+Description=Nashr ${job}
+After=postgresql@16-nashr.service
+
+[Service]
+Type=oneshot
+User=nashr
+WorkingDirectory=${APP}
+EnvironmentFile=${ENVF}
+Environment=PATH=/usr/lib/postgresql/16/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=${DATA}
+ExecStart=/usr/bin/bash ${APP}/scripts/${job}.sh
+EOF
+done
+cat > /etc/systemd/system/nashr-backup.timer <<EOF
+[Unit]
+Description=Nightly Nashr backup
+
+[Timer]
+OnCalendar=*-*-* 03:10 Asia/Dubai
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
+EOF
+cat > /etc/systemd/system/nashr-restore-drill.timer <<EOF
+[Unit]
+Description=Weekly Nashr restore drill
+
+[Timer]
+OnCalendar=Sun *-*-* 04:20 Asia/Dubai
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
 systemctl daemon-reload
 systemctl enable nashr >/dev/null
 systemctl restart nashr
+systemctl enable --now nashr-backup.timer nashr-restore-drill.timer >/dev/null
+# A first backup now, so the watch has one to count from.
+[ -n "$(ls -A /var/backups/nashr 2>/dev/null)" ] || systemctl start nashr-backup.service || echo "First backup failed: journalctl -u nashr-backup"
 
 PROXY="
   location ^~ /api/ {
@@ -162,6 +208,7 @@ if [ "$FIRST_SEED" = 1 ]; then
 elif [ -f "$DATA/demo-credentials.txt" ]; then
   echo "Demo sign-in details: cat $DATA/demo-credentials.txt"
 fi
+echo "Backups: /var/backups/nashr (nightly, 14 days; set BACKUP_RSYNC in $ENVF to copy them off this server). Restore drill: weekly."
 echo "Logs: journalctl -u nashr -f      Update later: run this same script again."
 }
 

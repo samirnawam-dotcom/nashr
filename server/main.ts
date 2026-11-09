@@ -1,5 +1,7 @@
 import { buildApp } from './api/app.js'
 import { runOutbox } from './core/mail.js'
+import { recordError, watch } from './core/watch.js'
+import { reconcile } from './payments/payments.js'
 import { migrate } from './core/migrate.js'
 import { pool } from './core/db.js'
 import { sweep } from './marketplace/sweeper.js'
@@ -26,8 +28,18 @@ const app = buildApp({ provider: p, log: process.env.LOG_REQUESTS === '1' || und
 await app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' })
 
 // Background jobs every minute. Each is safe to run late or twice (SPEC 5.3).
-const run = (name: string, job: () => Promise<unknown>) => job().catch(e => console.error(JSON.stringify({ t: new Date().toISOString(), job: name, error: String(e?.stack ?? e) })))
-const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(p, new Date())], ['email', () => runOutbox(new Date())]] as const
+const run = (name: string, job: () => Promise<unknown>) => job().catch(e => { recordError(`job ${name}`); console.error(JSON.stringify({ t: new Date().toISOString(), job: name, error: String(e?.stack ?? e) })) })
+// The watch tells staff when something needs a person (staff alerts); the ledger check asks the provider at most every 10 minutes.
+// A payout can land between reading the ledger and the provider, so a mismatch counts only when it shows twice, a minute apart.
+let recon: { at: number; ok: boolean; misses: number } = { at: 0, ok: true, misses: 0 }
+const reconciles = async () => {
+  if (recon.ok && Date.now() - recon.at < 600_000) return true
+  const ok = (await reconcile(p, 'AED')).ok
+  recon = { at: Date.now(), ok, misses: ok ? 0 : recon.misses + 1 }
+  return ok || recon.misses < 2
+}
+const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(p, new Date())], ['email', () => runOutbox(new Date())],
+  ['watch', () => watch({ at: new Date(), reconciles })]] as const
 for (const [name, job] of jobs) run(name, job) // once now, so /api/health is green from the start
 const timers = jobs.map(([name, job]) => setInterval(() => run(name, job), 60_000))
 console.log(`Nashr API on :${process.env.PORT ?? 3000}`)

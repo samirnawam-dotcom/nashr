@@ -36,3 +36,10 @@ pre.json { background: var(--bg); padding: 10px; border-radius: var(--radius); f
 @media (max-width: 900px) { .recon { margin: -20px -16px 16px; padding: 8px 16px; } }
 
 }
+/* System alerts on the overview: a quiet line when all is well, a red-edged card when something needs a person. */
+.sys-alerts { margin-bottom: 20px; padding-block: 12px; }
+.sys-alerts h2 { font-size: 15px; margin: 0 0 4px; }
+.sys-alerts.bad { border-inline-start: 4px solid var(--red); }
+.sys-alerts.bad h2 { color: var(--red); }
+.sys-alerts ul { margin: 6px 0 8px; padding-inline-start: 18px; }
+.sys-alerts p { margin: 0; }

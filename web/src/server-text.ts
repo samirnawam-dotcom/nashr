@@ -166,6 +166,20 @@ export const SERVER_AR: Record<string, string> = {
   "Choose one of your clients.": "اختر أحد عملائك.",
   "This campaign is for another client.": "هذه الحملة لعميل آخر.",
   "This would take {} over its budget: {} is left.": "سيتجاوز هذا ميزانية {1}: المتبقي {2}.",
+  "The timer job last ran {} ago: auctions do not close and deadlines do not pass.": "آخر تشغيل لمهمة المؤقت كان قبل {1}: المزادات لا تُغلق والمهل لا تنقضي.",
+  "The timer job has not run yet.": "لم تعمل مهمة المؤقت بعد.",
+  "A payout or refund has been waiting {}. Check Funds.": "تحويل أو استرداد ينتظر منذ {1}. راجع الأموال.",
+  "{} payout or refund failed and needs a person. Check Funds.": "فشل {1} تحويل أو استرداد ويحتاج إلى متابعة. راجع الأموال.",
+  "The ledger and the payment provider disagree on the cash Nashr holds. Check Funds.": "السجل المحاسبي ومزود الدفع مختلفان على النقد الذي تحتفظ به نشر. راجع الأموال.",
+  "{} email could not be sent in the last day. Check Emails.": "تعذّر إرسال {1} بريد خلال اليوم الماضي. راجع رسائل البريد.",
+  "Emails have been retrying for {}. Check Emails.": "تُعاد محاولة إرسال الرسائل منذ {1}. راجع رسائل البريد.",
+  "{} dispute is past its decision date. Check Disputes.": "{1} نزاع تجاوز موعد قراره. راجع النزاعات.",
+  "{} server errors in the last 10 minutes, latest: {}. Check the logs (journalctl -u nashr).": "{1} خطأ في الخادم خلال آخر 10 دقائق، آخرها: {2}. راجع السجلات (journalctl -u nashr).",
+  "The last backup failed. Check: journalctl -u nashr-backup.": "فشلت آخر نسخة احتياطية. راجع: journalctl -u nashr-backup.",
+  "The last backup is {} old.": "عمر آخر نسخة احتياطية {1}.",
+  "No backup has been made yet.": "لم تُنشأ أي نسخة احتياطية بعد.",
+  "The last restore drill failed: a backup may not restore. Check: journalctl -u nashr-restore-drill.": "فشلت آخر تجربة استعادة: قد لا تُستعاد نسخة احتياطية. راجع: journalctl -u nashr-restore-drill.",
+  "No restore drill has passed for over a week.": "لم تنجح أي تجربة استعادة منذ أكثر من أسبوع.",
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

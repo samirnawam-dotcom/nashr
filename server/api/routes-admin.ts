@@ -19,6 +19,16 @@ async function emailInvite(db: any, userId: string, link: string, at: Date) {
 }
 
 export function adminRoutes(route: RouteFn) {
+  // System alerts (server/core/watch.ts): what is wrong now, what cleared lately, and when backups last ran.
+  route('GET', '/api/admin/alerts', STAFF, async ({ db }) => {
+    const [alerts, runs] = await Promise.all([
+      db.query(`select key, detail, opened_at, last_seen_at, resolved_at from staff_alerts order by resolved_at is null desc, opened_at desc limit 20`),
+      db.query(`select distinct on (kind) kind, ok, detail, at from ops_runs order by kind, at desc`)])
+    return { watchingBackups: !!process.env.BACKUP_DIR,
+      open: alerts.rows.filter(a => !a.resolved_at).map(a => ({ key: a.key, detail: a.detail, since: a.opened_at, seen: a.last_seen_at })),
+      cleared: alerts.rows.filter(a => a.resolved_at).map(a => ({ key: a.key, detail: a.detail, since: a.opened_at, cleared: a.resolved_at })),
+      runs: Object.fromEntries(runs.rows.map(r => [r.kind, { ok: r.ok, detail: r.detail, at: r.at }])) }
+  })
   route('GET', '/api/admin/access-requests', STAFF, async ({ db }) =>
     (await db.query(`select r.*, exists (select 1 from users u where lower(u.email) = lower(r.email) and u.status = 'invited') invite_pending
                      from access_requests r order by (r.status = 'pending') desc, r.created_at desc`)).rows)
