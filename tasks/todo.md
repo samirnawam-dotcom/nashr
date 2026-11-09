@@ -128,6 +128,18 @@ Decisions made while building (flag to owner if they disagree):
 
 - [x] Live updates shared by every copy of the API (Postgres LISTEN/NOTIFY), checked with two copies running
 
+## Phase H: owner's feedback (First_Half.docx and his prototype)
+- [x] His look everywhere: purple and white, Inter / Inter Tight; media types Website, Newspaper, Magazine, Newsletter, Radio, TV / Shows, Podcast, Social
+- [x] Publisher dashboard on one page; product catalogue by media type; menu (Dashboard, Products, Coverage, Calendar, Requests, Messages, Transactions, Balances, Your business)
+- [x] Calendar: add a product at a chosen price, bid status chips, side panel (Details / Bids / Assets), click an empty day to add
+- [x] Requests with Accept / Counter offer / Decline and the conversation; counter offers for both sides
+- [x] Sectors ticked from a list; home page "Media moves differently here."; media coverage submission with Nashr review
+- [ ] Outlet name at the top of the menu with a dropdown to profile settings
+- [ ] Calendar menu dropdowns to the rate card and the media catalogue; a History page
+- [ ] Click-to-add in the calendar's Week view (Programme view has it)
+- [ ] Check the buyer's bid drawer shows date, time, sector and the bid summary as he described
+- Left out on purpose: his placeholder figures and client results (need verified ones); one Nashr review step instead of three approval rows
+
 ## Waiting on the owner
 - Stripe test keys in `/etc/nashr.env` (runbook 6a), then live keys after legal review
 - SMTP settings so emails are sent
