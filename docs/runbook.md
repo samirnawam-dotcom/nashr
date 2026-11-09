@@ -13,7 +13,7 @@ For whoever runs Nashr in production. Plain steps; each one says what to check a
 - **PostgreSQL 16**: the only place data lives. Uploaded files live in private storage (S3 in production; `FILES_DIR` locally).
 - Deploys send `SIGTERM`. The API stops taking requests, lets running transactions finish, then exits.
 - Every job is safe to run late or twice. A missed minute catches up on the next run.
-- Running two API instances is safe: the jobs use row locks, and the sign-in and reset attempt limits are counted in Postgres, so every instance shares them. Live updates (the bell and calendar refreshing) reach only the people connected to the same instance until they are moved to Postgres LISTEN/NOTIFY.
+- Running two API instances is safe: the jobs use row locks, and the sign-in and reset attempt limits are counted in Postgres, so every instance shares them. Live updates (the bell and calendar refreshing) are shared through Postgres (LISTEN/NOTIFY), so a bid taken by one instance refreshes pages on every other. Each instance keeps one extra database connection for this.
 
 ## 2. Monitoring
 

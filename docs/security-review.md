@@ -33,4 +33,4 @@ An independent read-only review of the API, auth, files, payments and front end.
 **Still to do before launch:**
 - An external penetration test against the staging environment once AWS and Stripe are set up.
 - Edge headers for the web app: CSP allowing self and Google Fonts, plus HSTS.
-- Done: attempt limits are counted in Postgres and shared by every instance. Still per instance: live updates (move to Postgres LISTEN/NOTIFY before scaling out).
+- Done: attempt limits are counted in Postgres and shared by every instance. Live updates are shared through Postgres LISTEN/NOTIFY too; they carry only ids, never data.

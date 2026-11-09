@@ -126,6 +126,8 @@ Decisions made while building (flag to owner if they disagree):
 
 ### Checkpoint G ✅ (197 tests + 5 e2e journeys: buyer, seller, admin, full, Stripe)
 
+- [x] Live updates shared by every copy of the API (Postgres LISTEN/NOTIFY), checked with two copies running
+
 ## Waiting on the owner
 - Stripe test keys in `/etc/nashr.env` (runbook 6a), then live keys after legal review
 - SMTP settings so emails are sent

@@ -4,6 +4,7 @@ import { recordError, watch } from './core/watch.js'
 import { reconcile } from './payments/payments.js'
 import { migrate } from './core/migrate.js'
 import { afterCommitSettled, pool } from './core/db.js'
+import { shareLiveUpdates } from './core/live.js'
 import { sweep } from './marketplace/sweeper.js'
 import { runMoneyOps } from './payments/payments.js'
 import { FakeProvider, type PaymentProvider } from './payments/provider.js'
@@ -25,6 +26,7 @@ function provider(): PaymentProvider {
 }
 
 await migrate()
+const stopLive = shareLiveUpdates() // live updates reach pages on every copy of the API
 const p = provider()
 if (p instanceof FakeProvider) p.prime('AED', Number((await pool.query(`select coalesce(sum(case when debit = 'cash' then amount else -amount end), 0) n from ledger_entries where 'cash' in (debit, credit) and currency = 'AED'`)).rows[0].n))
 const app = buildApp({ provider: p, log: process.env.LOG_REQUESTS === '1' || undefined, stripe: sk ? { publishableKey: pk, webhookSecret: whsec } : undefined })
@@ -53,6 +55,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) process.once(sig, async () => 
   timers.forEach(clearInterval)
   await app.close()
   await afterCommitSettled() // phone alerts already on their way go out first
+  await stopLive()
   await pool.end()
   process.exit(0)
 })
