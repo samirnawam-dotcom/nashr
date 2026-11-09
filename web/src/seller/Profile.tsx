@@ -78,13 +78,13 @@ export function ProfilePage() {
 }
 
 function OutletForm({ o, first, busy, onSave }: { o?: Outlet; first?: boolean; busy: boolean; onSave: (b: object) => void }) {
-  const [f, setF] = useState({ name: o?.name ?? '', nameAr: o?.nameAr ?? '', channel: o?.channel ?? 'radio', sectors: o?.sectors.join(', ') ?? '',
+  const [f, setF] = useState({ name: o?.name ?? '', nameAr: o?.nameAr ?? '', channel: o?.channel ?? 'radio', sectors: o?.sectors ?? [] as string[],
     description: o?.description ?? '', website: o?.website ?? '', audience: o?.audience ?? '', reach: o?.reach ? String(o.reach) : '', blockedAdvertisers: o?.blockedAdvertisers.join(', ') ?? '' })
   const [audiences, setAudiences] = useState<string[]>(o?.audiences ?? []), [blocked, setBlocked] = useState<string[]>(o?.blockedIndustries ?? [])
   const [open, setOpen] = useState(!!o || !!first) // a new publisher starts with the form open
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value })
   if (!open) return <button className="btn section" onClick={() => setOpen(true)}>{t("Add another outlet")}</button>
-  const body = { name: f.name, ...(o ? {} : { channel: f.channel }), sectors: f.sectors.split(',').map(s => s.trim()).filter(Boolean),
+  const body = { name: f.name, ...(o ? {} : { channel: f.channel }), sectors: f.sectors,
     ...(f.nameAr ? { nameAr: f.nameAr } : {}), ...(f.description ? { description: f.description } : {}), ...(f.website ? { website: f.website } : {}), ...(f.audience ? { audience: f.audience } : {}),
     audiences, blockedIndustries: blocked, blockedAdvertisers: [...new Set(f.blockedAdvertisers.split(',').map(x => x.trim()).filter(x => x.length > 1))],
     ...(Number(f.reach) > 0 ? { reach: Math.round(Number(f.reach)) } : {}) }
@@ -99,7 +99,10 @@ function OutletForm({ o, first, busy, onSave }: { o?: Outlet; first?: boolean; b
       <div className="field"><label htmlFor={`a-${id}`}>{t("Name in Arabic")}</label><input id={`a-${id}`} dir="rtl" lang="ar" value={f.nameAr} onChange={set('nameAr')} /></div>
     </div>
     {!o && <div className="field"><label htmlFor={`c-${id}`}>{t("Channel")}</label><select id={`c-${id}`} value={f.channel} onChange={set('channel')}>{CHANNELS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></div>}
-    <div className="field"><label htmlFor={`s-${id}`}>{t("Sectors you accept (comma-separated; add your own)")}</label><input dir="auto" id={`s-${id}`} value={f.sectors} onChange={set('sectors')} placeholder={t("Banking, Retail, Real estate")} /></div>
+    <div className="field"><span className="small muted">{t('Sectors you accept (tick any number; none ticked means every sector)')}</span>
+      <div className="aud-pick" role="group" aria-label={t('Sectors you accept')}>{[...new Set([...INDUSTRIES.filter(x => x !== 'Other'), ...f.sectors])].map(k => { const on = f.sectors.includes(k)
+        return <label key={k} className={`aud-chip ${on ? 'on' : ''}`} htmlFor={`sec-${id}-${k}`}><input id={`sec-${id}-${k}`} type="checkbox" checked={on}
+          onChange={() => setF({ ...f, sectors: on ? f.sectors.filter(x => x !== k) : [...f.sectors, k] })} />{t(k)}</label> })}</div></div>
     <div className="field"><label htmlFor={`au-${id}`}>{t("Audience")}</label><input dir="auto" id={`au-${id}`} value={f.audience} onChange={set('audience')} placeholder={t("Business commuters, 25-45")} /></div>
     <div className="field"><span className="small muted">{t('Who it reaches (buyers filter by these)')}</span><AudiencePicker idPrefix={`aud-${id}`} value={audiences} onChange={setAudiences} /></div>
     <div className="field"><label htmlFor={`r-${id}`}>{t('People reached per airing or edition (your estimate, optional)')}</label><input id={`r-${id}`} inputMode="numeric" value={f.reach} onChange={e => setF({ ...f, reach: e.target.value.replace(/\D/g, '') })} placeholder="120000" /></div>

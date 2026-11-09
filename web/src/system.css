@@ -65,9 +65,9 @@ main { padding: 36px 40px 56px; max-width: 1360px; margin: 0 auto; }
   box-shadow: 0 1px 1px rgba(13, 12, 29, .04); transition: background-color .15s var(--ease), border-color .15s var(--ease), box-shadow .15s var(--ease), transform .08s; touch-action: manipulation; }
 .btn:hover { background: var(--surface-2); border-color: var(--line-3); color: var(--ink); }
 .btn:active { transform: translateY(1px); }
-.btn.primary { background: linear-gradient(180deg, #137a79, var(--teal)); border-color: #0b5c5c; color: #fff;
+.btn.primary { background: linear-gradient(180deg, #7d52fa, var(--teal)); border-color: #5a2fe0; color: #fff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 1px 2px rgba(11, 10, 26, .25), 0 4px 10px -4px rgba(107, 60, 246, .45); }
-.btn.primary:hover { background: linear-gradient(180deg, #11706f, var(--teal-hover)); border-color: var(--teal-press); color: #fff; }
+.btn.primary:hover { background: linear-gradient(180deg, #6b3cf6, var(--teal-hover)); border-color: var(--teal-press); color: #fff; }
 .btn:disabled, .btn.primary:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 
@@ -398,8 +398,8 @@ h3 { font-size: 16px; line-height: 1.3; letter-spacing: -.01em; }
 .btn:active { background: #eef3f2; transform: none; }
 .btn:focus-visible, a.btn:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(107, 60, 246, .28); border-color: var(--teal, #6b3cf6); }
 .btn.primary, a.btn.primary { background: #6b3cf6; border-color: #6b3cf6; color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 1px 2px rgba(11, 10, 26, .18); }
-.btn.primary:hover, a.btn.primary:hover { background: #0c5e5e; border-color: #0c5e5e; color: #fff; }
-.btn.primary:active { background: #0a5151; }
+.btn.primary:hover, a.btn.primary:hover { background: #5a2fe0; border-color: #5a2fe0; color: #fff; }
+.btn.primary:active { background: #4b24c4; }
 .btn.primary:focus-visible { box-shadow: 0 0 0 3px rgba(107, 60, 246, .35); }
 .btn.signal, a.btn.signal { background: #6b3cf6; border-color: #6b3cf6; color: #ffffff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 1px 2px rgba(30, 10, 90, .18); }
 .btn.signal:hover, a.btn.signal:hover { background: #5a2bea; border-color: #5a2bea; color: #ffffff; }
@@ -419,7 +419,7 @@ h3 { font-size: 16px; line-height: 1.3; letter-spacing: -.01em; }
 /* Links inside text: teal with a light underline that firms up on hover. Whole-row links keep their own styling; table links are quieter. */
 main :is(p, dd, label, .small, .muted, .field, .panel-h) > a:not(.btn) { color: var(--teal, #6b3cf6); text-decoration-line: underline; text-decoration-thickness: 1px;
   text-underline-offset: 3px; text-decoration-color: rgba(107, 60, 246, .35); }
-main :is(p, dd, label, .small, .muted, .field, .panel-h) > a:not(.btn):hover { color: #0a5151; text-decoration-color: currentColor; }
+main :is(p, dd, label, .small, .muted, .field, .panel-h) > a:not(.btn):hover { color: #4b24c4; text-decoration-color: currentColor; }
 main .table td a:not(.btn) { color: var(--teal, #6b3cf6); font-weight: 600; text-decoration: none; }
 main .table td a:not(.btn):hover { text-decoration: underline; text-underline-offset: 3px; }
 

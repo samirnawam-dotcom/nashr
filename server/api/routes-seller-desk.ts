@@ -376,8 +376,19 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     const p = (await db.query(`select p.id from placements p join outlets o on o.id = p.outlet_id where p.id = $1 and o.company_id = $2 and not p.archived`,
       [req.params.id, me.actAs.companyId])).rows[0]
     if (!p) throw new NotFound()
-    return { slots: await generateSlots(db, p.id, req.body.from, req.body.days, at) }
-  }, { type: 'object', required: ['from', 'days'], properties: { from: { type: 'string', format: 'date' }, days: { type: 'integer', minimum: 1, maximum: 120 } } })
+    const made = await generateSlots(db, p.id, req.body.from, req.body.days, at)
+    // From the calendar the publisher may set the price for these dates (the product's own price is the default). Only single
+    // slots nobody has bid on take it; package and any-break prices stay as the product sets them.
+    let priced = 0
+    if (req.body.startingPrice != null) {
+      priced = (await db.query(`update slots s set starting_price = $4 where s.placement_id = $1 and s.kind = 'single' and s.status = 'open'
+          and s.air_date >= $2::date and s.air_date < $2::date + $3::int and s.top_amount is null
+          and not exists (select 1 from bids b where b.slot_id = s.id)`, [p.id, req.body.from, req.body.days, req.body.startingPrice])).rowCount ?? 0
+      await audit(db, `seller:${me.actAs.companyId}`, 'slots.priced', 'placement', p.id, { from: req.body.from, days: req.body.days, startingPrice: req.body.startingPrice, slots: priced }, at)
+    }
+    return { slots: made, priced }
+  }, { type: 'object', required: ['from', 'days'], additionalProperties: false, properties: { from: { type: 'string', format: 'date' }, days: { type: 'integer', minimum: 1, maximum: 120 },
+    startingPrice: { type: 'integer', minimum: 100, maximum: 100_000_000_00 } } })
 
   // Archiving stops new listings; slots already on sale stay as they are.
   route('POST', '/api/seller/placements/:id/archive', SELLER, async ({ db, at, me }, req) => {

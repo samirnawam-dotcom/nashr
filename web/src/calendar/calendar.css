@@ -373,3 +373,8 @@ label.side-h { display: block; }
 :root { --ch-newspaper: #c47a0a; --ch-magazine: #a0601a; --ch-newsletter: #2e7d9a; --ch-social: #e0662b; }
 .ch-newspaper, .ch-b-newspaper { --chc: var(--ch-newspaper); } .ch-magazine, .ch-b-magazine { --chc: var(--ch-magazine); }
 .ch-newsletter, .ch-b-newsletter { --chc: var(--ch-newsletter); } .ch-social, .ch-b-social { --chc: var(--ch-social); }
+/* Add a product to the calendar (owner's brief) */
+.cv-add { display: grid; gap: 10px; margin-bottom: 14px; border-radius: 16px; }
+.cv-add h2 { font: 650 18px var(--display); margin: 0; }
+.cv-add-grid { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .cv-add-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -1639,3 +1639,17 @@ test('the publisher dashboard: what needs a decision, sales and net after commis
   expect(p.trend).toHaveLength(7)
   expect((await call(buyerA, 'GET', '/api/seller/portal')).statusCode).toBe(403)
 })
+
+test('putting a product on the calendar at a chosen price: open slots nobody has bid on take it; bad prices are refused', async () => {
+  const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+  await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+  const r = await call(sellerX, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: AED(3_000) })
+  expect(r.statusCode).toBe(200)
+  expect(r.json().priced).toBeGreaterThan(0)
+  const rows = (await pool.query(`select id, starting_price from slots where placement_id = $1 and kind = 'single'`, [placement])).rows
+  expect(rows.find(s => s.id === slotX).starting_price).toBe(AED(3_500))             // already bid on: keeps its price
+  expect(rows.filter(s => s.id !== slotX).every(s => s.starting_price === AED(3_000))).toBe(true)
+  expect(rows.filter(s => s.id !== slotX)).toHaveLength(r.json().priced)
+  expect((await call(sellerX, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: 5 })).statusCode).toBe(400)
+  expect((await call(sellerY, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: AED(3_000) })).statusCode).toBe(404)
+})

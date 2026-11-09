@@ -14,6 +14,43 @@ type SSlot = { id: string; outletId?: string; outlet: string; channel: string; p
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
 
 type View = 'programme' | 'week' | 'list' | 'month'
+type Product = { id: string; name: string; outlet: string; saleType: string; startingPrice: number; archived: boolean; unit: 'day' | 'week' }
+
+/**
+ * Put a product on sale from the calendar (owner's brief): choose the product, the dates and the price. The price starts at the
+ * product's own and can be changed for these dates only; bidding starts there and buyers bid up from it.
+ */
+function AddToCalendar({ products, date, onClose, onDone }: { products: Product[]; date: string; onClose: () => void; onDone: () => void }) {
+  const [id, setId] = useState(products[0]?.id ?? ''), [from, setFrom] = useState(date < todayInDubai() ? todayInDubai() : date), [days, setDays] = useState(7)
+  const p = products.find(x => x.id === id), [price, setPrice] = useState(p ? String(p.startingPrice / 100) : '')
+  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [note, setNote] = useState('')
+  useEffect(() => { if (p) setPrice(String(p.startingPrice / 100)) }, [id])
+  async function save() {
+    setBusy(true); setError(''); setNote('')
+    try {
+      const fils = Math.round(Number(price.replace(/,/g, '')) * 100)
+      const r = await api<{ slots: number; priced: number }>(`/seller/placements/${id}/slots`, { method: 'POST',
+        body: { from, days, ...(p && fils !== p.startingPrice ? { startingPrice: fils } : {}) } })
+      setNote(r.slots ? t('{n} new slots on sale from {date}.', { n: r.slots, date: dayLabel(from, { day: 'numeric', month: 'short' }) })
+        : t('These dates were already on sale.') + (r.priced ? ' ' + t('Price updated on {n} slots.', { n: r.priced }) : '')); onDone()
+    } catch (e: any) { setError(e.message) } finally { setBusy(false) }
+  }
+  if (!products.length) return <section className="card pad cv-add"><p>{t('Add a product first; then put it on sale here.')} <a href="/listings/new">{t('Add product')}</a></p></section>
+  return <section className="card pad form cv-add" aria-label={t('Add to calendar')}>
+    <div className="row-flex"><h2>{t('Add to calendar')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onClose}>{t('Close')}</button></div>
+    <div className="cv-add-grid">
+      <div className="field"><label htmlFor="ac-p">{t('Product')}</label><select id="ac-p" value={id} onChange={e => setId(e.target.value)}>
+        {products.map(x => <option key={x.id} value={x.id}>{x.outlet} · {x.name}</option>)}</select></div>
+      <div className="field"><label htmlFor="ac-f">{t('From')}</label><input id="ac-f" type="date" min={todayInDubai()} value={from} onChange={e => setFrom(e.target.value)} /></div>
+      <div className="field"><label htmlFor="ac-d">{t('For')}</label><select id="ac-d" value={days} onChange={e => setDays(Number(e.target.value))}>
+        {[[1, t('One day')], [7, t('One week')], [14, t('Two weeks')], [28, t('Four weeks')]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+      <div className="field"><label htmlFor="ac-pr">{p?.saleType === 'auction' ? t('Starting bid (AED)') : t('Price (AED)')}</label><input id="ac-pr" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></div>
+    </div>
+    <p className="small muted">{t("The product's days and times decide which slots appear. The price is the product's own; change it here for these dates only.")}</p>
+    {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
+    <button type="button" className="btn primary" style={{ justifySelf: 'start' }} disabled={busy || !id || !(Number(price) > 0)} onClick={save}>{t('Put on sale')}</button>
+  </section>
+}
 const VIEWS: [View, string][] = [['programme', t('Programme')], ['week', t('Week')], ['list', t('List')], ['month', t('Month')]]
 
 /**
@@ -25,10 +62,11 @@ export function SchedulePage() {
   const [a, update] = useAddress({ view: saved, date: todayInDubai(), st: '', sale: '', outlet: '', q: '' })
   const view = (VIEWS.some(v => v[0] === a.view) ? a.view : 'programme') as View
   const [slots, setSlots] = useState<SSlot[] | null>(null), [days, setDays] = useState<OpsDay[]>([]), [open, setOpen] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false), [products, setProducts] = useState<Product[]>([])
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]), [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
   const latest = useLatest(), narrow = useNarrow()
   useEffect(() => { try { localStorage.setItem('nashr:seller-view', view) } catch { /* fine */ } }, [view])
-  useEffect(() => { api<{ outlets: { id: string; name: string }[] }>('/seller/profile').then(p => setOutlets(p.outlets), () => {}) }, [])
+  useEffect(() => { api<{ outlets: { id: string; name: string }[]; placements: Product[] }>('/seller/profile').then(p => { setOutlets(p.outlets); setProducts(p.placements.filter(x => !x.archived)) }, () => {}) }, [])
   useEffect(() => { const k = setTimeout(() => qText !== a.q && update({ q: qText }), 300); return () => clearTimeout(k) }, [qText])
   const week = weekOf(a.date)
   const [from, to] = view === 'month' ? [monthGrid(a.date)[0][0], addDays(monthGrid(a.date).at(-1)![6], 1)] : view === 'list' ? [a.date, addDays(a.date, 28)] : [week[0], addDays(week[6], 1)]
@@ -58,7 +96,9 @@ export function SchedulePage() {
         <DateNav date={a.date} onDate={d => update({ date: d }, true)} onStep={step} />
         <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l]) =>
           <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
+        <button type="button" className="btn primary" aria-expanded={adding} onClick={() => setAdding(!adding)}>+ {t('Add to calendar')}</button>
       </header>
+      {adding && <AddToCalendar products={products} date={a.date} onClose={() => setAdding(false)} onDone={load} />}
       <FilterFold narrow={narrow} active={active} search={<input className="search cv-search" type="search" placeholder={t('Search outlets and programmes')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />}>
         {outlets.length > 1 && <select className="cal-input cv-outlet-pick" aria-label={t('Outlet')} value={a.outlet} onChange={e => update({ outlet: e.target.value })}>
           <option value="">{t('All outlets')}</option>{outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
