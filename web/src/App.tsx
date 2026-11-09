@@ -42,6 +42,7 @@ const UserPage = L(() => import('./admin/Users'), 'UserPage')
 const load_seller_Dashboard = () => import('./seller/Dashboard')
 const InboxPage = L(load_seller_Dashboard, 'InboxPage')
 const SellerDashboard = L(load_seller_Dashboard, 'SellerDashboard')
+const PortalDashboard = L(() => import('./seller/Portal'), 'PortalDashboard')
 const load_seller_Schedule = () => import('./seller/Schedule')
 const SchedulePage = L(load_seller_Schedule, 'SchedulePage')
 const SlotPage = L(load_seller_Schedule, 'SlotPage')
@@ -116,7 +117,7 @@ const BUYER: Routes = [
   [/^\/company/, () => <CompanyPage />],
 ]
 const SELLER: Routes = [
-  [/^\/home/, () => <SellerDashboard />],
+  [/^\/home/, () => <PortalDashboard />],
   [/^\/inbox/, () => <InboxPage />],
   [/^\/schedule/, () => <SchedulePage />],
   [/^\/slots\/([\w-]+)$/, id => <SlotPage id={id} />],
@@ -178,10 +179,10 @@ const NAV: Record<string, string[][]> = {
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
-  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/messages', t('Messages')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')], ['/help', t('Help')]],
+  seller: [['/home', t('Dashboard')], ['/listings', t('Products')], ['/schedule', t('Calendar')], ['/inbox', t('Requests')], ['/messages', t('Messages')], ['/deals', t('Transactions')], ['/earnings', t('Balances')], ['/profile', t('Your business')], ['/help', t('Help')]],
 }
 // The phone's bottom bar: the five places people go most.
-const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/schedule', '/inbox', '/deals', '/messages'] 
+const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/listings', '/schedule', '/inbox', '/messages'] 
 }
 
 const ICON: Record<string, string> = {
@@ -208,7 +209,7 @@ const ICON: Record<string, string> = {
   '/settings': 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4',
 }
 // Where the sidebar starts a new group, per role (sentence-case labels; the groups are real sections of the work).
-const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: { '/earnings': t('Your business') }, buyer: { '/campaigns': t('Plan and book'), '/company': t('Your company') } }
+const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: { '/deals': t('Money'), '/profile': t('Settings') }, buyer: { '/campaigns': t('Plan and book'), '/company': t('Your company') } }
 const ROLE: Record<string, string> = { buyer: t('Buyer'), seller: t('Publisher'), admin: t('Nashr operations'), founder: t('Nashr founder') }
 const Badge = ({ n }: { n: number }) => <span className="nav-badge" aria-label={t('{n} unread', { n })}>{n > 99 ? '99+' : n}</span>
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
@@ -225,6 +226,10 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   const load = () => api<Me>('/me').then(setMe, () => setMe(null))
   useEffect(() => { if (initialMe === undefined) load() }, [])
   const unread = useUnread(!!me && (me.role === 'buyer' || me.role === 'seller'), full)
+  // open requests for a publisher, shown on Requests in the menu (refreshed every minute)
+  const [requests, setRequests] = useState(0)
+  useEffect(() => { if (me?.role !== 'seller') return
+    const get = () => api<unknown[]>('/seller/inbox').then(r => setRequests(r.length), () => {}); get(); const x = setInterval(get, 60_000); return () => clearInterval(x) }, [me?.role])
   // Screens behind sign-in stay out of search results; public pages set their own metadata.
   // remember the language this person uses, so their emails come in it (not while staff act as them)
   useEffect(() => { if (me && me.lang && me.lang !== lang && !me.signedInAs && !me.viewingAs) api('/me/account', { method: 'PUT', body: { lang } }).catch(() => {}) }, [me?.lang])
@@ -274,7 +279,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-            <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a></Fragment>)}</nav>
+            <TabIcon path={p} />{l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a></Fragment>)}</nav>
         <div className="side-foot">
           <div className="side-me"><span className="avatar" aria-hidden>{initials}</span>
             <a className="who" href="/account" title={t('Your account')}><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role} · {t('Your account')}</span></a><span className="spacer" /><Bell role={me.role} /></div>
@@ -291,7 +296,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a>)}
+          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a>)}
           <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
@@ -305,7 +310,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
-        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}</a>)}</nav>}
+        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a>)}</nav>}
     </div>
   )
 }

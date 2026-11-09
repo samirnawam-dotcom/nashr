@@ -1620,3 +1620,22 @@ describe('self-serve teams', () => {
   })
 })
 
+
+test('the publisher dashboard: what needs a decision, sales and net after commission, transactions; publishers only', async () => {
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  let p = (await call(sellerX, 'GET', '/api/seller/portal')).json()
+  expect(p.kpis.awaiting.value).toBe(1)
+  expect(p.actions[0]).toMatchObject({ type: 'decide', dealId: deal })
+  expect(p.actions[0].net).toBeLessThan(p.actions[0].gross) // the expected net already takes off Nashr's commission
+  expect(p.transactions[0]).toMatchObject({ id: deal, status: 'awaiting_seller' })
+  expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)).statusCode).toBe(200)
+  expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().status).toBe('succeeded')
+  p = (await call(sellerX, 'GET', '/api/seller/portal?days=7')).json()
+  const paid = (await call(buyerA, 'GET', `/api/deals/${deal}`)).json()
+  expect(p.kpis.gross.value).toBe(paid.total)
+  expect(p.kpis.net.value).toBeLessThan(paid.total)
+  expect(p.kpis.pending).toMatchObject({ count: 1, value: p.kpis.net.value })
+  expect(p.byOutlet).toHaveLength(1)
+  expect(p.trend).toHaveLength(7)
+  expect((await call(buyerA, 'GET', '/api/seller/portal')).statusCode).toBe(403)
+})

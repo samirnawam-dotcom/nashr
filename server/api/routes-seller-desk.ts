@@ -66,6 +66,64 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
 export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvider }) {
   route('GET', '/api/seller/inbox', SELLER, async ({ db, at, me }) => inbox(db, me.actAs.companyId, at))
 
+  /*
+   * The owner's one-page dashboard: everything a publisher needs at a glance for a period (default 30 days) and one outlet or all.
+   * Gross = what buyers paid (price + media VAT); net = what the publisher receives after Nashr's commission.
+   */
+  route('GET', '/api/seller/portal', SELLER, async ({ db, at, me }, req) => {
+    const id = me.actAs.companyId, days = Math.min(Math.max(Number(req.query.days) || 30, 7), 365)
+    const outlet = typeof req.query.outlet === 'string' && /^[0-9a-f-]{36}$/.test(req.query.outlet) ? req.query.outlet : null
+    const from = new Date(at.getTime() - days * 86_400_000), prev = new Date(from.getTime() - days * 86_400_000)
+    // Rates are fixed when the publisher accepts; before that, the publisher's current commission and VAT give the expected figures.
+    const deals = (await db.query(`select d.*, o.id outlet_id, o.name outlet, o.channel, p.name placement, s.label, s.starts_at, c.name buyer,
+        (select min(e.at) from deal_events e where e.deal_id = d.id and e.event = 'pay') paid_at,
+        coalesce(d.commission_bp, (select (value)::int from settings where key = 'commission:' || d.seller_id order by valid_from desc limit 1),
+          (select (value)::int from settings where key = 'default_commission_bp' order by valid_from desc limit 1)) commission_bp,
+        coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) media_vat_bp
+      from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+      join companies c on c.id = d.buyer_id join companies sc on sc.id = d.seller_id
+      where d.seller_id = $1 and ($2::uuid is null or o.id = $2) order by d.created_at desc`, [id, outlet])).rows
+    const paidStates = ['secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out']
+    const paidIn = (a: Date, b: Date) => deals.filter(d => d.paid_at && d.paid_at >= a && d.paid_at < b && paidStates.includes(d.status))
+    const sum = (xs: any[], f: (d: any) => number) => xs.reduce((n, d) => n + f(d), 0)
+    const gross = (d: any) => payoutOf(d).buyerPays, net = (d: any) => payoutOf(d).payout
+    const now = paidIn(from, new Date(at.getTime() + 1)), before = paidIn(prev, from)
+    const change = (a: number, b: number) => b > 0 ? Math.round((a - b) / b * 100) : null
+    const held = deals.filter(d => ['secured', 'in_review', 'issue_open', 'disputed'].includes(d.status))
+    const todo = (await inbox(db, id, at)).filter(t => !outlet || deals.some(d => d.id === t.dealId) || t.type === 'choose' || t.type === 'interest')
+    const listings = (await db.query(`select count(distinct p.id) filter (where s.status = 'open')::int live, count(distinct p.id)::int total,
+        count(*) filter (where s.status = 'open')::int open_slots
+      from placements p join outlets o on o.id = p.outlet_id left join slots s on s.placement_id = p.id and s.starts_at > $2
+      where o.company_id = $1 and not p.archived and ($3::uuid is null or o.id = $3)`, [id, at, outlet])).rows[0]
+    // net earnings day by day, added up, for the trend line
+    const trend: { date: string; value: number }[] = []
+    let run = 0
+    for (let i = days - 1; i >= 0; i--) {
+      const a = new Date(at.getTime() - (i + 1) * 86_400_000), b = new Date(at.getTime() - i * 86_400_000)
+      run += sum(paidIn(a, b), net); trend.push({ date: new Date(b.getTime() + 4 * 3_600_000).toISOString().slice(0, 10), value: run })
+    }
+    const byOutlet = Object.values(now.reduce<Record<string, { outlet: string; value: number }>>((m, d) => {
+      (m[d.outlet_id] ??= { outlet: d.outlet, value: 0 }).value += net(d); return m }, {})).sort((a, b) => b.value - a.value)
+    const outlets = (await db.query(`select id, name, channel from outlets where company_id = $1 order by name`, [id])).rows
+    return {
+      period: { days, from, to: at }, outlets: outlets.map(o => ({ id: o.id, name: o.name, channel: o.channel })),
+      kpis: {
+        gross: { value: sum(now, gross), change: change(sum(now, gross), sum(before, gross)) },
+        net: { value: sum(now, net), change: change(sum(now, net), sum(before, net)) },
+        pending: { value: sum(held, net), count: held.length },
+        listings: { live: listings.live, total: listings.total, openSlots: listings.open_slots },
+        awaiting: { value: todo.filter(t => t.type === 'decide' || t.type === 'choose' || t.type === 'interest').length },
+      },
+      trend, byOutlet,
+      actions: todo.slice(0, 6).map(t => { const d = deals.find(x => x.id === t.dealId); return { ...t, net: d ? net(d) : null, gross: d ? gross(d) : t.amount } }),
+      actionsTotal: todo.length,
+      transactions: deals.slice(0, 8).map(d => { const x = payoutOf(d); return { id: d.id, ref: d.ref, buyer: d.buyer, outlet: d.outlet, channel: d.channel,
+        product: `${d.placement} · ${d.label}`, gross: x.buyerPays, fee: x.fee + x.feeVat, net: x.payout, status: d.status, date: d.created_at, feeBp: d.commission_bp } }),
+      payouts: { available: 0 - await balance(db, `seller_payable:${id}`, 'AED'), pending: sum(held, net), pendingCount: held.length,
+        paidOut: sum(deals.filter(d => ['released', 'paid_out'].includes(d.status) && d.paid_at && d.paid_at >= from), net) },
+    }
+  })
+
   route('GET', '/api/seller/overview', SELLER, async ({ db, at, me }) => {
     const id = me.actAs.companyId
     const c = (await db.query(`select name, trn, vat_registered, invoice_mode, payouts_enabled from companies where id = $1`, [id])).rows[0]
