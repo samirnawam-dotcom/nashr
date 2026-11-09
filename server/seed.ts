@@ -1,4 +1,5 @@
 // Demo data for local development. Never runs in production (brief section 20: demo data must never reach the live system).
+import { applyDemoAudiences } from './demo-audiences.js'
 import { pool, tx } from './core/db.js'
 import { migrate } from './core/migrate.js'
 import { hashPassword } from './auth/crypto.js'
@@ -92,13 +93,14 @@ await list(await outlet(majlis, 'The Majlis Podcast', 'المجلس', 'podcast',
 
 // Who each demo outlet reaches, its declared reach, and one brand-safety rule, so buyers can filter by audience.
 for (const [name, audiences, reach, blocked] of [
-  ['Skyline FM', ['commuters', 'young_professionals', 'affluent_expats'], 180_000, ['Alcohol & nightlife']],
-  ['Dubai One TV', ['arabic_families', 'affluent_expats', 'sports_fans'], 650_000, ['Alcohol & nightlife', 'Lottery & gaming']],
-  ['Gulf News', ['executives', 'property_investors', 'affluent_expats'], 420_000, []],
-  ['Khaleej Times', ['executives', 'tech_adopters', 'young_professionals'], 900_000, ['Crypto & trading']],
-  ['The Majlis Podcast', ['executives', 'young_professionals'], 35_000, []],
+  ['Skyline FM', ['commuters', 'young_professionals', 'affluent_expats', 'parents'], 180_000, ['Alcohol & nightlife']],
+  ['Dubai One TV', ['arabic_families', 'affluent_expats', 'sports_fans', 'parents'], 650_000, ['Alcohol & nightlife', 'Lottery & gaming']],
+  ['Gulf News', ['executives', 'property_investors', 'affluent_expats', 'south_asian_community', 'luxury_shoppers'], 420_000, []],
+  ['Khaleej Times', ['executives', 'tech_adopters', 'young_professionals', 'south_asian_community', 'luxury_shoppers'], 900_000, ['Crypto & trading']],
+  ['The Majlis Podcast', ['executives', 'young_professionals', 'students'], 35_000, []],
 ] as [string, string[], number, string[]][])
   await pool.query(`update outlets set audiences = $2, reach = $3, blocked_industries = $4 where name = $1`, [name, audiences, reach, blocked])
+await applyDemoAudiences(pool) // the one list of who each demo outlet reaches (also run on servers seeded earlier)
 
 // Some activity so the calendar shows bids, a lead and an outbid.
 const slots = (await pool.query(`select id, sale_type, starting_price from slots where status = 'open' order by starts_at limit 60`)).rows
