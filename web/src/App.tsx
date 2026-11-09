@@ -188,7 +188,7 @@ const NAV: Record<string, string[][]> = {
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
-  seller: [['/home', t('Dashboard')], ['/listings', t('Products')], ['/coverage', t('Coverage')], ['/schedule', t('Calendar')], ['/inbox', t('Requests')], ['/messages', t('Messages')], ['/deals', t('Transactions')], ['/earnings', t('Balances')], ['/profile', t('Your business')], ['/help', t('Help')]],
+  seller: [['/home', t('Dashboard')], ['/listings', t('Listings')], ['/coverage', t('Coverage')], ['/schedule', t('Calendar')], ['/inbox', t('Requests')], ['/messages', t('Messages')], ['/deals', t('Transactions')], ['/earnings', t('Balances')], ['/profile', t('Your business')], ['/help', t('Help')]],
 }
 // The phone's bottom bar: the five places people go most.
 const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/listings', '/schedule', '/inbox', '/messages'] 

@@ -139,7 +139,7 @@ export function NewPlacementPage() {
     <p className="lead">{done.slots ? t('{n} slots are on sale, the first on {date}.', { n: done.slots, date: done.first ? dayLabel(done.first, { weekday: 'long', day: 'numeric', month: 'long' }) : '—' })
       : p.company.payoutsEnabled ? t('Nothing is on sale yet. List weeks from Listings when you are ready.') : t('Slots go on sale once your payout account is verified.')}</p>
     {done.warnings.map(w => <p key={w} className="warn">{tm(w)} {t("Check the times if that's not intended.")}</p>)}
-    <div className="row-flex"><a className="btn primary" href="/schedule?view=list">{t('See it on the calendar')}</a><a className="btn" href="/listings/new">{t('Add another')}</a><a className="btn" href="/listings">{t('Go to products')}</a></div>
+    <div className="row-flex"><a className="btn primary" href="/schedule?view=list">{t('See it on the calendar')}</a><a className="btn" href="/listings/new">{t('Add another')}</a><a className="btn" href="/listings">{t('Go to listings')}</a></div>
   </main>
 
   const week = f.unit === 'week', slotted = !week && breaks.length > 0, auction = f.saleType === 'auction', fixed = f.saleType === 'fixed'
@@ -415,7 +415,7 @@ export function ImportPlacementsPage() {
             <td className="small">{r.result ? <span className={r.ok ? 'lead' : 'error'}>{r.result}</span> : r.problem ? <span className="error">{r.problem}</span> : <span className="muted">{t('Ready')}</span>}</td></tr>)}</tbody></table></div>
         <div className="row-flex section">
           <button className="btn primary" disabled={busy || !ready} onClick={importAll}>{busy ? t('Importing…') : ready === 1 ? t('Import 1 placement') : t('Import {n} placements', { n: ready })}</button>
-          {added > 0 && <a className="btn" href="/listings">{t('Go to products')}</a>}</div>
+          {added > 0 && <a className="btn" href="/listings">{t('Go to listings')}</a>}</div>
       </section>}
     </main>
   )

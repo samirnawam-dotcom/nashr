@@ -95,7 +95,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '5 publisher: placements listed'
     // The placement form as Omar described it: a format, what the buyer gets, specs, sale type, kept on sale 8 weeks ahead
     const placement = async (name, sale, from, to, at, extra) => {
-      await nav(pub, 'Products'); await pub.click('a:has-text("Add product")'); await pub.waitForSelector('.pl-format')
+      await nav(pub, 'Listings'); await pub.click('a:has-text("Add placement")'); await pub.waitForSelector('.pl-format')
       await pub.click('.pl-format:has-text("Something else")'); await pub.fill('#n', name)
       await pub.fill('#ds', 'A 30-second spot in one ad break of the programme.'); await pub.fill('#sx', 'MP3, 30 seconds')
       await pub.click('.pl-quick button:has-text("Every day")')

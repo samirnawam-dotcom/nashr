@@ -88,12 +88,12 @@ export function ProductsPage() {
   const value = all.filter(x => !x.archived).reduce((n, x) => n + x.openSlots * x.startingPrice, 0)
   const groups = CHANNELS.filter(c => shown.some(x => chOf(x) === c))
   return <main className="pr">
-    <div className="pt-head"><div><h1>{t('All products')}</h1><p className="muted">{t('Everything you sell, across every outlet and media type. Describe a product once; the calendar puts it on sale by date.')}</p></div>
-      <div className="pt-filters"><a className="btn" href="/listings/import">{t('Import rate card')}</a><a className="btn primary" href="/listings/new">+ {t('Add product')}</a></div></div>
+    <div className="pt-head"><div><h1>{t('All listings')}</h1><p className="muted">{t('Everything you sell, across every outlet and media type. Describe a placement once; the calendar puts it on sale by date.')}</p></div>
+      <div className="pt-filters"><a className="btn" href="/listings/import">{t('Import rate card')}</a><a className="btn primary" href="/listings/new">+ {t('Add placement')}</a></div></div>
     {!p.company.payoutsEnabled && <p className="warn">{t('Slots go on sale once your payout account is verified.')} <a href="/profile">{t('Connect it')}</a></p>}
 
     <div className="pr-kpis">
-      <div><b className="num">{all.filter(x => !x.archived).length}</b><span>{t('Products')}</span></div>
+      <div><b className="num">{all.filter(x => !x.archived).length}</b><span>{t('Listings')}</span></div>
       <div><b className="num">{live.length}</b><span>{t('On sale now')}</span></div>
       <div><b className="num">{all.reduce((n, x) => n + x.openSlots, 0).toLocaleString('en-US')}</b><span>{t('Open slots')}</span></div>
       <div><b className="num">{all.filter(x => x.archived).length}</b><span>{t('Archived')}</span></div>
@@ -105,7 +105,7 @@ export function ProductsPage() {
       {counts.map(([c, n]) => <button key={c} type="button" role="tab" aria-selected={type === c} className={type === c ? 'on' : ''} onClick={() => setType(c)}><Icon c={c} />{CHANNEL_NAME[c]} ({n})</button>)}
     </div>
     <div className="pr-tools">
-      <input className="search" type="search" placeholder={t('Search products…')} aria-label={t('Search products')} value={q} onChange={e => setQ(e.target.value)} />
+      <input className="search" type="search" placeholder={t('Search listings…')} aria-label={t('Search listings')} value={q} onChange={e => setQ(e.target.value)} />
       {p.outlets.length > 1 && <select className="btn" aria-label={t('Outlet')} value={outlet} onChange={e => setOutlet(e.target.value)}><option value="">{t('All outlets')}</option>
         {p.outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
       <select className="btn" aria-label={t('Status')} value={st} onChange={e => setSt(e.target.value)}>
@@ -115,8 +115,8 @@ export function ProductsPage() {
     </div>
     {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
 
-    {!shown.length ? <div className="card pad empty"><p><b>{all.length ? t('No products match.') : t('No products yet.')}</b></p>
-      <p className="muted">{t('Add a product once, with its audience, pricing and timing; then put it on sale from the calendar.')}</p><a className="btn primary" href="/listings/new">{t('Add product')}</a></div>
+    {!shown.length ? <div className="card pad empty"><p><b>{all.length ? t('No listings match.') : t('No listings yet.')}</b></p>
+      <p className="muted">{t('Add a placement once, with its audience, pricing and timing; then put it on sale from the calendar.')}</p><a className="btn primary" href="/listings/new">{t('Add placement')}</a></div>
       : <div className="pr-list">{groups.map(c => { const items = shown.filter(x => chOf(x) === c)
         return <section key={c} className="pr-group">
           <button type="button" className="pr-group-h" aria-expanded={!closed[c]} onClick={() => setClosed({ ...closed, [c]: !closed[c] })}>

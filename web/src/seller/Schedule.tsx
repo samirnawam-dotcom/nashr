@@ -35,18 +35,18 @@ function AddToCalendar({ products, date, product, onClose, onDone }: { products:
         : t('These dates were already on sale.') + (r.priced ? ' ' + t('Price updated on {n} slots.', { n: r.priced }) : '')); onDone()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
-  if (!products.length) return <section className="card pad cv-add"><p>{t('Add a product first; then put it on sale here.')} <a href="/listings/new">{t('Add product')}</a></p></section>
+  if (!products.length) return <section className="card pad cv-add"><p>{t('Add a placement first; then put it on sale here.')} <a href="/listings/new">{t('Add placement')}</a></p></section>
   return <section className="card pad form cv-add" aria-label={t('Add to calendar')}>
     <div className="row-flex"><h2>{t('Add to calendar')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onClose}>{t('Close')}</button></div>
     <div className="cv-add-grid">
-      <div className="field"><label htmlFor="ac-p">{t('Product')}</label><select id="ac-p" value={id} onChange={e => setId(e.target.value)}>
+      <div className="field"><label htmlFor="ac-p">{t('Placement')}</label><select id="ac-p" value={id} onChange={e => setId(e.target.value)}>
         {products.map(x => <option key={x.id} value={x.id}>{x.outlet} · {x.name}</option>)}</select></div>
       <div className="field"><label htmlFor="ac-f">{t('From')}</label><input id="ac-f" type="date" min={todayInDubai()} value={from} onChange={e => setFrom(e.target.value)} /></div>
       <div className="field"><label htmlFor="ac-d">{t('For')}</label><select id="ac-d" value={days} onChange={e => setDays(Number(e.target.value))}>
         {[[1, t('One day')], [7, t('One week')], [14, t('Two weeks')], [28, t('Four weeks')]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
       <div className="field"><label htmlFor="ac-pr">{p?.saleType === 'auction' ? t('Starting bid (AED)') : t('Price (AED)')}</label><input id="ac-pr" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></div>
     </div>
-    <p className="small muted">{t("The product's days and times decide which slots appear. The price is the product's own; change it here for these dates only.")}</p>
+    <p className="small muted">{t("The placement's days and times decide which slots appear. The price is the placement's own; change it here for these dates only.")}</p>
     {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
     <button type="button" className="btn primary" style={{ justifySelf: 'start' }} disabled={busy || !id || !(Number(price) > 0)} onClick={save}>{t('Put on sale')}</button>
   </section>
@@ -133,7 +133,7 @@ export function SchedulePage() {
         <tbody>{rows.map(r => { const prod = products.find(x => `${x.outlet} · ${x.name}` === r)?.id
           return <tr key={r}><th className="place">{r}</th>{week.map(d => { const here = shown.filter(x => `${x.outlet} · ${x.placement}` === r && dubai(x.startsAt).date === d)
           return <td key={d}>
-          {!here.length && d >= todayInDubai() && <button type="button" className="cv-add-day" aria-label={t('Add {product} on {day}', { product: r, day: dayLabel(d) })}
+          {!here.length && d >= todayInDubai() && <button type="button" className="cv-add-day" aria-label={t('Add {placement} on {day}', { placement: r, day: dayLabel(d) })}
             onClick={() => { setAdding({ date: d, product: prod }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>+</button>}
           {here.map(x =>
             <button key={x.id} className={`sl ${x.status}`} onClick={() => setOpen(x.id)}>

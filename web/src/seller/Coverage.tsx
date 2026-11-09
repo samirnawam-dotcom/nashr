@@ -100,7 +100,7 @@ export function CoverageFormPage({ id }: { id?: string }) {
     <ol className="cov-steps" aria-label={t('Where this submission is')}>
       {[t('Draft'), t('With Nashr for review'), c?.status === 'rejected' ? t('Declined') : t('Approved, on sale')].map((l, i) => <li key={i} className={i < step ? 'done' : i === step ? 'now' : ''}>{l}</li>)}</ol>
     {c?.decisionNote && <p className={c.status === 'approved' ? 'ok' : 'warn'}>{t('Note from Nashr: {note}', { note: c.decisionNote })}</p>}
-    {c?.status === 'approved' && c.placementId && <p className="ok">{t('It is on sale as a product.')} <a href={`/listings/${c.placementId}/edit`}>{t('Open the product')}</a> · <a href="/schedule?view=list">{t('See it on the calendar')}</a></p>}
+    {c?.status === 'approved' && c.placementId && <p className="ok">{t('It is on sale as a placement.')} <a href={`/listings/${c.placementId}/edit`}>{t('Open the placement')}</a> · <a href="/schedule?view=list">{t('See it on the calendar')}</a></p>}
 
     <fieldset className="cov-grid" disabled={locked || busy}>
       <div className="cov-col">

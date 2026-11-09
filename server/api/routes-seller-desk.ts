@@ -152,21 +152,21 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     if (!s) throw new NotFound()
     const bids = (await db.query(`select b.id, b.kind, b.amount, b.status, b.created_at, b.brief, b.buyer_id, c.name from bids b join companies c on c.id = b.buyer_id
         where b.slot_id = $1 and b.status <> 'withdrawn' order by b.amount desc, b.seq`, [s.id])).rows
-    const deals = (await db.query(`select id, ref, status, amount, kind from deals where slot_id = $1 order by created_at desc`, [s.id])).rows
+    const deals = (await db.query(`select d.id, d.ref, d.status, d.amount, d.kind, c.name buyer from deals d join companies c on c.id = d.buyer_id where d.slot_id = $1 order by d.created_at desc`, [s.id])).rows
     const profiles = new Map<string, unknown>()
     for (const b of bids) if (!profiles.has(b.buyer_id)) profiles.set(b.buyer_id, await companyProfile(db, b.buyer_id))
     // Assets (owner's side panel): the creative and proof files of this slot's bookings, newest booking first
     const ids = deals.map(d => d.id)
     const creatives = ids.length ? (await db.query(`select deal_id, version, status, file_key, file_type, uploaded_at from creatives where deal_id = any($1) order by version desc`, [ids])).rows : []
     const proofs = ids.length ? (await db.query(`select distinct on (deal_id) deal_id, items, submitted_at from proofs where deal_id = any($1) order by deal_id, submitted_at desc`, [ids])).rows : []
-    return { id: s.id, outlet: s.outlet, channel: s.channel, placement: s.placement, label: s.label, kind: s.kind, saleType: s.sale_type, status: s.status,
+    return { id: s.id, placementId: s.placement_id, outlet: s.outlet, channel: s.channel, placement: s.placement, label: s.label, kind: s.kind, saleType: s.sale_type, status: s.status,
       startsAt: s.starts_at, endsAt: s.ends_at, closesAt: s.closes_at, creativeDueAt: s.creative_due_at, choiceDeadlineAt: s.choice_deadline_at,
       startingPrice: s.starting_price, buyNowPrice: s.buy_now_price, reservePrice: s.reserve_price, topBid: s.top_amount,
       bids: bids.map(b => ({ id: b.id, kind: b.kind, amount: b.amount, status: b.status, at: b.created_at, company: b.name,
         choosable: s.status === 'awaiting_choice' && ['active', 'outbid'].includes(b.status),
         acceptable: s.status === 'open' && s.sale_type === 'quick_sale' && b.kind === 'interest' && b.status === 'active' && new Date(s.closes_at) > at,
         profile: profiles.get(b.buyer_id), brief: b.brief ? { advertiser: b.brief.advertiser ?? null, industry: b.brief.industry ?? null, message: b.brief.message ?? null, language: b.brief.language ?? null, notes: b.brief.notes ?? null } : null })),
-      deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, kind: d.kind })),
+      deals: deals.map(d => ({ id: d.id, ref: d.ref, status: d.status, amount: d.amount, kind: d.kind, buyer: d.buyer })),
       assets: deals.map(d => { const pr = proofs.find(x => x.deal_id === d.id)
         return { dealId: d.id, ref: d.ref,
           creatives: creatives.filter(c => c.deal_id === d.id).map(c => ({ version: c.version, status: c.status, fileId: fileId(c.file_key), fileType: c.file_type, uploadedAt: c.uploaded_at })),

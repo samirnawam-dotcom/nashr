@@ -103,7 +103,7 @@ export function Landing() {
             <h3>{t("For publishers")}</h3>
             <p className="aud-lede">{t("Sell your inventory to serious buyers.")}</p>
             <ul>
-              <li>{t("Add each product once, then put dates on sale from your calendar at the price you choose.")}</li>
+              <li>{t("Add each placement once, then put dates on sale from your calendar at the price you choose.")}</li>
               <li>{t("Accept, counter or decline each request with the buyer, the brief and what you receive in view.")}</li>
               <li>{t("Tax invoices in your name and TRN, and a monthly payout statement.")}</li>
             </ul>

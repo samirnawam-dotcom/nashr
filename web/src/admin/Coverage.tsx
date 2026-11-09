@@ -35,7 +35,7 @@ export function CoverageReviewItem({ id }: { id: string }) {
     <h1>{c.data.name}</h1>
     <p className="muted">{c.company}{c.outlet && c.outlet !== c.company ? ` · ${c.outlet}` : ''} · <CoverageStatus s={c.status} /></p>
     {c.decisionNote && <p className="muted">{t('Note from Nashr: {note}', { note: c.decisionNote })}</p>}
-    {c.status === 'approved' && c.placementId && <p className="ok">{t('On sale as a product.')} <a href="/calendar">{t('See the calendar')}</a></p>}
+    {c.status === 'approved' && c.placementId && <p className="ok">{t('On sale as a placement.')} <a href="/calendar">{t('See the calendar')}</a></p>}
     <CoverageSummary c={c} />
     {c.status === 'submitted' && <section className="card pad section form">
       <h2>{t('Your decision')}</h2>
@@ -46,7 +46,7 @@ export function CoverageReviewItem({ id }: { id: string }) {
         <button className="btn" disabled={busy || !note.trim()} onClick={() => act('POST', `/admin/coverage/${c.id}/decide`, { decision: 'changes', note: note.trim() }, t('Sent back for changes.'))}>{t('Ask for changes')}</button>
         <button className="btn" disabled={busy || !note.trim()} onClick={() => act('POST', `/admin/coverage/${c.id}/decide`, { decision: 'reject', note: note.trim() }, t('Declined.'))}>{t('Decline')}</button>
       </div>
-      <p className="small muted">{t('Approving makes it a product at the total price, with one slot on each coverage date that is still far enough ahead to sell.')}</p>
+      <p className="small muted">{t('Approving makes it a placement at the total price, with one slot on each coverage date that is still far enough ahead to sell.')}</p>
     </section>}
     {msg}
   </main>

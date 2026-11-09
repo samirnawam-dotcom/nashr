@@ -107,7 +107,7 @@ export function PortalDashboard() {
       <a href="/earnings" className="pt-kpi"><span>{t('Net earnings')}</span><b className="num">{money(k.net.value)}</b><Change v={k.net.change} /></a>
       <a href="/earnings" className="pt-kpi"><span>{t('Pending clearance')}</span><b className="num">{money(k.pending.value)}</b>
         <em>{k.pending.count === 1 ? t('1 booking until proof') : t('{n} bookings until proof', { n: k.pending.count ?? 0 })}</em></a>
-      <a href="/listings" className="pt-kpi"><span>{t('Active products')}</span><b className="num">{k.listings.live}</b>
+      <a href="/listings" className="pt-kpi"><span>{t('Active listings')}</span><b className="num">{k.listings.live}</b>
         <em>{t('{n} open slots', { n: k.listings.openSlots.toLocaleString('en-US') })}</em></a>
       <a href="/inbox" className="pt-kpi"><span>{t('Awaiting your decision')}</span><b className="num">{k.awaiting.value}</b>{k.awaiting.value > 0 && <em className="warn">{t('Review now')}</em>}</a>
     </section>
@@ -138,7 +138,7 @@ export function PortalDashboard() {
     <section className="card pad">
       <div className="pt-card-h"><h2>{t('Recent transactions')}</h2><a href="/deals">{t('View all')} ›</a></div>
       {!d.transactions.length ? <p className="muted">{t('No bookings yet.')}</p>
-        : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Buyer')}</th><th>{t('Outlet')}</th><th>{t('Product')}</th>
+        : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Buyer')}</th><th>{t('Outlet')}</th><th>{t('Placement')}</th>
           <th className="r">{t('Gross sale')}</th><th className="r">{t('Fee')}</th><th className="r">{t('Net')}</th><th>{t('Status')}</th><th className="r">{t('Date')}</th></tr></thead>
           <tbody>{d.transactions.map(x => { const [l, c] = txStatus(x.status); return <tr key={x.id} onClick={() => navigate(`/deals/${x.id}`)}>
             <td><b>{x.buyer}</b></td><td><ChannelMark c={x.channel} /> {x.outlet}</td><td className="small">{x.product}</td>
