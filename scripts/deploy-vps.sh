@@ -73,9 +73,17 @@ fi
 PORT="$(grep '^PORT=' "$ENVF" | cut -d= -f2)"
 grep -q '^SITE_URL=' "$ENVF" || echo "SITE_URL=https://${DOMAIN}" >> "$ENVF"   # canonical address for the sitemap
 # Nightly backups (kept 14 days) and a weekly restore drill; the app alerts staff if either fails or stops.
-grep -q '^BACKUP_DIR=' "$ENVF" || printf 'BACKUP_DIR=/var/backups/nashr\nBACKUP_KEEP_DAYS=14\n' >> "$ENVF"
-mkdir -p /var/backups/nashr && chown nashr:nashr /var/backups/nashr && chmod 700 /var/backups/nashr
-PSQL -qc "alter role nashr createdb"   # the restore drill restores into a new database, then drops it
+# BACKUPS=off (for a demo or temporary server) turns them off; the choice is kept in $ENVF, so later deploys keep it.
+# Turn them back on with BACKUPS=on.
+if [ -n "${BACKUPS:-}" ]; then sed -i '/^BACKUPS=/d' "$ENVF"; echo "BACKUPS=${BACKUPS}" >> "$ENVF"; fi
+BACKUPS="$(grep '^BACKUPS=' "$ENVF" | cut -d= -f2 || true)"
+if [ "$BACKUPS" = off ]; then
+  sed -i '/^BACKUP_DIR=/d; /^BACKUP_KEEP_DAYS=/d' "$ENVF"   # the app stops expecting backups, so no alerts about them
+else
+  grep -q '^BACKUP_DIR=' "$ENVF" || printf 'BACKUP_DIR=/var/backups/nashr\nBACKUP_KEEP_DAYS=14\n' >> "$ENVF"
+  mkdir -p /var/backups/nashr && chown nashr:nashr /var/backups/nashr && chmod 700 /var/backups/nashr
+  PSQL -qc "alter role nashr createdb"   # the restore drill restores into a new database, then drops it
+fi
 PSQL -tAc "select 1 from pg_database where datname='nashr'" | grep -q 1 || runuser -u postgres -- env -u PGHOST createdb -h /var/run/postgresql -p "$PGPORT" -O nashr nashr
 
 say "Code ($BRANCH)"
@@ -171,9 +179,13 @@ EOF
 systemctl daemon-reload
 systemctl enable nashr >/dev/null
 systemctl restart nashr
-systemctl enable --now nashr-backup.timer nashr-restore-drill.timer >/dev/null
-# A first backup now, so the watch has one to count from.
-[ -n "$(ls -A /var/backups/nashr 2>/dev/null)" ] || systemctl start nashr-backup.service || echo "First backup failed: journalctl -u nashr-backup"
+if [ "$BACKUPS" = off ]; then
+  systemctl disable --now nashr-backup.timer nashr-restore-drill.timer >/dev/null 2>&1 || true
+else
+  systemctl enable --now nashr-backup.timer nashr-restore-drill.timer >/dev/null
+  # A first backup now, so the watch has one to count from.
+  [ -n "$(ls -A /var/backups/nashr 2>/dev/null)" ] || systemctl start nashr-backup.service || echo "First backup failed: journalctl -u nashr-backup"
+fi
 
 PROXY="
   location ^~ /api/ {
@@ -208,7 +220,8 @@ if [ "$FIRST_SEED" = 1 ]; then
 elif [ -f "$DATA/demo-credentials.txt" ]; then
   echo "Demo sign-in details: cat $DATA/demo-credentials.txt"
 fi
-echo "Backups: /var/backups/nashr (nightly, 14 days; set BACKUP_RSYNC in $ENVF to copy them off this server). Restore drill: weekly."
+if [ "$BACKUPS" = off ]; then echo "Backups: OFF on this server (BACKUPS=off). Turn on with: BACKUPS=on DOMAIN=$DOMAIN bash scripts/deploy-vps.sh"
+else echo "Backups: /var/backups/nashr (nightly, 14 days; set BACKUP_RSYNC in $ENVF to copy them off this server). Restore drill: weekly."; fi
 echo "Logs: journalctl -u nashr -f      Update later: run this same script again."
 }
 

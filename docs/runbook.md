@@ -55,6 +55,7 @@ Also keep the outside uptime check: if the whole server is down, the watch is do
 - **Nightly logical backup:** `scripts/backup.sh`, run by `nashr-backup.timer` on the server into `/var/backups/nashr`, kept 14 days (`BACKUP_KEEP_DAYS`). It writes a compressed `pg_dump` plus a SHA-256 checksum and records the run, so staff are alerted if it fails or stops.
 - **Copy off the server:** set `BACKUP_RSYNC=user@other-host:/srv/nashr` in `/etc/nashr.env`. Each backup is copied there after it is made. A backup kept only on the same server does not survive losing the server.
 - Run one now: `systemctl start nashr-backup`. See the last runs: `journalctl -u nashr-backup -n 20`.
+- **On a demo or temporary server**, turn backups and the restore drill off with `BACKUPS=off DOMAIN=<domain> bash scripts/deploy-vps.sh`. The choice is kept in `/etc/nashr.env`, so later deploys keep it, and staff get no backup alerts. Turn them back on with `BACKUPS=on`. Keep them on wherever real bookings and money live.
 - Uploaded files need S3 versioning on the files bucket. The `files` table only says who may read each file; the bytes live in S3.
 
 ## 4. Restore drill (weekly on the server, and before launch)
