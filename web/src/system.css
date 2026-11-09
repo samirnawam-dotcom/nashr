@@ -774,3 +774,5 @@ h1, h2, h3, .sec-h { letter-spacing: -.02em; }
 .side .lang-switch, .side .lang-switch.on-dark { color: var(--slate); }
 .side .lang-switch:hover { background: var(--surface-2); color: var(--ink); }
 .ch-fill.ch-newspaper { background: #c47a0a; } .ch-fill.ch-magazine { background: #a0601a; } .ch-fill.ch-newsletter { background: #2e7d9a; } .ch-fill.ch-social { background: #e0662b; }
+/* small phones: the guest header keeps its button inside the screen */
+@media (max-width: 420px) { .guest-actions { gap: 4px; min-width: 0; } .guest-actions .btn.signal, .guest-actions a.btn.signal { padding: 0 10px; font-size: 13px; } }

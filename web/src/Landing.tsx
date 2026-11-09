@@ -1,59 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
 import './landing.css'
-import { BgVideo } from './BgVideo'
 import { FAQ, PAGES, faqLd, useMeta } from './seo'
 import { isAr, t } from './i18n'
-import { dayLabel, money } from './format'
+import { money } from './format'
 import { api } from './api'
 import { AUDIENCES } from '../../server/shared/audiences'
 import { INDUSTRY_PAGES } from './public/industries'
+import { CHANNEL_NAME, ICON } from './media'
 
 /**
- * The first page visitors see. One bold element — the live programme board in the control room — and everything
- * around it quiet. Everything past this page can be browsed without an account; signing in is only needed to act.
- * In-page links scroll instead of changing the address.
+ * The home page, as the owner drew it: a deep violet hero ("Media moves differently here."), proof in Nashr's own live
+ * numbers, every format, a moving row of the outlets you can book, how a booking works with the money held, and Athena
+ * as a teaser. Figures are real or plainly marked as examples; client results wait until there are verified ones.
  */
-const STEPS = [3500, 3605, 3714, 3826, 3941]
 const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+const FORMATS = ['digital', 'newspaper', 'magazine', 'newsletter', 'radio', 'tv', 'podcast', 'social']
 
-const LANES = [
-  { who: 'Skyline FM', kind: t("Radio"), slots: [{ l: 2, w: 31, t: t("Morning"), s: t("4 breaks"), c: 'hot' }, { l: 66, w: 32, t: t("Drive"), s: t("quick sale") }] },
-  { who: 'Dubai One', kind: t("TV"), slots: [{ l: 30, w: 28, t: t("News"), s: t("booked"), c: t("booked") }, { l: 67, w: 31, t: t("Evening"), s: t("2 spots") }] },
-  { who: 'Gulf News', kind: t("Print"), slots: [{ l: 1, w: 97, t: t("Full page, business section"), s: t("all day, from AED 20,000") }] },
-  { who: 'The Majlis', kind: t("Podcast"), slots: [{ l: 2, w: 42, t: t("Weekly episode"), s: t("pre-roll and mid-roll") }] },
-]
-
-const CHANNELS = [
-  { k: 'radio', name: t("Radio"), line: t("Single breaks, any break, packages") },
-  { k: 'tv', name: t("TV"), line: t("Spots by programme and time") },
-  { k: 'print', name: t("Print"), line: t("Pages by edition and section") },
-  { k: 'digital', name: t("Digital"), line: t("Homepage takeovers by day") },
-  { k: 'podcast', name: t("Podcasts"), line: t("Pre-roll, mid-roll, post-roll") },
-]
+type Outlet = { id: string; slug: string; name: string; channel: string; logoUrl: string | null; comingSoon: boolean; onNashr: boolean
+  price: { label: string; from: number | null; to: number | null } | null }
 
 export function Landing() {
-  const head = useRef<HTMLDivElement>(null), card = useRef<HTMLDivElement>(null), steps = useRef<HTMLOListElement>(null)
-  const [i, setI] = useState(2), [hours, setHours] = useState(6)
+  const steps = useRef<HTMLOListElement>(null)
   useMeta({ ...PAGES['/'], path: '/', jsonLd: [faqLd()] })
 
   useEffect(() => {
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
-    // The one orchestrated moment: the playhead sweeps the board and the top bid climbs in 3% steps.
-    let raf = 0, timer = 0
-    if (!reduce) {
-      timer = window.setInterval(() => {
-        setI(n => (n + 1) % STEPS.length); setHours(h => (h <= 1 ? 6 : h - 1))
-        const c = card.current; if (c) { c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash') }
-      }, 2600)
-      const t0 = performance.now()
-      const sweep = (t: number) => {
-        const p = ((t - t0) / 14000) % 1
-        if (head.current) head.current.style.left = `calc(var(--gut) + (100% - var(--gut)) * ${(0.04 + p * 0.92).toFixed(4)})`
-        raf = requestAnimationFrame(sweep)
-      }
-      raf = requestAnimationFrame(sweep)
-    }
     // The five steps light up in order once, when they come into view (fully readable before that).
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
     const items = [...(steps.current?.children ?? [])] as HTMLElement[]
     const fill = () => items.forEach((li, k) => setTimeout(() => li.classList.add('on'), reduce ? 0 : k * 320))
     let io: IntersectionObserver | undefined
@@ -61,106 +33,43 @@ export function Landing() {
       io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { fill(); io!.disconnect() } }, { threshold: .35 })
       io.observe(steps.current)
     } else fill()
-    return () => { cancelAnimationFrame(raf); clearInterval(timer); io?.disconnect() }
+    return () => io?.disconnect()
   }, [])
 
   return (
     <div className="lp">
       <section className="hero">
-        <div className="hero-bg" aria-hidden><BgVideo className="hero-video" src="/brand/hero-control.mp4" poster="/brand/hero-control.jpg" /><span className="hero-shade" /><span className="glow g1" /><span className="glow g2" /><span className="grid-lines" /><span className="grain" /></div>
         <div className="wrap hero-grid">
           <div className="hero-copy">
             <p className="kicker"><span className="live-dot" aria-hidden />{t("Live in the UAE. Saudi Arabia next.")}</p>
-            <h1>{t("Book UAE airtime and pages in one place.")}</h1>
-            {!isAr && <p className="ar" lang="ar" dir="rtl">احجز إعلانك في الإذاعة والتلفزيون والصحف والمنصات الرقمية من مكان واحد</p>}
-            <p className="lede">{t("Bid on radio breaks, TV spots, print pages, homepage takeovers and podcast reads, directly from the publishers. Your payment is held until the publisher proves the ad ran.")}</p>
+            <h1>{t("Media moves differently here.")}</h1>
+            {!isAr && <p className="ar" lang="ar" dir="rtl">الإعلام يتحرك هنا بطريقة مختلفة</p>}
+            <p className="lede">{t("Buy and sell premium media across the UAE in one marketplace: websites, newspapers, magazines, newsletters, radio, TV, podcasts and social. The money is held until the ad has run.")}</p>
             <div className="cta-row">
-              <a className="btn signal" href="/calendar">{t("Browse the calendar")}</a>
-              <a className="btn ghost" href="/request-access">{t("Request access")}</a>
+              <a className="btn signal" href="/request-access">{t("Get early access")}</a>
+              <a className="btn ghost" href="/calendar">{t("Browse the calendar")}</a>
             </div>
             <p className="fine">{t("Every slot and price is open to browse. Sign in when you're ready to bid.")} <button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></p>
           </div>
 
-          <a className="board" href="/calendar" aria-label={t("Example programme board. Open the live calendar")}>
-            <div className="board-h"><span><b>{dayLabel('2026-11-16', { weekday: 'short', day: 'numeric', month: 'short' })}</b> {t('Dubai time')}</span><span className="live">{t("Bidding live")}</span></div>
-            <div className="board-body">
-              <div className="axis" aria-hidden><span /><div className="ticks"><span>06:00</span><span>09:00</span><span>12:00</span><span>15:00</span><span>18:00</span></div></div>
-              <div className="lanes" aria-hidden>
-                {LANES.map(l => <div className="lane" key={l.who}><div className="who">{l.who}<small>{l.kind}</small></div><div className="track">
-                  {l.slots.map(s => <div key={s.t} className={`slot ${s.c ?? ''}`} style={{ left: `${s.l}%`, width: `${s.w}%` }}><b>{s.t}</b>{s.s}</div>)}</div></div>)}
-                <div className="playhead" ref={head} />
-              </div>
+          <figure className="deal-stack" aria-label={t("Example booking")}>
+            <div className="ticket">
+              <div className="ticket-h"><span className="ticket-logo" aria-hidden>SF</span><div><b>Skyline FM</b><span>{t("Drive Home, Break 2 · 17:15")}</span></div>
+                <span className="chip ok">{t("Bid accepted")}</span></div>
+              <div className="ticket-amt"><span>{t("Winning bid")}</span><b className="num">{money(600_000)}</b></div>
+              <ol className="ticket-steps" aria-label={t("Where this booking is")}>
+                <li className="done">{t("Bid")}</li><li className="done">{t("Accepted")}</li><li className="now">{t("Paid, held")}</li><li>{t("On air")}</li><li>{t("Released")}</li>
+              </ol>
             </div>
-            <div className="bidcard" ref={card}>
-              <div><span className="t">{t("Skyline FM, Break 2 at 07:15")}</span><span className="amt">{money(STEPS[i] * 100)}</span><span className="t">{t("Top bid, 3% steps")}</span></div>
-              <div className="state"><span className="pill soon">{t('Closes in {n}h', { n: hours })}</span>{i % 2 === 0 && <span className="pill lead">{t("You lead")}</span>}</div>
-            </div>
-          </a>
-        </div>
-
-        <ul className="wrap channels" aria-label={t("What you can book")}>
-          {CHANNELS.map(c => <li key={c.k}>
-            <img src={`/brand/${c.k}.jpg`} width={640} height={800} alt="" loading="lazy" decoding="async" />
-            <div><b>{c.name}</b><span>{c.line}</span></div>
-          </li>)}
-        </ul>
-      </section>
-
-      <LiveStats />
-
-      <section className="product">
-        <div className="wrap">
-          <div className="product-head">
-            <h2>{t("Your media plan, money and proof on one desk.")}</h2>
-            <p>{t("See what you've committed, what's held and what needs you today. Publishers see their sales, buyers and payouts the same way.")}</p>
-          </div>
-          <figure className="frame">
-            <div className="frame-bar" aria-hidden><i /><i /><i /><span>nashr.restbits.online/dashboard</span></div>
-            <img src="/product/dashboard.jpg" width={1360} height={560} alt={t("The buyer dashboard: money held, weekly spend, payments due and live bids")} loading="lazy" decoding="async" />
+            <div className="ticket small held"><span className="held-ic" aria-hidden>✓</span><div><b>{t("Held until proof")}</b><span>{t("The publisher is paid when you approve the as-run log.")}</span></div></div>
+            <div className="ticket small athena"><span className="spark" aria-hidden /><div><b>{t("Athena")}</b><span>{t("Your media co-pilot, launching soon")}</span></div></div>
+            <figcaption>{t("Example booking")}</figcaption>
           </figure>
         </div>
       </section>
 
-      <section className="block">
-        <div className="wrap bento">
-          <article className="tile t-cal">
-            <h3>{t("Every slot, in Dubai time")}</h3>
-            <p>{t("Radio breaks, TV spots, pages and takeovers by day, week or month, with the price and what's left.")}</p>
-            <div className="mini-cal" aria-hidden>{Array.from({ length: 21 }, (_, k) => <span key={k} className={[2, 5, 6, 9, 12, 13, 16].includes(k) ? 'on' : k === 10 ? 'now' : ''} />)}</div>
-          </article>
-          <article className="tile t-price">
-            <h3>{t("Prices you can read")}</h3>
-            <p>{t("Every price says where it comes from, so you know what's typical before you bid.")}</p>
-            <ul className="labels" aria-label={t("Price labels")}>
-              <li><b>{t("AED 15,000–18,000")}</b><span className="lab typical">{t("Typical on Nashr")}</span></li>
-              <li><b>{t("AED 9,000")}</b><span className="lab rate">{t("Publisher's rate")}</span></li>
-              <li><b>{t("AED 18,000–26,000")}</b><span className="lab est">{t("Estimate, unconfirmed")}</span></li>
-            </ul>
-          </article>
-          <article className="tile t-held">
-            <h3>{t("Paid only after proof")}</h3>
-            <p>{t("The publisher is paid when you approve the as-run log, tearsheet or screenshots.")}</p>
-            <div className="held-flow" aria-hidden><span>{t("Buyer")}</span><i /><span className="held">{t("Held")}</span><i /><span>{t("Publisher")}</span></div>
-          </article>
-          <article className="tile t-thread">
-            <h3>{t("Brief, creative and proof in one place")}</h3>
-            <p>{t("No email chains. Every booking keeps its own record, from the first bid to the tax invoice.")}</p>
-            <ol className="thread" aria-label={t("Example booking record")}>
-              <li className="done">{t("Brief sent with the bid")}</li><li className="done">{t("Creative approved")}</li><li className="done">{t("Proof received")}</li><li>{t("Approve and release")}</li>
-            </ol>
-          </article>
-        </div>
-      </section>
-
-      <section className="block reach">
-        <div className="wrap">
-          <h2>{t('Start from who you want to reach.')}</h2>
-          <p className="intro">{t('Pick an audience and see every slot that reaches it, on every channel, from every publisher.')}</p>
-          <ul className="reach-aud">{AUDIENCES.slice(0, 8).map(([k, label]) => <li key={k}><a href={`/audiences/${k}`}>{t(label)}</a></li>)}
-            <li><a className="more" href="/audiences">{t('All audiences')}</a></li></ul>
-          <p className="reach-ind"><span className="muted">{t('Or by industry:')}</span>{INDUSTRY_PAGES.map(([k, , label]) => <a key={k} href={`/advertise/${k}`}>{t(label)}</a>)}</p>
-        </div>
-      </section>
+      <Proof />
+      <Outlets />
 
       <section className="block how" id="how">
         <div className="wrap">
@@ -178,7 +87,7 @@ export function Landing() {
 
       <section className="block sides">
         <div className="wrap split">
-          <article className="aud">
+          <article className="aud" id="advertisers">
             <img className="aud-photo" src="/brand/buyers.jpg" width={960} height={540} alt={t("A planning team mapping a campaign on a glass wall")} loading="lazy" decoding="async" />
             <h3>{t("For brands and agencies")}</h3>
             <p className="aud-lede">{t("Every UAE outlet on one calendar.")}</p>
@@ -189,13 +98,13 @@ export function Landing() {
             </ul>
             <a className="btn" href="/calendar">{t("Browse the calendar")}</a>
           </article>
-          <article className="aud pub">
+          <article className="aud pub" id="publishers">
             <img className="aud-photo" src="/brand/publishers.jpg" width={960} height={540} alt={t("Broadcast camera operators filming a live programme")} loading="lazy" decoding="async" />
-            <h3>{t("For radio, TV, print, digital and podcasts")}</h3>
+            <h3>{t("For publishers")}</h3>
             <p className="aud-lede">{t("Sell your inventory to serious buyers.")}</p>
             <ul>
-              <li>{t("List programmes with their breaks, set a reserve, a buy-now price and a package price.")}</li>
-              <li>{t("Decide with the full picture: the buyer, the brief and exactly what you receive.")}</li>
+              <li>{t("Add each product once, then put dates on sale from your calendar at the price you choose.")}</li>
+              <li>{t("Accept, counter or decline each request with the buyer, the brief and what you receive in view.")}</li>
               <li>{t("Tax invoices in your name and TRN, and a monthly payout statement.")}</li>
             </ul>
             <a className="btn" href="/request-access">{t("List your outlet")}</a>
@@ -223,24 +132,47 @@ export function Landing() {
         </div>
       </section>
 
+      <section className="block reach">
+        <div className="wrap">
+          <h2>{t('Start from who you want to reach.')}</h2>
+          <p className="intro">{t('Pick an audience and see every slot that reaches it, on every channel, from every publisher.')}</p>
+          <ul className="reach-aud">{AUDIENCES.slice(0, 8).map(([k, label]) => <li key={k}><a href={`/audiences/${k}`}>{t(label)}</a></li>)}
+            <li><a className="more" href="/audiences">{t('All audiences')}</a></li></ul>
+          <p className="reach-ind"><span className="muted">{t('Or by industry:')}</span>{INDUSTRY_PAGES.map(([k, , label]) => <a key={k} href={`/advertise/${k}`}>{t(label)}</a>)}</p>
+        </div>
+      </section>
+
+      <section className="athena" id="athena">
+        <div className="wrap athena-grid">
+          <div>
+            <p className="soon-tag">{t("Launching soon")}</p>
+            <h2>{t("Meet Athena, your media co-pilot.")}</h2>
+            <p className="intro">{t("Ask in plain language and Athena suggests where your budget works hardest, compares outlets and drafts the plan for you to book.")}</p>
+            <a className="btn signal" href="/request-access">{t("Join the waitlist")}</a>
+          </div>
+          <div className="chat" aria-label={t("Athena preview")}>
+            <div className="chat-h"><span className="spark" aria-hidden /><b>{t("Athena")}</b><span>{t("Preview")}</span></div>
+            <p className="msg me">{t("How should I spend AED 80,000 on a January launch for young professionals in Dubai?")}</p>
+            <p className="msg ai">{t("Weekday drive-time radio and two business newsletters reach them best for that budget. I'd keep a fifth for a podcast read in week two.")}</p>
+            <div className="chat-acts" aria-hidden><span>{t("Show me the plan")}</span><span>{t("Compare outlets")}</span></div>
+          </div>
+        </div>
+      </section>
+
       <section className="block faq" id="faq">
         <div className="wrap faq-grid">
-          <div className="faq-side">
-            <h2>{t("Questions buyers and publishers ask")}</h2>
-            <img className="faq-photo" src="/brand/desk.jpg" width={720} height={900} alt="" loading="lazy" decoding="async" />
-          </div>
+          <div className="faq-side"><h2>{t("Questions buyers and publishers ask")}</h2>
+            <p className="intro">{t("Anything else? Ask us from the help page once you're in.")}</p></div>
           <div className="faq-list">{FAQ.map(([q, a]) => <details key={q}><summary>{t(q)}</summary><p>{t(a)}</p></details>)}</div>
         </div>
       </section>
 
       <section className="closing">
-        <div className="closing-photo" aria-hidden><BgVideo src="/brand/closing-press.mp4" poster="/brand/closing-press.jpg" /></div>
-        <div className="hero-bg" aria-hidden><span className="glow g2" /><span className="grid-lines" /><span className="grain" /></div>
         <div className="wrap closing-grid">
           <div>
             <h2>{t("Ready when your next campaign is.")}</h2>
             <p>{t("Nashr is invite-only for UAE brands, agencies and media outlets. Our team reviews every request and sends an invite to your work email.")}</p>
-            <div className="cta-row"><a className="btn signal" href="/request-access">{t("Request access")}</a><a className="btn ghost" href="/sign-in">{t("Sign in")}</a></div>
+            <div className="cta-row"><a className="btn signal" href="/request-access">{t("Get early access")}</a><a className="btn ghost" href="/sign-in">{t("Sign in")}</a></div>
           </div>
           <div className="closing-mark" lang="ar" aria-hidden>نشر</div>
         </div>
@@ -261,20 +193,44 @@ export function Landing() {
 
 type Stats = { publishers: number | null; outlets: number | null; channels: number | null; openSlots: number | null; completed: number | null; booked: number | null }
 
-/** Proof in real numbers (as Dianomi does with its own): live from Nashr's records, each shown only once it is big enough to mean something. */
-function LiveStats() {
+/** Proof in Nashr's own live numbers, each shown only once it is big enough to mean something; beside them, every format. */
+function Proof() {
   const [s, setS] = useState<Stats | null>(null)
   useEffect(() => { api<Stats>('/public/stats').then(setS, () => {}) }, [])
-  if (!s) return null
-  const items = ([
-    [s.openSlots, t('slots open to book in the next 30 days')], [s.outlets, t('outlets you can book today')], [s.publishers, t('verified UAE publishers')],
-    [s.channels, t('channels: radio, TV, print, digital, podcast')], [s.completed, t('bookings completed, paid only after proof')],
-  ] as [number | null, string][]).filter(([v]) => v != null)
-  if (!items.length && !s.booked) return null
-  return <section className="stats-band" aria-label={t('Nashr in numbers')}>
-    <div className="wrap stats-row">
-      {s.booked != null && <div><b className="num">{money(s.booked).replace(/\.00$/, '')}</b><span>{t('booked through Nashr, held until the ad ran')}</span></div>}
-      {items.slice(0, s.booked != null ? 3 : 4).map(([v, l]) => <div key={l}><b className="num">{v!.toLocaleString('en-US')}</b><span>{l}</span></div>)}
+  const items = (s ? [
+    [s.booked != null ? money(s.booked).replace(/\.00$/, '') : null, t('booked through Nashr'), t('Held until each ad ran.')],
+    [s.openSlots, t('slots open to book'), t('In the next 30 days, with prices to read.')],
+    [s.publishers, t('verified UAE publishers'), t('Newspapers, broadcasters and digital-first brands.')],
+    [s.completed, t('bookings completed'), t('Each one paid only after proof.')],
+  ] : []).filter(([v]) => v != null).slice(0, 3) as [number | string, string, string][]
+  return <section className="proof" aria-label={t('Nashr in numbers')}>
+    <div className="wrap proof-grid">
+      {items.map(([v, l, sub]) => <div className="proof-card" key={l}><b className="num">{typeof v === 'number' ? v.toLocaleString('en-US') : v}</b><span className="l">{l}</span><span className="s">{sub}</span></div>)}
+      <div className="proof-card formats"><b>{t('Every format')}</b><span className="s">{t('Bought and sold in one place.')}</span>
+        <ul>{FORMATS.map(f => <li key={f}>{CHANNEL_NAME[f]}</li>)}</ul></div>
+    </div>
+  </section>
+}
+
+/** The outlets you can book, from the live directory, drifting past in a row (still for people who prefer less motion). */
+function Outlets() {
+  const [list, setList] = useState<Outlet[]>([])
+  useEffect(() => { api<Outlet[]>('/directory').then(r => setList(r.filter(o => o.onNashr && !o.comingSoon)), () => {}) }, [])
+  if (list.length < 3) return null
+  const card = (o: Outlet, copy = false) => <a className="ol-card" href={`/directory/${o.slug}`} key={`${copy ? 'b' : 'a'}-${o.id}`} tabIndex={copy ? -1 : undefined}>
+    {o.logoUrl ? <img src={o.logoUrl} alt="" width={48} height={48} loading="lazy" decoding="async" />
+      : <span className="ol-ic" aria-hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[o.channel] ?? ICON.digital} /></svg></span>}
+    <span className="ol-t"><b>{o.name}</b><span>{CHANNEL_NAME[o.channel] ?? o.channel}</span>
+      {o.price?.from != null && <span className="from">{t('from {amount}', { amount: money(o.price.from).replace(/\.00$/, '') })}</span>}</span></a>
+  return <section className="block outlets" aria-labelledby="outlets-h">
+    <div className="wrap outlets-head">
+      <div><h2 id="outlets-h">{t('Outlets you can book today')}</h2>
+        <p className="intro">{t('Radio and TV stations, newspapers, magazines and digital brands across the UAE. Prices are indicative until each publisher confirms its rate card.')}</p></div>
+      <a className="btn" href="/directory">{t('Browse the directory')}</a>
+    </div>
+    <div className="marquee">
+      <div className="marquee-track">{list.map(o => card(o))}</div>
+      <div className="marquee-track" aria-hidden>{list.map(o => card(o, true))}</div>
     </div>
   </section>
 }
