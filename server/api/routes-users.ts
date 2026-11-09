@@ -1,4 +1,5 @@
 import type { RouteFn } from './app.js'
+import { queueInviteEmail } from '../core/mail.js'
 import { NotFound } from './app.js'
 import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
@@ -94,7 +95,8 @@ export function userRoutes(route: RouteFn) {
       [c.id, email, String(b.name).trim(), b.phone?.trim() || null, c.type === 'publisher' ? 'seller' : 'buyer', at])).rows[0]
     const token = await issueInvite(db, user.id, at)
     await audit(db, `admin:${me.userId}`, 'user.invited', 'user', user.id, { company: c.name, email }, at)
-    return { userId: user.id, inviteLink: `/invite#${token}` }
+    const emailed = await queueInviteEmail(db, { userId: user.id, to: email, name: String(b.name).trim(), company: c.name, link: `/invite#${token}` }, at)
+    return { userId: user.id, inviteLink: `/invite#${token}`, emailed }
   }, { type: 'object', required: ['name', 'email'], additionalProperties: false, properties: {
     name: { type: 'string', minLength: 1, maxLength: 120 }, email: { type: 'string', format: 'email', maxLength: 200 }, phone: { type: 'string', maxLength: 40 } } })
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, upload } from '../api'
 import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
+import { Team } from '../Team'
 import { useNeedsTwoStep } from '../twoStep'
 import { t } from '../i18n'
 import { LogoPicker } from '../LogoPicker'
@@ -48,6 +49,7 @@ export function ProfilePage() {
         <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy} onClick={() => act('PUT', '/seller/company', { ...tax, trn: tax.trn || undefined }, t("Tax details saved."))}>{t("Save")}</button>
       </section>
       <CompanyProfileEditor audience="buyers" />
+      <Team side="publisher" />
       <RateCard card={p.company.rateCard} onChange={load} />
       {p.outlets.map(o => <OutletForm key={o.id} o={o} busy={busy} onSave={b => act('PUT', `/seller/outlets/${o.id}`, b, t('{name} saved.', { name: o.name }))} />)}
       <OutletForm key={p.outlets.length} first={!p.outlets.length} busy={busy} onSave={b => act('POST', '/seller/outlets', b, t("Outlet added."))} />

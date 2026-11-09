@@ -6,6 +6,7 @@ import '../messages/messages.css'
 import { PhotoBand } from '../PhotoBand'
 import { t } from '../i18n'
 import { CompanyProfileEditor } from '../CompanyCard'
+import { Team } from '../Team'
 
 const date = (iso: string) => dayLabel(dubai(iso).date, { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -42,13 +43,7 @@ export function CompanyPage() {
           {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
         </form>
       </section>
-      <section className="card pad section">
-        <h2>{t('Your team')}</h2>
-        <ul className="team">{c.team.map(u => <li key={u.email}><span className="conv-avatar" aria-hidden>{u.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}</span>
-          <span><b>{u.name}</b><span className="small muted"><bdi>{u.email}</bdi> · {t('since {date}', { date: date(u.since) })}</span></span>
-          {u.status !== 'active' && <span className="badge">{t(u.status)}</span>}</li>)}</ul>
-        <p className="small muted">{t('To add a colleague, ask Nashr: everyone joins by invitation.')}</p>
-      </section>
+      <Team side="buyer" />
     </main>
   )
 }

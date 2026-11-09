@@ -12,7 +12,7 @@ import { DisputesPolicyPage, PrivacyPage, RefundsPage, TermsPage } from './Legal
 import { TermsGate } from './TermsGate'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
-import { LangSwitch, t } from './i18n'
+import { LangSwitch, lang, t } from './i18n'
 import { time } from './format'
 import { useUnread } from './messages/unread'
 import { resetLive } from './live'
@@ -34,6 +34,7 @@ const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
 const HelpPage = L(() => import('./Help'), 'HelpPage')
 const SupportPage = L(() => import('./admin/Support'), 'SupportPage')
 const UsersPage = L(() => import('./admin/Users'), 'UsersPage')
+const EmailsPage = L(() => import('./admin/Emails'), 'EmailsPage')
 const UserPage = L(() => import('./admin/Users'), 'UserPage')
 const load_seller_Dashboard = () => import('./seller/Dashboard')
 const InboxPage = L(load_seller_Dashboard, 'InboxPage')
@@ -86,7 +87,7 @@ const DirectoryAdminPage = L(load_admin_System, 'DirectoryAdminPage')
 const SettingsPage = L(load_admin_System, 'SettingsPage')
 
 export type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null
-  signedInAs: { user: string; staff: string; until: string; companyId: string } | null; terms?: { version: string; accepted: boolean } }
+  signedInAs: { user: string; staff: string; until: string; companyId: string } | null; lang?: 'en' | 'ar'; terms?: { version: string; accepted: boolean } }
 
 // One page per path; ids are the last segment.
 type Routes = [RegExp, (id: string) => React.ReactNode][]
@@ -135,6 +136,7 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/accounts\/([\w-]+)$/, id => <AccountPage id={id} isFounder={founder} />],
   [/^\/users\/([\w-]+)$/, id => <UserPage id={id} />],
   [/^\/users/, () => <UsersPage />],
+  [/^\/emails/, () => <EmailsPage />],
   [/^\/accounts/, () => <AccountsPage />],
   [/^\/calendar/, () => <AdminCalendarPage />],
   [/^\/deals\/([\w-]+)$/, id => <AdminDealPage id={id} />],
@@ -168,7 +170,7 @@ const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.s
 
 const NAV: Record<string, string[][]> = {
   admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
-    ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/settings', t('Settings')]],
+    ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
   seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/inbox', t('Inbox')], ['/deals', t('Deals')], ['/messages', t('Messages')], ['/earnings', t('Earnings')], ['/listings', t('Listings')], ['/profile', t('Profile')], ['/help', t('Help')]],
@@ -192,6 +194,7 @@ const ICON: Record<string, string> = {
   '/access': 'M15 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM3 21a8 8 0 0 1 12-6.9M19 14v6M16 17h6', '/accounts': 'M3 21V8l9-5 9 5v13M9 21v-6h6v6M3 21h18',
   '/help': 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01',
   '/users': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  '/emails': 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6',
   '/support': 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   '/disputes': 'M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   '/funds': 'M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18', '/payouts': 'M4 8h14l-3-3M20 16H6l3 3',
@@ -218,6 +221,8 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   useEffect(() => { if (initialMe === undefined) load() }, [])
   const unread = useUnread(!!me && (me.role === 'buyer' || me.role === 'seller'), full)
   // Screens behind sign-in stay out of search results; public pages set their own metadata.
+  // remember the language this person uses, so their emails come in it (not while staff act as them)
+  useEffect(() => { if (me && me.lang && me.lang !== lang && !me.signedInAs && !me.viewingAs) api('/me/account', { method: 'PUT', body: { lang } }).catch(() => {}) }, [me?.lang])
   useEffect(() => { if (me && !/^\/(calendar|directory|terms|privacy|refunds|dispute-policy)/.test(hash)) applyMeta({ title: 'Nashr', description: PAGES['/'].description, noindex: true }) }, [me, hash])
   // After signing in, go back to where the visitor was, if that page is theirs to see; otherwise to their home.
   const signedIn = async () => {

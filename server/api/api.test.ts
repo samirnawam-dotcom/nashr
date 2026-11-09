@@ -1330,8 +1330,8 @@ describe('results, sales insights and public proof', () => {
 
 describe('account self-service', () => {
   test('forgot password: same answer for anyone; Nashr issues a one-day link; it works once and signs out everywhere', async () => {
-    expect((await call(null, 'POST', '/api/auth/forgot', { email: 'nobody@nowhere.ae' })).json()).toEqual({ ok: true })
-    expect((await call(null, 'POST', '/api/auth/forgot', { email: 'sara@northwind.ae' })).json()).toEqual({ ok: true })
+    expect((await call(null, 'POST', '/api/auth/forgot', { email: 'nobody@nowhere.ae' })).json()).toEqual({ ok: true, by: 'team' }) // the same answer for every address; 'team' until email is set up
+    expect((await call(null, 'POST', '/api/auth/forgot', { email: 'sara@northwind.ae' })).json()).toEqual({ ok: true, by: 'team' })
     const user = (await pool.query(`select id from users where email = 'sara@northwind.ae'`)).rows[0].id
     const acct = (await call(admin, 'GET', `/api/admin/companies/${buyerA.companyId}`)).json()
     expect(acct.users.find((u: any) => u.id === user).resetRequested).toBe(true)
@@ -1559,6 +1559,38 @@ describe('users and tracking for Nashr', () => {
     expect((await call(admin, 'POST', `/api/admin/companies/${buyerA.companyId}/users`, { name: 'Again', email: 'omar.k@northwind.ae' })).json().error).toMatch('already')
     expect((await call(null, 'POST', '/api/auth/invite', { token: added.inviteLink.split('#')[1], password: PASS, acceptTerms: true })).statusCode).toBe(200)
     expect((await call(admin, 'GET', '/api/admin/users?format=csv')).body).toContain('omar.k@northwind.ae')
+  })
+})
+
+describe('self-serve teams', () => {
+  test('a manager invites a colleague with chosen rights; the rights are enforced; the last manager stays', async () => {
+    expect((await call(buyerA, 'POST', '/api/team', { name: 'Omar', email: 'omar@gmail.com' })).json().error).toMatch('northwind.ae')
+    const added = (await call(buyerA, 'POST', '/api/team', { name: 'Omar', email: 'omar@northwind.ae', canPay: false, canDecide: false, canManage: false })).json()
+    expect(added.inviteLink).toMatch(/^\/invite#/)
+    expect((await pool.query(`select status from outbox where to_email = 'omar@northwind.ae' and kind = 'access.invite'`)).rows[0].status).toBe('held') // emailed once SMTP is set up
+    await call(null, 'POST', '/api/auth/invite', { token: added.inviteLink.split('#')[1], password: PASS, acceptTerms: true })
+    const omar = { cookie: await signIn('omar@northwind.ae'), companyId: buyerA.companyId } as any
+    const deal = (await call(omar, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id            // anyone can book
+    await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
+    expect((await call(omar, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().error).toMatch('right to pay')
+    expect((await call(omar, 'POST', '/api/team', { name: 'X', email: 'x@northwind.ae' })).json().error).toMatch('team managers')
+    expect((await call(buyerA, 'PUT', `/api/team/${added.id}`, { canPay: true })).statusCode).toBe(200)
+    expect((await call(omar, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).statusCode).toBe(200)
+    const me = (await call(buyerA, 'GET', '/api/team')).json().members.find((m: any) => m.you)
+    expect((await call(buyerA, 'PUT', `/api/team/${me.id}`, { canManage: false })).json().error).toMatch('at least one')
+    expect((await call(buyerA, 'POST', `/api/team/${me.id}/remove`)).json().error).toMatch('yourself')
+    expect((await call(buyerA, 'POST', `/api/team/${added.id}/remove`)).statusCode).toBe(200)
+    expect((await call(omar, 'GET', '/api/me')).statusCode).toBe(401)                                        // signed out at once
+    expect((await call(buyerB, 'PUT', `/api/team/${added.id}`, { canPay: true })).statusCode).toBe(404)       // another company's person
+  })
+
+  test('a publisher\'s colleague without the right to decide cannot accept a booking', async () => {
+    const added = (await call(sellerX, 'POST', '/api/team', { name: 'Huda', email: 'huda@skyline.ae', canDecide: false })).json()
+    await call(null, 'POST', '/api/auth/invite', { token: added.inviteLink.split('#')[1], password: PASS, acceptTerms: true })
+    const huda = { cookie: await signIn('huda@skyline.ae'), companyId: sellerX.companyId } as any
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    expect((await call(huda, 'POST', `/api/seller/deals/${deal}/accept`)).json().error).toMatch('decide on bookings')
+    expect((await call(huda, 'GET', `/api/seller/deals/${deal}`)).statusCode).toBe(200)                     // can still see it
   })
 })
 

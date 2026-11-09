@@ -1,4 +1,5 @@
 import { NotFound, type RouteFn } from './app.js'
+import { queueInviteEmail } from '../core/mail.js'
 import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
 import { changeSetting } from '../core/settings.js'
@@ -11,17 +12,28 @@ const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
 // Financial settings are the founder's (brief section 2).
 export const FOUNDER_ONLY = /^(commission:|default_commission_bp|nashr_vat|nashr_trn|nashr_legal_name|nashr_address|media_vat_bp|processing_fee|cancel_fee_bp|free_cancel_hours|review_working_days|proof_due_working_days|media_invoice_timing|open_markets)/
 
+/** Email an invite link to the person it is for (kept in the outbox when email is not set up). */
+async function emailInvite(db: any, userId: string, link: string, at: Date) {
+  const u = (await db.query(`select u.email, u.name, c.name company from users u join companies c on c.id = u.company_id where u.id = $1`, [userId])).rows[0]
+  return queueInviteEmail(db, { userId, to: u.email, name: u.name, company: u.company, link }, at)
+}
+
 export function adminRoutes(route: RouteFn) {
   route('GET', '/api/admin/access-requests', STAFF, async ({ db }) =>
     (await db.query(`select r.*, exists (select 1 from users u where lower(u.email) = lower(r.email) and u.status = 'invited') invite_pending
                      from access_requests r order by (r.status = 'pending') desc, r.created_at desc`)).rows)
 
   route('POST', '/api/admin/access-requests/:id/invite', STAFF, async ({ db, at, me }, req) =>
-    ({ inviteLink: `/invite#${await reissueAccessInvite(db, req.params.id, `admin:${me.userId}`, at)}` }))
+    {
+      const link = `/invite#${await reissueAccessInvite(db, req.params.id, `admin:${me.userId}`, at)}`
+      const u = (await db.query(`select u.id from users u join access_requests r on lower(r.email) = lower(u.email) where r.id = $1`, [req.params.id])).rows[0]
+      return { inviteLink: link, emailed: u ? await emailInvite(db, u.id, link, at) : false }
+    })
 
   route('POST', '/api/admin/access-requests/:id/approve', STAFF, async ({ db, at, me }, req) => {
     const r = await approveAccess(db, req.params.id, `admin:${me.userId}`, at)
-    return { companyId: r.companyId, inviteLink: `/invite#${r.inviteToken}` } // emailed to the applicant (D: email delivery)
+    const link = `/invite#${r.inviteToken}`
+    return { companyId: r.companyId, inviteLink: link, emailed: await emailInvite(db, r.userId, link, at) } // emailed to the applicant once email is set up
   })
 
   route('POST', '/api/admin/access-requests/:id/decide', STAFF, async ({ db, at, me }, req) => {

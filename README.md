@@ -64,6 +64,20 @@ cd /opt/nashr && runuser -u nashr -- env $(xargs < /etc/nashr.env) node_modules/
 
 It prints a one-time invite link (valid 7 days). They open it, choose their own password and link their own authenticator app.
 
+## Email
+
+Every email goes through an outbox (Admin → Emails). Until SMTP is set up, emails are kept there unsent and Nashr's team hands out reset links and invites; once it is set up, they are sent within a minute and retried if the mail server refuses (after 1, 5, 30, 120 and 480 minutes). Add these lines to `/etc/nashr.env` on the server, then run the deploy command again:
+
+```
+SMTP_HOST=mail.your-domain.com
+SMTP_PORT=587
+SMTP_USER=noreply@your-domain.com
+SMTP_PASS=the mailbox password
+SMTP_FROM=Nashr <noreply@your-domain.com>
+```
+
+Port 587 upgrades to TLS (STARTTLS); use 465 for TLS from the start. Then use "Send a test email" on Admin → Emails. People get emails in the language they use Nashr in; payments, bookings to act on, deadlines, disputes and account security always go, and bids, saved-search alerts and messages follow each person's choices.
+
 ## Search (SEO)
 
 - Real addresses (`/calendar`, `/directory/gulf-news`, `/terms`); old `#/` links redirect. Outlet pages use readable slugs.

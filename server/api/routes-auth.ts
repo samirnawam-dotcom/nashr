@@ -1,5 +1,6 @@
 import type { RouteFn } from './app.js'
 import { pool } from '../core/db.js'
+import { smtpConfig } from '../core/smtp.js'
 import { COOKIE, cookie, rateLimit } from './app.js'
 import { acceptInvite, acceptTerms, termsVersion, changePassword, resetWithCode, recordSignIn, signInLocked, login, logout, requestAccess, requestReset, resetPassword } from '../auth/access.js'
 import { MarketError } from '../marketplace/market.js'
@@ -52,9 +53,9 @@ export function authRoutes(route: RouteFn) {
   route('GET', '/api/me', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me, at }) => {
     const c = (await db.query(`select name, type from companies where id = $1`, [me.actAs.companyId])).rows[0]
     const as = me.signedInAs && (await db.query(`select u.name, (select name from users where id = $2) staff from users u where u.id = $1`, [me.userId, me.signedInAs.staffId])).rows[0]
-    const terms = (await db.query(`select terms_version from users where id = $1`, [me.userId])).rows[0]
+    const terms = (await db.query(`select terms_version, lang from users where id = $1`, [me.userId])).rows[0]
     const current = await termsVersion(db, at)
-    return { role: me.actAs.role, company: c, viewingAs: me.viewAs ? me.viewAs.companyId : null, terms: { version: current, accepted: terms?.terms_version === current },
+    return { role: me.actAs.role, company: c, lang: terms?.lang ?? 'en', viewingAs: me.viewAs ? me.viewAs.companyId : null, terms: { version: current, accepted: terms?.terms_version === current },
       signedInAs: me.signedInAs ? { user: as.name, staff: as.staff, until: me.signedInAs.until, companyId: me.companyId } : null }
   })
 
@@ -65,7 +66,7 @@ export function authRoutes(route: RouteFn) {
     const started = Date.now()
     await requestReset(db, req.body.email, at)
     await new Promise(r => setTimeout(r, Math.max(0, 300 - (Date.now() - started))))
-    return { ok: true }
+    return { ok: true, by: smtpConfig() ? 'email' : 'team' } // how the link travels: the same answer for every address
   }, { type: 'object', required: ['email'], additionalProperties: false, properties: { email: str } })
   route('POST', '/api/auth/reset-with-code', 'public', async ({ db, at }, req, reply) => {
     if (!rateLimit(`reset-code:${req.ip}`, 5, at.getTime()) || !rateLimit(`reset-code:${String(req.body.email).toLowerCase()}`, 5, at.getTime()))
@@ -93,9 +94,10 @@ export function authRoutes(route: RouteFn) {
     if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')
     if (b.name != null) await db.query(`update users set name = $2 where id = $1`, [me.userId, b.name.trim()])
     if (b.emails) await db.query(`update users set email_prefs = $2 where id = $1`, [me.userId, JSON.stringify(b.emails)])
+    if (b.lang) await db.query(`update users set lang = $2 where id = $1`, [me.userId, b.lang]) // emails follow the language they use Nashr in
     await audit(db, `user:${me.userId}`, 'account.updated', 'user', me.userId, { fields: Object.keys(b) }, at)
     return { ok: true }
-  }, { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 },
+  }, { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 }, lang: { enum: ['en', 'ar'] },
     emails: { type: 'object', additionalProperties: false, properties: { bids: { type: 'boolean' }, alerts: { type: 'boolean' }, messages: { type: 'boolean' }, news: { type: 'boolean' } } } } })
   // Updated terms: accepted once per version, by the person themselves (not by Nashr signed in as them)
   route('POST', '/api/me/accept-terms', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req) => {

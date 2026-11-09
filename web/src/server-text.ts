@@ -8,6 +8,13 @@ import { AR } from './i18n-ar.js'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  "Email is not set up yet: add the SMTP details to the server settings first.": "البريد غير مُعد بعد: أضف بيانات SMTP إلى إعدادات الخادم أولًا.",
+  "The email server refused: {}": "رفض خادم البريد: {1}",
+  "Your company needs at least one active team manager. Make someone else a manager first.": "تحتاج شركتك إلى مدير فريق نشط واحد على الأقل. اجعل شخصًا آخر مديرًا أولًا.",
+  "Invite colleagues with a work email at {}. For anyone else, ask Nashr.": "ادعُ الزملاء ببريد عمل على {1}. ولأي شخص آخر، تواصل مع نشر.",
+  "You cannot remove yourself. Ask another team manager.": "لا يمكنك إزالة نفسك. اطلب ذلك من مدير فريق آخر.",
+  "This person is not removed.": "هذا الشخص غير مُزال.",
+  "This person never joined. Send them a new invite instead.": "لم ينضم هذا الشخص قط. أرسل له دعوة جديدة بدلًا من ذلك.",
   "Accept the updated terms of use to carry on.": "وافق على شروط الاستخدام المحدّثة للمتابعة.",
   "Too many failed sign-ins for this account. Try again in 15 minutes, or reset your password.": "محاولات دخول فاشلة كثيرة لهذا الحساب. حاول بعد 15 دقيقة، أو أعد تعيين كلمة المرور.",
   "Only the founder can sign a staff member out.": "المؤسس وحده يمكنه تسجيل خروج أحد أفراد الفريق.",

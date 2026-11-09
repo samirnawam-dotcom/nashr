@@ -2,6 +2,8 @@ import { type Db, one } from '../core/db.js'
 import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
+import { smtpConfig } from '../core/smtp.js'
+import { queueResetEmail } from '../core/mail.js'
 import { MarketError } from '../marketplace/market.js'
 import { checkTotp, totpStep, hashPassword, newTotpSecret, randomToken, sha256, verifyPassword } from './crypto.js'
 
@@ -36,7 +38,8 @@ export async function approveAccess(db: Db, requestId: string, actor: string, at
   if (!['pending', 'info'].includes(r.status)) throw new MarketError('This request has already been decided.')
   const type = r.company_type === 'media_outlet' ? 'publisher' : 'buyer'
   const company = await one(db, `insert into companies (name, type) values ($1, $2) returning id`, [r.company, type])
-  const user = await one(db, `insert into users (company_id, email, name, phone, role, created_at) values ($1, $2, $3, $4, $5, $6) returning id`,
+  // the person who asked to join is the company's first team manager
+  const user = await one(db, `insert into users (company_id, email, name, phone, role, created_at, can_manage) values ($1, $2, $3, $4, $5, $6, true) returning id`,
     [company.id, r.email, r.name, r.phone, type === 'publisher' ? 'seller' : 'buyer', at])
   await db.query(`update access_requests set status = 'approved', decided_at = $2, decided_by = $3 where id = $1`, [r.id, at, actor])
   await audit(db, actor, 'access.approved', 'access_request', r.id, { company: r.company }, at)
@@ -187,6 +190,16 @@ export async function requestReset(db: Db, email: string, at: Date) {
   const open = await db.query(`select 1 from password_resets where user_id = $1 and used_at is null and issued_at is null and requested_at > $2`, [u.id, new Date(at.getTime() - 3_600_000)])
   if (open.rowCount) return // one request an hour is enough
   await db.query(`insert into password_resets (user_id, requested_at) values ($1, $2)`, [u.id, at])
+  // with email set up (and never for staff), the link goes straight to the person; otherwise Nashr's team issues it
+  const person = (await db.query(`select name, email, role, lang from users where id = $1`, [u.id])).rows[0]
+  if (smtpConfig() && !STAFF.includes(person.role)) {
+    const token = randomToken()
+    await db.query(`update password_resets set token_hash = $2, issued_at = $3, expires_at = $4 where user_id = $1 and issued_at is null and used_at is null`,
+      [u.id, sha256(token), at, new Date(at.getTime() + RESET_HOURS * 3_600_000)])
+    await queueResetEmail(db, { userId: u.id, to: person.email, name: person.name, lang: person.lang === 'ar' ? 'ar' : 'en', link: `/reset#${token}` }, at)
+    await audit(db, `user:${u.id}`, 'password.reset_emailed', 'user', u.id, null, at)
+    return
+  }
   for (const admin of (await db.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
     await notify(db, admin.company_id, 'access.reset_requested', null, { userId: u.id, companyId: u.company_id }, at)
   await audit(db, `user:${u.id}`, 'password.reset_requested', 'user', u.id, null, at)

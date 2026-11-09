@@ -18,6 +18,8 @@ import { coverRoutes } from './routes-covers.js'
 import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
 import { messageRoutes } from './routes-messages.js'
+import { teamRoutes } from './routes-team.js'
+import { mailRoutes } from './routes-mail.js'
 import { userRoutes } from './routes-users.js'
 import { supportRoutes } from './routes-support.js'
 import { insightRoutes } from './routes-insights.js'
@@ -88,9 +90,12 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   })
 
   // Security headers on every API response; the web app's own headers (CSP for scripts and fonts) are set at the edge (docs/runbook.md).
-  app.addHook('onSend', async (_req, reply) => {
-    reply.header('x-content-type-options', 'nosniff').header('x-frame-options', 'DENY').header('referrer-policy', 'same-origin')
-      .header('content-security-policy', "default-src 'none'; frame-ancestors 'none'").header('cross-origin-resource-policy', 'same-origin')
+  app.addHook('onSend', async (req, reply) => {
+    // one exception: an email, shown to Nashr's staff inside the app's own page (same site only, no scripts, sandboxed)
+    const emailPreview = req.method === 'GET' && /^\/api\/admin\/emails\/[0-9a-f-]{36}$/.test(req.url)
+    reply.header('x-content-type-options', 'nosniff').header('x-frame-options', emailPreview ? 'SAMEORIGIN' : 'DENY').header('referrer-policy', 'same-origin')
+      .header('content-security-policy', emailPreview ? "default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox"
+        : "default-src 'none'; frame-ancestors 'none'").header('cross-origin-resource-policy', 'same-origin')
     if (process.env.NODE_ENV === 'production') reply.header('strict-transport-security', 'max-age=63072000; includeSubDomains')
   })
 
@@ -104,6 +109,19 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
     reply.code(500).send({ error: 'Something went wrong on our side.' })
   })
 
+  // What a company's own team settings allow each person (self-serve teams): paying, deciding on bookings, managing the team
+  const NEEDS: Record<string, 'pay' | 'decide' | 'manage'> = {
+    'POST /api/deals/:id/pay': 'pay', 'POST /api/deals/:id/cancel': 'pay',
+    'POST /api/seller/deals/:id/accept': 'decide', 'POST /api/seller/deals/:id/decline': 'decide', 'POST /api/seller/slots/:id/choose': 'decide',
+    'POST /api/seller/slots/:id/accept-interest': 'decide', 'POST /api/seller/deals/:id/cancel': 'decide', 'POST /api/seller/deals/:id/issues/offer': 'decide',
+    'PUT /api/buyer/company': 'manage', 'PUT /api/seller/company': 'manage', 'POST /api/seller/payouts/connect': 'manage',
+    'POST /api/team': 'manage', 'PUT /api/team/:id': 'manage', 'POST /api/team/:id/remove': 'manage', 'POST /api/team/:id/restore': 'manage', 'POST /api/team/:id/invite': 'manage',
+  }
+  const CANT: Record<string, string> = {
+    pay: 'Your company has not given you the right to pay or cancel. Ask a team manager.',
+    decide: 'Your company has not given you the right to decide on bookings. Ask a team manager.',
+    manage: 'Only your company\'s team managers can do this.',
+  }
   const TERMS_FREE = new Set(['/api/me/accept-terms', '/api/auth/logout'])
   // Steps only the account holder may take, even when Nashr is signed in as them: their password and email choices, paying by card, bank details.
   const OWN_STEPS = new Set(['PUT /api/me/password', 'PUT /api/me/account', 'POST /api/deals/:id/pay', 'POST /api/seller/payouts/connect',
@@ -135,6 +153,11 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
           const u = (await db.query(`select terms_version from users where id = $1`, [s.userId])).rows[0]
           if (u?.terms_version !== await termsVersion(db, at)) return reply.code(403).send({ error: 'Accept the updated terms of use to carry on.' })
         }
+        const need = ['buyer', 'seller'].includes(s.role) ? NEEDS[`${method} ${url}`] : undefined
+        if (need) {
+          const u = (await db.query(`select can_pay, can_decide, can_manage from users where id = $1`, [s.userId])).rows[0]
+          if (!u?.[`can_${need}`]) return reply.code(403).send({ error: CANT[need] })
+        }
         if (s.signedInAs) await audit(db, `admin:${s.signedInAs.staffId}`, method === 'GET' ? 'sign_in_as.page' : 'sign_in_as.action', 'user', s.userId,
           { method, url: req.url, company: s.companyId }, at) // every page read and every change, as view-as logs every page
         if (viewing && method === 'GET') await audit(db, `admin:${s.userId}`, 'view_as.page', 'company', actAs.companyId, { url: req.url }, at)
@@ -157,6 +180,8 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   insightRoutes(route)
   supportRoutes(route)
   userRoutes(route)
+  teamRoutes(route)
+  mailRoutes(route)
   healthRoute(app, { provider: deps.provider, clock })
   liveRoute(app, clock)
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })

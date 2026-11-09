@@ -6,14 +6,15 @@ import { t } from './i18n'
 
 /** Forgotten password: always the same answer, so nobody can find out who has an account. Nashr's team sends the link. */
 export function ForgotPassword() {
-  const [email, setEmail] = useState(''), [sent, setSent] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const [email, setEmail] = useState(''), [sent, setSent] = useState<false | 'email' | 'team'>(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError('')
-    try { await api('/auth/forgot', { method: 'POST', body: { email } }); setSent(true) } catch (err: any) { setError(err.message) } finally { setBusy(false) }
+    try { const r = await api<{ by: 'email' | 'team' }>('/auth/forgot', { method: 'POST', body: { email } }); setSent(r.by ?? 'team') } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return <AuthShell photo="/brand/auth-invite.jpg"><form onSubmit={submit}>
     <div className="auth-title"><h1>{sent ? t('Check your email') : t('Reset your password')}</h1>
-      <p>{sent ? t("If an account uses {email}, Nashr's team will send it a reset link shortly. The link works for 24 hours.", { email })
+      <p>{sent === 'email' ? t('If an account uses {email}, we have emailed it a reset link. The link works for 24 hours. Check your spam folder if it does not arrive.', { email })
+        : sent ? t("If an account uses {email}, Nashr's team will send it a reset link shortly. The link works for 24 hours.", { email })
         : t('Enter your work email. We will send a link to choose a new password.')}</p></div>
     {!sent && <><div className="field"><label htmlFor="fe">{t('Work email')}</label><input id="fe" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required /></div>
       {error && <p className="auth-error" role="alert">{error}</p>}

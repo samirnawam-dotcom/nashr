@@ -725,3 +725,16 @@ a.avatar { text-decoration: none; }
 .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent, var(--green)); text-decoration: underline; cursor: pointer; }
 .auth-code-reset { margin: 16px 0 0; padding: 14px 16px; border: 1px solid var(--line, #e5e7eb); border-radius: var(--radius); display: grid; gap: 10px; }
 .auth-code-reset legend { font-weight: 600; padding: 0 6px; }
+
+/* The team: each person on one line, what they may do in words under their name, the manager's switches beside it. */
+.team-section .team { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 0; }
+.team-section .team li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line, #e5e7eb); }
+.team-section .team li:first-child { border-top: 0; }
+.team-section .team li.gone { opacity: .6; }
+.team-section .who { display: grid; gap: 2px; }
+.team-section .rights-now { color: var(--ink-2, inherit); }
+.team-section .team-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: flex-end; }
+.team-section .rights { border: 1px solid var(--line, #e5e7eb); border-radius: var(--radius); padding: 10px 14px; display: grid; gap: 8px; }
+.team-section .rights legend { font-weight: 600; padding: 0 6px; }
+@media (max-width: 720px) { .team-section .team li { grid-template-columns: auto minmax(0, 1fr); } .team-section .team-actions { grid-column: 1 / -1; justify-content: flex-start; } }
+.email-preview { width: 100%; height: 520px; border: 1px solid var(--line, #e5e7eb); border-radius: var(--radius); background: #f2f4f3; }

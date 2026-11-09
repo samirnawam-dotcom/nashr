@@ -1,4 +1,5 @@
 import { buildApp } from './api/app.js'
+import { runOutbox } from './core/mail.js'
 import { migrate } from './core/migrate.js'
 import { pool } from './core/db.js'
 import { sweep } from './marketplace/sweeper.js'
@@ -26,7 +27,7 @@ await app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' })
 
 // Background jobs every minute. Each is safe to run late or twice (SPEC 5.3).
 const run = (name: string, job: () => Promise<unknown>) => job().catch(e => console.error(JSON.stringify({ t: new Date().toISOString(), job: name, error: String(e?.stack ?? e) })))
-const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(p, new Date())]] as const
+const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(p, new Date())], ['email', () => runOutbox(new Date())]] as const
 for (const [name, job] of jobs) run(name, job) // once now, so /api/health is green from the start
 const timers = jobs.map(([name, job]) => setInterval(() => run(name, job), 60_000))
 console.log(`Nashr API on :${process.env.PORT ?? 3000}`)
