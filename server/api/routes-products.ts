@@ -1,5 +1,5 @@
 import { NotFound, type RouteFn } from './app.js'
-import { archiveProduct, ensureProducts, listIt, saveMedia, saveProduct, saveProgramme } from '../catalog/products.js'
+import { archiveProduct, bulkSlots, ensureProducts, listIt, repeatWeek, saveMedia, saveProduct, saveProgramme } from '../catalog/products.js'
 import { MEDIA } from '../shared/media.js'
 
 /*
@@ -71,4 +71,9 @@ export function productRoutes(route: RouteFn) {
   }, PROGRAMME)
 
   route('POST', '/api/seller/listings', SELLER, async ({ db, at, me }, req) => listIt(db, me.actAs.companyId, req.body, `seller:${me.actAs.companyId}`, at), LISTING)
+  route('POST', '/api/seller/listings/repeat', SELLER, async ({ db, at, me }, req) => repeatWeek(db, me.actAs.companyId, req.body.from, req.body.weeks, `seller:${me.actAs.companyId}`, at),
+    { type: 'object', additionalProperties: false, required: ['from', 'weeks'], properties: { from: { type: 'string', format: 'date' }, weeks: { type: 'integer', minimum: 1, maximum: 12 } } })
+  route('POST', '/api/seller/slots/bulk', SELLER, async ({ db, at, me }, req) => bulkSlots(db, me.actAs.companyId, req.body, `seller:${me.actAs.companyId}`, at),
+    { type: 'object', additionalProperties: false, required: ['ids', 'action'], properties: { ids: { type: 'array', minItems: 1, maxItems: 300, uniqueItems: true, items: { type: 'string', format: 'uuid' } },
+      action: { enum: ['block', 'unblock', 'price'] }, startingPrice: money } })
 }

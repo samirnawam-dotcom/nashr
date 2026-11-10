@@ -172,3 +172,39 @@ export async function listIt(db: Db, companyId: string, l: ListingInput, actor: 
   await audit(db, actor, 'listing.created', 'placement', p.id, { from: l.from, length: l.length, weeks: l.weeks ?? null, saleType: l.saleType, startingPrice: l.startingPrice, slots: made }, at)
   return { slots: made }
 }
+
+/**
+ * Several slots at once from the publisher's calendar: take off sale, put back, or set one starting price. The same rule as for one
+ * slot applies to each: only slots nobody has bid on change, and a price goes on single slots only (packages keep the product's
+ * own prices). What cannot change is counted as skipped, never an error, so a mixed selection still does its work.
+ */
+export async function bulkSlots(db: Db, companyId: string, b: { ids: string[]; action: 'block' | 'unblock' | 'price'; startingPrice?: number }, actor: string, at: Date) {
+  const ids = [...new Set(b.ids)]
+  const mine = `s.id = any($1::uuid[]) and p.id = s.placement_id and o.id = p.outlet_id and o.company_id = $2 and not exists (select 1 from bids x where x.slot_id = s.id)`
+  let changed = 0
+  if (b.action === 'price') {
+    if (!b.startingPrice) throw new MarketError('Enter the new price.')
+    changed = (await db.query(`update slots s set starting_price = $3 from placements p, outlets o where ${mine} and s.status = 'open' and s.kind = 'single' and s.closes_at > $4
+        and s.starting_price <> $3 and (s.buy_now_price is null or s.buy_now_price > $3)`, [ids, companyId, b.startingPrice, at])).rowCount ?? 0
+  } else {
+    const off = b.action === 'block'
+    changed = (await db.query(`update slots s set status = $3 from placements p, outlets o where ${mine} and s.status = $4 and ($5 or s.closes_at > $6)`,
+      [ids, companyId, off ? 'blocked' : 'open', off ? 'open' : 'blocked', off, at])).rowCount ?? 0
+  }
+  if (changed) await audit(db, actor, `slots.bulk_${b.action}`, 'company', companyId, { asked: ids.length, changed, ...(b.action === 'price' ? { startingPrice: b.startingPrice } : {}) }, at)
+  return { changed, skipped: ids.length - changed }
+}
+
+/**
+ * "Repeat this week": every programme and media type that has something listed in the week starting `from` is listed again for the
+ * following weeks, on the days it runs, at its current way of selling and prices. Dates already listed are left as they are.
+ */
+export async function repeatWeek(db: Db, companyId: string, from: string, weeks: number, actor: string, at: Date) {
+  const places = (await db.query(`select distinct p.id, p.name from placements p join outlets o on o.id = p.outlet_id join slots s on s.placement_id = p.id
+      where o.company_id = $1 and not p.archived and s.air_date >= $2::date and s.air_date < $2::date + 7 and s.status <> 'blocked' order by p.name`, [companyId, from])).rows
+  if (!places.length) throw new MarketError('Nothing is listed in this week to repeat.')
+  let slots = 0
+  for (const p of places) slots += await generateSlots(db, p.id, (await one(db, `select ($1::date + 7)::text d`, [from])).d, weeks * 7, at)
+  await audit(db, actor, 'listing.repeated', 'company', companyId, { from, weeks, programmes: places.length, slots }, at)
+  return { slots, programmes: places.length }
+}

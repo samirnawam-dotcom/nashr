@@ -210,6 +210,8 @@ export const SERVER_AR: Record<string, string> = {
   "Add a description.": "أضف وصفًا.",
   "Keep it to 500 characters.": "لا تتجاوز 500 حرف.",
   "This product was not found.": "لم يُعثر على هذا المنتج.",
+  "Enter the new price.": "أدخل السعر الجديد.",
+  "Nothing is listed in this week to repeat.": "لا يوجد شيء معروض في هذا الأسبوع لتكراره.",
   "This media type was not found.": "لم يُعثر على نوع الوسيلة هذا.",
   "The media type cannot change once it is added. Add a new one instead.": "لا يمكن تغيير نوع الوسيلة بعد إضافته. أضف نوعًا جديدًا بدلًا منه.",
   "Only Radio, TV and Podcast have programmes.": "البرامج للإذاعة والتلفزيون والبودكاست فقط.",

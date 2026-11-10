@@ -7,6 +7,7 @@ import { SignInPrompt, useGuest } from '../guest'
 import { t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { useLive } from '../live'
+import { usePlan } from './Plan'
 
 type Detail = Slot & { yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
@@ -18,7 +19,7 @@ const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Dat
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
 
 export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose: () => void; onDone: () => void }) {
-  const guest = useGuest()
+  const guest = useGuest(), plan = usePlan()
   const [s, setS] = useState<Detail | null>(null)
   const [amount, setAmount] = useState(''), [auto, setAuto] = useState(false), [max, setMax] = useState('')
   // The brief goes with every first bid on a slot; the last one is offered again so buyers type it once per campaign.
@@ -174,6 +175,8 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
               ? <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/book`, {}, r => r.status === 'accepted_pay_now'
                   ? t('Booked and confirmed. Pay from Bookings to secure it.') : t('Booked. The publisher confirms within 24 hours; you pay only then.'))}>{t('Book for {price}', { price: money(s.startingPrice) })}</button>
             : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
+          {!s.yourDeal && !s.youBid && <button type="button" className={`btn plan-add ${plan.has(s.id) ? 'in' : ''}`} aria-pressed={plan.has(s.id)} disabled={!plan.has(s.id) && plan.full} onClick={() => plan.toggle(s.id)}>
+            {plan.has(s.id) ? `✓ ${t('In your plan')}` : `+ ${t('Add to plan')}`}</button>}
           {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>
       </>}

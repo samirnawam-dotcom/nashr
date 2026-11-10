@@ -47,6 +47,9 @@ export function SchedulePage() {
   const [adding, setAdding] = useState<false | { date: string; product?: string }>(false), [products, setProducts] = useState<Product[]>([])
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]), [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
   const latest = useLatest(), narrow = useNarrow(), wide = useWide()
+  // Select mode (week by programme): pick several breaks, a whole programme or a whole day, then change them in one step.
+  const [picking, setPicking] = useState(false), [picked, setPicked] = useState<string[]>([]), [bulkPrice, setBulkPrice] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
+  const [repeat, setRepeat] = useState(false), [repeatWeeks, setRepeatWeeks] = useState('4')
   useEffect(() => { try { localStorage.setItem('nashr:seller-view', view) } catch { /* fine */ } }, [view])
   useEffect(() => { api<{ outlets: { id: string; name: string }[] }>('/seller/profile').then(p => setOutlets(p.outlets), () => {}); api<Product[]>('/seller/products').then(setProducts, () => {}) }, [])
   useEffect(() => { const k = setTimeout(() => qText !== a.q && update({ q: qText }), 300); return () => clearTimeout(k) }, [qText])
@@ -74,12 +77,33 @@ export function SchedulePage() {
   const toggle = (k: string) => update({ bs: (states.includes(k) ? states.filter(x => x !== k) : [...states, k]).join(',') })
   const outletName = outlets.length === 1 ? outlets[0].name : ''
   const openSlot = (id: string) => setOpen(id)
+  const canPick = view === 'week' && lay === 'prog'
+  useEffect(() => { setPicked([]); setNote('') }, [from, picking]); useEffect(() => { if (!canPick) setPicking(false) }, [canPick])
+  const pick = (ids: string[]) => setPicked(ids.every(i => picked.includes(i)) ? picked.filter(i => !ids.includes(i)) : [...new Set([...picked, ...ids])])
+  async function bulk(action: 'block' | 'unblock' | 'price') {
+    setBusy(true); setError(''); setNote('')
+    try {
+      const r = await api<{ changed: number; skipped: number }>('/seller/slots/bulk', { method: 'POST', body: { ids: picked, action, ...(action === 'price' ? { startingPrice: Math.round(Number(bulkPrice.replace(/,/g, '')) * 100) } : {}) } })
+      setNote([t(r.changed === 1 ? '1 slot changed.' : '{n} slots changed.', { n: r.changed }), r.skipped ? t('{n} left as they were (they have bids, are packages, or are already that way).', { n: r.skipped }) : ''].filter(Boolean).join(' '))
+      setPicked([]); load()
+    } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
+  }
+  async function repeatIt() {
+    setBusy(true); setError(''); setNote('')
+    try {
+      const r = await api<{ slots: number; programmes: number }>('/seller/listings/repeat', { method: 'POST', body: { from: week[0], weeks: Number(repeatWeeks) } })
+      setNote(r.slots ? t('Repeated: {n} new slots on sale over the next {w} weeks.', { n: r.slots, w: repeatWeeks }) : t('Nothing new went on sale: those weeks are already listed.'))
+      setRepeat(false)
+    } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
+  }
   const toDay = (d: string) => update({ view: 'day', date: d }, true)
   const panel = open && <SlotPanel key={open} id={open} onChange={load} onClose={() => setOpen(null)} />
   return (
     <main className="cv cc">
       <header className="cc-head">
         <div className="cc-title"><h1>{outletName ? t('{outlet} content calendar', { outlet: outletName }) : t('Content calendar')}</h1></div>
+        {canPick && <button type="button" className={`btn cc-pick ${picking ? 'on' : ''}`} aria-pressed={picking} onClick={() => setPicking(!picking)}>{picking ? t('Done selecting') : t('Select')}</button>}
+        {view === 'week' && <button type="button" className="btn" aria-expanded={repeat} onClick={() => setRepeat(!repeat)}>{t('Repeat this week')}</button>}
         <a className="btn" href="/listings">{t('Products')}{products.length > 0 && <span className="cc-n">{products.length}</span>}</a>
         <button type="button" className="btn primary" aria-expanded={!!adding} onClick={() => setAdding(adding ? false : { date: a.date })}>+ {t('List it')}</button>
       </header>
@@ -94,6 +118,12 @@ export function SchedulePage() {
         <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l]) =>
           <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
       </div>
+      {repeat && view === 'week' && <div className="cc-repeat card" role="group" aria-label={t('Repeat this week')}>
+        <p><b>{t('Repeat this week')}</b> <span className="muted">{t('Everything listed in {range} goes on sale again on the same days, at each programme\'s current price. Weeks already listed are left alone.', { range: title })}</span></p>
+        <div className="seg" role="radiogroup" aria-label={t('For how long')}>{['1', '2', '4', '8', '12'].map(w =>
+          <button key={w} type="button" role="radio" aria-checked={repeatWeeks === w} className={repeatWeeks === w ? 'on' : ''} onClick={() => setRepeatWeeks(w)}>{t(w === '1' ? 'Next week' : '{n} weeks', { n: w })}</button>)}</div>
+        <button type="button" className="btn primary" disabled={busy} onClick={repeatIt}>{t('Repeat')}</button><button type="button" className="btn" onClick={() => setRepeat(false)}>{t('Cancel')}</button></div>}
+      {note && <p className="ok" role="status">{note}</p>}
       <FilterFold narrow={narrow} active={active} search={<input className="search cv-search" type="search" placeholder={t('Search outlets and programmes')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />}>
         {outlets.length > 1 && <select className="cal-input cv-outlet-pick" aria-label={t('Outlet')} value={a.outlet} onChange={e => update({ outlet: e.target.value })}>
           <option value="">{t('All outlets')}</option>{outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
@@ -118,7 +148,7 @@ export function SchedulePage() {
           {view !== 'list' && slots && !shown.length && <div className="cv-empty"><p><b>{slots.length ? t('No slots match these filters.') : view === 'day' ? t('Nothing listed on this day.') : t('Nothing listed in this period.')}</b></p>
             <div className="row-flex">{!slots.length && <button className="btn primary" onClick={() => setAdding({ date: a.date })}>+ {t('Add to calendar')}</button>}<button className="btn" onClick={() => step(1)}>{t('Show the next one')}</button></div></div>}
           {view === 'day' && shown.length > 0 && <DayList slots={shown} open={open} onOpen={openSlot} />}
-          {view === 'week' && shown.length > 0 && lay === 'prog' && <Lanes days={week} slots={shown} open={open} onOpen={openSlot} onAdd={d => setAdding({ date: d })} onDay={toDay} />}
+          {view === 'week' && shown.length > 0 && lay === 'prog' && <Lanes days={week} slots={shown} open={open} onOpen={openSlot} onAdd={d => setAdding({ date: d })} onDay={toDay} picked={picking ? picked : null} onPick={pick} />}
           {view === 'week' && shown.length > 0 && lay === 'time' && <WeekGrid days={week} slots={shown} open={open} onOpen={openSlot} onAdd={d => setAdding({ date: d })} />}
           {view === 'month' && slots && <MonthGrid date={a.date} grid={grid} slots={shown} onDay={toDay} />}
           {view === 'list' && <OpsList base="/seller/slots" qs={qs} who="seller" narrow={narrow} reload={reload} onOpen={x => setOpen(x.id)} />}
@@ -127,6 +157,14 @@ export function SchedulePage() {
         </div>
         {open && wide && <aside className="cc-panel card" aria-label={t('Slot')}>{panel}</aside>}
       </div>
+      {picking && <div className="cc-bulk" role="region" aria-label={t('Change the selected slots')}>
+        <b className="num">{t(picked.length === 1 ? '1 selected' : '{n} selected', { n: picked.length })}</b>
+        <span className="small cc-bulk-hint">{picked.length ? '' : t('Press breaks, a programme name or a day to select.')}</span>
+        <button type="button" className="btn" disabled={busy || !picked.length} onClick={() => bulk('block')}>{t('Take off sale')}</button>
+        <button type="button" className="btn" disabled={busy || !picked.length} onClick={() => bulk('unblock')}>{t('Put back on sale')}</button>
+        <span className="cc-bulk-price"><label htmlFor="bulk-p" className="small">{t('New price (AED)')}</label><input id="bulk-p" className="search" inputMode="decimal" value={bulkPrice} onChange={e => setBulkPrice(e.target.value)} />
+          <button type="button" className="btn primary" disabled={busy || !picked.length || !(Number(bulkPrice.replace(/,/g, '')) >= 1)} onClick={() => bulk('price')}>{t('Set price')}</button></span>
+        <button type="button" className="btn" onClick={() => setPicking(false)}>{t('Done')}</button></div>}
       {open && !wide && <div className="scrim" onClick={() => setOpen(null)}><aside className="drawer" role="dialog" aria-label={t("Slot")} onClick={e => e.stopPropagation()}>{panel}</aside></div>}
     </main>
   )
@@ -157,12 +195,16 @@ function Mix({ list }: { list: SSlot[] }) {
  * The week by programme: one row for each programme (or media type sold as one), days across, and each break as a one-line
  * pill coloured by its state: the time, how many bids, the price. The programme's name is written once, not on every break.
  */
-function Lanes({ days, slots, open, onOpen, onAdd, onDay }: { days: string[]; slots: SSlot[]; open: string | null; onOpen: (id: string) => void; onAdd: (d: string) => void; onDay: (d: string) => void }) {
+function Lanes({ days, slots, open, onOpen, onAdd, onDay, picked, onPick }: { days: string[]; slots: SSlot[]; open: string | null; onOpen: (id: string) => void; onAdd: (d: string) => void; onDay: (d: string) => void
+  picked: string[] | null; onPick: (ids: string[]) => void }) {
+  // only slots nobody has bid on can change: on sale with no bids, or off sale
+  const can = (s: SSlot) => (s.status === 'open' && !s.bids) || s.status === 'blocked', idsOf = (l: SSlot[]) => l.filter(can).map(s => s.id)
   const today = todayInDubai(), lanes = new Map<string, SSlot[]>()
   for (const s of slots) { const k = `${s.outlet}\n${s.placement}`; lanes.set(k, [...(lanes.get(k) ?? []), s]) }
   const on = (l: SSlot[], d: string) => l.filter(s => dubai(s.startsAt).date === d).sort((x, y) => Number(x.kind !== 'single') - Number(y.kind !== 'single') || x.startsAt.localeCompare(y.startsAt))
   const pill = (s: SSlot) => { const [label, k] = bidState(s), timed = s.kind === 'single' && !isLong(s)
-    return <button key={s.id} type="button" className={`ln-ev cc-ev s-${k} ${timed ? '' : 'pkg'} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}
+    return <button key={s.id} type="button" className={`ln-ev cc-ev s-${k} ${timed ? '' : 'pkg'} ${open === s.id ? 'on' : ''} ${picked ? (picked.includes(s.id) ? 'picked' : can(s) ? 'pickable' : 'locked') : ''}`}
+      aria-pressed={picked ? picked.includes(s.id) : undefined} disabled={!!picked && !can(s)} onClick={() => picked ? onPick([s.id]) : onOpen(s.id)}
       title={`${s.placement} · ${tm(s.label)}${timed ? ` · ${time(s.startsAt)}` : ''} · ${label} · ${money(price(s))}`}>
       <span className={`bchip b-${k} ln-s`}>{k === 'acc' ? '✓' : k === 'bid' ? s.bids : k === 'pend' ? '!' : <i aria-hidden />}</span>
       <span className="ln-t num">{timed ? time(s.startsAt) : tm(s.label)}</span>
@@ -171,13 +213,14 @@ function Lanes({ days, slots, open, onOpen, onAdd, onDay }: { days: string[]; sl
     <div className="ln-inner">
       <div className="ln-row ln-head"><span className="ln-corner small muted">{t('Programme')}</span>{days.map(d => { const l = slots.filter(s => dubai(s.startsAt).date === d), pend = l.filter(s => bidState(s)[1] === 'pend').length
         return <span key={d} className={`ln-dh ${d === today ? 'today' : ''} ${d < today ? 'past' : ''}`}>
-          <button type="button" className="ln-dn" onClick={() => onDay(d)} aria-label={t('Open {day}', { day: dayLabel(d) })}><small>{dayLabel(d, { weekday: 'short' })}</small><b className="num">{Number(d.slice(8))}</b></button>
+          <button type="button" className="ln-dn" onClick={() => picked ? onPick(idsOf(l)) : onDay(d)} aria-label={picked ? t('Select {day}', { day: dayLabel(d) }) : t('Open {day}', { day: dayLabel(d) })}><small>{dayLabel(d, { weekday: 'short' })}</small><b className="num">{Number(d.slice(8))}</b></button>
           {pend > 0 && <span className="ln-flag">{t('{n} to decide', { n: pend })}</span>}
           {d >= today && <button type="button" className="wk-add" aria-label={t('Add to calendar on {day}', { day: dayLabel(d) })} onClick={() => onAdd(d)}>+</button>}
           {l.length > 0 && <Mix list={l} />}</span> })}</div>
       {[...lanes.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([key, l]) => { const s0 = l[0], sold = l.filter(s => bidState(s)[1] === 'acc').length
         return <div className="ln-row" key={key}>
-          <div className={`ln-who cc-ev f-${family(s0.channel)}`}><span className="ln-ic"><ChIcon c={s0.channel} size={17} /></span>
+          <div className={`ln-who cc-ev f-${family(s0.channel)} ${picked ? 'pick' : ''}`} role={picked ? 'button' : undefined} tabIndex={picked ? 0 : undefined}
+            onClick={picked ? () => onPick(idsOf(l)) : undefined} onKeyDown={picked ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(idsOf(l)) } } : undefined}><span className="ln-ic"><ChIcon c={s0.channel} size={17} /></span>
             <span className="ln-name"><b>{s0.placement}</b><span className="small muted">{CHANNEL_NAME[s0.channel] ?? s0.channel}{s0.outlet !== s0.placement ? `${sep}${s0.outlet}` : ''}</span>
               <span className="ln-stat small num">{t('{sold} of {n} booked', { sold, n: l.length })}</span></span></div>
           {days.map(d => <div key={d} className={`ln-cell ${d === today ? 'today' : ''} ${d < today ? 'past' : ''}`}>{on(l, d).map(pill)}</div>)}

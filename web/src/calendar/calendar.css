@@ -657,3 +657,49 @@ label.side-h { display: block; }
 .ln-dh .cc-mix { width: 100%; margin-top: auto; }
 .wk-ev .wk-l3 { flex-wrap: wrap; row-gap: 3px; }
 @media (max-width: 900px) { .cc-tn { white-space: normal; } }
+
+/* Select mode and the bar that changes several slots at once; repeat this week */
+.cc-bar .btn.sm.on { background: var(--teal-1); border-color: var(--teal); color: var(--teal-press); }
+.ln-ev.pickable { cursor: copy; }
+.ln-ev.locked { opacity: .4; cursor: not-allowed; }
+.ln-ev.locked:hover { box-shadow: none; transform: none; }
+.ln-ev.picked { border-color: var(--teal) !important; background: var(--teal); color: #fff; box-shadow: 0 0 0 2px rgba(107, 60, 246, .22); }
+.ln-ev.picked .ln-p { color: #fff; } .ln-ev.picked .ln-s { background: rgba(255, 255, 255, .22); color: #fff; box-shadow: none; }
+.ln-who.pick { cursor: pointer; border-radius: 0; } .ln-who.pick:hover { background: var(--surface-2); }
+.cc-bulk { position: sticky; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 14px; border-radius: 16px; background: var(--night); color: #fff; box-shadow: var(--shadow-3); }
+.cc-bulk > b { font: 650 15px var(--display); margin-inline-end: 4px; }
+.cc-bulk-hint { color: #c9c4e8; flex: 1 1 120px; }
+.cc-bulk .btn:not(.primary) { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .2); color: #fff; box-shadow: none; }
+.cc-bulk .btn:not(.primary):hover:not(:disabled) { background: rgba(255, 255, 255, .16); }
+.cc-bulk-price { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+.cc-bulk-price label { color: #c9c4e8; white-space: nowrap; }
+.cc-bulk-price input { width: 110px; min-height: 36px; height: 36px; }
+.cc-repeat { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 14px 16px; border-radius: 16px; }
+.cc-repeat p { flex: 1 1 320px; margin: 0; font-size: 14px; }
+@media (max-width: 760px) { .cc-bulk { bottom: 84px; } .cc-bulk-price { margin-inline-start: 0; } }
+
+/* The buyer's plan: slots collected while browsing, the total against a budget, sent together */
+.cv-plan.has { border-color: var(--teal); color: var(--teal-press); background: var(--teal-1); }
+.cv-plan-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--teal); color: #fff; font: 700 12px/20px var(--body); text-align: center; }
+.btn.plan-add.in { border-color: var(--green); color: var(--green); background: var(--green-1); }
+.drawer-f { flex-wrap: wrap; align-items: center; }
+.plan-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.plan-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.plan-rows li.gone { background: var(--surface-2); } .plan-rows li.gone .plan-what b { color: var(--slate); text-decoration: line-through; }
+.plan-rows li.sent { background: var(--green-1); border-color: #b9dcc8; }
+.plan-what { display: grid; gap: 3px; min-width: 0; padding: 0; border: 0; background: none; text-align: start; font: inherit; color: var(--ink); cursor: pointer; }
+.plan-what b { font: 650 14.5px/1.3 var(--display); overflow-wrap: anywhere; }
+.plan-what:hover b { color: var(--teal); }
+.plan-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.plan-price { display: grid; justify-items: end; font: 700 15.5px var(--display); white-space: nowrap; }
+.plan-price .small { font: 400 12px var(--body); }
+.plan-x { width: 30px; min-height: 30px; padding: 0; }
+.plan-total { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.plan-total > span { display: grid; font-weight: 600; } .plan-total .small { font-weight: 400; }
+.plan-total b { font: 700 24px var(--display); letter-spacing: -.02em; }
+.plan-budget { display: grid; gap: 6px; }
+.plan-meter { display: block; height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.plan-meter i { display: block; height: 100%; border-radius: 99px; background: var(--teal); }
+.plan-budget.over .plan-meter i { background: var(--red); } .plan-budget.over .small { color: var(--red); font-weight: 600; }
+.cc-head .btn.cc-pick.on { background: var(--teal-1); border-color: var(--teal); color: var(--teal-press); }
+.cc-bulk-price input.search { flex: none; width: 110px; min-width: 0; }

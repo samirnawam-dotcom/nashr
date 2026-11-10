@@ -1717,6 +1717,21 @@ test("products by the owner's rules: product, media types with their own fields,
   expect(slots.filter(s => s.kind === 'single').every(s => s.sale_type === 'auction' && Number(s.starting_price) === AED(3_200) && Number(s.reserve_price) === AED(3_500))).toBe(true)
   expect(slots.filter(s => s.kind === 'any')).toHaveLength(5)
 
+  // several slots at once: off sale, back on, one price; another publisher's slots and packages are skipped, not an error
+  const ids = (await pool.query(`select id, kind from slots where placement_id = $1 order by starts_at, kind`, [main.id])).rows
+  const singles = ids.filter(x => x.kind === 'single').map(x => x.id), all = ids.map(x => x.id)
+  expect((await call(sellerY, 'POST', '/api/seller/slots/bulk', { ids: singles, action: 'block' })).json()).toEqual({ changed: 0, skipped: singles.length })
+  expect((await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids: singles.slice(0, 3), action: 'block' })).json()).toEqual({ changed: 3, skipped: 0 })
+  expect((await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids: singles, action: 'unblock' })).json()).toEqual({ changed: 3, skipped: singles.length - 3 })
+  expect((await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids: all, action: 'price' })).json().error).toMatch('new price')
+  expect((await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids: all, action: 'price', startingPrice: AED(3_400) })).json()).toEqual({ changed: singles.length, skipped: all.length - singles.length })
+  expect((await pool.query(`select distinct starting_price from slots where id = any($1::uuid[])`, [singles])).rows.map(r => Number(r.starting_price))).toEqual([AED(3_400)])
+  // repeat the week: the same programme is listed for the next two weeks; asking again adds nothing
+  expect((await call(sellerX, 'POST', '/api/seller/listings/repeat', { from: '2026-11-30', weeks: 2 })).json().error).toMatch('Nothing is listed')
+  const again = (await call(sellerX, 'POST', '/api/seller/listings/repeat', { from: '2026-11-16', weeks: 2 })).json()
+  expect(again).toMatchObject({ programmes: 1, slots: l.slots * 2 })
+  expect((await call(sellerX, 'POST', '/api/seller/listings/repeat', { from: '2026-11-16', weeks: 2 })).json().slots).toBe(0)
+
   // sold by programme: the media type's own placement steps aside, each programme lists on its own
   await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, details: { ...radio.details, programmes: true } })
   const prog = (await call(sellerX, 'POST', `/api/seller/media/${m}/programmes`, { name: 'Morning Markets', notes: 'Business news with a live interview.', defaultPrice: AED(4_000),

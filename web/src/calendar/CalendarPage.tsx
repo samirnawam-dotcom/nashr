@@ -7,6 +7,7 @@ import { useLive } from '../live'
 import { SignInPrompt, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { SavedSearches } from './SavedSearches'
+import { PlanDrawer, usePlan } from './Plan'
 import { activeCount, DAYPARTS, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
 import { AUDIENCES } from '../../../server/shared/audiences'
 import { isAr, ltr, t } from '../i18n'
@@ -113,7 +114,7 @@ export function useLatest() {
 }
 
 export function CalendarPage() {
-  const guest = useGuest(), narrow = useNarrow()
+  const guest = useGuest(), narrow = useNarrow(), plan = usePlan(), [planOpen, setPlanOpen] = useState(false)
   useMeta(PAGES['/calendar'])
   const [s, setS] = useState<State>(() => readState(narrow))
   const [qText, setQText] = useState(s.f.q ?? '')
@@ -193,6 +194,9 @@ export function CalendarPage() {
             <span className="cv-jump-label">{t('Go to date')}</span>
             <input type="date" aria-label={t('Go to a date')} value={s.date} onChange={e => e.target.value && update({ date: e.target.value }, true)} /></label>
         </div>
+        {!guest && <button type="button" className={`btn cv-plan ${plan.ids.length ? 'has' : ''}`} onClick={() => setPlanOpen(true)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 5h10M9 12h10M9 19h10M4 5l1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2" /></svg>
+          {t('Plan')}{plan.ids.length > 0 && <span className="cv-plan-n num">{plan.ids.length}</span>}</button>}
         <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l, key]) =>
           <button key={v} role="tab" aria-selected={s.view === v} className={s.view === v ? 'on' : ''} title={`${l} (${key.toUpperCase()})`} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
       </header>
@@ -229,6 +233,7 @@ export function CalendarPage() {
 
       {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}
       {open && <BidDrawer slotId={open} onClose={() => setOpen(null)} onDone={() => setReload(n => n + 1)} />}
+      {planOpen && !open && <PlanDrawer onClose={() => setPlanOpen(false)} onDone={() => setReload(n => n + 1)} onOpen={id => setOpen(id)} />}
     </main>
   )
 }

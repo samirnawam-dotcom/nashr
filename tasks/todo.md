@@ -171,4 +171,9 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Money tiles that also filter: To decide, With bids, Booked, Still on sale
 - [x] Month: one summary per day (booked and value, with bids, on sale, "to decide" flag); press a day to open it
 - [x] Tighter header (no duplicate tabs), price on the by-time cards, status chips kept on the List view
-- [ ] Ideas offered to the owner, not built: bulk actions, copy last week, price hints, buyer plan basket, fill-rate heat map
+
+## Phase L: fewer clicks for daily use
+- [x] Publisher: Select mode on the week by programme (breaks, a whole programme, a whole day) with one bar: take off sale, put back, set price
+- [x] Publisher: Repeat this week for the next 1 to 12 weeks, at each programme's current price
+- [x] Buyer: plan basket (Add to plan in the slot drawer, Plan button in the calendar): total against the campaign or client budget, one brief, send all together
+- [ ] Offered, not built: price hints, decide from the calendar, fill-rate heat map, compare outlets, "same again"
