@@ -34,17 +34,17 @@ export function AdminDealsPage() {
           {CHANNELS.map(c => <option key={c} value={c}>{CHANNEL_NAME[c]}</option>)}</select>
         <select className="btn" aria-label={t("Sold as")} value={f.kind} onChange={e => set('kind', e.target.value)}><option value="">{t('Any way of selling')}</option>
           {[['auction', 'Auction'], ['buy_now', 'Buy now'], ['fixed', 'Fixed price'], ['quick_sale', 'Quick sale'], ['choice', 'Next bid chosen']].map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select>
-        <label className="small muted" htmlFor="df">{t('Airs from')}</label><input id="df" className="search" type="date" value={f.from} onChange={e => set('from', e.target.value)} />
-        <label className="small muted" htmlFor="dt">{t('to')}</label><input id="dt" className="search" type="date" value={f.to} onChange={e => set('to', e.target.value)} />
+        <span className="range"><label className="small muted" htmlFor="df">{t('Airs from')}</label><input id="df" className="search" type="date" value={f.from} onChange={e => set('from', e.target.value)} />
+        <label className="small muted" htmlFor="dt">{t('to')}</label><input id="dt" className="search" type="date" value={f.to} onChange={e => set('to', e.target.value)} /></span>
         <button className="btn">{t("Search")}</button>
         {active > 0 && <button type="button" className="btn" onClick={() => { setQ(''); setF({ status: '', kind: '', channel: '', from: '', to: '', q: '' }); setOffset(0) }}>{t('Clear all ({n})', { n: active })}</button>}
         <div className="spacer" /><a className="btn" href={`/api/admin/deals?${qs}&format=csv`}>{t('Download CSV')}</a></form>
       {!data ? <Loading error={error} /> : !data.items.length ? <p className="muted empty">{t("No deals match.")}</p> : <>
         <p className="small muted">{t('{n} deals, {value} in total (excl. VAT)', { n: data.total.toLocaleString('en-US'), value: money(data.value) })}</p>
-        <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Buyer")}</th><th>{t("Publisher")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th>{t("Next deadline")}</th><th>{t("Status")}</th></tr></thead>
+        <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Buyer")} · {t("Publisher")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th>{t("Next deadline")}</th><th>{t("Status")}</th></tr></thead>
           <tbody>{data.items.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
-            <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td>{d.buyer}</td><td>{d.seller}</td><td className="small num">{date(d.starts_at)}</td>
-            <td className="r num">{money(d.amount, d.currency)}</td><td className="small num">{when(d.next_deadline_at)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>
+            <td className="num nw">{d.ref}</td><td className="cell2"><b>{d.outlet}</b><span>{d.label}</span></td><td className="cell2 plain"><b>{d.buyer}</b><span>{d.seller}</span></td><td className="small num nw">{date(d.starts_at)}</td>
+            <td className="r num">{money(d.amount, d.currency)}</td><td className="small num nw">{when(d.next_deadline_at)}</td><td className="nw"><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>
         {data.total > PAGE && <nav className="row-flex section" aria-label={t('Pages')}>
           <button className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>{t('Previous')}</button>
           <span className="small muted">{t('Page {n} of {total}', { n: offset / PAGE + 1, total: Math.ceil(data.total / PAGE) })}</span>
@@ -86,7 +86,6 @@ export function AdminDealPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/deals">{t("Deals")}</a> › {d.ref}</p>
-      <div className="profile-cover slim" aria-hidden><img src={art(d.channel)} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{d.outlet} · {d.label}</h1>
         <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> {t('buys from')} <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}

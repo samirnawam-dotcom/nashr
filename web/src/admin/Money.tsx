@@ -14,6 +14,14 @@ const ACCOUNT: [string, string, string][] = [
   ['refundCosts', 'Refund card costs', 'Positive: still to recover · negative: recovered'],
 ]
 
+const LEDGER: Record<string, string> = { cash: 'Payment provider', held: 'Held for bookings', seller_payable: 'Publisher balance', seller_receivable: 'Publisher owes Nashr',
+  nashr_revenue: 'Nashr commission', vat_payable: 'VAT on commission', refund_costs: 'Refund card costs', processing_fees: 'Card processing fees', nashr_losses: 'Nashr losses' }
+/** A ledger account in words; a publisher's own account links to that publisher. */
+function Acct({ a }: { a: string }) {
+  const [kind, id] = a.split(':')
+  return id ? <a href={`/accounts/${id}`} title={a}>{t(LEDGER[kind] ?? kind)}</a> : <span title={a}>{t(LEDGER[kind] ?? kind)}</span>
+}
+
 export function FundsPage() {
   const { data: f, error } = useLoad<Funds>('/admin/funds')
   if (!f) return <Loading error={error} />
@@ -25,7 +33,7 @@ export function FundsPage() {
       <h2 className="sec-h">{t("Latest movements")}</h2>
       <div className="table-wrap card"><table className="table"><thead><tr><th>{t("When")}</th><th>{t("Order")}</th><th>{t("From")}</th><th>{t("To")}</th><th className="r">{t("Amount")}</th><th>{t("Reference")}</th></tr></thead>
         <tbody>{f.recent.map((r, i) => <tr key={i}><td className="small num">{when(r.at)}</td><td className="num small">{r.deal ?? '—'}</td>
-          <td className="mono">{r.credit}</td><td className="mono">{r.debit}</td><td className="r num">{money(r.amount, r.currency)}</td><td className="small">{tm(r.ref)}</td></tr>)}</tbody></table></div>
+          <td className="small"><Acct a={r.credit} /></td><td className="small"><Acct a={r.debit} /></td><td className="r num">{money(r.amount, r.currency)}</td><td className="small muted">{tm(r.ref)}</td></tr>)}</tbody></table></div>
     </main>
   )
 }
@@ -50,7 +58,7 @@ export function PayoutsPage() {
             <td className="num">{m.ref}</td><td>{m.kind === 'transfer' ? t('Payout') : t('Refund')}</td>
             <td>{m.kind === 'transfer' ? <>{m.company}{m.payoutsEnabled === false && <div className="small outbid">{t("Payout account not verified")}</div>}</> : t('Buyer card')}</td>
             <td className="num small">{m.dealId ? <a href={`/deals/${m.dealId}`}>{m.deal}</a> : '—'}</td><td className="r num">{money(m.amount, m.currency)}</td>
-            <td className={m.status === 'failed' ? 'outbid' : m.status === 'pending' ? 'soon' : 'lead'}>{t(m.status)}{m.failure && <div className="small">{tm(m.failure)}</div>}</td>
+            <td><span className={`dot ${m.status === 'failed' ? 'outbid' : m.status === 'pending' ? 'soon' : 'lead'}`}>{t(m.status === 'succeeded' ? 'Sent' : m.status)}</span>{m.failure && <div className="small">{tm(m.failure)}</div>}</td>
             <td className="small num">{when(m.updatedAt)}</td>
             <td className="r">{m.status === 'failed' && <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/money-ops/${m.id}/retry`, {}, t('{ref} queued again.', { ref: m.ref }))}>{t("Retry")}</button>}</td></tr>)}</tbody></table></div>}
     </main>

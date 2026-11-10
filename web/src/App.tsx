@@ -181,10 +181,10 @@ const GUEST: Routes = [...LEGAL,
   [/^\/directory/, () => <DirectoryPage />],
 ]
 const routesFor = (role: string): Routes => [...LEGAL, [/^\/account$/, () => <MyAccountPage />], ...(role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER)]
-const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
+const isActive = (path: string, p: string, seller = false) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
   // the publisher's merged items: Inbox holds requests and messages, Reports holds transactions, balances and documents
-  || (p === '/inbox' && path.startsWith('/messages')) || (p === '/reports' && /^\/(deals|earnings|documents)/.test(path))
+  || (seller && ((p === '/inbox' && path.startsWith('/messages')) || (p === '/reports' && /^\/(deals|earnings|documents)/.test(path))))
 
 const NAV: Record<string, string[][]> = {
   admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
@@ -318,12 +318,12 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={mini ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} /></svg></button></div>
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
-          <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''} title={mini ? l : undefined}>
+          <a href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''} title={mini ? l : undefined}>
             <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a></Fragment>)}</nav>
         <div className="side-foot">
           <div className="side-me"><NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={mini} onSignOut={signOut}
             links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
-            <span className="spacer" /><Bell role={me.role} /></div>
+            <Bell role={me.role} /></div>
         </div>
       </aside>
       <div className="shell-main">
@@ -335,7 +335,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <button className="btn menu-btn" aria-label={t("Menu")} aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
         <Wordmark href={`${home}`} />
-        <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
+        <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''}>
           {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}
           <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
@@ -349,8 +349,8 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         ? <TermsGate version={me.terms.version} onDone={load} />
         : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>
-      {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
-        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}</nav>}
+      {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p, seller) ? 'active' : ''}
+        aria-current={isActive(path, p, seller) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}</nav>}
     </div>
   )
 }

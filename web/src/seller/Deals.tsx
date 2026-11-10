@@ -78,8 +78,7 @@ export function SellerDealPage({ id }: { id: string }) {
   const msg = <>{error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}</>
   return (
     <main className="narrow">
-      <p className="small"><a href="/deals">{t("Deals")}</a> › {t('Order {ref}', { ref: d.ref })}</p>
-      <div className="profile-cover slim" aria-hidden><img src={art(x.channel)} width={1600} height={500} alt="" decoding="async" /></div>
+      <p className="small"><a href="/reports">{t("Transactions")}</a> › {t('Order {ref}', { ref: d.ref })}</p>
       <h1>{d.label}</h1>
       <p className="muted">{when(d.startsAt)} · {d.buyer.company} · <DealStatus s={d.status} /> · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p>
       {d.rating && <section className="card pad section rate"><h2>{t("The buyer's rating")}</h2><Stars value={d.rating.score} size={18} />{d.rating.comment && <p className="rate-comment">“{d.rating.comment}”</p>}</section>}

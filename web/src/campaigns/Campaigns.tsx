@@ -75,7 +75,6 @@ export function CampaignPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/campaigns">{t(t("Campaigns"))}</a> {isAr ? '‹' : '›'} {c.name}</p>
-      <div className="profile-cover slim" aria-hidden><img src="/brand/campaigns-wide.jpg" width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{[c.objective, c.launchDate && t('Launches {date}', { date: dayLabel(c.launchDate) })].filter(Boolean).join(' · ')}</p></div>
         <div className="spacer" />
         <a className="btn" href={`/campaigns/${c.id}/plan`}>{t("Media plan (PDF)")}</a>

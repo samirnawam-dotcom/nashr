@@ -8,14 +8,25 @@ import { t } from '../i18n'
 type S = { key: string; value: unknown; founderOnly: boolean; history: { value: unknown; from: string; by: string }[] }
 // What each setting means, in the owner's words (SPEC 11, 12). Unlisted keys show their raw name.
 const LABEL: Record<string, [string, string?]> = {
-  default_commission_bp: ['Default commission', 'basis points: 1200 = 12%'], media_vat_bp: ['VAT on media', 'basis points'], nashr_vat_registered: ['Nashr is VAT-registered', 'true / false'],
-  nashr_vat_bp: ['VAT on Nashr commission', 'basis points'], nashr_legal_name: ['Nashr legal name on documents'], nashr_address: ['Nashr registered address on documents', 'as on the trade licence'], two_step_for_money: ['Two-step sign-in before paying or connecting payouts', 'true or false'], nashr_trn: ["Nashr's TRN", 'null until registered'],
-  seller_window_hours: ['Publisher decision window', 'hours'], payment_window_hours: ['Payment window', 'hours, capped by the creative deadline'],
-  min_step_bp: ['Minimum bid step', 'basis points: 300 = 3%'], max_choice_rounds: ['Next-bid choices before relisting'], review_working_days: ['Buyer proof review', 'working days'],
-  proof_due_working_days: ['Proof due after the run', 'working days'], max_creative_rounds: ['Creative change rounds'], issue_response_hours: ['Publisher response to an issue', 'hours'],
-  prerun_hours: ['Pre-run check before air', 'hours'], free_cancel_hours: ['Free cancellation after payment', 'hours'], cancel_fee_bp: ['Publisher keeps on late cancellation', 'basis points'],
-  processing_fee_bp: ['Card processing estimate', 'basis points'], processing_fee_fixed: ['Card processing fixed part', 'fils'], media_invoice_timing: ['Media invoice issued at', '"payment" or "run"'],
-  holidays_AE: ['UAE public holidays', 'list of dates, affects working days'], question_extension_hours: ['Question extension', 'hours'], open_markets: ['Markets open for booking', 'country codes'],
+  default_commission_bp: ['Default commission'], media_vat_bp: ['VAT on media'], nashr_vat_registered: ['Nashr is VAT-registered'],
+  nashr_vat_bp: ['VAT on Nashr commission'], nashr_legal_name: ['Nashr legal name on documents'], nashr_address: ['Nashr registered address on documents', 'as on the trade licence'], two_step_for_money: ['Two-step sign-in before paying or connecting payouts'], nashr_trn: ["Nashr's TRN"],
+  seller_window_hours: ['Publisher decision window'], payment_window_hours: ['Payment window', 'capped by the creative deadline'],
+  min_step_bp: ['Minimum bid step'], max_choice_rounds: ['Next-bid choices before relisting'], review_working_days: ['Buyer proof review'],
+  proof_due_working_days: ['Proof due after the run'], max_creative_rounds: ['Creative change rounds'], issue_response_hours: ['Publisher response to an issue'],
+  prerun_hours: ['Pre-run check before air'], free_cancel_hours: ['Free cancellation after payment'], cancel_fee_bp: ['Publisher keeps on late cancellation'],
+  processing_fee_bp: ['Card processing estimate'], processing_fee_fixed: ['Card processing fixed part'], media_invoice_timing: ['Media invoice issued at'],
+  holidays_AE: ['UAE public holidays', 'list of dates, affects working days'], question_extension_hours: ['Question extension'], open_markets: ['Markets open for booking', 'country codes'],
+}
+
+Object.assign(LABEL, { dispute_decision_working_days: ['Nashr decision on a dispute'], terms_version: ['Terms version', 'date of the current terms'] })
+/** A setting's value the way a person reads it; the raw value is what the Change box edits. */
+function shown(key: string, v: unknown): string {
+  if (v == null || v === '') return t('Not set')
+  if (typeof v === 'boolean') return t(v ? 'Yes' : 'No')
+  if (Array.isArray(v)) return v.length ? v.join(', ') : t('None')
+  if (typeof v === 'number') return key.endsWith('_bp') ? `${v / 100}%` : key === 'processing_fee_fixed' ? money(v)
+    : key.endsWith('_hours') ? t('{n} hours', { n: v }) : key.endsWith('_days') ? t('{n} working days', { n: v }) : String(v)
+  return key === 'media_invoice_timing' ? t(v === 'run' ? 'When the ad has run' : 'At payment') : String(v)
 }
 
 export function SettingsPage({ isFounder }: { isFounder: boolean }) {
@@ -37,7 +48,7 @@ export function SettingsPage({ isFounder }: { isFounder: boolean }) {
           <tr key={s.key}>
             <td><b>{LABEL[s.key] ? t(LABEL[s.key][0]) : s.key}</b><div className="small muted">{[LABEL[s.key]?.[1] && t(LABEL[s.key][1]!), s.founderOnly && t('founder only')].filter(Boolean).join(' · ')}</div></td>
             <td>{s.key in edit ? <input className="search mono" style={{ minWidth: 220 }} aria-label={t('New value for {name}', { name: s.key })} value={edit[s.key]} onChange={e => setEdit({ ...edit, [s.key]: e.target.value })} />
-              : <span className="mono">{JSON.stringify(s.value)}</span>}</td>
+              : <b className="set-val num">{shown(s.key, s.value)}</b>}</td>
             <td className="small muted">{s.history[0].by === 'system' ? t('Initial value') : `${date(s.history[0].from)} · ${s.history[0].by}`}</td>
             <td className="r"><div className="row-flex" style={{ justifyContent: 'flex-end' }}>
               {s.history.length > 1 && <button className="btn" onClick={() => setOpen(open === s.key ? '' : s.key)}>{t('History ({n})', { n: s.history.length })}</button>}
@@ -45,7 +56,7 @@ export function SettingsPage({ isFounder }: { isFounder: boolean }) {
                 : <button className="btn" disabled={locked} title={locked ? t('Only the founder can change this') : undefined} onClick={() => setEdit({ ...edit, [s.key]: JSON.stringify(s.value) })}>{t("Change")}</button>}
             </div></td></tr>,
           open === s.key && <tr key={`${s.key}-h`}><td colSpan={4}><ul className="timeline">{s.history.map((h, i) => <li key={i}><span className="small num">{when(h.from)}</span>
-            <span><span className="mono">{JSON.stringify(h.value)}</span> <span className="small muted">{t('by {name}', { name: h.by })}</span></span></li>)}</ul></td></tr>] })}</tbody></table></div>
+            <span><b className="num">{shown(s.key, h.value)}</b> <span className="small muted">{t('by {name}', { name: h.by })}</span></span></li>)}</ul></td></tr>] })}</tbody></table></div>
       <Staff isFounder={isFounder} />
     </main>
   )
@@ -94,7 +105,7 @@ export function AuditPage() {
         <button className="btn">{t("Show")}</button><div className="spacer" />
         <a className="btn" href={`/api/admin/audit?${qs}&format=csv`}>{t('Download CSV')}</a></form>
       {!data ? <Loading error={error} /> : !data.length ? <p className="muted empty">{t('Nothing matches.')}</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("When")}</th><th>{t("Who")}</th><th>{t("Action")}</th><th>{t("Record")}</th><th>{t("Detail")}</th></tr></thead>
-        <tbody>{data.map((a, i) => <tr key={i}><td className="small num">{when(a.at)}</td><td className="mono">{a.actor}</td><td>{a.action}</td>
+        <tbody>{data.map((a, i) => <tr key={i}><td className="small num">{when(a.at)}</td><td className="mono nw" title={a.actor}>{a.actor.replace(/^(\w+:[0-9a-f]{8})[0-9a-f-]{20,}$/, '$1…')}</td><td className="nw">{a.action}</td>
           <td className="mono"><a href="/audit" onClick={e => { e.preventDefault(); setDraft({ ...draft, entityId: a.entity_id }); setF({ ...f, entityId: a.entity_id }) }}>{a.entity}:{a.entity_id?.slice(0, 8)}</a></td>
           <td className="mono small">{a.detail ? JSON.stringify(a.detail).slice(0, 160) : ''}</td></tr>)}</tbody></table></div>}
     </main>

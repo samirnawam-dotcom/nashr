@@ -56,7 +56,6 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
   return (
     <main className="narrow wide">
       <p className="small"><a href="/accounts">{t("Accounts")}</a> › {c.name}</p>
-      <div className="profile-cover slim" aria-hidden><img src={`/brand/dash-${c.type === 'buyer' ? 'buyer' : 'seller'}.jpg`} width={1600} height={400} alt="" decoding="async" /></div>
       <div className="profile-h"><div><h1>{c.name}</h1><p className="muted">{c.type === 'buyer' ? t('Buyer') : t("Publisher")} · {t('joined {date}', { date: date(c.createdAt) })}</p></div><div className="spacer" />
         <button className="btn" onClick={viewAs}>{t("View as this account (read only)")}</button></div>
       {msg}

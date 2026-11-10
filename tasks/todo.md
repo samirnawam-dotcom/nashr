@@ -158,3 +158,10 @@ Decisions made while building (flag to owner if they disagree):
 ## On hold by decision
 - Athena, the planning assistant (brief section 21: build once there is enough real booking data)
 - Opening Saudi Arabia (a founder setting, `open_markets`; SAR prices and the Saudi weekend are built in)
+
+## Phase J: design polish pass (audit of 30+ screens, all roles)
+- [x] One filter bar, one figure tile, one pick-list style; violet-toned greys everywhere (no green-grey leftovers)
+- [x] Record pages (booking, deal, account, campaign): breadcrumb + title + status, no stock photo
+- [x] Staff: Deals table two-line cells without sideways scroll; Funds ledger and Settings in words; status pills on Users and Payouts
+- [x] Sidebar foot shows the full name; only one menu item active for staff; bell count capped at 99+
+- [x] Help as an accordion; Account and Help in one readable column; empty states as a centred note

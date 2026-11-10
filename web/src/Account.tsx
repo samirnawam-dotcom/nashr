@@ -131,7 +131,7 @@ export function MyAccountPage() {
     ['messages', t('Messages'), t('A new message on one of your bookings.')],
     ['news', t('News from Nashr'), t('New features and guides, at most once a month.')],
   ]
-  return <main className="narrow">
+  return <main className="narrow column">
     <PhotoBand img="/brand/auth-invite.jpg" title={t('Your account')} sub={a.email} />
     {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
     <section className="card pad section form"><h2>{t('Your name')}</h2>

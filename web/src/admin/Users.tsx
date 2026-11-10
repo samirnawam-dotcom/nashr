@@ -53,9 +53,9 @@ export function UsersPage() {
           <tbody>{data.items.map(u => <tr key={u.id} onClick={() => navigate(`/users/${u.id}`)}>
             <td><b>{u.name}</b><div className="small muted"><bdi>{u.email}</bdi></div></td>
             <td className="small">{u.company.name}</td><td className="small">{t(ROLE[u.role] ?? u.role)}</td>
-            <td className={`small ${u.status === 'suspended' ? 'outbid' : ''}`}>{t(u.status)}</td>
+            <td><span className={`dot ${u.status === 'suspended' ? 'outbid' : u.status === 'active' ? 'lead' : 'soon'}`}>{t(u.status)}</span></td>
             <td className="small">{u.twoStep ? t('On') : <span className="muted">{t('Off')}</span>}</td>
-            <td className="small num">{u.lastSeen ? when(u.lastSeen) : u.lastSignIn ? when(u.lastSignIn) : <span className="muted">{t('Never')}</span>}{u.sessions > 0 && <div className="muted">{t('{n} sessions', { n: u.sessions })}</div>}</td>
+            <td className="small num">{u.lastSeen ? when(u.lastSeen) : u.lastSignIn ? when(u.lastSignIn) : <span className="muted">{t('Never')}</span>}{u.sessions > 0 && <div className="muted">{t(u.sessions === 1 ? '1 session' : '{n} sessions', { n: u.sessions })}</div>}</td>
             <td className={`r num ${u.failed24h >= 5 ? 'outbid' : ''}`}>{u.failed24h || '—'}</td></tr>)}</tbody></table></div>
         <div className="row-flex" style={{ marginTop: 12 }}>
           <button className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))}>{t('Previous')}</button>

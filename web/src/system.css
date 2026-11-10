@@ -837,3 +837,92 @@ h1, h2, h3, .sec-h { letter-spacing: -.02em; }
 .sub-tabs-wrap + main { padding-top: 18px; }
 @media (max-width: 900px) { .sub-tabs-wrap { padding: 16px 16px 0; } }
 .field-err { margin: 4px 0 0; font-size: 13px; color: var(--red); }
+
+/*
+ * Polish pass (design audit, Nov 2026). One look for the pieces every page shares: controls, filter bars, tables, figures,
+ * record headers, empty states. Greys carry the brand's violet undertone; the last green-grey leftovers are gone.
+ */
+.btn, a.btn, select.btn, label.btn { border-color: var(--line-2); }
+.btn:hover, a.btn:hover { background: var(--surface-2); border-color: var(--line-3); }
+.btn:active { background: var(--surface-3); }
+.field input, .field select, .field textarea, .search, input.search, .cal-input { border-color: var(--line-2); }
+.field input::placeholder, .search::placeholder, textarea::placeholder { color: #8d89a3; }
+.table tbody tr:hover td { background: #faf9fe; }
+.bell-pop a.unread { background: var(--surface-2); }
+.star-row label { color: #d9d6e6; }
+
+/* Pick-lists read as fields, not as buttons: regular weight, their own chevron. */
+select.btn, .field select, select.search { appearance: none; -webkit-appearance: none; font-weight: 500; justify-content: flex-start; text-align: start; padding-inline: 12px 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235e5b72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
+:root[dir="rtl"] :is(select.btn, .field select, select.search) { background-position: left 10px center; }
+
+/* Filter bar: one quiet strip, every control the same height, the export at the far end. */
+.admin-filters, form.toolbar.admin-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 16px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-1); }
+.admin-filters > :is(.search, select.btn, .btn, input) { min-height: 38px; height: 38px; box-shadow: none; }
+.admin-filters > input[type="search"] { flex: 1 1 220px; min-width: 180px !important; padding-inline-start: 36px;
+  background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6a85' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px center; border-color: transparent; }
+:root[dir="rtl"] .admin-filters > input[type="search"] { background-position: right 12px center; }
+.admin-filters > input[type="search"]:focus { background-color: var(--surface); }
+.admin-filters > input[type="date"] { width: 150px; flex: none; }
+.admin-filters > label { margin-inline: 4px 0; white-space: nowrap; }
+.admin-filters > .spacer { flex: 1 1 0; min-width: 0; }
+.admin-filters + .small.muted, .admin-filters + p.small { margin: 0 0 10px; }
+
+/* Figures: the same tile everywhere (label, figure, one quiet line of context). */
+.kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.kpis > div, .kpis > div.card { display: grid; align-content: start; gap: 6px; padding: 18px 20px; border-radius: 16px; }
+.kpis dt { font: 500 13px/1.35 var(--body); color: var(--slate); }
+.kpis dd { margin: 0; font: 700 26px/1.1 var(--display); letter-spacing: -.025em; color: var(--ink); }
+.kpis > div > :is(.small, small) { margin: 0; padding: 0; font-size: 12.5px; line-height: 1.4; color: var(--faint); }
+
+/* Tables: rows that open something say so; two-line cells; cells that must not break. */
+.table tbody tr[tabindex], .table tbody tr.click { cursor: pointer; }
+.table td.nw, .table th.nw, .nw { white-space: nowrap; }
+.table td.cell2 { min-width: 150px; }
+.table td.cell2 > b { display: block; font-weight: 600; }
+.table td.cell2 > span { display: block; font-size: 13px; color: var(--slate); }
+.table td > b + .small, .table td > b + div.small { margin-top: 1px; }
+.table .mono { color: var(--slate); }
+.set-val { font: 600 14.5px var(--body); }
+
+/* A record page (booking, deal, account): where you are, what it is, its state. No stock photo above a record. */
+main > p.small:first-child { margin: 0 0 14px; color: var(--faint); font-size: 13px; }
+main > p.small:first-child > a { color: var(--slate); font-weight: 500; text-decoration: none; }
+main > p.small:first-child > a:hover { color: var(--teal); }
+.page-title, .profile-h { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 20px; margin: 0 0 18px; }
+.page-title h1, .profile-h h1 { margin: 0; font-size: clamp(24px, 2.2vw, 30px); letter-spacing: -.025em; }
+.page-title p, .profile-h p { margin: 6px 0 0; font: 400 14.5px/1.5 var(--body); letter-spacing: 0; }
+.page-title p a.small { font-size: 13.5px; font-weight: 500; }
+
+/* Nothing here yet: a calm, centred note instead of a stray grey sentence. */
+p.empty, .empty:not(td) { margin: 16px 0; padding: 36px 24px; text-align: center; border: 1px dashed var(--line-2); border-radius: 16px; background: var(--surface); color: var(--slate); font-size: 14.5px; }
+p.empty::before { content: ""; display: block; width: 40px; height: 40px; margin: 0 auto 12px; border-radius: 12px; background: var(--teal-1)
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b3cf6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 13h4l1.5 3h5L16 13h4'/%3E%3Cpath d='M5.5 5h13L20 13v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z'/%3E%3C/svg%3E") no-repeat center; }
+
+/* Sidebar foot: the name gets the room; the bell is a quiet square beside it. */
+.side-me { gap: 6px; padding: 4px; }
+.side-me .name-menu { flex: 1 1 auto; }
+.side-me .bell > .btn { width: 38px; min-height: 38px; padding: 0; border-color: transparent; background: none; box-shadow: none; color: var(--slate); }
+.side-me .bell > .btn:hover { background: var(--surface-2); color: var(--ink); }
+.bell .n { box-shadow: 0 0 0 2px var(--surface); }
+.name-btn .name-chev { opacity: .7; }
+
+/* Help: questions open like an accordion, with a chevron instead of the browser's triangle. */
+.help-qa summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; cursor: pointer; font-weight: 550; padding: 4px 0; }
+.help-qa summary::-webkit-details-marker { display: none; }
+.help-qa summary::after { content: ""; flex: none; width: 16px; height: 16px; transition: transform .15s var(--ease);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235e5b72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat center; }
+.help-qa details[open] > summary::after { transform: rotate(180deg); }
+.help-qa details[open] > summary { color: var(--teal-press); }
+.help-qa details > :not(summary) { color: var(--slate); max-width: 68ch; }
+
+/* Section titles inside pages: one size, one rhythm. */
+main h2.sec-h, main .sec-h { font: 650 17px/1.3 var(--display); margin: 28px 0 12px; }
+main > .ok, main > .error, main > .warn { margin: 0 0 16px; }
+.table td.cell2 > b, .table td.cell2 > span { white-space: nowrap; }
+.table td.cell2.plain > b { font-weight: 500; }
+.admin-filters > .range { display: inline-flex; align-items: center; gap: 8px; }
+.admin-filters > .range input { width: 144px; min-height: 38px; height: 38px; box-shadow: none; }
+/* Settings-style pages (your account, help): one readable column instead of fields a metre wide. */
+main.column { max-width: 860px; }

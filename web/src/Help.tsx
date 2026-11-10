@@ -47,7 +47,7 @@ export function HelpPage({ role }: { role: 'buyer' | 'seller' | 'guest' }) {
   const [rules, setRules] = useState<Rules | null>(null)
   useEffect(() => { api<Rules>('/help/rules').then(setRules, () => {}) }, [])
   return (
-    <main className="narrow">
+    <main className="narrow column">
       <PhotoBand img="/brand/bookings-wide.jpg" title={t('Help')} sub={t('How Nashr works, and a direct line to the team.')} />
       {rules && <>
         {role !== 'seller' && <Questions title={role === 'guest' ? t('For advertisers') : t('Booking and paying')} items={buyerQA(rules)} />}
