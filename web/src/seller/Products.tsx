@@ -1,150 +1,77 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { addDays, todayInDubai } from '../calendar/layout'
+import { dayLabel } from '../format'
+import { dubai } from '../calendar/layout'
 import { money } from './common'
-import { ltr, sep, t } from '../i18n'
+import { t } from '../i18n'
 import { tm } from '../i18n-server'
-import { LANGUAGE } from '../calendar/BidDrawer'
-import { ChannelMark, saleLabel } from '../calendar/CalendarPage'
-import { art, CHANNELS, CHANNEL_NAME, ICON } from '../media'
-import { audienceLabel } from '../../../server/shared/audiences'
+import { ICON, art } from '../media'
+import { family } from '../../../server/shared/media'
+import { HAS_PROGRAMMES } from '../../../server/shared/products'
+import { ListingPanel, mediaName, type Product, type Sellable } from './Listing'
 import './portal.css'
 import './products.css'
 
 /*
- * The product catalogue as the owner drew it: every product a publisher sells, grouped by media type, each one opening to its
- * details, audience, sectors, requirements and timing. A product is described once; the calendar then puts it on sale by date.
+ * Products (owner's rules): each product (the brand) with its media types and programmes, what each sells for by default and what
+ * is on sale now. "List" puts one of them on sale for chosen dates; Edit opens the product with its media types and programmes.
  */
-type Placement = { id: string; outlet: string; outletId: string; name: string; saleType: string; days: number[]; startsAt: string | null; endsAt: string | null
-  breaks: { label: string; at?: string; seconds?: number }[]; startingPrice: number; anyBreakPrice: number | null; packagePrice: number | null
-  buyNowPrice: number | null; reservePrice: number | null; autoAccept: boolean; creativeLeadHours: number; closeLeadHours: number
-  archived: boolean; openSlots: number; listedUntil: string | null; audiences?: string[]
-  description: string | null; specs: string | null; language: string | null; unit: 'day' | 'week'; listing: 'rolling' | 'manual'; horizonWeeks: number; separation: boolean }
-type Outlet = { id: string; name: string; channel: string; sectors: string[]; audience: string | null; audiences: string[]; blockedIndustries: string[]
-  blockedAdvertisers: string[]; reach: number | null; coverUrl: string | null }
-type Profile = { company: { payoutsEnabled: boolean }; outlets: Outlet[]; placements: Placement[] }
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const TABS = ['details', 'audience', 'sectors', 'requirements', 'timing'] as const
-const TAB_LABEL: Record<string, string> = { details: 'Details', audience: 'Audience', sectors: 'Sectors', requirements: 'Requirements', timing: 'Timing' }
-const status = (p: Placement) => p.archived ? 'archived' : p.openSlots > 0 ? 'live' : 'idle'
-const STATUS: Record<string, [string, string]> = { live: ['On sale', 'good'], idle: ['Nothing on sale', 'warn'], archived: ['Archived', 'mute'] }
-const unitOf = (p: Placement, channel: string) => p.unit === 'week' ? t('week') : p.breaks.length ? t('break')
-  : ['newspaper', 'magazine'].includes(channel) ? t('edition') : channel === 'newsletter' ? t('send') : channel === 'social' ? t('post') : t('day')
-const hrs = (h: number) => h % 24 === 0 ? t('{n} days', { n: h / 24 }) : t('{n} hours', { n: h })
-
-function Icon({ c }: { c: string }) {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[c] ?? ICON.digital} /></svg>
-}
-
-/** One product opened: five short sections, one at a time on narrow screens, side by side on wide ones. */
-function Detail({ p, o }: { p: Placement; o: Outlet }) {
-  const [tab, setTab] = useState<typeof TABS[number]>('details')
-  const auds = p.audiences?.length ? p.audiences : o.audiences
-  const when = p.unit === 'week' ? t('A whole week from {day}', { day: t(DAYS[p.days[0] - 1]) }) : p.days.map(d => t(DAYS[d - 1])).join(sep)
-  const sections: Record<string, React.ReactNode> = {
-    details: <dl><dt>{t('Format')}</dt><dd>{p.description ? tm(p.description) : p.name}</dd>
-      <dt>{t('Sold as')}</dt><dd>{saleLabel(p.saleType)}{p.breaks.length ? ` · ${t('{n} breaks', { n: p.breaks.length })}` : ''}</dd>
-      <dt>{t('Language')}</dt><dd>{t(LANGUAGE[p.language ?? 'english'] ?? p.language ?? '')}</dd>
-      {p.packagePrice != null && <><dt>{t('Package')}</dt><dd className="num">{money(p.packagePrice)}</dd></>}
-      {p.buyNowPrice != null && <><dt>{t('Buy now')}</dt><dd className="num">{money(p.buyNowPrice)}</dd></>}</dl>,
-    audience: <dl><dt>{t('Who it reaches')}</dt><dd>{o.audience || <span className="muted">{t('Not described yet')}</span>}</dd>
-      <dt>{t('Audiences')}</dt><dd>{auds.length ? auds.map(a => t(audienceLabel(a))).join(sep) : <span className="muted">{t('None ticked')}</span>}</dd>
-      <dt>{t('Reach')}</dt><dd className="num">{o.reach ? t('{n} per airing or edition', { n: o.reach.toLocaleString('en-US') }) : '—'}</dd></dl>,
-    sectors: <ul className="pr-sectors">{o.sectors.length ? o.sectors.map(s => <li key={s} className="ok-s">{t(s)}</li>) : <li className="muted">{t('Every sector welcome')}</li>}
-      {o.blockedIndustries.map(s => <li key={s} className="no-s">{t(s)}</li>)}{o.blockedAdvertisers.length > 0 && <li className="no-s">{t('Competitors refused: {names}', { names: o.blockedAdvertisers.join(sep) })}</li>}</ul>,
-    requirements: <dl><dt>{t('Creative specs')}</dt><dd>{p.specs ? tm(p.specs) : '—'}</dd>
-      <dt>{t('Creative deadline')}</dt><dd>{t('{time} before it runs', { time: hrs(p.creativeLeadHours) })}</dd>
-      <dt>{t('Bidding closes')}</dt><dd>{t('{time} before it runs', { time: hrs(p.closeLeadHours) })}</dd></dl>,
-    timing: <dl><dt>{t('Runs')}</dt><dd>{when}{p.startsAt ? ` · ${ltr(p.startsAt.slice(0, 5) + (p.endsAt ? `–${p.endsAt.slice(0, 5)}` : ''))}` : ''}</dd>
-      {p.breaks.length > 0 && <><dt>{t('Breaks')}</dt><dd>{p.breaks.map(b => `${b.label}${b.at ? ` ${ltr(b.at.slice(0, 5))}` : ''}`).join(sep)}</dd></>}
-      <dt>{t('Listing')}</dt><dd>{p.listing === 'rolling' ? t('Kept {n} weeks ahead', { n: p.horizonWeeks }) : t('Listed until {date}', { date: p.listedUntil ?? '—' })}</dd></dl>,
-  }
-  return <div className="pr-detail">
-    <div className="seg pr-tabs" role="tablist">{TABS.map(k => <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(TAB_LABEL[k])}</button>)}</div>
-    <div className="pr-sections">{TABS.map(k => <section key={k} className={tab === k ? 'on' : ''}><h4>{t(TAB_LABEL[k])}</h4>{sections[k]}</section>)}</div>
-  </div>
-}
+export const daysText = (d: number[]) => d.length === 7 ? t('Every day') : d.join() === '1,2,3,4,5' ? t('Mon–Fri') : d.join() === '6,7' ? t('Weekend') : d.map(x => t(DAYS[x - 1])).join(', ')
+const when = (s: Sellable) => [s.days?.length ? daysText(s.days) : '', s.startsAt ? `${s.startsAt}–${s.endsAt ?? ''}` : '', s.breaks?.length ? t(s.breaks.length === 1 ? '1 break' : '{n} breaks', { n: s.breaks.length }) : ''].filter(Boolean).join(' · ')
+const Ic = ({ d, size = 18 }: { d: string; size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
 
 export function ProductsPage() {
-  const [p, setP] = useState<Profile | null>(null), [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
-  const [type, setType] = useState(''), [q, setQ] = useState(''), [outlet, setOutlet] = useState(''), [st, setSt] = useState('active'), [sort, setSort] = useState('name')
-  const [open, setOpen] = useState<string | null>(null), [closed, setClosed] = useState<Record<string, boolean>>({})
-  const load = () => api<Profile>('/seller/profile').then(setP, e => setError(e.message))
+  const [list, setList] = useState<Product[] | null>(null), [error, setError] = useState(''), [listing, setListing] = useState<{ product: string; placement: string } | null>(null)
+  const load = () => api<Product[]>('/seller/products').then(setList, e => setError(e.message))
   useEffect(() => { load() }, [])
-  async function act(path: string, body: object, done: (r: any) => string) {
-    setBusy(true); setError(''); setNote('')
-    try { const r = await api(path, { method: 'POST', body }); setNote(done(r)); await load() } catch (e: any) { setError(e.message) } finally { setBusy(false) }
+  async function remove(p: Product) {
+    if (!confirm(t('Delete {name}? What is not yet sold stops being sold; bookings already made carry on.', { name: p.name }))) return
+    try { await api(`/seller/products/${p.id}/delete`, { method: 'POST', body: {} }); await load() } catch (e: any) { setError(tm(e.message)) }
   }
-  const outlets = useMemo(() => Object.fromEntries((p?.outlets ?? []).map(o => [o.id, o])), [p])
-  if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}</main>
-  const all = p.placements.filter(x => outlets[x.outletId])
-  const chOf = (x: Placement) => outlets[x.outletId].channel
-  const counts = CHANNELS.map(c => [c, all.filter(x => chOf(x) === c && !x.archived).length] as const).filter(([, n]) => n > 0)
-  const shown = all.filter(x => (!type || chOf(x) === type) && (!outlet || x.outletId === outlet)
-      && (st === 'all' || (st === 'active' ? !x.archived : status(x) === st))
-      && (!q.trim() || `${x.name} ${x.description ?? ''} ${x.outlet}`.toLowerCase().includes(q.trim().toLowerCase())))
-    .sort((a, b) => sort === 'price' ? a.startingPrice - b.startingPrice : sort === 'open' ? b.openSlots - a.openSlots : a.name.localeCompare(b.name))
-  const live = all.filter(x => status(x) === 'live')
-  const value = all.filter(x => !x.archived).reduce((n, x) => n + x.openSlots * x.startingPrice, 0)
-  const groups = CHANNELS.filter(c => shown.some(x => chOf(x) === c))
-  return <main className="pr">
-    <div className="pt-head"><div><h1>{t('All listings')}</h1><p className="muted">{t('Everything you sell, across every outlet and media type. Describe a placement once; the calendar puts it on sale by date.')}</p></div>
-      <div className="pt-filters"><a className="btn" href="/listings/import">{t('Import rate card')}</a><a className="btn primary" href="/listings/new">+ {t('Add placement')}</a></div></div>
-    {!p.company.payoutsEnabled && <p className="warn">{t('Slots go on sale once your payout account is verified.')} <a href="/profile">{t('Connect it')}</a></p>}
-
-    <div className="pr-kpis">
-      <div><b className="num">{all.filter(x => !x.archived).length}</b><span>{t('Listings')}</span></div>
-      <div><b className="num">{live.length}</b><span>{t('On sale now')}</span></div>
-      <div><b className="num">{all.reduce((n, x) => n + x.openSlots, 0).toLocaleString('en-US')}</b><span>{t('Open slots')}</span></div>
-      <div><b className="num">{all.filter(x => x.archived).length}</b><span>{t('Archived')}</span></div>
-      <div><b className="num">{money(value)}</b><span>{t('Open slots at starting price')}</span></div>
+  if (!list) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}</main>
+  const media = list.flatMap(p => p.media), sell = media.flatMap(m => m.sellable)
+  return <main className="pd">
+    <div className="pt-head">
+      <div><h1>{t('Products')}</h1><p className="muted">{t('Each product with its media types, programmes and what is on sale. Add the details once; list them for the dates you choose.')}</p></div>
+      <div className="pt-filters"><a className="btn" href="/listings/import">{t('Import a rate card file')}</a><a className="btn primary" href="/listings/new">+ {t('Add product')}</a></div>
     </div>
+    {error && <p className="error" role="alert">{error}</p>}
+    {list.length > 0 && <section className="pd-sum">
+      <div><b className="num">{list.length}</b><span>{t('products')}</span></div><div><b className="num">{media.length}</b><span>{t('media types')}</span></div>
+      <div><b className="num">{sell.filter(s => s.openSlots > 0).length}</b><span>{t('listed now')}</span></div><div><b className="num">{sell.reduce((n, s) => n + s.openSlots, 0).toLocaleString('en-US')}</b><span>{t('slots on sale')}</span></div>
+    </section>}
+    {!list.length && <section className="card pad pd-empty"><h2>{t('Add your first product')}</h2>
+      <p className="muted">{t('A product is your brand, for example Skyline FM. Under it, add each media type it has (radio, website, newsletter…) and, for radio, TV and podcasts, its programmes. Then list them for the dates you choose.')}</p>
+      <a className="btn primary" href="/listings/new">+ {t('Add product')}</a></section>}
 
-    <div className="pr-types" role="tablist" aria-label={t('Media type')}>
-      <button type="button" role="tab" aria-selected={!type} className={!type ? 'on' : ''} onClick={() => setType('')}>{t('All ({n})', { n: all.filter(x => !x.archived).length })}</button>
-      {counts.map(([c, n]) => <button key={c} type="button" role="tab" aria-selected={type === c} className={type === c ? 'on' : ''} onClick={() => setType(c)}><Icon c={c} />{CHANNEL_NAME[c]} ({n})</button>)}
-    </div>
-    <div className="pr-tools">
-      <input className="search" type="search" placeholder={t('Search listings…')} aria-label={t('Search listings')} value={q} onChange={e => setQ(e.target.value)} />
-      {p.outlets.length > 1 && <select className="btn" aria-label={t('Outlet')} value={outlet} onChange={e => setOutlet(e.target.value)}><option value="">{t('All outlets')}</option>
-        {p.outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select>}
-      <select className="btn" aria-label={t('Status')} value={st} onChange={e => setSt(e.target.value)}>
-        <option value="active">{t('Not archived')}</option><option value="live">{t('On sale')}</option><option value="idle">{t('Nothing on sale')}</option><option value="archived">{t('Archived')}</option><option value="all">{t('All')}</option></select>
-      <select className="btn" aria-label={t('Sort by')} value={sort} onChange={e => setSort(e.target.value)}>
-        <option value="name">{t('Sort: name')}</option><option value="price">{t('Sort: price')}</option><option value="open">{t('Sort: most open slots')}</option></select>
-    </div>
-    {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
-
-    {!shown.length ? <div className="card pad empty"><p><b>{all.length ? t('No listings match.') : t('No listings yet.')}</b></p>
-      <p className="muted">{t('Add a placement once, with its audience, pricing and timing; then put it on sale from the calendar.')}</p><a className="btn primary" href="/listings/new">{t('Add placement')}</a></div>
-      : <div className="pr-list">{groups.map(c => { const items = shown.filter(x => chOf(x) === c)
-        return <section key={c} className="pr-group">
-          <button type="button" className="pr-group-h" aria-expanded={!closed[c]} onClick={() => setClosed({ ...closed, [c]: !closed[c] })}>
-            <span className="pr-caret" aria-hidden>{closed[c] ? '›' : '⌄'}</span><Icon c={c} /><b>{CHANNEL_NAME[c]}</b><span className="muted">({items.length})</span></button>
-          {!closed[c] && items.map(x => { const o = outlets[x.outletId], [sl, sc] = STATUS[status(x)], isOpen = open === x.id
-            return <Fragment key={x.id}><div className={`pr-row ${isOpen ? 'open' : ''} ${x.archived ? 'gone' : ''}`}>
-              <button type="button" className="pr-caret" aria-expanded={isOpen} aria-label={isOpen ? t('Close {name}', { name: x.name }) : t('Open {name}', { name: x.name })} onClick={() => setOpen(isOpen ? null : x.id)}>{isOpen ? '⌃' : '›'}</button>
-              <img className="pr-thumb" src={o.coverUrl ?? art(c, 'card')} alt="" width={96} height={60} loading="lazy" />
-              <span className="pr-name"><b>{x.name}</b><span className="small muted">{x.description ? tm(x.description) : ''}</span></span>
-              <span className="pr-where small"><ChannelMark c={c} /> {o.name}<span className="muted">{saleLabel(x.saleType)}</span></span>
-              <span className="pr-price"><b className="num">{money(x.startingPrice)}</b><span className="small muted">/ {unitOf(x, c)}</span>
-                {x.reservePrice != null && <span className="small muted">{t('Min. accepted: {price}', { price: money(x.reservePrice) })}</span>}</span>
-              <span><span className={`pt-pill ${sc}`}>{t(sl)}</span><span className="small muted pr-open">{t('{n} open', { n: x.openSlots })}</span></span>
-              <span className="pr-acts">
-                <a className="btn icon" href={`/schedule?view=list&q=${encodeURIComponent(x.name)}`} title={t('See it on the calendar')} aria-label={t('See {name} on the calendar', { name: x.name })}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /></svg></a>
-                {!x.archived && <a className="btn icon" href={`/listings/${x.id}/edit`} title={t('Edit')} aria-label={t('Edit {name}', { name: x.name })}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" /></svg></a>}
-                <details className="pr-more"><summary className="btn icon" aria-label={t('More for {name}', { name: x.name })}>⋯</summary>
-                  <div className="pr-menu card">
-                    <a href={`/listings/new?from=${x.id}`}>{t('Duplicate')}</a>
-                    {!x.archived && x.listing !== 'rolling' && <button type="button" disabled={busy || !p.company.payoutsEnabled} onClick={() => {
-                      const from = x.listedUntil && x.listedUntil >= todayInDubai() ? addDays(x.listedUntil, 1) : todayInDubai()
-                      act(`/seller/placements/${x.id}/slots`, { from, days: 28 }, r => t('{n} new slots listed from {from}.', { n: r.slots, from })) }}>{t('List 4 more weeks')}</button>}
-                    <button type="button" disabled={busy} onClick={() => act(`/seller/placements/${x.id}/archive`, { archived: !x.archived }, () => x.archived ? t('Restored.') : t('Archived. Slots already on sale stay on sale.'))}>
-                      {x.archived ? t('Restore') : t('Archive')}</button></div></details>
-              </span>
-            </div>{isOpen && <Detail p={x} o={o} />}</Fragment> })}
-        </section> })}</div>}
+    {list.map(p => <section key={p.id} className="card pd-prod">
+      <header className="pd-ph">
+        {p.logoUrl ? <img className="pd-logo" src={p.logoUrl} alt="" width={52} height={52} /> : <span className="pd-logo" aria-hidden>{p.name.slice(0, 2).toUpperCase()}</span>}
+        <div className="pd-pt"><h2>{p.name}</h2>{p.description && <p className="muted small">{p.description}</p>}</div>
+        <a className="btn" href={`/listings/p/${p.id}`}><Ic d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={16} />{t('Edit')}</a>
+        <button type="button" className="btn" onClick={() => remove(p)}>{t('Delete')}</button>
+      </header>
+      {listing?.product === p.id && <div className="pd-list"><ListingPanel products={[p]} placementId={listing.placement} onClose={() => setListing(null)} onDone={load} /></div>}
+      {!p.media.length ? <p className="pd-none muted">{t('No media types yet.')} <a href={`/listings/p/${p.id}?add=1`}>{t('Add a media type')}</a></p>
+        : p.media.map(m => <div key={m.id} className={`pd-media f-${family(m.channel)}`}>
+          <div className="pd-mh">
+            <span className="pd-mic" aria-hidden><Ic d={ICON[m.channel] ?? ICON.digital} /></span>
+            <div className="pd-mt"><b>{mediaName(m)}</b><span className="small muted">{m.name}{m.defaultPrice ? ` · ${t('default {amount}', { amount: money(m.defaultPrice) })}` : ''}{m.closeDays != null ? ` · ${t('bidding closes {n} days before', { n: m.closeDays })}` : ''}</span></div>
+            <a className="pd-edit" href={`/listings/p/${p.id}?media=${m.id}`}>{t('Edit')}</a>
+          </div>
+          {!m.sellable.length ? <p className="pd-none small muted">{HAS_PROGRAMMES.includes(m.channel) && m.details.programmes ? <>{t('Sold by programme, but no programme added yet.')} <a href={`/listings/p/${p.id}?media=${m.id}`}>{t('Add a programme')}</a></> : t('Nothing to list yet.')}</p>
+            : <ul className="pd-rows">{m.sellable.map(s => <li key={s.id}>
+              <img className="pd-thumb" src={art(m.channel, 'card')} alt="" width={72} height={46} loading="lazy" />
+              <span className="pd-what"><b>{s.kind === 'programme' ? s.name : s.name}</b><span className="small muted">{s.kind === 'programme' ? t('Programme') : t('Sold as one')}{when(s) ? ` · ${when(s)}` : ''}</span></span>
+              <span className="pd-state">{s.openSlots > 0 ? <span className="pt-pill good">{t('{n} on sale', { n: s.openSlots })}{s.nextAt ? ` · ${t('next {date}', { date: dayLabel(dubai(s.nextAt).date, { day: 'numeric', month: 'short' }) })}` : ''}</span>
+                : <span className="pt-pill mute">{t('Not listed')}</span>}{s.listing === 'rolling' && <span className="pt-pill info">{t('Kept on sale')}</span>}</span>
+              <span className="pd-price num">{money(s.defaultPrice ?? s.startingPrice)}<span className="small muted">{t('default')}</span></span>
+              <span className="pd-act"><a className="btn" href={`/schedule?view=week&q=${encodeURIComponent(p.name)}`}>{t('Calendar')}</a>
+                <button type="button" className="btn primary" onClick={() => setListing({ product: p.id, placement: s.id })}>{t('List')}</button></span>
+            </li>)}</ul>}
+        </div>)}
+      <footer className="pd-pf"><a href={`/listings/p/${p.id}?add=1`}>+ {t('Add a media type')}</a></footer>
+    </section>)}
   </main>
 }

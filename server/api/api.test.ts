@@ -1693,3 +1693,41 @@ test("the calendar side panel: a slot's bids, and its booking's creative under A
   expect(p.assets[0].creatives[0]).toMatchObject({ version: 1, status: 'pending', fileId: f.id })
   expect((await call(sellerY, 'GET', `/api/seller/slots/${slotX}`)).statusCode).toBe(404)
 })
+
+test("products by the owner's rules: product, media types with their own fields, programmes, and listing for dates with how it is sold", async () => {
+  const p = (await call(sellerX, 'POST', '/api/seller/products', { name: 'Skyline Media', description: 'Radio and digital in Dubai.' })).json().id
+  const radio = { channel: 'radio', name: 'Skyline FM 92.4', description: 'Drive-time radio.', language: 'bilingual', audience: 'Commuters 25-45', markets: ['UAE', 'Oman'],
+    reach: 180000, reachUnit: 'listeners', sectors: ['Banking', 'Pet care'], blocked: [], defaultPrice: AED(3_000), creativeDays: 2, closeDays: 5, specType: 'MP3', specDetail: '30 seconds',
+    details: { days: [1, 2, 3, 4, 5], airStart: '07:00', airEnd: '10:00', breaks: [{ at: '07:15' }, { at: '08:15' }], format: 'Live read', adLength: '30 seconds' } }
+  expect((await call(sellerX, 'POST', `/api/seller/products/${p}/media`, { ...radio, closeDays: 4 })).json().error).toMatch('at least 3 days before the creative')
+  expect((await call(sellerX, 'POST', `/api/seller/products/${p}/media`, { ...radio, details: { ...radio.details, breaks: [] } })).json().error).toMatch('each break')
+  const m = (await call(sellerX, 'POST', `/api/seller/products/${p}/media`, radio)).json().id
+  let tree = (await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p)
+  const main = tree.media[0].sellable[0]
+  expect(main).toMatchObject({ kind: 'main', name: 'Live read', days: [1, 2, 3, 4, 5], startsAt: '07:00', defaultPrice: AED(3_000) })
+  expect(main.breaks).toEqual([{ label: 'Break 1', at: '07:15', seconds: 30 }, { label: 'Break 2', at: '08:15', seconds: 30 }])
+  expect(tree.media[0]).toMatchObject({ markets: ['UAE', 'Oman'], sectors: ['Banking', 'Pet care'], language: 'bilingual' })   // "Other" answers are the publisher's own words
+
+  // a listing: dates, how it is sold, prices (the placement's own defaults stay as they were for other dates)
+  expect((await call(sellerX, 'POST', '/api/seller/listings', { placementId: main.id, from: '2026-11-16', length: 'once', saleType: 'fixed', startingPrice: AED(3_000), buyNowPrice: AED(4_000) })).json().error).toMatch('auctions only')
+  const l = (await call(sellerX, 'POST', '/api/seller/listings', { placementId: main.id, from: '2026-11-16', length: 'weeks', weeks: 1, saleType: 'auction', startingPrice: AED(3_200),
+    reservePrice: AED(3_500), anyBreakPrice: AED(5_000) })).json()
+  expect(l.slots).toBeGreaterThan(5)
+  const slots = (await pool.query(`select kind, sale_type, starting_price, reserve_price from slots where placement_id = $1 order by starts_at, kind`, [main.id])).rows
+  expect(slots.filter(s => s.kind === 'single').every(s => s.sale_type === 'auction' && Number(s.starting_price) === AED(3_200) && Number(s.reserve_price) === AED(3_500))).toBe(true)
+  expect(slots.filter(s => s.kind === 'any')).toHaveLength(5)
+
+  // sold by programme: the media type's own placement steps aside, each programme lists on its own
+  await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, details: { ...radio.details, programmes: true } })
+  const prog = (await call(sellerX, 'POST', `/api/seller/media/${m}/programmes`, { name: 'Morning Markets', notes: 'Business news with a live interview.', defaultPrice: AED(4_000),
+    details: { days: [1, 2, 3], airStart: '06:00', airEnd: '09:00', breaks: [{ at: '06:30' }], format: 'Ad spot', adLength: '20 seconds' } })).json().id
+  tree = (await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p)
+  expect(tree.media[0].sellable.map((x: any) => [x.kind, x.name])).toEqual([['programme', 'Morning Markets']])
+  expect(tree.media[0].sellable[0]).toMatchObject({ defaultPrice: AED(4_000), creativeDays: 2, closeDays: 5 })
+  expect((await call(sellerY, 'POST', '/api/seller/listings', { placementId: prog, from: '2026-11-16', length: 'once', saleType: 'fixed', startingPrice: AED(4_000) })).json().error).toMatch('not found')
+
+  // deleting a product stops what is unsold; bookings already made carry on
+  expect((await call(sellerX, 'POST', `/api/seller/products/${p}/delete`)).statusCode).toBe(200)
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json().some((x: any) => x.id === p)).toBe(false)
+  expect((await pool.query(`select count(*)::int n from slots where placement_id = $1 and status = 'open'`, [main.id])).rows[0].n).toBe(0)
+})

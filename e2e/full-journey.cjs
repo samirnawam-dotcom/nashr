@@ -87,36 +87,44 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await twoStepViaPage(buy, BASE); await twoStepViaPage(buy2, BASE) // both buyers will pay: two-step sign-in first
     say(await pub.locator('main h1').first().textContent(), '/', await buy.locator('main h1').first().textContent())
 
-    step = '4 publisher: outlet, payouts, tax'
-    await nav(pub, 'Your business'); await pub.waitForSelector('.biz-nav')
-    if (!(await pub.locator('#n-new').count())) { await pub.click('.biz-nav button:has-text("Outlets")'); await pub.click('button:has-text("Add outlet")') }
-    await pub.fill('#n-new', `Palm Radio ${run}`); await pub.selectOption('#c-new', 'radio'); await pub.fill('#d-new', 'Drive-time radio across the Emirates.')
-    await pub.click('.biz-tabs button:has-text("Audience")'); await pub.check('#sec-new-Banking'); await pub.check('#sec-new-Retail'); await pub.fill('#au-new', 'Commuters 25-45')
-    await pub.click('button:has-text("Add outlet")'); await pub.waitForSelector('text=Outlet added.')
+    step = '4 publisher: payouts, tax'
     // connecting payouts needs two-step sign-in: the publisher turns it on from its account page first
     await twoStepViaPage(pub, BASE); await nav(pub, 'Your business'); await pub.click('.biz-nav button:has-text("Payout account")'); await pub.waitForSelector('h2:has-text("Payout account")')
     await pub.click('button:has-text("Connect payout account")'); await pub.waitForSelector('text=Payout account verified.')
     await pub.click('.biz-nav button:has-text("Tax and invoices")'); await pub.fill('#trn', '100123456700003'); await pub.click('section:has(#trn) button:has-text("Save")'); await pub.waitForSelector('text=Tax details saved.')
     await pub.shot('f4-profile'); say()
 
-    step = '5 publisher: placements listed'
-    // The placement form as Omar described it: a format, what the buyer gets, specs, sale type, kept on sale 8 weeks ahead
-    const placement = async (name, sale, from, to, at, extra) => {
-      await nav(pub, 'Listings'); await pub.click('a:has-text("Add placement")'); await pub.waitForSelector('.pl-format')
-      await pub.click('.pl-format:has-text("Something else")'); await pub.fill('#n', name)
-      await pub.fill('#ds', 'A 30-second spot in one ad break of the programme.'); await pub.fill('#sx', 'MP3, 30 seconds')
-      await pub.click('.pl-quick button:has-text("Every day")')
-      await pub.fill('#sa', from); await pub.fill('#ea', to); await pub.click('button:has-text("Add break")'); await pub.fill('#bt0', at)
-      if (sale === 'quick_sale') await pub.click('.pl-sale-card:has-text("Quick sale")')
-      if (sale === 'fixed') await pub.click('.pl-sale-card:has-text("Fixed price")')
-      await pub.fill('#sp', '2000'); await pub.fill('#cd', '6'); if (extra) await extra()
-      await pub.shot(`f5-${sale}`)
-      await pub.click('button:has-text("Save placement")'); await pub.waitForSelector('h1:has-text("is saved")')
-      const lead = await pub.locator('.pl-done .lead').textContent(); if (!/slots are on sale/.test(lead)) throw new Error(`${name}: ${lead}`)
+    step = '5 publisher: product, media type, programmes, listed'
+    // The owner's rules: a product (the brand), its media type with that type's own fields, programmes, then each listed with how it is sold
+    await nav(pub, 'Listings'); await pub.click('a:has-text("Add product")'); await pub.waitForSelector('#pr-n')
+    await pub.fill('#pr-n', `Palm Radio ${run}`); await pub.fill('#pr-d', 'Drive-time radio across the Emirates.'); await pub.click('button:has-text("Save and add media types")')
+    await pub.waitForSelector('.ed-types'); await pub.click('.ed-types button:has-text("Radio")')
+    await pub.fill('#new-name', `Palm Radio ${run}`); await pub.selectOption('#new-lang', 'english'); await pub.fill('#new-desc', 'Drive-time radio across the Emirates.')
+    await pub.check('.ed-switch input'); await pub.fill('#new-aud', 'Commuters 25-45')
+    await pub.uncheck('label.check:has-text("All sectors") input'); await pub.check('#new-sec-Banking'); await pub.check('#new-sec-Retail')
+    await pub.fill('#new-dp', '2000'); await pub.fill('#new-cd', '2'); await pub.fill('#new-bc', '6'); await pub.selectOption('#new-st', 'MP3'); await pub.fill('#new-sd', '30 seconds')
+    await pub.shot('f5-media'); await pub.click('button:has-text("Add media type")'); await pub.waitForSelector('text=Media type saved.')
+    const programme = async (name, from, to, at, sold, extra) => {
+      await pub.click('.ed-progs button:has-text("Add a programme")'); await pub.waitForSelector('.ed-prog')
+      await pub.fill('.ed-prog input[id$="-pn"]', name); await pub.click('.ed-prog .ed-quick button:has-text("Every day")')
+      await pub.fill('.ed-prog input[id$="-air1"]', from); await pub.fill('.ed-prog input[id$="-air2"]', to)
+      await pub.click('.ed-prog button:has-text("Add break")'); await pub.fill('.ed-prog .ed-break input', at)
+      await pub.click('.ed-prog .ed-sugg button:has-text("Ad spot")'); await pub.fill('.ed-prog input[id$="-adLength"]', '30 seconds')
+      await pub.click('.ed-prog button:has-text("Add programme")'); await pub.waitForSelector(`.ed-prow:has-text("${name}")`)
+      await pub.click(`.ed-prow:has-text("${name}") button:has-text("List")`); await pub.waitForSelector('.lst')
+      await pub.click('.lst-dates button:has-text("Keep it on sale")')
+      if (sold === 'quick_sale') await pub.click('.lst-sold button:has-text("Quick sale")')
+      if (sold === 'fixed') await pub.click('.lst-sold button:has-text("Fixed price")')
+      if (sold === 'auction') await pub.click('.lst-sold button:has-text("Auction")')
+      await pub.fill('#lst-sp', '2000'); if (extra) await extra()
+      await pub.shot(`f5-${sold}`)
+      await pub.click('button:has-text("Save listing")'); await pub.waitForSelector('.lst .ok, .lst .error')
+      const r = await pub.locator('.lst .ok, .lst .error').first().textContent(); if (!/Listed:/.test(r)) throw new Error(`${name}: ${r}`)
+      await pub.click('.lst button:has-text("Close")')
     }
-    await placement('Morning Drive', 'auction', '07:00', '09:00', '07:30', async () => { await pub.fill('#bn', '3500') })
-    await placement('Evening Drive', 'quick_sale', '17:00', '19:00', '17:30')
-    await placement('Lunch Hour', 'fixed', '12:00', '13:00', '12:30')
+    await programme('Morning Drive', '07:00', '09:00', '07:30', 'auction', async () => { await pub.fill('#lst-bn', '3500') })
+    await programme('Evening Drive', '17:00', '19:00', '17:30', 'quick_sale')
+    await programme('Lunch Hour', '12:00', '13:00', '12:30', 'fixed')
     await pub.shot('f5-listings')
     const listed = await sql(`select p.name, count(*)::int n, min(s.starts_at) first from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                               where o.name = $1 group by p.name`, [`Palm Radio ${run}`])

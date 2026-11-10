@@ -45,13 +45,12 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   await p.click('.cv-filters button:has-text("On sale")'); await p.waitForTimeout(600)
   if (await p.locator('.cv-table .st:not(.st-on_sale)').count()) throw new Error('the status filter let other statuses through')
   await p.click('.cv-views button:has-text("Month")'); await p.waitForSelector('.cv-mcell'); await shot('s6c-month')
-  // A new placement, listed straight away
-  await p.click('.side .nav >> text=Products'); await p.waitForSelector('.pr-row'); await p.click('a:has-text("Add placement")'); await p.waitForSelector('.pl-format')
-  await p.click('.pl-format:has-text("Programme sponsorship")'); await p.fill('#n', 'Weekend Brunch'); await p.click('.pl-sale-card:has-text("Quick sale")')
-  await p.click('.pl-quick button:has-text("Weekend")'); await p.fill('#sa', '10:00'); await p.fill('#ea', '12:00')
-  await p.fill('#sp', '1800'); await shot('s7-new-placement')
-  await p.click('button:has-text("Save placement")'); await p.waitForSelector('h1:has-text("is saved")')
-  await p.click('a:has-text("Go to listings")'); await p.waitForSelector('.pr-row:has-text("Weekend Brunch")'); await shot('s8-listings')
+  // Products (owner's rules): a programme listed for chosen dates with how it is sold and its price
+  await p.click('.side .nav >> text=Products'); await p.waitForSelector('.pd-prod'); await shot('s7-products')
+  await p.click('.pd-rows li:has-text("Drive Home") button:has-text("List")'); await p.waitForSelector('.lst')
+  await p.click('.lst-dates button:has-text("12 weeks")'); await p.click('.lst-sold button:has-text("Fixed price")'); await p.fill('#lst-sp', '4400')
+  await p.click('button:has-text("Save listing")'); await p.waitForSelector('.lst .ok'); await shot('s8-listed')
+  if (!/Listed:|Nothing new/.test(await p.locator('.lst .ok').textContent())) throw new Error('listing failed')
   await p.click('.side .nav >> text=Reports'); await p.click('.sub-tabs a:has-text("Balances")'); await p.waitForSelector('.kpis'); await shot('s9-earnings')
   await p.click('.side .name-btn'); await p.click('.name-pop a:has-text("Your business")'); await p.waitForSelector('text=Payout account'); await shot('s10-profile')
   const sp = p.context().request

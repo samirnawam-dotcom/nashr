@@ -22,7 +22,7 @@ type Portal = { period: { days: number }; outlets: { id: string; name: string; c
 type Onboarding = { onboarding: Record<string, boolean> }
 
 const STEPS: [string, string, string][] = [['outlet', 'Add your outlet profile', '/profile'], ['payouts', 'Connect your payout account', '/profile'],
-  ['tax', 'Add your TRN and invoice choice', '/profile'], ['placement', 'Add your first placement', '/listings/new'], ['live', 'Put slots on sale', '/listings']]
+  ['tax', 'Add your TRN and invoice choice', '/profile'], ['placement', 'Add your first product', '/listings/new'], ['live', 'List it for the dates you choose', '/listings']]
 const PERIODS = [[7, 'Last 7 days'], [30, 'Last 30 days'], [90, 'Last 90 days'], [365, 'Last 12 months']] as const
 
 // What a transaction's status means to a publisher, and how it looks

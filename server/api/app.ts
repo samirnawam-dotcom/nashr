@@ -25,6 +25,7 @@ import { pushRoutes } from './routes-push.js'
 import { mailRoutes } from './routes-mail.js'
 import { userRoutes } from './routes-users.js'
 import { supportRoutes } from './routes-support.js'
+import { productRoutes } from './routes-products.js'
 import { insightRoutes } from './routes-insights.js'
 import { liveRoute } from './routes-live.js'
 import { DiskStorage, type Storage } from '../files/storage.js'
@@ -188,6 +189,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   messageRoutes(route)
   insightRoutes(route)
   supportRoutes(route)
+  productRoutes(route)
   userRoutes(route)
   teamRoutes(route)
   mailRoutes(route)

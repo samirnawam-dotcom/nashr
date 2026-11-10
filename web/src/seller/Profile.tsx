@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './business.css'
 import { api, upload } from '../api'
+import { navigate } from '../nav'
 import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
 import { Team } from '../Team'
@@ -20,7 +21,6 @@ const CHANNELS = MEDIA.map(m => [m, MEDIA_LABEL[m]])
 type Sec = 'profile' | 'outlets' | 'payouts' | 'tax' | 'ratecard' | 'team'
 const SECTIONS: [Sec, string, string][] = [
   ['profile', 'Business profile', 'M4 21V5a2 2 0 0 1 2-2h8l6 6v12zM9 13h6M9 17h6'],
-  ['outlets', 'Outlets', 'M3 7h18v12H3zM7 3l5 4 5-4'],
   ['payouts', 'Payout account', 'M3 7h18v10H3zM3 11h18M7 15h3'],
   ['tax', 'Tax and invoices', 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'],
   ['ratecard', 'Rate card', 'M7 3h7l5 5v13H7zM14 3v5h5'],
@@ -66,12 +66,12 @@ export function ProfilePage() {
   const needsTwoStep = useNeedsTwoStep(!!p && !p.company.payoutsEnabled)
   if (!p) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   const done: Record<Sec, boolean | null> = { profile: null, outlets: p.outlets.length > 0, payouts: p.company.payoutsEnabled, tax: !!p.company.trn || !p.company.vatRegistered ? !!p.company.address : false, ratecard: !!p.company.rateCard, team: null }
-  const first = (['outlets', 'payouts', 'tax'] as Sec[]).find(k => !done[k])
+  const first = (['payouts', 'tax'] as Sec[]).find(k => !done[k])
   const cur: Sec = sec ?? first ?? 'profile'
   const STATUS: [Sec, string, string, boolean][] = [
     ['payouts', t('Payout account'), p.company.payoutsEnabled ? t('Verified') : t('Not connected'), p.company.payoutsEnabled],
     ['tax', t('Tax details'), p.company.trn ? t('TRN {trn}', { trn: p.company.trn }) : p.company.vatRegistered ? t('TRN missing') : t('Not VAT-registered'), !!done.tax],
-    ['outlets', t('Outlets'), p.outlets.length ? (p.outlets.length === 1 ? p.outlets[0].name : t('{n} outlets', { n: p.outlets.length })) : t('None yet'), p.outlets.length > 0],
+    ['outlets', t('Products'), p.outlets.length ? (p.outlets.length === 1 ? p.outlets[0].name : t('{n} media types', { n: p.outlets.length })) : t('None yet'), p.outlets.length > 0],
     ['ratecard', t('Rate card'), p.company.rateCard ? t('Shared with Nashr') : t('Not shared'), !!p.company.rateCard],
   ]
   const editing = p.outlets.find(o => o.id === outlet)
@@ -79,7 +79,7 @@ export function ProfilePage() {
     <main className="biz">
       <PhotoBand title={t('Your business')} sub={t('How buyers see you, where your money goes, and who works with you. Pick a section.')} />
       <ul className="biz-status">{STATUS.map(([k, l, v, ok]) =>
-        <li key={k}><button type="button" className={`${ok ? 'ok' : 'todo'} ${cur === k ? 'on' : ''}`} onClick={() => setSec(k)}>
+        <li key={k}><button type="button" className={`${ok ? 'ok' : 'todo'} ${cur === k ? 'on' : ''}`} onClick={() => k === 'outlets' ? navigate('/listings') : setSec(k)}>
           <span className="biz-dot" aria-hidden>{ok ? '✓' : '!'}</span><span><b>{l}</b><span className="small">{v}</span></span></button></li>)}</ul>
       <div className="biz-grid">
         <nav className="biz-nav card" aria-label={t('Sections')}>{SECTIONS.map(([k, l, d]) =>

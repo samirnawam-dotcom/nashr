@@ -4,6 +4,7 @@ import { api } from '../api'
 import { dayLabel, time } from '../format'
 import { addDays, dubai, monthGrid, todayInDubai, weekOf } from '../calendar/layout'
 import { DealStatus, SLOT_STATUS, money, when } from './common'
+import { ListingPanel, type Product } from './Listing'
 import { SALE_TYPES, SaleIcon, saleLabel, useLatest, useNarrow } from '../calendar/CalendarPage'
 import { DateNav, FilterFold, GROUPS, groupOf, OpsList, StatusChips, statusesOf, useAddress } from '../calendar/ops'
 import { CHANNEL_NAME, ICON, art } from '../media'
@@ -16,43 +17,7 @@ type SSlot = { id: string; outletId?: string; outlet: string; channel: string; p
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
 
 type View = 'day' | 'week' | 'list' | 'month'
-type Product = { id: string; name: string; outlet: string; saleType: string; startingPrice: number; archived: boolean; unit: 'day' | 'week' }
 
-/**
- * Put a product on sale from the calendar (owner's brief): choose the product, the dates and the price. The price starts at the
- * product's own and can be changed for these dates only; bidding starts there and buyers bid up from it.
- */
-function AddToCalendar({ products, date, product, onClose, onDone }: { products: Product[]; date: string; product?: string; onClose: () => void; onDone: () => void }) {
-  const [id, setId] = useState(product ?? products[0]?.id ?? ''), [from, setFrom] = useState(date < todayInDubai() ? todayInDubai() : date), [days, setDays] = useState(7)
-  const p = products.find(x => x.id === id), [price, setPrice] = useState(p ? String(p.startingPrice / 100) : '')
-  const [busy, setBusy] = useState(false), [error, setError] = useState(''), [note, setNote] = useState('')
-  useEffect(() => { if (p) setPrice(String(p.startingPrice / 100)) }, [id])
-  async function save() {
-    setBusy(true); setError(''); setNote('')
-    try {
-      const fils = Math.round(Number(price.replace(/,/g, '')) * 100)
-      const r = await api<{ slots: number; priced: number }>(`/seller/placements/${id}/slots`, { method: 'POST',
-        body: { from, days, ...(p && fils !== p.startingPrice ? { startingPrice: fils } : {}) } })
-      setNote(r.slots ? t('{n} new slots on sale from {date}.', { n: r.slots, date: dayLabel(from, { day: 'numeric', month: 'short' }) })
-        : t('These dates were already on sale.') + (r.priced ? ' ' + t('Price updated on {n} slots.', { n: r.priced }) : '')); onDone()
-    } catch (e: any) { setError(e.message) } finally { setBusy(false) }
-  }
-  if (!products.length) return <section className="card pad cv-add"><p>{t('Add a placement first; then put it on sale here.')} <a href="/listings/new">{t('Add placement')}</a></p></section>
-  return <section className="card pad form cv-add" aria-label={t('Add to calendar')}>
-    <div className="row-flex"><h2>{t('Add to calendar')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onClose}>{t('Close')}</button></div>
-    <div className="cv-add-grid">
-      <div className="field"><label htmlFor="ac-p">{t('Placement')}</label><select id="ac-p" value={id} onChange={e => setId(e.target.value)}>
-        {products.map(x => <option key={x.id} value={x.id}>{x.outlet} · {x.name}</option>)}</select></div>
-      <div className="field"><label htmlFor="ac-f">{t('From')}</label><input id="ac-f" type="date" min={todayInDubai()} value={from} onChange={e => setFrom(e.target.value)} /></div>
-      <div className="field"><label htmlFor="ac-d">{t('For')}</label><select id="ac-d" value={days} onChange={e => setDays(Number(e.target.value))}>
-        {[[1, t('One day')], [7, t('One week')], [14, t('Two weeks')], [28, t('Four weeks')]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-      <div className="field"><label htmlFor="ac-pr">{p?.saleType === 'auction' ? t('Starting bid (AED)') : t('Price (AED)')}</label><input id="ac-pr" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></div>
-    </div>
-    <p className="small muted">{t("The placement's days and times decide which slots appear. The price is the placement's own; change it here for these dates only.")}</p>
-    {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
-    <button type="button" className="btn primary" style={{ justifySelf: 'start' }} disabled={busy || !id || !(Number(price) > 0)} onClick={save}>{t('Put on sale')}</button>
-  </section>
-}
 const VIEWS: [View, string][] = [['day', t('Day')], ['week', t('Week')], ['month', t('Month')], ['list', t('List')]]
 
 /** The owner's bid status for a slot: open for bids, bidding (n), pending your decision, bid accepted; anything else as it is. */
@@ -79,7 +44,7 @@ export function SchedulePage() {
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]), [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
   const latest = useLatest(), narrow = useNarrow(), wide = useWide()
   useEffect(() => { try { localStorage.setItem('nashr:seller-view', view) } catch { /* fine */ } }, [view])
-  useEffect(() => { api<{ outlets: { id: string; name: string }[]; placements: Product[] }>('/seller/profile').then(p => { setOutlets(p.outlets); setProducts(p.placements.filter(x => !x.archived)) }, () => {}) }, [])
+  useEffect(() => { api<{ outlets: { id: string; name: string }[] }>('/seller/profile').then(p => setOutlets(p.outlets), () => {}); api<Product[]>('/seller/products').then(setProducts, () => {}) }, [])
   useEffect(() => { const k = setTimeout(() => qText !== a.q && update({ q: qText }), 300); return () => clearTimeout(k) }, [qText])
   const week = weekOf(a.date), grid = monthGrid(a.date)
   const [from, to] = view === 'month' ? [grid[0][0], addDays(grid.at(-1)![6], 1)] : view === 'list' ? [a.date, addDays(a.date, 28)] : view === 'day' ? [a.date, addDays(a.date, 1)] : [week[0], addDays(week[6], 1)]
@@ -110,13 +75,13 @@ export function SchedulePage() {
       <header className="cc-head">
         <div className="cc-title"><h1>{outletName ? t('{outlet} content calendar', { outlet: outletName }) : t('Content calendar')}</h1>
           <p className="muted">{t('Plan, manage and sell your programming line-up. Dubai time, prices excluding VAT.')}</p></div>
-        <button type="button" className="btn primary" aria-expanded={!!adding} onClick={() => setAdding(adding ? false : { date: a.date })}>+ {t('Add to calendar')}</button>
+        <button type="button" className="btn primary" aria-expanded={!!adding} onClick={() => setAdding(adding ? false : { date: a.date })}>+ {t('List it')}</button>
       </header>
       <nav className="cc-tabs" aria-label={t('Publisher pages')}>
         <a className="on" aria-current="page" href="/schedule"><TabSvg d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />{t('Calendar')}</a>
         <a href="/listings"><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" />{t('Products')} {products.length > 0 && <span className="cc-n">{products.length}</span>}</a>
       </nav>
-      {adding && <AddToCalendar key={`${adding.date}-${adding.product ?? ''}`} products={products} date={adding.date} product={adding.product} onClose={() => setAdding(false)} onDone={load} />}
+      {adding && <ListingPanel key={`${adding.date}-${adding.product ?? ''}`} products={products} placementId={adding.product} date={adding.date} onClose={() => setAdding(false)} onDone={load} />}
 
       <div className="cc-bar">
         <DateNav date={a.date} onDate={d => update({ date: d }, true)} onStep={step} />
@@ -339,8 +304,7 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
     </div>
     {error && <p className="error" role="alert">{error}</p>}
     <footer className="sp-foot">
-      {s.placementId && <a className="btn" href={`/listings/${s.placementId}/edit`}><TabSvg d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />{t('Edit')}</a>}
-      {s.placementId && <a className="btn" href={`/listings/new?from=${s.placementId}`}><TabSvg d="M8 8h12v12H8zM4 16V4h12" />{t('Duplicate')}</a>}
+      {s.placementId && <a className="btn" href={`/listings/p/${s.placementId}`}><TabSvg d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />{t('Edit')}</a>}
       {(s.status === 'open' || s.status === 'blocked') && !s.bids.length &&
         <button className="btn sp-wide" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/block`, { blocked: s.status === 'open' })}>{s.status === 'open' ? t('Take off sale') : t('Put back on sale')}</button>}
     </footer>

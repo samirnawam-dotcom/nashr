@@ -53,6 +53,7 @@ const load_seller_Earnings = () => import('./seller/Earnings')
 const EarningsPage = L(load_seller_Earnings, 'EarningsPage')
 const load_seller_Listings = () => import('./seller/Listings')
 const ProductsPage = L(() => import('./seller/Products'), 'ProductsPage')
+const ProductEditorPage = L(() => import('./seller/ProductEditor'), 'ProductEditorPage')
 const NewPlacementPage = L(load_seller_Listings, 'NewPlacementPage')
 const ImportPlacementsPage = L(load_seller_Listings, 'ImportPlacementsPage')
 const load_seller_Profile = () => import('./seller/Profile')
@@ -136,7 +137,8 @@ const SELLER: Routes = [
   [/^\/messages\/([\w-]+)$/, id => <SubTabs tabs={INBOX_TABS()}><MessagesPage open={id} role="seller" /></SubTabs>],
   [/^\/messages/, () => <SubTabs tabs={INBOX_TABS()}><MessagesPage role="seller" /></SubTabs>],
   [/^\/listings\/([\w-]+)\/edit$/, id => <EditPlacementPage id={id} />],
-  [/^\/listings\/new$/, () => <NewPlacementPage />],
+  [/^\/listings\/new$/, () => <ProductEditorPage />],
+  [/^\/listings\/p\/([\w-]+)$/, id => <ProductEditorPage key={id} id={id} />],
   [/^\/listings\/import$/, () => <ImportPlacementsPage />],
   [/^\/listings/, () => <ProductsPage />],
   [/^\/profile/, () => <ProfilePage />],
