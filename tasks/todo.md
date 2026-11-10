@@ -165,3 +165,10 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Staff: Deals table two-line cells without sideways scroll; Funds ledger and Settings in words; status pills on Users and Payouts
 - [x] Sidebar foot shows the full name; only one menu item active for staff; bell count capped at 99+
 - [x] Help as an accordion; Account and Help in one readable column; empty states as a centred note
+
+## Phase K: publisher calendar, second pass
+- [x] Week by programme: one row per programme, each break a one-line pill coloured by state (time, bids, price); "By time" kept as a switch
+- [x] Money tiles that also filter: To decide, With bids, Booked, Still on sale
+- [x] Month: one summary per day (booked and value, with bids, on sale, "to decide" flag); press a day to open it
+- [x] Tighter header (no duplicate tabs), price on the by-time cards, status chips kept on the List view
+- [ ] Ideas offered to the owner, not built: bulk actions, copy last week, price hints, buyer plan basket, fill-rate heat map
