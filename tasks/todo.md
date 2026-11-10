@@ -140,6 +140,13 @@ Decisions made while building (flag to owner if they disagree):
 - [ ] Check the buyer's bid drawer shows date, time, sector and the bid summary as he described
 - Left out on purpose: his placeholder figures and client results (need verified ones); one Nashr review step instead of three approval rows
 
+## Phase I: owner's rules for products and listings (Nashr_seller_final_rule.pdf, 10 Nov 2026)
+- [x] Menu: Dashboard, Calendar, Products, Inbox (requests + messages), Reports (transactions + balances); settings under the name; Coverage removed
+- [x] Product > media types (own fields, Other on every pick-list) > programmes; deadline rule; listing with dates, how it is sold and prices
+- [ ] Bid drawer kept small: product, media type and programme, audience, format, length or size, date (time for radio and TV), price; anything else as one line
+- [ ] Product logo upload (optional field)
+- [ ] Say "listing" instead of "placement" everywhere buyers and publishers read it
+
 ## Waiting on the owner
 - Stripe test keys in `/etc/nashr.env` (runbook 6a), then live keys after legal review
 - SMTP settings so emails are sent
