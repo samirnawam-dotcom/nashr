@@ -143,3 +143,4 @@ body:has(main.aud-index) { overflow-x: clip; }
 .shell-main .aud-hero h1 { color: #fff; }
 .aud-index .aud-card .aud-top b { color: var(--ink); }
 @media (max-width: 760px) { .aud-hero .seg-steps li { padding: 12px 16px; align-items: center; } .aud-hero .seg-steps span { display: none; } .aud-lead { font-size: 15.5px; } }
+:root[dir="rtl"] .aud-go svg { transform: scaleX(-1); }

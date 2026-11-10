@@ -328,3 +328,20 @@
   .lp .deal-stack .board { padding-bottom: 40px; }
   .lp .deal-stack .ticket:not(.small) { margin: -26px 0 0; } .lp .deal-stack .ticket.held { margin: 10px 0 0; }
 }
+
+/* ------------------------------------------------------------------ Arabic (right to left) */
+/* the booking card and its note keep to their own sides whichever way the page reads */
+.lp .deal-stack .ticket:not(.small) { margin: -38px 0 0; margin-inline-start: -24px; }
+.lp .deal-stack .ticket.held { margin: 0 0 6px; margin-inline-end: -16px; }
+@media (max-width: 1000px) { .lp .deal-stack .ticket:not(.small) { margin-inline-start: 0; } }
+@media (max-width: 640px) { .lp .deal-stack .ticket:not(.small) { margin: -26px 0 0; } .lp .deal-stack .ticket.held { margin: 10px 0 0; } }
+/* names written in Latin letters are cut at their end, not their beginning, and still sit on the reading side */
+:root[dir="rtl"] .lp :is(.board-who b.name, .vig-row b.name, .ol-t b) { unicode-bidi: plaintext; text-align: right; }
+.lp .board-row { grid-template-columns: minmax(136px, 1.7fr) repeat(5, minmax(0, 1fr)); }
+.lp .board-who b { font-size: 12px; }
+:root[lang="ar"] .lp .board-pill small { font-size: 10px; }
+:root[lang="ar"] .lp .proof-card > b { font-size: clamp(24px, 2.3vw, 32px); letter-spacing: 0; }
+:root[lang="ar"] .lp .ticket-steps { font-size: 11px; }
+:root[dir="rtl"] .lp .hero .ar { text-align: right; }
+:root[dir="rtl"] .lp .deal-stack figcaption { text-align: start; }
+@media (max-width: 640px) { .lp .board-row { grid-template-columns: minmax(104px, 1.4fr) repeat(3, minmax(0, 1fr)); } }

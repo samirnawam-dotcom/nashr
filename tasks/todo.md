@@ -191,3 +191,4 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Sign-in, request access, invite: brand panel without a stock photo (promise in three lines, the five steps); back link and language at the top; request cards with icons
 - [x] Audiences: night band with the title and the three steps; cards lead with what is open now
 - [x] Guest calendar: one slim "browsing as a guest" line above the grid; Directory added to the public menu
+- [x] Arabic check of the five public pages: hero cards no longer overlap, Latin names cut at their end, prices in dirhams, headline figure in Arabic words, audience arrows mirrored

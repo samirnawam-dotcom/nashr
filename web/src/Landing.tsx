@@ -67,8 +67,8 @@ export function Landing() {
               <div className="board-row board-days"><span />{['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => <span key={d}>{t(d)} <b className="num">{16 + i}</b></span>)}</div>
               {BOARD.map(([ch, name, cells]) => <div className="board-row" key={name}>
                 <span className="board-who"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[ch] ?? ICON.digital} /></svg></i>
-                  <span><b>{name}</b><small>{CHANNEL_NAME[ch]}</small></span></span>
-                {cells.map(([price, st], i) => price ? <span key={i} className={`board-pill p-${st}`}><b className="num">{price}</b><small>{st === 'lead' ? t('You lead') : st === 'bid' ? t('Bidding') : st === 'won' ? t('Accepted') : t('On sale')}</small></span> : <span key={i} className="board-gap" />)}
+                  <span><b className="name">{name}</b><small>{CHANNEL_NAME[ch]}</small></span></span>
+                {cells.map(([price, st], i) => price ? <span key={i} className={`board-pill p-${st}`}><b className="num">{price}</b><small>{st === 'lead' ? t('Leading') : st === 'bid' ? t('Bidding') : st === 'won' ? t('Accepted') : t('On sale')}</small></span> : <span key={i} className="board-gap" />)}
               </div>)}
             </div>
             <div className="ticket">
@@ -106,9 +106,9 @@ export function Landing() {
         <div className="wrap split">
           <article className="aud" id="advertisers">
             <div className="vig" aria-hidden>
-              {([['radio', 'Morning Markets', 'Break 1', 'AED 3,500', 'Bid'], ['newspaper', 'Business page', 'Half page', 'AED 11,000', 'Book'], ['tv', 'Evening news', 'Break 2', 'AED 12,400', 'Bid']] as const).map(([ch, n, l, p, a]) =>
+              {([['radio', 'Morning Markets', t('Break {n}', { n: 1 }), 350_000, 'Bid'], ['newspaper', 'Business page', t('Half page'), 1_100_000, 'Book'], ['tv', 'Evening news', t('Break {n}', { n: 2 }), 1_240_000, 'Bid']] as const).map(([ch, n, l, p, a]) =>
                 <span className="vig-row" key={n}><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[ch]} /></svg></i>
-                  <span><b>{n}</b><small>{CHANNEL_NAME[ch]} · {t(l)}</small></span><b className="num">{p}</b><em>{t(a)}</em></span>)}
+                  <span><b className="name">{n}</b><small>{CHANNEL_NAME[ch]} · {l}</small></span><b className="num">{money(p)}</b><em>{t(a)}</em></span>)}
               <span className="vig-meter"><span><i style={{ width: '62%' }} /></span><small>{t('Plan total against your budget')}</small></span>
             </div>
             <h3>{t("For brands and agencies")}</h3>
@@ -122,9 +122,9 @@ export function Landing() {
           </article>
           <article className="aud pub" id="publishers">
             <div className="vig" aria-hidden>
-              {([['Break 2 · 17:15', 'AED 6,000', "You'd net {amount}", 'AED 5,115'], ['Break 3 · 07:45', 'AED 4,500', "You'd net {amount}", 'AED 3,836'], ['Break 1 · 06:45', 'AED 3,605', "You'd net {amount}", 'AED 3,073']] as const).map(([l, p, n, v]) =>
-                <span className="vig-row req" key={l}><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON.radio} /></svg></i>
-                  <span><b>{t('Booking to decide')}</b><small>{l} · {t(n, { amount: v })}</small></span><b className="num">{p}</b><em className="ghost">{t('Decline')}</em><em>{t('Accept')}</em></span>)}
+              {([[2, '17:15', 600_000, 511_500], [3, '07:45', 450_000, 383_600], [1, '06:45', 360_500, 307_300]] as const).map(([b, at, p, v]) =>
+                <span className="vig-row req" key={b}><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON.radio} /></svg></i>
+                  <span><b>{t('Booking to decide')}</b><small>{t('Break {n}', { n: b })} · <bdi>{at}</bdi> · {t("You'd net {amount}", { amount: money(v) })}</small></span><b className="num">{money(p)}</b><em className="ghost">{t('Decline')}</em><em>{t('Accept')}</em></span>)}
               <span className="vig-meter paid"><span><i style={{ width: '100%' }} /></span><small>{t('Released to you after proof')}</small></span>
             </div>
             <h3>{t("For publishers")}</h3>
@@ -219,7 +219,8 @@ export function Landing() {
 }
 
 /** AED 1.03M, AED 412K: a headline figure that fits on one line (amounts are in fils). */
-const compact = (fils: number) => { const v = fils / 100; return v >= 1_000_000 ? `AED ${(v / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M` : v >= 10_000 ? `AED ${Math.round(v / 1000)}K` : money(fils).replace(/\.00$/, '') }
+const compact = (fils: number) => { const v = fils / 100; const m = (v / 1_000_000).toFixed(2).replace(/\.?0+$/, ''), k = Math.round(v / 1000)
+  return v >= 1_000_000 ? (isAr ? `${m} مليون درهم` : `AED ${m}M`) : v >= 10_000 ? (isAr ? `${k} ألف درهم` : `AED ${k}K`) : money(fils).replace(/\.00$/, '') }
 
 type Stats = { publishers: number | null; outlets: number | null; channels: number | null; openSlots: number | null; completed: number | null; booked: number | null }
 
