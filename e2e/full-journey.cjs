@@ -38,7 +38,14 @@ const signIn = async (p, email, code) => {
     await p.fill('#code', totp('JBSWY3DPEHPK3PXP')); await p.click('button.auth-submit') }
   await p.waitForSelector('nav.nav, .shell-main main', { timeout: 15000 })
 }
-const nav = async (p, label) => { await p.click(`.nav a:has-text("${label}")`); await p.waitForLoadState('networkidle') }
+// The publisher's menu (owner's rules): Products, Inbox, Reports; settings sit in the menu under the account's name
+const nav = async (p, label) => {
+  const via = { Listings: ['Products'], Requests: ['Inbox'], Balances: ['Reports', 'Balances'], 'Your business': [null, 'Your business'] }[label]
+  if (via && via[0] === null) { await p.click('.side .name-btn'); await p.click(`.name-pop a:has-text("${via[1]}")`) }
+  else if (via) { await p.click(`.side .nav a:has-text("${via[0]}")`); if (via[1]) await p.click(`.sub-tabs a:has-text("${via[1]}")`) }
+  else await p.click(`.nav a:has-text("${label}")`)
+  await p.waitForLoadState('networkidle')
+}
 // Requests: pick one in the list, then open it (its booking, or the slot for an interest)
 const openTask = async (p, has) => {
   await p.click(has ? `.rq-item:has-text("${has}")` : '.rq-item >> nth=0')

@@ -10,10 +10,6 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
   return {
   'deal.awaiting_payment': () => t('The publisher accepted. Pay to secure the slot.'),
   'deal.declined': () => t('Your request was not selected.'),
-  'coverage.submitted': n => t('{company} sent coverage for review: {name}.', { company: n.data?.company ?? '', name: n.data?.name ?? '' }),
-  'coverage.approved': n => n.data?.slots ? t('Nashr approved {name}. It is on sale on its dates.', { name: n.data?.name ?? '' }) : t('Nashr approved {name}. It goes on sale once your payout account is verified.', { name: n.data?.name ?? '' }),
-  'coverage.changes_requested': n => t('Nashr asked for changes to {name}: {note}', { name: n.data?.name ?? '', note: n.data?.note ?? '' }),
-  'coverage.rejected': n => t('Nashr declined {name}: {note}', { name: n.data?.name ?? '', note: n.data?.note ?? '' }),
   'deal.countered': n => t('The publisher offered {slot} at {amount} instead of {was}. Agree to book it, or keep your offer.', { slot: `${n.data?.outlet ? `${n.data.outlet} · ` : ''}${n.data?.label ?? t('a slot')}`, amount: aedOf(n.data?.amount), was: aedOf(n.data?.was) }),
   'deal.counter_agreed': n => t('The buyer agreed to your price of {amount}. The booking is accepted; they pay next.', { amount: aedOf(n.data?.amount) }),
   'deal.counter_refused': n => t('The buyer kept their offer of {was} instead of {amount}. Accept or decline it.', { amount: aedOf(n.data?.amount), was: aedOf(n.data?.was) }),
@@ -77,5 +73,5 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
 
 /** The page a notification opens, for the person's role. */
 export function noticeHref(n: N, role: string): string | undefined {
-  return n.kind === 'coverage.submitted' ? `/coverage-review/${n.data?.coverageId ?? ''}` : n.kind.startsWith('coverage.') ? `/coverage/${n.data?.coverageId ?? ''}` : n.kind === 'support.new' ? '/support' : n.kind.startsWith('ops.') ? '/admin' : n.kind === 'support.replied' ? '/help' : n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
+  return n.kind === 'support.new' ? '/support' : n.kind.startsWith('ops.') ? '/admin' : n.kind === 'support.replied' ? '/help' : n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
 }

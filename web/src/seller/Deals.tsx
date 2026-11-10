@@ -39,7 +39,7 @@ export function SellerDealsPage() {
   const shown = (deals ?? []).filter(d => !set.length || set.includes(d.status))
   return (
     <main>
-      <PhotoBand img="/brand/bookings-wide.jpg" title={t("Deals")} sub={t("Every sale from acceptance to proof and payout.")} />
+      <PhotoBand img="/brand/bookings-wide.jpg" title={t("Transactions")} sub={t("Every sale from acceptance to proof and payout.")} />
       <div className="toolbar"><div className="seg" role="group" aria-label={t("Filter")}>{FILTERS.map(([k, l]) => <button key={k} className={f === k ? 'on' : ''} onClick={() => setF(k)}>{t(l)}</button>)}</div></div>
       {error && <p className="error">{error}</p>}
       {deals && !shown.length && <p className="muted empty">{t("No deals here.")}</p>}

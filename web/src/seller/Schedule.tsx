@@ -114,8 +114,7 @@ export function SchedulePage() {
       </header>
       <nav className="cc-tabs" aria-label={t('Publisher pages')}>
         <a className="on" aria-current="page" href="/schedule"><TabSvg d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />{t('Calendar')}</a>
-        <a href="/listings"><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" />{t('Listings')} {products.length > 0 && <span className="cc-n">{products.length}</span>}</a>
-        <a href="/coverage"><TabSvg d="M4 6h16v12H4zM8 10h8M8 14h5" />{t('Coverage')}</a>
+        <a href="/listings"><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" />{t('Products')} {products.length > 0 && <span className="cc-n">{products.length}</span>}</a>
       </nav>
       {adding && <AddToCalendar key={`${adding.date}-${adding.product ?? ''}`} products={products} date={adding.date} product={adding.product} onClose={() => setAdding(false)} onDone={load} />}
 

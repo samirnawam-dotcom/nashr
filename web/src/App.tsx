@@ -1,5 +1,5 @@
 import { navigate, usePath } from './nav'
-import { Fragment, lazy, Suspense, useEffect, useState } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { Login } from './Login'
 import { AcceptInvite, RequestAccess } from './Access'
@@ -36,10 +36,6 @@ const DocumentPage = L(load_documents_Documents, 'DocumentPage')
 const DocumentsPage = L(load_documents_Documents, 'DocumentsPage')
 const HelpPage = L(() => import('./Help'), 'HelpPage')
 const SupportPage = L(() => import('./admin/Support'), 'SupportPage')
-const CoverageReviewPage = L(() => import('./admin/Coverage'), 'CoverageReviewPage')
-const CoverageReviewItem = L(() => import('./admin/Coverage'), 'CoverageReviewItem')
-const CoverageListPage = L(() => import('./seller/Coverage'), 'CoverageListPage')
-const CoverageFormPage = L(() => import('./seller/Coverage'), 'CoverageFormPage')
 const UsersPage = L(() => import('./admin/Users'), 'UsersPage')
 const EmailsPage = L(() => import('./admin/Emails'), 'EmailsPage')
 const UserPage = L(() => import('./admin/Users'), 'UserPage')
@@ -120,24 +116,29 @@ const BUYER: Routes = [
   [/^\/messages/, () => <MessagesPage role="buyer" />],
   [/^\/company/, () => <CompanyPage />],
 ]
+/** Tabs under a merged menu item (owner's rules): Inbox holds requests and messages; Reports holds transactions and balances. */
+const SubTabs = ({ tabs, children }: { tabs: [string, string][]; children: React.ReactNode }) => {
+  const here = location.pathname
+  return <><div className="sub-tabs-wrap"><nav className="sub-tabs" aria-label={t('Sections')}>{tabs.map(([href, l]) => { const on = href === '/reports' ? /^\/(reports|deals)$/.test(here) : here.startsWith(href)
+    return <a key={href} href={href} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}>{l}</a> })}</nav></div>{children}</>
+}
+const INBOX_TABS = (): [string, string][] => [['/inbox', t('Requests')], ['/messages', t('Messages')]]
+const REPORT_TABS = (): [string, string][] => [['/reports', t('Transactions')], ['/earnings', t('Balances')]]
 const SELLER: Routes = [
   [/^\/home/, () => <PortalDashboard />],
-  [/^\/inbox/, () => <RequestsPage />],
+  [/^\/inbox/, () => <SubTabs tabs={INBOX_TABS()}><RequestsPage /></SubTabs>],
   [/^\/schedule/, () => <SchedulePage />],
   [/^\/slots\/([\w-]+)$/, id => <SlotPage id={id} />],
   [/^\/deals\/([\w-]+)$/, id => <SellerDealPage id={id} />],
-  [/^\/deals/, () => <SellerDealsPage />],
+  [/^\/(deals|reports)$/, () => <SubTabs tabs={REPORT_TABS()}><SellerDealsPage /></SubTabs>],
   [/^\/earnings\/statement\/(\d{4}-\d{2})$/, m => <StatementPage month={m} />],
-  [/^\/earnings/, () => <EarningsPage />],
-  [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="seller" />],
-  [/^\/messages/, () => <MessagesPage role="seller" />],
+  [/^\/earnings/, () => <SubTabs tabs={REPORT_TABS()}><EarningsPage /></SubTabs>],
+  [/^\/messages\/([\w-]+)$/, id => <SubTabs tabs={INBOX_TABS()}><MessagesPage open={id} role="seller" /></SubTabs>],
+  [/^\/messages/, () => <SubTabs tabs={INBOX_TABS()}><MessagesPage role="seller" /></SubTabs>],
   [/^\/listings\/([\w-]+)\/edit$/, id => <EditPlacementPage id={id} />],
   [/^\/listings\/new$/, () => <NewPlacementPage />],
   [/^\/listings\/import$/, () => <ImportPlacementsPage />],
   [/^\/listings/, () => <ProductsPage />],
-  [/^\/coverage\/new$/, () => <CoverageFormPage />],
-  [/^\/coverage\/([\w-]+)$/, id => <CoverageFormPage id={id} />],
-  [/^\/coverage/, () => <CoverageListPage />],
   [/^\/profile/, () => <ProfilePage />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <DocumentsPage seller />],
@@ -157,8 +158,6 @@ const ADMIN = (founder: boolean): Routes => [
   [/^\/deals/, () => <AdminDealsPage />],
   [/^\/disputes/, () => <DisputesPage />],
   [/^\/support/, () => <SupportPage />],
-  [/^\/coverage-review\/([\w-]+)$/, id => <CoverageReviewItem id={id} />],
-  [/^\/coverage-review/, () => <CoverageReviewPage />],
   [/^\/funds/, () => <FundsPage />],
   [/^\/payouts/, () => <PayoutsPage />],
   [/^\/directory/, () => <DirectoryAdminPage />],
@@ -182,16 +181,18 @@ const GUEST: Routes = [...LEGAL,
 const routesFor = (role: string): Routes => [...LEGAL, [/^\/account$/, () => <MyAccountPage />], ...(role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER)]
 const isActive = (path: string, p: string) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
+  // the publisher's merged items: Inbox holds requests and messages, Reports holds transactions, balances and documents
+  || (p === '/inbox' && path.startsWith('/messages')) || (p === '/reports' && /^\/(deals|earnings|documents)/.test(path))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/coverage-review', t('Coverage')], ['/funds', t('Funds')],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
-  seller: [['/home', t('Dashboard')], ['/listings', t('Listings')], ['/coverage', t('Coverage')], ['/schedule', t('Calendar')], ['/inbox', t('Requests')], ['/messages', t('Messages')], ['/deals', t('Transactions')], ['/earnings', t('Balances')], ['/profile', t('Your business')], ['/help', t('Help')]],
+  seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/listings', t('Products')], ['/inbox', t('Inbox')], ['/reports', t('Reports')]],
 }
 // The phone's bottom bar: the five places people go most.
-const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/listings', '/schedule', '/inbox', '/messages'] 
+const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/schedule', '/listings', '/inbox', '/reports'] 
 }
 
 const ICON: Record<string, string> = {
@@ -211,15 +212,14 @@ const ICON: Record<string, string> = {
   '/users': 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   '/emails': 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6',
   '/support': 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  '/coverage': 'M4 6h16v12H4zM8 10h8M8 14h5M17 3v3M7 3v3', '/coverage-review': 'M4 6h16v12H4zM8 12l2.5 2.5L16 9',
   '/disputes': 'M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   '/funds': 'M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18', '/payouts': 'M4 8h14l-3-3M20 16H6l3 3',
   '/audiences': 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-5-5.9',
-  '/reports': 'M4 20V11M10 20V5M16 20v-6M2 20h20', '/results': 'M4 20V11M10 20V5M16 20v-6M2 20h20', '/audit': 'M9 4h6l1 2h3v15H5V6h3zM9 11h6M9 15h6',
+  '/reports': 'M12 3v18M16.5 7H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H7', '/results': 'M4 20V11M10 20V5M16 20v-6M2 20h20', '/audit': 'M9 4h6l1 2h3v15H5V6h3zM9 11h6M9 15h6',
   '/settings': 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4',
 }
 // Where the sidebar starts a new group, per role (sentence-case labels; the groups are real sections of the work).
-const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: { '/deals': t('Money'), '/profile': t('Settings') }, buyer: { '/campaigns': t('Plan and book'), '/company': t('Your company') } }
+const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: {}, buyer: { '/campaigns': t('Plan and book'), '/company': t('Your company') } }
 const ROLE: Record<string, string> = { buyer: t('Buyer'), seller: t('Publisher'), admin: t('Nashr operations'), founder: t('Nashr founder') }
 const Badge = ({ n }: { n: number }) => <span className="nav-badge" aria-label={t('{n} unread', { n })}>{n > 99 ? '99+' : n}</span>
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
@@ -227,6 +227,29 @@ const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" view
 /** The bilingual wordmark (placeholder until the brand files arrive): Latin in Geist, Arabic in Kufi. */
 export const Wordmark = ({ href }: { href?: string }) => (
   <a className="logo" href={href ?? '/'} aria-label={t("Nashr home")}><span className="latin">Nashr</span><span className="arabic" lang="ar">نشر</span></a>)
+
+/** The menu under the account's name (owner's rules): its settings, help, the language and signing out, out of the main list. */
+function NameMenu({ name, sub, initials, links, mini, onSignOut }: { name: string; sub: string; initials: string; links: [string, string][]; mini: boolean; onSignOut: () => void }) {
+  const [open, setOpen] = useState(false), ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent | KeyboardEvent) => { if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', close); document.addEventListener('keydown', close)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close) }
+  }, [open])
+  return <div className="name-menu" ref={ref}>
+    <button type="button" className="name-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} title={mini ? name : undefined}>
+      <span className="avatar" aria-hidden>{initials}</span>
+      <span className="who"><b>{name}</b><span>{sub}</span></span>
+      <svg className="name-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M6 15l6-6 6 6" /></svg></button>
+    {open && <div className="name-pop" role="menu">
+      <div className="name-pop-h"><b>{name}</b><span className="small muted">{sub}</span></div>
+      {links.map(([href, l]) => <a key={href} role="menuitem" href={href} onClick={() => setOpen(false)}>{l}</a>)}
+      <div className="name-pop-lang"><span className="small muted">{t('Language')}</span><LangSwitch /></div>
+      <button type="button" role="menuitem" className="name-out" onClick={onSignOut}>{t('Sign out')}</button>
+    </div>}
+  </div>
+}
 
 export function App({ initialMe }: { initialMe?: Me | null }) {
   const [me, setMe] = useState<Me | null | undefined>(initialMe), [menu, setMenu] = useState(false)
@@ -294,13 +317,11 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''} title={mini ? l : undefined}>
-            <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a></Fragment>)}</nav>
+            <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a></Fragment>)}</nav>
         <div className="side-foot">
-          <div className="side-me"><a className="avatar" href="/account" title={mini ? `${me.company.name} · ${t('Your account')}` : undefined} aria-label={t('Your account')}>{initials}</a>
-            <a className="who" href="/account" title={t('Your account')}><b>{me.company.name}</b><span>{ROLE[me.role] ?? me.role} · {t('Your account')}</span></a><span className="spacer" /><Bell role={me.role} /></div>
-          <div className="side-actions"><button className="btn signout" onClick={signOut} title={mini ? t('Sign out') : undefined} aria-label={t('Sign out')}>
-            <svg className="so-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 4h4v16h-4M10 17l5-5-5-5M15 12H4" /></svg>
-            <span className="side-l">{t("Sign out")}</span></button><LangSwitch className="on-dark" /></div>
+          <div className="side-me"><NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={mini} onSignOut={signOut}
+            links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
+            <span className="spacer" /><Bell role={me.role} /></div>
         </div>
       </aside>
       <div className="shell-main">
@@ -313,7 +334,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>
-          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a>)}
+          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}
           <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
@@ -327,7 +348,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p) ? 'active' : ''}
-        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests > 0 && <Badge n={requests} />}</a>)}</nav>}
+        aria-current={isActive(path, p) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}</nav>}
     </div>
   )
 }
