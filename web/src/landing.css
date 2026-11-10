@@ -251,3 +251,80 @@
 :root[dir="rtl"] .lp .steps li::after { left: 8px; right: 46px; }
 :root[dir="rtl"] .lp .msg.me { border-radius: 18px 18px 18px 4px; }
 :root[dir="rtl"] .lp .msg.ai { border-radius: 18px 18px 4px 18px; }
+
+/* ------------------------------------------------------------------ hero, second pass: the product is the picture */
+.lp .hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr); gap: clamp(32px, 4vw, 64px); }
+.lp .hero h1 { font-size: clamp(44px, 5.6vw, 88px); }
+.lp .deal-stack { justify-items: stretch; gap: 0; padding-bottom: 8px; }
+.lp .board { background: #fff; color: var(--ink); border-radius: 22px; padding: 16px 16px 18px; box-shadow: 0 50px 100px -40px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .5) inset; display: grid; gap: 6px; }
+.lp .board-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 8px; }
+.lp .board-h > b { font: 650 15px var(--display); letter-spacing: -.01em; }
+.lp .board-key { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--slate); }
+.lp .board-key i { width: 8px; height: 8px; border-radius: 3px; margin-inline-start: 8px; }
+.lp .board-key .k-open { background: #fff; box-shadow: inset 0 0 0 1.5px #cfc8e6; } .lp .board-key .k-bid { background: var(--brand); } .lp .board-key .k-lead { background: #17a364; }
+.lp .board-row { display: grid; grid-template-columns: minmax(124px, 1.5fr) repeat(5, minmax(0, 1fr)); gap: 5px; align-items: stretch; }
+.lp .board-days { padding-bottom: 2px; }
+.lp .board-days span { font-size: 11.5px; color: var(--slate); padding-inline-start: 4px; } .lp .board-days b { color: var(--ink); font-weight: 650; }
+.lp .board-who { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; align-items: center; min-width: 0; }
+.lp .board-who i { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--tint); color: var(--brand); }
+.lp .board-who span { display: grid; min-width: 0; line-height: 1.2; }
+.lp .board-who b { font: 650 12.5px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp .board-who small { font-size: 11px; color: var(--slate); }
+.lp .board-pill { display: grid; gap: 1px; padding: 6px 8px; border-radius: 9px; background: #fff; box-shadow: inset 0 0 0 1px #e4e0f0; min-width: 0; line-height: 1.15; }
+.lp .board-pill b { font: 650 12.5px var(--display); }
+.lp .board-pill small { font-size: 10.5px; color: var(--slate); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp .board-pill.p-bid { background: var(--tint); box-shadow: inset 0 0 0 1px #cdbdff; } .lp .board-pill.p-bid small { color: #5a2fe0; font-weight: 600; }
+.lp .board-pill.p-lead { background: #e3f6ec; box-shadow: inset 0 0 0 1px #b4e2c8; } .lp .board-pill.p-lead small { color: #0f7a4a; font-weight: 600; }
+.lp .board-pill.p-won { background: var(--brand); box-shadow: 0 8px 18px -8px rgba(107, 60, 246, .9); color: #fff; } .lp .board-pill.p-won small { color: #e6dcff; font-weight: 600; }
+.lp .board-gap { border-radius: 9px; background: repeating-linear-gradient(135deg, #f6f4fb 0 5px, #fff 5px 10px); }
+.lp .deal-stack .ticket:not(.small) { width: min(88%, 360px); margin: -54px 0 0 -28px; position: relative; z-index: 2; padding: 16px 18px; box-shadow: 0 30px 60px -24px rgba(8, 4, 30, .75), 0 0 0 1px rgba(13, 12, 29, .06); }
+.lp .deal-stack .ticket-amt { margin: 12px 0 10px; padding-top: 12px; } .lp .deal-stack .ticket-amt b { font-size: 26px; }
+.lp .deal-stack .ticket.held { justify-self: end; margin: -46px 0 0; width: min(64%, 300px); position: relative; z-index: 3; box-shadow: 0 24px 50px -22px rgba(8, 4, 30, .7); }
+.lp .deal-stack figcaption { margin-top: 12px; text-align: end; }
+
+/* proof: the figure on one line */
+.lp .proof-card > b { white-space: nowrap; overflow-wrap: normal; font-size: clamp(30px, 3vw, 40px); }
+
+/* the two sides: an interface vignette in place of a stock photo */
+.lp .vig { display: grid; gap: 8px; margin: -10px -10px 8px; padding: 14px; border-radius: 16px; background: linear-gradient(180deg, #f3effe, #faf8ff); border: 1px solid #e7e0fa; }
+.lp .vig-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(13, 12, 29, .06), inset 0 0 0 1px rgba(13, 12, 29, .05); }
+.lp .vig-row.req { grid-template-columns: 30px minmax(0, 1fr) auto auto auto; }
+.lp .vig-row > i { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--tint); color: var(--brand); }
+.lp .vig-row > span { display: grid; min-width: 0; line-height: 1.25; }
+.lp .vig-row > span b { font: 650 13.5px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp .vig-row small { font-size: 12px; color: var(--slate); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp .vig-row > b { font: 650 13.5px var(--display); white-space: nowrap; }
+.lp .vig-row em { font: 600 12px/1 var(--body); font-style: normal; padding: 7px 11px; border-radius: 8px; background: var(--brand); color: #fff; }
+.lp .vig-row em.ghost { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1px rgba(13, 12, 29, .15); }
+.lp .vig-meter { display: grid; gap: 6px; padding: 6px 4px 0; }
+.lp .vig-meter > span { height: 6px; border-radius: 99px; background: #e4def6; overflow: hidden; }
+.lp .vig-meter i { display: block; height: 100%; border-radius: 99px; background: var(--brand); }
+.lp .vig-meter.paid i { background: #17a364; }
+.lp .vig-meter small { font-size: 12px; color: var(--slate); }
+.lp .aud { padding: 28px; gap: 12px; }
+
+@media (max-width: 1000px) {
+  .lp .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .lp .deal-stack .ticket:not(.small) { margin-inline-start: 0; }
+}
+@media (max-width: 640px) {
+  .lp .board { padding: 12px; border-radius: 18px; }
+  .lp .board-row { grid-template-columns: minmax(96px, 1.3fr) repeat(3, minmax(0, 1fr)); }
+  .lp .board-row > :nth-child(n+5) { display: none; }
+  .lp .board-key { display: none; }
+  .lp .board-who { grid-template-columns: minmax(0, 1fr); } .lp .board-who i { display: none; }
+  .lp .deal-stack .ticket:not(.small) { width: 100%; margin-top: -20px; }
+  .lp .deal-stack .ticket.held { width: 92%; margin-top: 10px; }
+  .lp .vig-row.req em.ghost { display: none; } .lp .vig-row.req { grid-template-columns: 30px minmax(0, 1fr) auto auto; }
+}
+/* hero: the booking card and its "held" note sit side by side under the week, neither covering a row */
+.lp .deal-stack { grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); column-gap: 12px; align-items: end; }
+.lp .deal-stack .board { grid-column: 1 / -1; padding-bottom: 54px; }
+.lp .deal-stack .ticket:not(.small) { width: auto; margin: -38px 0 0 -24px; }
+.lp .deal-stack .ticket.held { width: auto; margin: 0 -16px 6px 0; justify-self: stretch; }
+.lp .deal-stack figcaption { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .lp .deal-stack { grid-template-columns: minmax(0, 1fr); }
+  .lp .deal-stack .board { padding-bottom: 40px; }
+  .lp .deal-stack .ticket:not(.small) { margin: -26px 0 0; } .lp .deal-stack .ticket.held { margin: 10px 0 0; }
+}

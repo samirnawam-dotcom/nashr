@@ -125,12 +125,13 @@ export function AudiencesPage() {
   const [reach, setReach] = useState<Record<string, Reach> | null>(null), [ch, setCh] = useState('')
   useEffect(() => { api<Reach[]>(`/slots/audiences?${range()}`).then(r => setReach(Object.fromEntries(r.map(x => [x.audience, x]))), () => setReach({})) }, [])
   const label = (k: string) => AUDIENCES.find(a => a[0] === k)!
-  return <main className="seg-page">
-    <header className="seg-head seg-hero">
+  return <main className="seg-page aud-index">
+    <header className="aud-hero">
+      <p className="aud-kicker">{t('Audiences')}</p>
       <h1>{t('Who do you want to reach?')}</h1>
-      <p className="lead seg-intro">{t('Start from the people, not the media. Pick an audience to see every radio, TV, print, digital and podcast slot that reaches them, with real prices and dates.')}</p>
+      <p className="aud-lead">{t('Start from the people, not the media. Pick an audience to see every radio, TV, print, digital and podcast slot that reaches them, with real prices and dates.')}</p>
+      <HowItWorks />
     </header>
-    <HowItWorks />
     <div className="seg-filter" role="group" aria-label={t('Channel')}>
       <span className="small muted">{t('Show audiences reachable on')}</span>
       {['', ...CHANNELS].map(c => <button key={c} type="button" className={`aud-chip ${ch === c ? 'on' : ''}`} aria-pressed={ch === c} onClick={() => setCh(c)}>
@@ -142,10 +143,11 @@ export function AudiencesPage() {
       return <section key={name} className="section seg-family"><div className="seg-family-h"><h2>{name}</h2><p className="small muted">{sub}</p></div>
         <ul className="aud-grid">{shown.map(k => { const [, l, blurb] = label(k), r = reach?.[k]
           return <li key={k}><a href={`/audiences/${k}`} className="card aud-card">
-            <b>{t(l)}</b><span className="aud-blurb">{t(blurb)}</span>
+            <span className="aud-top"><b>{t(l)}</b><i className="aud-go" aria-hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg></i></span>
+            <span className="aud-blurb">{t(blurb)}</span>
             {!reach ? <span className="aud-live muted small">{t('Loading…')}</span>
               : r ? <span className="aud-live">
-                  <span className="num"><b>{r.slots.toLocaleString('en-US')}</b> {t('open slots')} · {plural(r.outlets, '1 publisher', '{n} publishers')}</span>
+                  <span className="aud-count num"><b>{r.slots.toLocaleString('en-US')}</b><span>{t('open slots')} · {plural(r.outlets, '1 publisher', '{n} publishers')}</span></span>
                   <span className="aud-from"><span className="num">{t('from {price}', { price: money(r.fromPrice) })}</span><span className="seg-chs">{r.channels.map(c => <ChannelMark key={c} c={c} />)}</span></span></span>
               : <span className="aud-live muted small">{t('Nothing open right now. Get an alert when there is.')}</span>}
           </a></li> })}</ul></section>

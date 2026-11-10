@@ -4,7 +4,7 @@ import { closesIn, dayLabel, money, time } from '../format'
 import { addDays, dubai, layoutDay, monthGrid, todayInDubai, weekOf } from './layout'
 import { BidDrawer, INDUSTRIES } from './BidDrawer'
 import { useLive } from '../live'
-import { SignInPrompt, useGuest } from '../guest'
+import { rememberPlace, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { SavedSearches } from './SavedSearches'
 import { PlanDrawer, usePlan } from './Plan'
@@ -201,6 +201,9 @@ export function CalendarPage() {
           <button key={v} role="tab" aria-selected={s.view === v} className={s.view === v ? 'on' : ''} title={`${l} (${key.toUpperCase()})`} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
       </header>
 
+      {guest && <div className="cv-guest" role="note">
+        <span className="cv-guest-t"><b>{t('You are browsing as a guest.')}</b> {t('Every slot and price is open to read. Sign in to bid or book.')}</span>
+        <a className="btn primary sm" href="/sign-in" onClick={rememberPlace}>{t('Sign in')}</a><a className="btn sm" href="/request-access" onClick={rememberPlace}>{t('Request access')}</a></div>}
       {narrow ? <div className="cv-mobilebar">
         <input ref={search} className="search" type="search" placeholder={t('Search outlets, programmes, audiences')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />
         <button className={`btn ${active ? 'primary' : ''}`} onClick={() => setSheet(true)}>{active ? t('Filters ({n})', { n: active }) : t('Filters')}</button>
@@ -229,7 +232,6 @@ export function CalendarPage() {
         <span>{t('Dubai time. Prices exclude VAT. You pay only once the publisher accepts, and the money is held until the ad has run.')}</span>
         {!narrow && <span className="cv-keys">{t('Shortcuts: ← → move · T today · L D W M O views · / search')}</span>}
       </footer>
-      {guest && <SignInPrompt to={t('bid or book')} compact />}
 
       {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}
       {open && <BidDrawer slotId={open} onClose={() => setOpen(null)} onDone={() => setReload(n => n + 1)} />}

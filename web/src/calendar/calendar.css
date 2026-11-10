@@ -718,3 +718,7 @@ label.side-h { display: block; }
   .ln-row { grid-template-columns: 112px repeat(7, minmax(104px, 1fr)); }
   .ln-who { padding: 10px; } .ln-name b { font-size: 13.5px; }
 }
+
+/* Guests: one slim line above the grid says what they can do and how to get in (instead of a box under the calendar) */
+.cv-guest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 14px; border-radius: 14px; background: var(--teal-1); border: 1px solid var(--teal-2); font-size: 14px; color: var(--slate); }
+.cv-guest-t { flex: 1 1 260px; } .cv-guest-t b { color: var(--teal-press); font-weight: 650; }

@@ -184,3 +184,10 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Every pick-list styled the same; phone top bar light like the sidebar; smaller unread badge
 - [x] Dashboard action rows aligned in columns; no repeated stock thumbnails in Products rows and the Day view
 - [x] Phone header of the publisher calendar tidied; a proper "Not found" page
+
+## Phase N: public pages redesigned (home, audiences, guest calendar, sign-in, request access)
+- [x] Home hero: a product preview (a week of slots across media, priced, in their states) with the booking card, in place of three small floating cards
+- [x] Home: interface vignettes for the two sides in place of stock photos; headline figure on one line (AED 1.03M)
+- [x] Sign-in, request access, invite: brand panel without a stock photo (promise in three lines, the five steps); back link and language at the top; request cards with icons
+- [x] Audiences: night band with the title and the three steps; cards lead with what is open now
+- [x] Guest calendar: one slim "browsing as a guest" line above the grid; Directory added to the public menu

@@ -13,6 +13,14 @@ import { CHANNEL_NAME, ICON } from './media'
  * numbers, every format, a moving row of the outlets you can book, how a booking works with the money held, and Athena
  * as a teaser. Figures are real or plainly marked as examples; client results wait until there are verified ones.
  */
+/** The hero's example week: programme, media type, and Monday to Friday as [price, state] (no price: it does not run that day). */
+const BOARD: [string, string, [string, string][]][] = [
+  ['radio', 'Morning Markets', [['3,500', 'bid'], ['3,500', 'open'], ['3,605', 'lead'], ['3,500', 'open'], ['3,500', 'bid']]],
+  ['radio', 'Drive Home', [['4,200', 'open'], ['6,000', 'won'], ['4,200', 'bid'], ['4,200', 'open'], ['4,200', 'open']]],
+  ['newspaper', 'Business page', [['11,000', 'open'], ['', ''], ['11,000', 'bid'], ['', ''], ['20,000', 'open']]],
+  ['tv', 'Evening news', [['12,000', 'bid'], ['12,400', 'lead'], ['12,000', 'open'], ['12,000', 'open'], ['13,500', 'bid']]],
+  ['digital', 'Homepage takeover', [['9,000', 'open'], ['9,000', 'open'], ['', ''], ['9,000', 'bid'], ['', '']]],
+]
 const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
 const FORMATS = ['digital', 'newspaper', 'magazine', 'newsletter', 'radio', 'tv', 'podcast', 'social']
 
@@ -53,6 +61,16 @@ export function Landing() {
           </div>
 
           <figure className="deal-stack" aria-label={t("Example booking")}>
+            {/* the product itself: a week of slots across outlets, each one priced and in its state (illustrative figures) */}
+            <div className="board" aria-hidden>
+              <div className="board-h"><b>{t('This week')}</b><span className="board-key"><i className="k-open" />{t('On sale')}<i className="k-bid" />{t('With bids')}<i className="k-lead" />{t('You lead')}</span></div>
+              <div className="board-row board-days"><span />{['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d, i) => <span key={d}>{t(d)} <b className="num">{16 + i}</b></span>)}</div>
+              {BOARD.map(([ch, name, cells]) => <div className="board-row" key={name}>
+                <span className="board-who"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[ch] ?? ICON.digital} /></svg></i>
+                  <span><b>{name}</b><small>{CHANNEL_NAME[ch]}</small></span></span>
+                {cells.map(([price, st], i) => price ? <span key={i} className={`board-pill p-${st}`}><b className="num">{price}</b><small>{st === 'lead' ? t('You lead') : st === 'bid' ? t('Bidding') : st === 'won' ? t('Accepted') : t('On sale')}</small></span> : <span key={i} className="board-gap" />)}
+              </div>)}
+            </div>
             <div className="ticket">
               <div className="ticket-h"><span className="ticket-logo" aria-hidden>SF</span><div><b>Skyline FM</b><span>{t("Drive Home, Break 2 · 17:15")}</span></div>
                 <span className="chip ok">{t("Bid accepted")}</span></div>
@@ -62,8 +80,7 @@ export function Landing() {
               </ol>
             </div>
             <div className="ticket small held"><span className="held-ic" aria-hidden>✓</span><div><b>{t("Held until proof")}</b><span>{t("The publisher is paid when you approve the as-run log.")}</span></div></div>
-            <div className="ticket small athena"><span className="spark" aria-hidden /><div><b>{t("Athena")}</b><span>{t("Your media co-pilot, launching soon")}</span></div></div>
-            <figcaption>{t("Example booking")}</figcaption>
+            <figcaption>{t("Example week and booking")}</figcaption>
           </figure>
         </div>
       </section>
@@ -88,7 +105,12 @@ export function Landing() {
       <section className="block sides">
         <div className="wrap split">
           <article className="aud" id="advertisers">
-            <img className="aud-photo" src="/brand/buyers.jpg" width={960} height={540} alt={t("A planning team mapping a campaign on a glass wall")} loading="lazy" decoding="async" />
+            <div className="vig" aria-hidden>
+              {([['radio', 'Morning Markets', 'Break 1', 'AED 3,500', 'Bid'], ['newspaper', 'Business page', 'Half page', 'AED 11,000', 'Book'], ['tv', 'Evening news', 'Break 2', 'AED 12,400', 'Bid']] as const).map(([ch, n, l, p, a]) =>
+                <span className="vig-row" key={n}><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[ch]} /></svg></i>
+                  <span><b>{n}</b><small>{CHANNEL_NAME[ch]} · {t(l)}</small></span><b className="num">{p}</b><em>{t(a)}</em></span>)}
+              <span className="vig-meter"><span><i style={{ width: '62%' }} /></span><small>{t('Plan total against your budget')}</small></span>
+            </div>
             <h3>{t("For brands and agencies")}</h3>
             <p className="aud-lede">{t("Every UAE outlet on one calendar.")}</p>
             <ul>
@@ -99,7 +121,12 @@ export function Landing() {
             <a className="btn" href="/calendar">{t("Browse the calendar")}</a>
           </article>
           <article className="aud pub" id="publishers">
-            <img className="aud-photo" src="/brand/publishers.jpg" width={960} height={540} alt={t("Broadcast camera operators filming a live programme")} loading="lazy" decoding="async" />
+            <div className="vig" aria-hidden>
+              {([['Break 2 · 17:15', 'AED 6,000', "You'd net {amount}", 'AED 5,115'], ['Break 3 · 07:45', 'AED 4,500', "You'd net {amount}", 'AED 3,836'], ['Break 1 · 06:45', 'AED 3,605', "You'd net {amount}", 'AED 3,073']] as const).map(([l, p, n, v]) =>
+                <span className="vig-row req" key={l}><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON.radio} /></svg></i>
+                  <span><b>{t('Booking to decide')}</b><small>{l} · {t(n, { amount: v })}</small></span><b className="num">{p}</b><em className="ghost">{t('Decline')}</em><em>{t('Accept')}</em></span>)}
+              <span className="vig-meter paid"><span><i style={{ width: '100%' }} /></span><small>{t('Released to you after proof')}</small></span>
+            </div>
             <h3>{t("For publishers")}</h3>
             <p className="aud-lede">{t("Sell your inventory to serious buyers.")}</p>
             <ul>
@@ -191,6 +218,9 @@ export function Landing() {
   )
 }
 
+/** AED 1.03M, AED 412K: a headline figure that fits on one line (amounts are in fils). */
+const compact = (fils: number) => { const v = fils / 100; return v >= 1_000_000 ? `AED ${(v / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M` : v >= 10_000 ? `AED ${Math.round(v / 1000)}K` : money(fils).replace(/\.00$/, '') }
+
 type Stats = { publishers: number | null; outlets: number | null; channels: number | null; openSlots: number | null; completed: number | null; booked: number | null }
 
 /** Proof in Nashr's own live numbers, each shown only once it is big enough to mean something; beside them, every format. */
@@ -198,7 +228,7 @@ function Proof() {
   const [s, setS] = useState<Stats | null>(null)
   useEffect(() => { api<Stats>('/public/stats').then(setS, () => {}) }, [])
   const items = (s ? [
-    [s.booked != null ? money(s.booked).replace(/\.00$/, '') : null, t('booked through Nashr'), t('Held until each ad ran.')],
+    [s.booked != null ? compact(s.booked) : null, t('booked through Nashr'), t('Held until each ad ran.')],
     [s.openSlots, t('slots open to book'), t('In the next 30 days, with prices to read.')],
     [s.publishers, t('verified UAE publishers'), t('Newspapers, broadcasters and digital-first brands.')],
     [s.completed, t('bookings completed'), t('Each one paid only after proof.')],

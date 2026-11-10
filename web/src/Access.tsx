@@ -17,7 +17,7 @@ export function RequestAccess() {
     try { await api('/access-requests', { method: 'POST', body: f }); setSent(true) } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
-    <AuthShell photo="/brand/auth-request.jpg">
+    <AuthShell>
       <form onSubmit={submit}>
         <div className="auth-title"><h1>{sent ? t("Request sent") : !side ? t("Request access") : side === 'publisher' ? t('Sell your airtime on Nashr') : t('Book UAE media on Nashr')}</h1>
           <p>{sent ? t("Thanks. Nashr's team reviews every request and will email you an invite link once approved.")
@@ -26,9 +26,11 @@ export function RequestAccess() {
             : t('Bid on and book radio, TV, print, digital and podcast slots from UAE publishers. You pay only once a publisher accepts, and the money is held until the ad runs.')}</p></div>
         {!sent && !side && <div className="side-pick" role="group" aria-label={t('You are')}>
           <button type="button" className="side-card" onClick={() => { setSide('advertiser'); setF({ ...f, companyType: 'brand' }) }}>
-            <b>{t('I want to advertise')}</b><span>{t('A brand or an agency booking media')}</span></button>
+            <i className="side-ic" aria-hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10v4h3l5 4V6L7 10zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" /></svg></i>
+            <span className="side-t"><b>{t('I want to advertise')}</b><span>{t('A brand or an agency booking media')}</span></span><i className="side-go" aria-hidden>›</i></button>
           <button type="button" className="side-card" onClick={() => { setSide('publisher'); setF({ ...f, companyType: 'media_outlet' }) }}>
-            <b>{t('I sell airtime or ad space')}</b><span>{t('A radio or TV station, publication, website or podcast')}</span></button>
+            <i className="side-ic" aria-hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 20V9l7-5 7 5v11M9 20v-6h6v6M3 20h18" /></svg></i>
+            <span className="side-t"><b>{t('I sell airtime or ad space')}</b><span>{t('A radio or TV station, publication, website or podcast')}</span></span><i className="side-go" aria-hidden>›</i></button>
         </div>}
         {!sent && side && <>
           <div className="field"><label htmlFor="n">{t("Full name")}</label><input id="n" autoComplete="name" value={f.name} onChange={set('name')} required /></div>
@@ -63,7 +65,7 @@ export function AcceptInvite({ token, onDone }: { token: string; onDone: () => v
     } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   return (
-    <AuthShell photo="/brand/auth-invite.jpg">
+    <AuthShell>
       <form onSubmit={submit}>
         <div className="auth-title"><h1>{done ? t("You are in") : t("Set your password")}</h1>
           <p>{done ? t("Your account is ready. Sign in with your work email and new password.") : t("Choose a password for your Nashr account. Use at least 12 characters.")}</p></div>

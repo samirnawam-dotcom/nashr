@@ -12,7 +12,7 @@ export function ForgotPassword() {
     e.preventDefault(); setBusy(true); setError('')
     try { const r = await api<{ by: 'email' | 'team' }>('/auth/forgot', { method: 'POST', body: { email } }); setSent(r.by ?? 'team') } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
-  return <AuthShell photo="/brand/auth-invite.jpg"><form onSubmit={submit}>
+  return <AuthShell><form onSubmit={submit}>
     <div className="auth-title"><h1>{sent ? t('Check your email') : t('Reset your password')}</h1>
       <p>{sent === 'email' ? t('If an account uses {email}, we have emailed it a reset link. The link works for 24 hours. Check your spam folder if it does not arrive.', { email })
         : sent ? t("If an account uses {email}, Nashr's team will send it a reset link shortly. The link works for 24 hours.", { email })
@@ -57,7 +57,7 @@ export function ResetPassword({ token, onDone }: { token: string; onDone: () => 
     setBusy(true)
     try { await api('/auth/reset', { method: 'POST', body: { token, password: pw } }); setDone(true) } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
-  return <AuthShell photo="/brand/auth-invite.jpg"><form onSubmit={submit}>
+  return <AuthShell><form onSubmit={submit}>
     <div className="auth-title"><h1>{done ? t('Password changed') : t('Choose a new password')}</h1>
       <p>{done ? t('Sign in with your new password. You have been signed out everywhere else.') : t('Use at least 12 characters.')}</p></div>
     {done ? <button type="button" className="btn primary lg auth-submit" onClick={() => { history.replaceState(null, '', '/'); onDone() }}>{t('Sign in')}</button> : <>

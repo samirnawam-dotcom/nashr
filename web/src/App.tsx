@@ -362,7 +362,7 @@ function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; set
       <button className="btn menu-btn" aria-label={t("Menu")} aria-expanded={menu} aria-controls="main-nav" onClick={() => setMenu(!menu)}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
       <Wordmark href="/" />
-      <nav className="nav" id="main-nav">{NAV.guest.slice(0, 3).map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
+      <nav className="nav" id="main-nav">{NAV.guest.slice(0, 4).map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p) ? 'page' : undefined} className={isActive(path, p) ? 'active' : ''}>{l}</a>)}
         <a href="/sign-in" className="nav-signout" onClick={rememberPlace}>{t("Sign in")}</a></nav>
       <div className="spacer" />
       <div className="guest-actions">
