@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { tm } from '../i18n-server'
 import { useState } from 'react'
 import { api } from '../api'
 import { DealStatus, Loading, csv, date, money, useAct, useLoad } from './common'
@@ -100,7 +101,7 @@ export function AccountPage({ id, isFounder }: { id: string; isFounder: boolean 
         <ul className="timeline">{c.outlets.map(o => <li key={o.id}><span className="small muted">{t(o.channel)}</span><span className="row-flex"><OutletMark name={o.name} url={o.logoUrl} size={28} /><b>{o.name}</b> · <span className="small muted">{o.sectors.map(s => t(s)).join(sep)}</span></span></li>)}</ul></section>}
       <section className="card pad section"><h2>{t("Recent deals")}</h2>
         {!c.deals.length ? <p className="muted">{t("None yet.")}</p> : <div className="table-wrap"><table className="table"><tbody>{c.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
-          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="r num">{money(d.amount)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}</section>
+          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {tm(d.label)}</td><td className="r num">{money(d.amount)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}</section>
     </main>
   )
 }

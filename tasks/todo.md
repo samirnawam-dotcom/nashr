@@ -192,3 +192,4 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Audiences: night band with the title and the three steps; cards lead with what is open now
 - [x] Guest calendar: one slim "browsing as a guest" line above the grid; Directory added to the public menu
 - [x] Arabic check of the five public pages: hero cards no longer overlap, Latin names cut at their end, prices in dirhams, headline figure in Arabic words, audience arrows mirrored
+- [x] Arabic check of the signed-in pages (28 screens, three roles, plus phone): "Break N" and common slot labels translated everywhere they show; 99+ badge; web-address fields; Latin text punctuation; Results page no longer scrolls sideways on a phone (both languages)

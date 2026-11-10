@@ -1045,3 +1045,12 @@ main.nf p { margin: 0 0 8px; }
 .auth-hero .auth-mark { -webkit-text-stroke: 0; color: rgba(169, 139, 255, .09); inset-inline-end: -3%; bottom: -12%; }
 /* guest bar: the directory is part of the public site too */
 .topbar .nav a { white-space: nowrap; }
+
+/* Arabic (right to left), signed-in pages: text a person typed in Latin letters keeps its own punctuation and is cut at its end;
+   web addresses are typed left to right. */
+:root[dir="rtl"] :is(input[type="url"], input[placeholder^="http"]) { direction: ltr; text-align: right; }
+:root[dir="rtl"] :is(.pd-pt p, .pd-pt h2, .pd-what b, .cell2 > b, .cell2 > span, .pt-what b, .rq-who b, .name-btn .who b, .plan-what b, .conv-what, .res-name) { unicode-bidi: plaintext; text-align: right; }
+/* Results on a phone: the client and campaign pick-lists wrap under the title instead of pushing the page sideways */
+.page-head-actions, .page-head-actions .row-flex { flex-wrap: wrap; max-width: 100%; min-width: 0; }
+.page-head-actions select { min-width: 0; max-width: 100%; flex: 1 1 150px; }
+@media (max-width: 900px) { .page-head-actions, .page-head-actions .row-flex { width: 100%; } }

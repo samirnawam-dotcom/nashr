@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { tm } from '../i18n-server'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { dayLabel } from '../format'
@@ -34,7 +35,7 @@ export function EarningsPage() {
       {!e.deals.length ? <p className="muted empty">{t("No paid bookings yet.")}</p>
         : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th className="r">{t("Your VAT")}</th><th className="r">{t("Commission")}</th><th className="r">{t("You receive")}</th><th>{t("Status")}</th></tr></thead>
           <tbody>{e.deals.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
-            <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {d.label}</td><td className="num">{dayLabel(dubai(d.startsAt).date)}</td>
+            <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {tm(d.label)}</td><td className="num">{dayLabel(dubai(d.startsAt).date)}</td>
             <td className="r num">{money(d.price)}</td><td className="r num">{money(d.mediaVat)}</td><td className="r num">{ltr(`−${money(d.fee + d.feeVat)}`)}</td>
             <td className="r num"><b>{money(d.payout)}</b></td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}
       <h2 className="sec-h">{t("Payouts")}</h2>

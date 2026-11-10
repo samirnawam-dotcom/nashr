@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api, type Campaign, type Client, type Slot } from '../api'
 import { dayLabel, money, time } from '../format'
 import { addDays, dubai, isAllDay } from './layout'
@@ -81,7 +82,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
     : `${dayLabel(dubai(s.startsAt).date)} · ${time(s.startsAt)}${!s.endsAt ? '' : seconds(s) < 120 ? ` · ${t('{n} seconds', { n: seconds(s) })}` : `–${time(s.endsAt)}`}`
   const closes = new Date(s.closesAt)
   return (
-    <Shell onClose={onClose} title={`${s.outlet} · ${s.placement}`} sub={`${s.label} · ${when}`}>
+    <Shell onClose={onClose} title={`${s.outlet} · ${s.placement}`} sub={`${tm(s.label)} · ${when}`}>
       <div className="row-flex"><SaleType t={s.saleType} /><span className="small">{status(s)}</span></div>
       {s.saleType === 'auction' && s.available && closes.getTime() - now < 3_600_000 && closes.getTime() > now && <p className="bid-countdown" role="timer" aria-live="off">
         {t('Bidding closes in {time}', { time: `${Math.floor((closes.getTime() - now) / 60_000)}:${String(Math.floor((closes.getTime() - now) / 1000) % 60).padStart(2, '0')}` })}</p>}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api, type Campaign } from '../api'
 import { dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
@@ -72,7 +73,7 @@ export function MediaPlanPage({ id }: { id: string }) {
           <h2>{t("Bookings")}</h2>
           {!c.bookings.length ? <p className="muted">{t("Nothing booked yet.")}</p> :
             <table className="plan-table"><thead><tr><th>{t("Order")}</th><th>{t("Outlet and slot")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th>{t("Status")}</th></tr></thead>
-              <tbody>{c.bookings.map(b => <tr key={b.id}><td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {b.label}</td>
+              <tbody>{c.bookings.map(b => <tr key={b.id}><td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {tm(b.label)}</td>
                 <td className="num">{dayLabel(dubai(b.startsAt).date)} · {time(b.startsAt)}</td><td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table>}
         </section>
 

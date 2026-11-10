@@ -43,7 +43,7 @@ export function AdminDealsPage() {
         <p className="small muted">{t('{n} deals, {value} in total (excl. VAT)', { n: data.total.toLocaleString('en-US'), value: money(data.value) })}</p>
         <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Buyer")} · {t("Publisher")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th>{t("Next deadline")}</th><th>{t("Status")}</th></tr></thead>
           <tbody>{data.items.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
-            <td className="num nw">{d.ref}</td><td className="cell2"><b>{d.outlet}</b><span>{d.label}</span></td><td className="cell2 plain"><b>{d.buyer}</b><span>{d.seller}</span></td><td className="small num nw">{date(d.starts_at)}</td>
+            <td className="num nw">{d.ref}</td><td className="cell2"><b>{d.outlet}</b><span>{tm(d.label)}</span></td><td className="cell2 plain"><b>{d.buyer}</b><span>{d.seller}</span></td><td className="small num nw">{date(d.starts_at)}</td>
             <td className="r num">{money(d.amount, d.currency)}</td><td className="small num nw">{when(d.next_deadline_at)}</td><td className="nw"><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>
         {data.total > PAGE && <nav className="row-flex section" aria-label={t('Pages')}>
           <button className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>{t('Previous')}</button>
@@ -86,7 +86,7 @@ export function AdminDealPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/deals">{t("Deals")}</a> › {d.ref}</p>
-      <div className="profile-h"><div><h1>{d.outlet} · {d.label}</h1>
+      <div className="profile-h"><div><h1>{d.outlet} · {tm(d.label)}</h1>
         <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> {t('buys from')} <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}
       {d.rating && <section className="card pad section rate"><h2>{d.rating.hidden ? t("Buyer's rating (hidden from the outlet page)") : t("Buyer's rating")}</h2><Stars value={d.rating.score} size={18} />
@@ -149,7 +149,7 @@ export function DisputesPage() {
       <PhotoBand img="/brand/print-wide.jpg" title={t("Disputes")} sub={t("Disputed deals wait for Nashr's decision. Open issues are still with the publisher until their deadline.")} />
       {!data.length ? <p className="muted empty">{t("No disputes or open issues.")}</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Buyer · publisher")}</th><th>{t("Issue")}</th><th>{t("Publisher's offer")}</th><th>{t("Deadline")}</th><th>{t("Status")}</th></tr></thead>
         <tbody>{data.map(r => <tr key={r.id} onClick={() => (navigate(`/deals/${r.id}`))}>
-          <td className="num">{r.ref}</td><td><b>{r.outlet}</b> · {r.label}<div className="small muted num">{money(r.amount)}</div></td><td className="small">{r.buyer}<br />{r.seller}</td>
+          <td className="num">{r.ref}</td><td><b>{r.outlet}</b> · {tm(r.label)}<div className="small muted num">{money(r.amount)}</div></td><td className="small">{r.buyer}<br />{r.seller}</td>
           <td className="small"><b>{r.reason && t(r.reason.replace(/_/g, ' '))}</b><div className="muted">{r.note}</div></td>
           <td className="small">{!r.offer ? '—' : r.offer.type === 'partial_refund' ? t('Refund {amount}', { amount: money(r.offer.amount) }) : t(r.offer.type.replace(/_/g, ' '))}</td>
           <td className="small num">{r.status !== 'disputed' ? when(r.dueAt) : r.chargeback === 'open' ? t('With the bank (chargeback)')
@@ -254,7 +254,7 @@ export function AdminSlotPage({ id }: { id: string }) {
   if (!s) return <Loading error={error} />
   return <main className="narrow wide">
     <p className="small"><a href="/calendar">{t('Calendar')}</a> › {s.outlet}</p>
-    <h1>{s.outlet} · {s.label}</h1>
+    <h1>{s.outlet} · {tm(s.label)}</h1>
     <p className="muted">{s.company} · {s.placement} · {when(s.startsAt)} · {t(s.saleType === 'auction' ? 'Auction' : s.saleType === 'fixed' ? 'Fixed price' : 'Quick sale')} · {s.status === 'open' ? t('Open') : st(s.status)}</p>
     {msg}
     <dl className="kpis">

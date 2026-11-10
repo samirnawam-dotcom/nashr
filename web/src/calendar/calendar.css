@@ -725,3 +725,10 @@ label.side-h { display: block; }
 
 /* Arabic: an outlet named in Latin letters is cut at its end ("Dubai One…"), not at its beginning */
 :root[dir="rtl"] :is(.cv-b1 b, .ln-name b, .ln-t, .cc-what b, .plan-what b) { unicode-bidi: plaintext; text-align: right; }
+@media (max-width: 760px) {
+  .cc-bulk { padding: 10px 12px; gap: 6px 8px; border-radius: 14px; }
+  .cc-bulk .btn { min-height: 34px; padding: 0 10px; font-size: 13px; }
+  .cc-bulk-hint { display: none; }
+  .cc-bulk > b { flex-basis: 100%; }
+  .cc-bulk-price { flex: 1 1 100%; } .cc-bulk-price input.search { flex: 1 1 60px; width: auto; height: 34px; min-height: 34px; }
+}

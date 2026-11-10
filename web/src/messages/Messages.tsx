@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api } from '../api'
 import { dayLabel, time } from '../format'
 import { dubai, todayInDubai } from '../calendar/layout'
@@ -21,7 +22,7 @@ export function MessagesPage({ open, role }: { open?: string; role: 'buyer' | 's
   const load = () => api<Conversation[]>('/messages').then(setList, e => setError(e.message))
   useEffect(() => { load(); const tick = setInterval(() => document.visibilityState === 'visible' && load(), 30_000); return () => clearInterval(tick) }, [])
   useEffect(() => { if (open) load() }, [open]) // opening one marks it read
-  const shown = useMemo(() => (list ?? []).filter(c => !q || `${c.with} ${c.outlet} ${c.label} ${c.ref}`.toLowerCase().includes(q.toLowerCase())), [list, q])
+  const shown = useMemo(() => (list ?? []).filter(c => !q || `${c.with} ${c.outlet} ${tm(c.label)} ${c.ref}`.toLowerCase().includes(q.toLowerCase())), [list, q])
   const current = list?.find(c => c.dealId === open)
   const booking = (id: string) => role === 'seller' ? `/deals/${id}` : `/bookings/${id}`
 
@@ -45,7 +46,7 @@ export function MessagesPage({ open, role }: { open?: string; role: 'buyer' | 's
                 <span className="conv-avatar" aria-hidden>{initials(c.with)}</span>
                 <span className="conv-main">
                   <span className="conv-top"><b className="conv-with">{c.with}</b><time className="conv-time small" dateTime={c.last.at}>{stamp(c.last.at)}</time></span>
-                  <span className="conv-what small muted">{c.outlet} · {c.label}</span>
+                  <span className="conv-what small muted">{c.outlet} · {tm(c.label)}</span>
                   <span className="conv-last small" dir="auto">{c.last.mine && <span className="muted">{t('You:')} </span>}{c.last.body}</span>
                 </span>
                 {c.unread > 0 && <span className="conv-badge" aria-label={t('{n} unread', { n: c.unread })}>{c.unread}</span>}
@@ -55,7 +56,7 @@ export function MessagesPage({ open, role }: { open?: string; role: 'buyer' | 's
           {open && current ? <>
             <div className="conv-bar">
               <a className="btn conv-back" href="/messages"><span aria-hidden className="flip-rtl">‹</span> {t('All conversations')}</a>
-              <span className="small muted">{current.outlet} · {current.label} · <span className="num">{current.ref}</span></span>
+              <span className="small muted">{current.outlet} · {tm(current.label)} · <span className="num">{current.ref}</span></span>
               <a className="btn" href={booking(current.dealId)}>{role === 'seller' ? t('Open deal') : t('Open booking')}</a>
             </div>
             <Thread dealId={current.dealId} other={current.with} side={role} />

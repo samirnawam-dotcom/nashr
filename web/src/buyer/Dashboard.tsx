@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api, type Campaign } from '../api'
 import { closesIn, dayLabel, money, time } from '../format'
 import { dubai } from '../calendar/layout'
@@ -50,7 +51,7 @@ export function BuyerDashboard() {
 
       {d.wins.length > 0 && <section className="wins" aria-label={t('Auctions you won')}>{d.wins.map(w => <a key={w.dealId} className="win" href={`/bookings/${w.dealId}`}>
         <span className="win-mark" aria-hidden>✓</span>
-        <span className="win-text"><b>{t('You won {slot}', { slot: `${w.outlet} · ${w.label}` })}</b>
+        <span className="win-text"><b>{t('You won {slot}', { slot: `${w.outlet} · ${tm(w.label)}` })}</b>
           <span>{w.status === 'awaiting_payment'
             ? t('The publisher confirmed. Pay {amount} by {when} to secure it.', { amount: money(w.amount), when: w.dueAt ? when(w.dueAt) : '' })
             : t('{amount} with VAT. The publisher confirms by {when}; you pay only then.', { amount: money(w.amount), when: w.dueAt ? when(w.dueAt) : '' })}</span></span>
@@ -80,7 +81,7 @@ export function BuyerDashboard() {
         {!d.tasks.length ? <p className="muted">{t("Nothing waiting on you. New requests appear here once a publisher accepts.")}</p>
           : <ul className="pt-actions">{d.tasks.map(task => <li key={task.type + task.dealId}>
             <span className={`pt-av ${soon(task.dueAt) ? 'hot' : ''}`} aria-hidden>{TASK[task.type][0]}</span>
-            <a className="pt-what" href={`/bookings/${task.dealId}`}><b>{TASK[task.type][1]}</b><span className="small">{task.label}</span></a>
+            <a className="pt-what" href={`/bookings/${task.dealId}`}><b>{TASK[task.type][1]}</b><span className="small">{tm(task.label)}</span></a>
             <span className="pt-money">{task.amount != null && <b className="num">{money(task.amount)}</b>}</span>
             <span className="pt-due">{task.dueAt && <span className={`pt-chip ${soon(task.dueAt) ? 'warn' : ''}`}>{t('Due {date}', { date: dayLabel(dubai(task.dueAt).date, { day: 'numeric', month: 'short' }) })}</span>}</span>
             <span className="pt-btns"><a className="btn primary" href={`/bookings/${task.dealId}`}>{t(TASK_BTN[task.type] ?? 'Open')}</a></span></li>)}</ul>}
@@ -91,7 +92,7 @@ export function BuyerDashboard() {
           {!d.bids.items.length ? <p className="muted">{t("No open bids. Find a slot on the calendar.")}</p>
             : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Slot')}</th><th>{t('Airs')}</th><th>{t('Closes')}</th><th className="r">{t('Top bid')}</th><th>{t('Status')}</th></tr></thead>
               <tbody>{d.bids.items.map(b => <tr key={b.slotId} onClick={() => navigate(`/calendar?view=list&q=${encodeURIComponent(b.outlet)}&date=${dubai(b.startsAt).date}`)}>
-                <td><b>{b.outlet}</b><div className="small muted">{b.label} · {CHANNEL[b.channel]}</div></td><td className="small">{dayLabel(dubai(b.startsAt).date)}</td>
+                <td><b>{b.outlet}</b><div className="small muted">{tm(b.label)} · {CHANNEL[b.channel]}</div></td><td className="small">{dayLabel(dubai(b.startsAt).date)}</td>
                 <td className="small">{isAr ? (closesIn(b.closesAt) ?? t('closing')) : (closesIn(b.closesAt) ?? 'closing')}</td>
                 <td className="r num">{money(b.topBid)}</td><td><span className={`pt-pill ${b.leading ? 'good' : 'bad'}`}>{b.leading ? t('Leading') : t('Outbid')}</span></td></tr>)}</tbody></table></div>}
         </div>
@@ -109,7 +110,7 @@ export function BuyerDashboard() {
         {!d.upcoming.length ? <p className="muted">{t("Nothing booked to run yet.")}</p>
           : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Outlet')}</th><th>{t('Slot')}</th><th>{t('Airs')}</th><th>{t('Status')}</th></tr></thead>
             <tbody>{d.upcoming.map(u => <tr key={u.dealId} onClick={() => navigate(`/bookings/${u.dealId}`)}>
-              <td><ChannelMark c={u.channel} /> <b>{u.outlet}</b></td><td>{u.label}</td><td className="small">{when(u.startsAt)}</td>
+              <td><ChannelMark c={u.channel} /> <b>{u.outlet}</b></td><td>{tm(u.label)}</td><td className="small">{when(u.startsAt)}</td>
               <td><span className={`pt-pill ${u.status === 'secured' ? 'good' : 'info'}`}>{u.status === 'secured' ? t('Paid, money held') : t('Accepted, waiting for payment')}</span></td></tr>)}</tbody></table></div>}
       </section>
     </main>

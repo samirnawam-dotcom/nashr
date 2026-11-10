@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api, type Slot } from '../api'
 import { closesIn, dayLabel, money, time } from '../format'
 import { addDays, dubai, todayInDubai } from '../calendar/layout'
@@ -102,7 +103,7 @@ function SegmentBody({ filter, calendarBase }: { filter: string; calendarBase: s
       <div className="table-wrap card"><table className="table seg-next"><thead><tr><th>{t('Publisher')}</th><th>{t('Slot')}</th><th>{t('Airs')}</th><th>{t('Closes')}</th><th className="r">{t('Price now')}</th></tr></thead>
         <tbody>{next.map(s => <tr key={s.id}>
           <td><b>{s.outlet}</b> <ChannelMark c={s.channel} /></td>
-          <td>{s.label && s.label !== s.placement ? `${s.placement} · ${s.label}` : s.placement}</td>
+          <td>{s.label && s.label !== s.placement ? `${s.placement} · ${tm(s.label)}` : s.placement}</td>
           <td className="num">{dayLabel(dubai(s.startsAt).date)} · {time(s.startsAt)}</td>
           <td className="small">{closesIn(s.closesAt) ?? dayLabel(dubai(s.closesAt).date)}</td>
           <td className="r num">{money(s.topBid ?? s.startingPrice)}</td></tr>)}</tbody></table></div>

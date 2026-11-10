@@ -54,3 +54,5 @@
   .rq-back { display: inline-flex; }
   .rq-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* phone: the slot and time line wraps rather than losing the hour */
+@media (max-width: 900px) { .rq-what .small { white-space: normal; } }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api } from '../api'
 import { navigate } from '../nav'
 import { dayLabel, money } from '../format'
@@ -138,7 +139,7 @@ export function PortalDashboard() {
         : <ul className="pt-actions">{d.actions.map(a => <li key={`${a.type}-${a.dealId ?? a.slotId}`}>
           <span className="pt-av" aria-hidden>{initials(a.buyer ?? a.outlet)}</span>
           <span className="pt-what"><b>{a.buyer ?? t(ACTION[a.type]?.label ?? a.type)}</b>
-            <span className="small">{a.outlet} · {a.label} · {dayLabel(dubai(a.startsAt).date)}</span>
+            <span className="small">{a.outlet} · {tm(a.label)} · {dayLabel(dubai(a.startsAt).date)}</span>
             <span className="small muted">{t(ACTION[a.type]?.label ?? a.type)}{a.ref ? ` · ${a.ref}` : ''}</span></span>
           <span className="pt-money">{a.gross != null && <b className="num">{money(a.gross)}</b>}
             {a.net != null && <span className="small muted">{t("You'd net {amount}", { amount: money(a.net) })}</span>}</span>

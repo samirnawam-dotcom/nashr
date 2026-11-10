@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api } from '../api'
 import { sep, t } from '../i18n'
 import { navigate } from '../nav'
@@ -56,7 +57,7 @@ export function RequestsPage() {
             <button className={`rq-item${keyOf(x) === pick ? ' on' : ''}`} aria-current={keyOf(x) === pick ? 'true' : undefined} onClick={() => { setPick(keyOf(x)); setNote('') }}>
               <span className="rq-av" aria-hidden>{(x.buyer ?? x.outlet).slice(0, 2).toUpperCase()}</span>
               <span className="rq-what"><b>{x.buyer ?? (x.interested ? t('{n} buyers interested', { n: x.interested }) : x.outlet)}</b>
-                <span className="small muted">{x.outlet}{sep}{x.label}</span>
+                <span className="small muted">{x.outlet}{sep}{tm(x.label)}</span>
                 <span className="small muted">{when(x.startsAt)}</span>
                 {x.kind === 'buy_now' && <span className="small rq-kind">{t('This buyer will pay now')}</span>}
                 {x.kind === 'fixed' && <span className="small rq-kind">{t('Booked at your fixed price')}</span>}
@@ -71,7 +72,7 @@ export function RequestsPage() {
         {!current ? <p className="muted rq-empty">{t('Choose a request to see it here.')}</p> : <>
           <button className="btn rq-back" onClick={() => setPick(null)}>{t('Back to the list')}</button>
           <div className="rq-dh"><div><h2>{current.buyer ?? current.outlet}</h2>
-            <p className="muted">{current.outlet}{sep}{current.label}{sep}{when(current.startsAt)}</p></div>
+            <p className="muted">{current.outlet}{sep}{tm(current.label)}{sep}{when(current.startsAt)}</p></div>
             {current.ref && <span className="small muted num">{t('Order {ref}', { ref: current.ref })}</span>}</div>
 
           {deal && <dl className="rq-facts">

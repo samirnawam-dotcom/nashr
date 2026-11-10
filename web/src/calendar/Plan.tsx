@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tm } from '../i18n-server'
 import { api, type Campaign, type Client, type Slot } from '../api'
 import { dayLabel, money, time } from '../format'
 import { dubai } from './layout'
@@ -74,7 +75,7 @@ export function PlanDrawer({ onClose, onDone, onOpen }: { onClose: () => void; o
           {!r.s ? <span className="muted small">{r.gone ? t('This slot is no longer on sale.') : t('Loading…')}</span> : <>
             <button type="button" className="plan-what" onClick={() => onOpen(r.id)} title={t('Open this slot')}>
               <b>{r.s.outlet} · {r.s.placement}</b>
-              <span className="small muted">{r.s.label} · {dayLabel(dubai(r.s.startsAt).date, { weekday: 'short', day: 'numeric', month: 'short' })} · {time(r.s.startsAt)}</span>
+              <span className="small muted">{tm(r.s.label)} · {dayLabel(dubai(r.s.startsAt).date, { weekday: 'short', day: 'numeric', month: 'short' })} · {time(r.s.startsAt)}</span>
               <span className="plan-tags"><SaleType t={r.s.saleType} />
                 {r.sent ? <span className="dot lead">{r.sent}</span> : r.gone ? <span className="dot outbid">{t('No longer on sale')}</span> : r.s.youLead ? <span className="dot lead">{t('You lead')}</span> : null}</span>
               {r.error && <span className="small outbid">{r.error}</span>}

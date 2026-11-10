@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { tm } from '../i18n-server'
 import { useEffect, useState } from 'react'
 import { api, type Campaign, type Client, type Outlet } from '../api'
 import { dayLabel, money } from '../format'
@@ -111,7 +112,7 @@ export function CampaignPage({ id }: { id: string }) {
       {!c.bookings.length ? <p className="muted">{t("Nothing booked yet.")}</p>
         : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th>{t("Status")}</th></tr></thead>
           <tbody>{c.bookings.map(b => <tr key={b.id} onClick={() => (navigate(`/bookings/${b.id}`))}>
-            <td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {b.label}</td><td className="num">{dayLabel(dubai(b.startsAt).date)}</td>
+            <td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {tm(b.label)}</td><td className="num">{dayLabel(dubai(b.startsAt).date)}</td>
             <td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )

@@ -45,7 +45,7 @@ export function SellerDealsPage() {
       {deals && !shown.length && <p className="muted empty">{t("No deals here.")}</p>}
       {shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th><th>{t("Buyer")}</th><th>{t("Airs")}</th><th className="r">{t("Bid")}</th><th className="r">{t("You receive")}</th><th>{t("Status")}</th></tr></thead>
         <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/deals/${d.id}`))}>
-          <td className="num">{d.ref}</td><td>{d.label}</td><td>{d.buyer.company}</td><td className="num">{when(d.startsAt)}</td>
+          <td className="num">{d.ref}</td><td>{tm(d.label)}</td><td>{d.buyer.company}</td><td className="num">{when(d.startsAt)}</td>
           <td className="r num">{money(d.money.bid)}</td><td className="r num">{money(d.money.youReceive)}</td><td><DealStatus s={d.status} /></td></tr>)}</tbody></table></div>}
     </main>
   )
@@ -79,7 +79,7 @@ export function SellerDealPage({ id }: { id: string }) {
   return (
     <main className="narrow">
       <p className="small"><a href="/reports">{t("Transactions")}</a> › {t('Order {ref}', { ref: d.ref })}</p>
-      <h1>{d.label}</h1>
+      <h1>{tm(d.label)}</h1>
       <p className="muted">{when(d.startsAt)} · {d.buyer.company} · <DealStatus s={d.status} /> · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p>
       {d.rating && <section className="card pad section rate"><h2>{t("The buyer's rating")}</h2><Stars value={d.rating.score} size={18} />{d.rating.comment && <p className="rate-comment">“{d.rating.comment}”</p>}</section>}
 

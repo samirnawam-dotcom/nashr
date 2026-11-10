@@ -148,6 +148,8 @@ export const SERVER_AR: Record<string, string> = {
   "Booking confirmed by the publisher, arranged by Nashr as the publisher's agent. Pay by the deadline to secure the slot. This is not a tax invoice.": 'حجز أكّده الناشر، رتّبته نشر بصفتها وكيلًا عن الناشر. ادفع قبل الموعد لتأمين المساحة. هذه ليست فاتورة ضريبية.',
   // Slot names the server writes for packages
   'Any break': 'أي فاصل', 'All {} breaks': 'الفواصل الـ{1} كلها',
+  'Break {}': 'الفاصل {1}', 'Full week': 'أسبوع كامل', 'Full page': 'صفحة كاملة', 'Half page': 'نصف صفحة', 'Quarter page': 'ربع صفحة',
+  'Pre-roll': 'قبل الحلقة', 'Mid-roll': 'وسط الحلقة', 'Post-roll': 'نهاية الحلقة',
   // Withdrawing a request; editing a placement
   'Only a buy-now request the publisher has not answered can be withdrawn.': 'لا يمكن سحب إلا طلب شراء فوري لم يردّ عليه الناشر.', 'Withdrawn by the buyer': 'سحبه المشتري',
   'This placement is not yours.': 'هذه المساحة الإعلانية ليست لك.', 'Set a reserve price to accept bids automatically.': 'حدّد سعرًا أدنى لقبول المزايدات تلقائيًا.',

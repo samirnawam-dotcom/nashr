@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Loading, csv, date, money, useAct, useLoad, when } from './common'
 import { PhotoBand } from '../PhotoBand'
 import { CoverPicker } from '../CoverPicker'
-import { t } from '../i18n'
+import { isAr, t } from '../i18n'
 
 type S = { key: string; value: unknown; founderOnly: boolean; history: { value: unknown; from: string; by: string }[] }
 // What each setting means, in the owner's words (SPEC 11, 12). Unlisted keys show their raw name.
@@ -23,7 +23,7 @@ Object.assign(LABEL, { dispute_decision_working_days: ['Nashr decision on a disp
 function shown(key: string, v: unknown): string {
   if (v == null || v === '') return t('Not set')
   if (typeof v === 'boolean') return t(v ? 'Yes' : 'No')
-  if (Array.isArray(v)) return v.length ? v.join(', ') : t('None')
+  if (Array.isArray(v)) return v.length ? v.join(isAr ? '، ' : ', ') : t('None')
   if (typeof v === 'number') return key.endsWith('_bp') ? `${v / 100}%` : key === 'processing_fee_fixed' ? money(v)
     : key.endsWith('_hours') ? t('{n} hours', { n: v }) : key.endsWith('_days') ? t('{n} working days', { n: v }) : String(v)
   return key === 'media_invoice_timing' ? t(v === 'run' ? 'When the ad has run' : 'At payment') : String(v)
