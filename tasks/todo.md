@@ -177,3 +177,10 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Publisher: Repeat this week for the next 1 to 12 weeks, at each programme's current price
 - [x] Buyer: plan basket (Add to plan in the slot drawer, Plan button in the calendar): total against the campaign or client budget, one brief, send all together
 - [ ] Offered, not built: price hints, decide from the calendar, fill-rate heat map, compare outlets, "same again"
+
+## Phase M: design polish, second pass
+- [x] One page title size, one gutter and one width on every signed-in page; dashboards use the full width
+- [x] Section tabs (Requests | Messages, Transactions | Balances) level with the title instead of above it
+- [x] Every pick-list styled the same; phone top bar light like the sidebar; smaller unread badge
+- [x] Dashboard action rows aligned in columns; no repeated stock thumbnails in Products rows and the Day view
+- [x] Phone header of the publisher calendar tidied; a proper "Not found" page

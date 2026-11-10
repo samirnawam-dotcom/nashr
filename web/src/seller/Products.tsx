@@ -5,7 +5,7 @@ import { dubai } from '../calendar/layout'
 import { money } from './common'
 import { t } from '../i18n'
 import { tm } from '../i18n-server'
-import { ICON, art } from '../media'
+import { ICON } from '../media'
 import { family } from '../../../server/shared/media'
 import { HAS_PROGRAMMES } from '../../../server/shared/products'
 import { ListingPanel, mediaName, type Product, type Sellable } from './Listing'
@@ -62,7 +62,6 @@ export function ProductsPage() {
           </div>
           {!m.sellable.length ? <p className="pd-none small muted">{HAS_PROGRAMMES.includes(m.channel) && m.details.programmes ? <>{t('Sold by programme, but no programme added yet.')} <a href={`/listings/p/${p.id}?media=${m.id}`}>{t('Add a programme')}</a></> : t('Nothing to list yet.')}</p>
             : <ul className="pd-rows">{m.sellable.map(s => <li key={s.id}>
-              <img className="pd-thumb" src={art(m.channel, 'card')} alt="" width={72} height={46} loading="lazy" />
               <span className="pd-what"><b>{s.kind === 'programme' ? s.name : s.name}</b><span className="small muted">{s.kind === 'programme' ? t('Programme') : t('Sold as one')}{when(s) ? ` · ${when(s)}` : ''}</span></span>
               <span className="pd-state">{s.openSlots > 0 ? <span className="pt-pill good">{t('{n} on sale', { n: s.openSlots })}{s.nextAt ? ` · ${t('next {date}', { date: dayLabel(dubai(s.nextAt).date, { day: 'numeric', month: 'short' }) })}` : ''}</span>
                 : <span className="pt-pill mute">{t('Not listed')}</span>}{s.listing === 'rolling' && <span className="pt-pill info">{t('Kept on sale')}</span>}</span>

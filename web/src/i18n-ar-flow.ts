@@ -1649,4 +1649,5 @@ export const AR_FLOW: Record<string, string> = {
   "Send 1 slot · {amount}": "أرسل موعداً واحداً · {amount}",
   "Send all {n} · {amount}": "أرسل الكل {n} · {amount}",
   "Sending…": "جارٍ الإرسال…",
+  "This page does not exist, or it has moved.": "هذه الصفحة غير موجودة أو تم نقلها.",
 }

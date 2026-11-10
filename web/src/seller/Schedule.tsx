@@ -237,7 +237,6 @@ function DayList({ slots, open, onOpen }: { slots: SSlot[]; open: string | null;
     <div className="cc-hitems">{slots.filter(s => Math.floor(dubai(s.startsAt).minutes / 60) === h).map(s =>
       <button key={s.id} type="button" className={`cc-ev f-${family(s.channel)} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}>
         <ChIcon c={s.channel} size={20} />
-        <img className="cc-thumb" src={art(s.channel, 'card')} alt="" width={84} height={52} loading="lazy" decoding="async" />
         <span className="cc-what"><b>{s.placement}</b><span className="small muted">{tm(s.label)}{sep}{CHANNEL_NAME[s.channel] ?? s.channel}{sep}{s.outlet}</span></span>
         <span className="cc-chips"><span className="cc-pill">{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</span>{length(s) && <span className="cc-pill">{length(s)}</span>}
           <span className="cc-pill">{saleLabel(s.saleType)}</span></span>

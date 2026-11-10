@@ -140,3 +140,9 @@ a.pt-what:hover b { color: var(--teal); }
 @media (max-width: 1100px) { .ov-3 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) { .ov-2 { grid-template-columns: minmax(0, 1fr); } }
 .pt-row > .card { display: grid; align-content: start; gap: 4px; }
+/* Polish pass 2: action rows line up in columns (who, money, due, buttons) */
+.pt-actions li { grid-template-columns: 44px minmax(0, 1.6fr) minmax(120px, .8fr) 110px minmax(170px, auto); }
+.pt-money { display: grid; justify-items: end; text-align: end; }
+.pt-due { justify-self: center; }
+.pt-btns { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 900px) { .pt-actions li { grid-template-columns: 44px minmax(0, 1fr) auto; } .pt-money { justify-items: start; text-align: start; } .pt-due { justify-self: start; } }

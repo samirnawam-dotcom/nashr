@@ -926,3 +926,61 @@ main > .ok, main > .error, main > .warn { margin: 0 0 16px; }
 .admin-filters > .range input { width: 144px; min-height: 38px; height: 38px; box-shadow: none; }
 /* Settings-style pages (your account, help): one readable column instead of fields a metre wide. */
 main.column { max-width: 860px; }
+
+/*
+ * Polish pass 2. One page title, one gutter and one width for every signed-in page; section tabs beside the title, not above it;
+ * every pick-list the same; the phone bar in the same light shell as the desktop sidebar.
+ */
+.shell-main :is(main h1, .pt-head h1, .page-head h1, .cv-title h1, .cc-title h1, .page-title h1, .profile-h h1) { font: 700 clamp(23px, 2.1vw, 28px)/1.14 var(--display); letter-spacing: -.026em; }
+.shell-main :is(.pt-head, .page-head) p, .shell-main .cv-range { font-size: 14.5px; }
+.shell-main main { padding-top: 32px; }
+.shell-main main.cv { padding: 32px 40px 48px; max-width: 1560px; }
+.shell-main .pt { max-width: none; }
+@media (max-width: 900px) { .shell-main main, .shell-main main.cv { padding: 18px 16px 96px; } }
+
+/* Section tabs (Requests | Messages, Transactions | Balances) sit level with the page title on wide screens. */
+.shell-main { position: relative; }
+@media (min-width: 901px) {
+  .sub-tabs-wrap { position: absolute; top: 28px; inset-inline-end: 40px; z-index: 2; padding: 0; max-width: none; margin: 0; }
+  .sub-tabs-wrap + main { padding-top: 32px; }
+  .sub-tabs { padding: 4px; border-radius: 12px; }
+  .sub-tabs a { padding: 7px 14px; font-size: 14px; }
+}
+
+/* Every pick-list in the app wears the same face. */
+:is(main, .drawer, .sheet) select:not([multiple]) { appearance: none; -webkit-appearance: none; min-height: 38px; padding: 0 34px 0 12px; border: 1px solid var(--line-2); border-radius: 10px; background-color: var(--surface);
+  font: 500 14px var(--body); color: var(--ink); cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235e5b72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
+:root[dir="rtl"] :is(main, .drawer, .sheet) select:not([multiple]) { padding: 0 12px 0 34px; background-position: left 10px center; }
+:is(main, .drawer, .sheet) select:not([multiple]):hover { border-color: var(--line-3); }
+:is(main, .drawer, .sheet) select:not([multiple]):focus { outline: 0; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(107, 60, 246, .18); }
+.field select { min-height: 40px; }
+
+/* Phone and tablet: the signed-in bar is light, like the sidebar it replaces. The public site keeps its night bar. */
+.shell .topbar { background: var(--surface); color: var(--ink); border-bottom: 1px solid var(--line); box-shadow: none; height: 56px; }
+.shell .topbar .logo, .shell .topbar .logo .latin { color: var(--ink); }
+.shell .topbar .logo .latin { font-size: 20px; } .shell .topbar .logo .arabic { font-size: 22px; }
+.shell .topbar .btn:not(.primary):not(.signal), .shell .topbar .menu-btn { background: var(--surface); border-color: var(--line-2); color: var(--ink); }
+.shell .topbar .btn:not(.primary):not(.signal):hover { background: var(--surface-2); color: var(--ink); }
+.shell .topbar .lang-switch, .shell .topbar .lang-switch.on-dark { color: var(--slate); }
+.shell .topbar .lang-switch:hover { background: var(--surface-2); color: var(--ink); }
+.shell .topbar .avatar { width: 36px; height: 36px; }
+.shell .topbar .bell .n { box-shadow: 0 0 0 2px var(--surface); }
+.shell .topbar :where(a, button):focus-visible { box-shadow: var(--focus); }
+@media (max-width: 900px) {
+  .shell .topbar .nav { top: 56px; background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow-3); padding: 8px 12px 14px; border-radius: 0; }
+  .shell .topbar .nav a { color: var(--ink); border-bottom: 0; border-radius: 10px; padding: 11px 12px; }
+  .shell .topbar .nav a:hover { color: var(--ink); background: var(--surface-2); }
+  .shell .topbar .nav a.active { color: var(--teal-press); background: var(--teal-1); border-color: transparent; }
+  .shell .topbar .nav .nav-signout { color: var(--red); }
+}
+
+/* Unread counts stay small and calm. */
+.bell .n { min-width: 18px; height: 18px; padding: 0 5px; font: 700 10.5px/18px var(--body); border-radius: 99px; }
+.side-me .bell .n { top: -2px; inset-inline-end: -4px; }
+
+/* Not found: say it once, clearly, with the way back. */
+main.nf { display: grid; justify-items: center; gap: 10px; padding-block: 12vh; text-align: center; }
+.nf-code { font: 700 64px/1 var(--display); letter-spacing: -.04em; color: var(--teal-3); }
+main.nf p { margin: 0 0 8px; }

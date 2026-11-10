@@ -347,7 +347,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
       {/* updated terms come first, except on the legal pages themselves (so they can be read); never for staff acting as someone */}
       {me.terms && !me.terms.accepted && !me.signedInAs && !me.viewingAs && !/^\/(terms|privacy|refunds|dispute-policy)$/.test(path)
         ? <TermsGate version={me.terms.version} onDone={load} />
-        : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main><h1>{t("Not found")}</h1><p className="muted"><a href={`${home}`}>{t("Back to the start")}</a></p></main>}
+        : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main className="nf"><span className="nf-code num" aria-hidden>404</span><h1>{t("Not found")}</h1><p className="muted">{t('This page does not exist, or it has moved.')}</p><a className="btn primary" href={`${home}`}>{t("Back to the start")}</a></main>}
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p, seller) ? 'active' : ''}
         aria-current={isActive(path, p, seller) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}</nav>}

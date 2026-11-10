@@ -703,3 +703,18 @@ label.side-h { display: block; }
 .plan-budget.over .plan-meter i { background: var(--red); } .plan-budget.over .small { color: var(--red); font-weight: 600; }
 .cc-head .btn.cc-pick.on { background: var(--teal-1); border-color: var(--teal); color: var(--teal-press); }
 .cc-bulk-price input.search { flex: none; width: 110px; min-width: 0; }
+/* Polish pass 2: day cards without the repeated stock thumbnail; phone header for the publisher calendar in two tidy rows */
+.cc-day .cc-ev { grid-template-columns: 22px minmax(0, 1fr) auto auto auto; }
+@media (max-width: 900px) {
+  .cc-head { gap: 8px; }
+  .cc-head .cc-title { flex-basis: 100%; }
+  .cc-head .btn { min-height: 36px; padding: 0 12px; font-size: 13.5px; }
+  .cc-head .cc-pick, .cc-head [aria-expanded] { order: 3; }
+  .cc-bar { gap: 8px; }
+  .cc-bar .cc-range { order: 5; flex-basis: 100%; font-size: 16px; }
+  .cc-bar .spacer { display: none; }
+  .cc-bar .cv-views { width: auto; flex: 1 1 auto; }
+  .cc-tile { padding: 10px 12px; } .cc-tile b { font-size: 20px; }
+  .ln-row { grid-template-columns: 112px repeat(7, minmax(104px, 1fr)); }
+  .ln-who { padding: 10px; } .ln-name b { font-size: 13.5px; }
+}
