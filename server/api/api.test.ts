@@ -1709,6 +1709,15 @@ test('a product made before the product form is completed from what it already s
   expect((await call(sellerX, 'PUT', `/api/seller/media/${m.id}`, body)).statusCode).toBe(200)
   const after = (await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0]
   expect(after.sellable.map((x: any) => x.kind)).toEqual(m.sellable.map((x: any) => x.kind))
+  // an older product or outlet that never had a description saves without one; once it has one, it cannot be emptied, and a new one must have it
+  await pool.query(`update outlets set description = null where id = $1`, [m.id]); await pool.query(`update products set description = null where company_id = $1`, [sellerX.companyId])
+  const brand = (await call(sellerX, 'GET', '/api/seller/products')).json()[0]
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m.id}`, { ...body, description: '' })).statusCode).toBe(200)
+  expect((await call(sellerX, 'PUT', `/api/seller/products/${brand.id}`, { name: brand.name, description: '' })).statusCode).toBe(200)
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m.id}`, { ...body, description: 'Business radio.' })).statusCode).toBe(200)
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m.id}`, { ...body, description: '' })).json().error).toMatch('Add a description')
+  expect((await call(sellerX, 'POST', `/api/seller/products/${brand.id}/media`, { ...body, name: 'Skyline Digital', description: '' })).json().error).toMatch('Add a description')
+  expect((await call(sellerX, 'POST', '/api/seller/products', { name: 'New outlet', description: '' })).json().error).toMatch('Add a description')
   // done once: a price the publisher then changes is not put back
   await pool.query(`update outlets set default_price = 999900 where id = $1`, [m.id])
   expect((await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0].defaultPrice).toBe(999900)

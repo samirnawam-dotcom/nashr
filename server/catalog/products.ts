@@ -59,11 +59,13 @@ async function completeOlder(db: Db, companyId: string) {
 
 export async function saveProduct(db: Db, a: { id?: string; companyId: string; name: string; description: string; notes?: string | null }, actor: string, at: Date) {
   if (!a.name?.trim()) throw new MarketError('Add the outlet name.')
-  if (!a.description?.trim()) throw new MarketError('Add a description.')
+  // a description is asked of every new outlet; one made before these forms that never had one may stay without
+  const had = a.id ? (await db.query(`select description from products where id = $1 and company_id = $2`, [a.id, a.companyId])).rows[0] : undefined
+  if (!a.description?.trim() && !(had && !had.description?.trim())) throw new MarketError('Add a description.')
   if ((a.notes ?? '').length > 500) throw new MarketError('Keep it to 500 characters.')
   noContacts(a.name, a.description, a.notes)
   if (a.id) {
-    const r = await db.query(`update products set name = $3, description = $4, notes = $5 where id = $1 and company_id = $2 and not archived`, [a.id, a.companyId, a.name.trim(), a.description.trim(), a.notes?.trim() || null])
+    const r = await db.query(`update products set name = $3, description = $4, notes = $5 where id = $1 and company_id = $2 and not archived`, [a.id, a.companyId, a.name.trim(), a.description?.trim() || null, a.notes?.trim() || null])
     if (!r.rowCount) throw new MarketError('This outlet was not found.')
     await audit(db, actor, 'product.updated', 'product', a.id, null, at)
     return a.id
@@ -86,12 +88,14 @@ export async function archiveProduct(db: Db, id: string, companyId: string, acto
 
 export async function saveMedia(db: Db, a: { id?: string; productId: string; companyId: string; m: MediaInput }, actor: string, at: Date) {
   const m = a.m
-  first(mediaProblems(m))
+  // the same for a product: one made before this form that never had a description may be saved without one
+  const before = a.id ? (await db.query(`select description from outlets where id = $1 and company_id = $2`, [a.id, a.companyId])).rows[0] : undefined
+  first(mediaProblems(m).filter(p => !(p[0] === 'description' && before && !before.description?.trim())))
   noContacts(m.name, m.nameAr, m.description, m.audience, m.notes, m.specDetail, m.channelOther, ...(m.blockedAdvertisers ?? []))
   await checkDeadlines(db, { creativeLeadHours: m.creativeDays * 24, closeLeadHours: m.closeDays * 24 }, at)
   const product = (await db.query(`select id from products where id = $1 and company_id = $2 and not archived`, [a.productId, a.companyId])).rows[0]
   if (!product) throw new MarketError('This outlet was not found.')
-  const cols = [m.name.trim(), m.channel, m.channel === 'other' ? m.channelOther?.trim() : null, m.description.trim(), m.language, m.audience.trim(), m.markets,
+  const cols = [m.name.trim(), m.channel, m.channel === 'other' ? m.channelOther?.trim() : null, m.description?.trim() || null, m.language, m.audience.trim(), m.markets,
     m.reach ?? null, m.reach ? m.reachUnit ?? null : null, m.sectors, m.blocked, m.defaultPrice, m.creativeDays, m.closeDays, m.specType, m.specDetail?.trim() || null,
     m.notes?.trim() || null, JSON.stringify(m.details ?? {})]
   let id = a.id

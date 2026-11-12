@@ -213,3 +213,4 @@ Decisions made while building (flag to owner if they disagree):
 - [x] A product's Arabic name shows under its title on its Directory page (English, Arabic, phone); nothing extra when there is none
 - [x] Older products (made before the product form) are completed from what they already sell: price, deadlines, language, file type, audience from tags; the form no longer asks for them. A product with no description is still asked for one
 - [ ] Older newspaper/website products are sold through the items they had before; those items can be listed but not edited from the new screens
+- [x] Description optional for older products and outlets: one that never had a description saves without it (label reads "Description (optional)"); once it has one it cannot be emptied, and every new product or outlet still needs it

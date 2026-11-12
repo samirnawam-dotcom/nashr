@@ -101,8 +101,9 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
   const byProgramme = HAS_PROGRAMMES.includes(f.channel) && !!f.details.programmes
   // a product made before this form (a newspaper, a website…) that is sold through the items it already had
   const older = !HAS_PROGRAMMES.includes(f.channel) && !!f.details.programmes
+  const noDesc = !!m && !m.description?.trim()   // made before this form and never described: the description stays optional
   const site = (f.website ?? '').trim(), siteBad = !!site && !/^https?:\/\/\S+\.\S+/.test(site)
-  const problems = [...mediaProblems({ ...f, details: byProgramme ? { programmes: true } : f.details }), ...(siteBad ? [['website', 'The website must start with https:// or http://.']] as [string, string][] : [])], err = (k: string) => tried ? problems.find(p => p[0] === k)?.[1] : undefined
+  const problems = [...mediaProblems({ ...f, details: byProgramme ? { programmes: true } : f.details }).filter(x => !(x[0] === 'description' && noDesc)), ...(siteBad ? [['website', 'The website must start with https:// or http://.']] as [string, string][] : [])], err = (k: string) => tried ? problems.find(p => p[0] === k)?.[1] : undefined
   const dl = deadlineProblem(f.creativeDays, f.closeDays), idp = m?.id ?? 'new'
   const sectorOpts: Opt[] = INDUSTRIES.filter(x => x !== 'Other').map(x => [x, x])
   async function save() {
@@ -136,7 +137,7 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
         <div className="field"><label htmlFor={`${idp}-ar`}>{t('Name in Arabic (optional)')}</label><input id={`${idp}-ar`} dir="rtl" lang="ar" maxLength={200} value={f.nameAr ?? ''} onChange={e => set({ nameAr: e.target.value })} /></div>
         <div className="field"><label htmlFor={`${idp}-web`}>{t('Website (optional)')}</label><input id={`${idp}-web`} type="url" dir="ltr" maxLength={300} placeholder="https://" value={f.website ?? ''} onChange={e => set({ website: e.target.value })} /><Err m={err('website')} /></div>
       </div>
-      <div className="field"><label htmlFor={`${idp}-desc`}>{t('Description')} <span className="req">*</span></label><textarea id={`${idp}-desc`} dir="auto" rows={3} maxLength={1000} value={f.description} onChange={e => set({ description: e.target.value })} /><Err m={err('description')} /></div>
+      <div className="field"><label htmlFor={`${idp}-desc`}>{noDesc ? t('Description (optional)') : t('Description')} {!noDesc && <span className="req">*</span>}</label><textarea id={`${idp}-desc`} dir="auto" rows={3} maxLength={1000} value={f.description} onChange={e => set({ description: e.target.value })} /><Err m={err('description')} /></div>
       {m && <div className="field"><span className="lbl">{t('Cover image (optional)')}</span><CoverPicker url={m.coverUrl ?? null} channel={m.channel} endpoint={`/seller/outlets/${m.id}/cover`} /></div>}
 
       {HAS_PROGRAMMES.includes(f.channel) && <label className="ed-switch"><input type="checkbox" checked={byProgramme} onChange={e => setD({ programmes: e.target.checked })} />
@@ -306,10 +307,10 @@ export function ProductEditorPage({ id }: { id?: string }) {
       <div className="grid2"><div className="field"><label htmlFor="pr-n">{t('Name')} <span className="req">*</span></label><input id="pr-n" dir="auto" maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder={t('For example: Skyline FM')} /></div></div>
       {p ? <LogoPicker name={p.name} url={p.logoUrl} endpoint={`/seller/products/${p.id}/logo`} />
         : <LogoPicker name={name.trim() || t('Outlet')} url={null} endpoint="" onBlob={setNewLogo} />}
-      <div className="field"><label htmlFor="pr-d">{t('Description')} <span className="req">*</span></label><textarea id="pr-d" dir="auto" rows={2} maxLength={1000} value={description} onChange={e => setDescription(e.target.value)} /></div>
+      <div className="field"><label htmlFor="pr-d">{p && !p.description?.trim() ? t('Description (optional)') : t('Description')} {!(p && !p.description?.trim()) && <span className="req">*</span>}</label><textarea id="pr-d" dir="auto" rows={2} maxLength={1000} value={description} onChange={e => setDescription(e.target.value)} /></div>
       <div className="field"><label htmlFor="pr-x">{t('Anything else buyers should know (optional)')}</label><textarea id="pr-x" dir="auto" rows={2} maxLength={500} value={notes} onChange={e => setNotes(e.target.value)} />
         <span className="small muted">{notes.length}/500 · {t('Emails and phone numbers are not allowed.')}</span></div>
-      <div className="ed-save"><span className="spacer" /><button type="button" className="btn primary" disabled={busy || !name.trim() || !description.trim()} onClick={saveOutlet}>{p ? t('Save outlet') : t('Save and add products')}</button></div>
+      <div className="ed-save"><span className="spacer" /><button type="button" className="btn primary" disabled={busy || !name.trim() || (!description.trim() && !(p && !p.description?.trim()))} onClick={saveOutlet}>{p ? t('Save outlet') : t('Save and add products')}</button></div>
     </section>}
 
     {p && <section className="ed-media">
