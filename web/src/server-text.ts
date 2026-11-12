@@ -213,6 +213,7 @@ export const SERVER_AR: Record<string, string> = {
   "Keep it to 500 characters.": "لا تتجاوز 500 حرف.",
   "This product was not found.": "لم يُعثر على هذا المنتج.",
   "Add the outlet name.": "أضف اسم المنفذ.",
+  "The website must start with https:// or http://.": "يجب أن يبدأ عنوان الموقع بـ https:// أو http://.",
   "This outlet was not found.": "لم يُعثر على هذا المنفذ.",
   "Enter the new price.": "أدخل السعر الجديد.",
   "Nothing is listed in this week to repeat.": "لا يوجد شيء معروض في هذا الأسبوع لتكراره.",

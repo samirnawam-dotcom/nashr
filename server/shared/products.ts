@@ -65,6 +65,8 @@ export type MediaInput = {
   specType: string; specDetail?: string; notes?: string; details: Record<string, any>
   /** Audience tags buyers filter by (shared/audiences.ts) and advertisers this product will not run; left as they are when not sent. */
   audiences?: string[]; blockedAdvertisers?: string[]
+  /** The product's name in Arabic and its website, shown on its directory page; an empty value clears it. */
+  nameAr?: string; website?: string
 }
 export type ProgrammeInput = { name: string; notes?: string; defaultPrice?: number | null; creativeDays?: number | null; closeDays?: number | null; details: Record<string, any> }
 

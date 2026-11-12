@@ -92,14 +92,15 @@ const blank = (): MediaInput => ({ channel: '', name: '', description: '', langu
   defaultPrice: 0, creativeDays: 2, closeDays: 5, specType: '', specDetail: '', notes: '', details: {} })
 const fromMedia = (m: Media): MediaInput => ({ channel: m.channel, channelOther: m.channelOther ?? '', name: m.name, description: m.description ?? '', language: m.language ?? '', audience: m.audience ?? '',
   markets: m.markets ?? [], reach: m.reach, reachUnit: m.reachUnit, sectors: m.sectors ?? [], blocked: m.blocked ?? [], defaultPrice: m.defaultPrice ?? 0, creativeDays: m.creativeDays ?? 2,
-  closeDays: m.closeDays ?? 5, specType: m.specType ?? '', specDetail: m.specDetail ?? '', notes: m.notes ?? '', details: m.details ?? {}, audiences: m.audiences ?? [], blockedAdvertisers: m.blockedAdvertisers ?? [] })
+  closeDays: m.closeDays ?? 5, specType: m.specType ?? '', specDetail: m.specDetail ?? '', notes: m.notes ?? '', details: m.details ?? {}, audiences: m.audiences ?? [], blockedAdvertisers: m.blockedAdvertisers ?? [], nameAr: m.nameAr ?? '', website: m.website ?? '' })
 
 function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Media; onSaved: (id: string) => void; onCancel: () => void }) {
   const [f, setF] = useState<MediaInput>(m ? fromMedia(m) : blank()), [tried, setTried] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [allSectors, setAllSectors] = useState(!(m?.sectors?.length)), [notRun, setNotRun] = useState((m?.blockedAdvertisers ?? []).join(', '))
   const set = (patch: Partial<MediaInput>) => setF(x => ({ ...x, ...patch })), setD = (patch: Record<string, any>) => setF(x => ({ ...x, details: { ...x.details, ...patch } }))
   const byProgramme = HAS_PROGRAMMES.includes(f.channel) && !!f.details.programmes
-  const problems = mediaProblems({ ...f, details: byProgramme ? { programmes: true } : f.details }), err = (k: string) => tried ? problems.find(p => p[0] === k)?.[1] : undefined
+  const site = (f.website ?? '').trim(), siteBad = !!site && !/^https?:\/\/\S+\.\S+/.test(site)
+  const problems = [...mediaProblems({ ...f, details: byProgramme ? { programmes: true } : f.details }), ...(siteBad ? [['website', 'The website must start with https:// or http://.']] as [string, string][] : [])], err = (k: string) => tried ? problems.find(p => p[0] === k)?.[1] : undefined
   const dl = deadlineProblem(f.creativeDays, f.closeDays), idp = m?.id ?? 'new'
   const sectorOpts: Opt[] = INDUSTRIES.filter(x => x !== 'Other').map(x => [x, x])
   async function save() {
@@ -108,7 +109,7 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
     setBusy(true)
     try {
       const body = { ...f, sectors: allSectors ? [] : f.sectors, reach: f.reach || null, reachUnit: f.reach ? f.reachUnit || null : null, channelOther: f.channel === OTHER ? f.channelOther : undefined,
-        specDetail: f.specDetail || undefined, notes: f.notes || undefined,
+        specDetail: f.specDetail || undefined, notes: f.notes || undefined, nameAr: (f.nameAr ?? '').trim(), website: (f.website ?? '').trim(),
         audiences: f.audiences ?? [], blockedAdvertisers: [...new Set(notRun.split(',').map(x => x.trim()).filter(x => x.length > 1))] }
       const r = m ? await api<{ id: string }>(`/seller/media/${m.id}`, { method: 'PUT', body }) : await api<{ id: string }>(`/seller/products/${product.id}/media`, { method: 'POST', body })
       onSaved(r.id)
@@ -128,6 +129,10 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
       <div className="grid2">
         <div className="field"><label htmlFor={`${idp}-name`}>{t('Name buyers see')} <span className="req">*</span></label><input id={`${idp}-name`} dir="auto" maxLength={80} value={f.name} onChange={e => set({ name: e.target.value })} placeholder={t('For example: Skyline FM Radio')} /><Err m={err('name')} /></div>
         <div className="field"><label htmlFor={`${idp}-lang`}>{t('Language')} <span className="req">*</span></label><Pick id={`${idp}-lang`} value={f.language} options={LANGUAGES} onChange={v => set({ language: v })} /><Err m={err('language')} /></div>
+      </div>
+      <div className="grid2">
+        <div className="field"><label htmlFor={`${idp}-ar`}>{t('Name in Arabic (optional)')}</label><input id={`${idp}-ar`} dir="rtl" lang="ar" maxLength={200} value={f.nameAr ?? ''} onChange={e => set({ nameAr: e.target.value })} /></div>
+        <div className="field"><label htmlFor={`${idp}-web`}>{t('Website (optional)')}</label><input id={`${idp}-web`} type="url" dir="ltr" maxLength={300} placeholder="https://" value={f.website ?? ''} onChange={e => set({ website: e.target.value })} /><Err m={err('website')} /></div>
       </div>
       <div className="field"><label htmlFor={`${idp}-desc`}>{t('Description')} <span className="req">*</span></label><textarea id={`${idp}-desc`} dir="auto" rows={3} maxLength={1000} value={f.description} onChange={e => set({ description: e.target.value })} /><Err m={err('description')} /></div>
       {m && <div className="field"><span className="lbl">{t('Cover image (optional)')}</span><CoverPicker url={m.coverUrl ?? null} channel={m.channel} endpoint={`/seller/outlets/${m.id}/cover`} /></div>}
@@ -226,6 +231,8 @@ function ProductSummary({ m }: { m: Media }) {
       {byProgramme && <Fact k={t('Sold by')} v={t(m.sellable.length === 1 ? '1 programme' : '{n} programmes', { n: m.sellable.length })} />}
       {!byProgramme && !fields.some(f => f.kind === 'days') && main?.days?.length ? <Fact k={t('Days')} v={daysText(main.days)} /> : null}
       <Fact k={t('Language')} v={m.language ? t(label(LANGUAGES, m.language)) : ''} />
+      <Fact k={t('Name in Arabic')} v={m.nameAr} />
+      <Fact k={t('Website')} v={m.website} />
     </dl>}
     {tab === 'audience' && <dl className="pr-facts">
       <Fact k={t('Audience')} v={m.audience} />

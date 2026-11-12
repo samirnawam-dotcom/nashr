@@ -62,7 +62,7 @@ export async function archiveProduct(db: Db, id: string, companyId: string, acto
 export async function saveMedia(db: Db, a: { id?: string; productId: string; companyId: string; m: MediaInput }, actor: string, at: Date) {
   const m = a.m
   first(mediaProblems(m))
-  noContacts(m.name, m.description, m.audience, m.notes, m.specDetail, m.channelOther, ...(m.blockedAdvertisers ?? []))
+  noContacts(m.name, m.nameAr, m.description, m.audience, m.notes, m.specDetail, m.channelOther, ...(m.blockedAdvertisers ?? []))
   await checkDeadlines(db, { creativeLeadHours: m.creativeDays * 24, closeLeadHours: m.closeDays * 24 }, at)
   const product = (await db.query(`select id from products where id = $1 and company_id = $2 and not archived`, [a.productId, a.companyId])).rows[0]
   if (!product) throw new MarketError('This outlet was not found.')
@@ -83,6 +83,9 @@ export async function saveMedia(db: Db, a: { id?: string; productId: string; com
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) returning id`, [a.companyId, a.productId, ...cols])).id
     await audit(db, actor, 'media.created', 'outlet', id!, { channel: m.channel }, at)
   }
+  if (m.website && !/^https?:\/\/\S+\.\S+/.test(m.website.trim())) throw new MarketError('The website must start with https:// or http://.')
+  if (m.nameAr !== undefined || m.website !== undefined) await db.query(`update outlets set name_ar = case when $4 then nullif($2, '') else name_ar end, website = case when $5 then nullif($3, '') else website end where id = $1`,
+    [id, m.nameAr?.trim() ?? '', m.website?.trim() ?? '', m.nameAr !== undefined, m.website !== undefined])
   if (m.audiences || m.blockedAdvertisers) await db.query(`update outlets set audiences = coalesce($2, audiences), blocked_advertisers = coalesce($3, blocked_advertisers) where id = $1`,
     [id, m.audiences ?? null, m.blockedAdvertisers ?? null])
   await syncMain(db, id!, actor, at)

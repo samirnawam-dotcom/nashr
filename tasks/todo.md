@@ -208,5 +208,5 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Rate card import in the new names: columns outlet, product, programme; a row adds a programme (if new) and lists it, or lists the product itself; template made from the publisher's own outlets; older files still read (name, seconds, description)
 - [x] Old single-placement pages removed (edit page, the old listings list and add-placement form behind it); old edit links open the outlet instead; an unknown outlet address says Not found
 - [x] Removed the two uncalled placement routes (list dates, archive) and the hidden outlet form in Your business; audience tags and "advertisers you will not run" moved to the product form so nothing buyers rely on was lost
-- [ ] Not on any form now: a product's Arabic name and website (they were only on the removed outlet form)
+- [x] A product's Arabic name and website are on the product form (optional), in its summary, and still feed the directory
 - [ ] Placement create and edit routes, and the old outlet create and edit routes, are called only by API tests

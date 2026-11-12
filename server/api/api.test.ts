@@ -1751,6 +1751,13 @@ test("products by the owner's rules: product, media types with their own fields,
   expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, audiences: ['commuters', 'executives'], blockedAdvertisers: ['Rival Bank'] })).statusCode).toBe(200)
   expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, radio)).statusCode).toBe(200)
   expect((await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p).media.find((x: any) => x.id === m)).toMatchObject({ audiences: ['commuters', 'executives'], blockedAdvertisers: ['Rival Bank'] })
+  // the Arabic name and website are on the product form too; a bad address is refused, an empty one clears it, and a save without them leaves them
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, website: 'skyline.ae' })).json().error).toMatch('must start with https')
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, nameAr: 'سكاي لاين إف إم', website: 'https://skyline.example' })).statusCode).toBe(200)
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, radio)).statusCode).toBe(200)
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p).media.find((x: any) => x.id === m)).toMatchObject({ nameAr: 'سكاي لاين إف إم', website: 'https://skyline.example' })
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, website: '' })).statusCode).toBe(200)
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p).media.find((x: any) => x.id === m)).toMatchObject({ nameAr: 'سكاي لاين إف إم', website: null })
   // and buyers find the product's slots by them
   expect((await call(buyerA, 'GET', '/api/slots/list?from=2026-11-16T00:00:00%2B04:00&to=2026-11-23T00:00:00%2B04:00&limit=100')).json().items.find((x: any) => x.id === mine.id).audiences).toEqual(['commuters', 'executives'])
   // a newspaper's own unit is named by its format alone; the section stays in its details

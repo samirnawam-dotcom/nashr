@@ -1733,4 +1733,7 @@ export const AR_FLOW: Record<string, string> = {
   "Buyers filter the calendar by these, and the product shows on the matching Audiences pages.": "يصفّي المشترون التقويم بها، ويظهر المنتج في صفحات الجماهير المطابقة.",
   "Audience tags": "وسوم الجمهور",
   "Advertisers not run": "معلنون لا يُقبلون",
+  "Name in Arabic (optional)": "الاسم بالعربية (اختياري)",
+  "Website (optional)": "الموقع الإلكتروني (اختياري)",
+  "The website must start with https:// or http://.": "يجب أن يبدأ عنوان الموقع بـ https:// أو http://.",
 }
