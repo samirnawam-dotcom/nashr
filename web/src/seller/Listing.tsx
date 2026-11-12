@@ -69,7 +69,7 @@ export function ListingPanel({ products, placementId, date, onClose, onDone }: {
     <div className="lst-h"><h2>{t('List it')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onClose}>{t('Close')}</button></div>
     {!all.length ? <p className="muted">{t('Add an outlet and a product first; then list it here.')} <a href="/listings/new">{t('Add outlet')}</a></p> : <>
       <ol className="lst-steps">
-        {!placementId && <li><span className="lst-n">1</span><div className="field"><label htmlFor="lst-p">{t('Product')}</label>
+        {!placementId && <li><span className="lst-n">1</span><div className="field"><label htmlFor="lst-p">{t('Pick the product')}</label>
           <select id="lst-p" value={id} onChange={e => setId(e.target.value)}>{all.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
           <span className="small muted">{t('Not on the list?')} <a href="/listings/new">{t('Create a new one')}</a></span></div></li>}
         {placementId && pick && <li><span className="lst-n">1</span><div><span className="small muted">{t('Product')}</span><p className="lst-picked"><b>{pick.label}</b></p></div></li>}

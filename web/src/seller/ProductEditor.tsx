@@ -245,7 +245,7 @@ export function ProductEditorPage({ id }: { id?: string }) {
   const [all, setAll] = useState<Product[] | null>(null), [error, setError] = useState(''), [note, setNote] = useState('')
   const [name, setName] = useState(''), [description, setDescription] = useState(''), [notes, setNotes] = useState(''), [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState<string | null>(q.get('add') ? 'new' : q.get('media')), [prog, setProg] = useState<string | null>(null), [listing, setListing] = useState<string | null>(null)
-  const [open, setOpen] = useState<string | null>(q.get('open')), [outletForm, setOutletForm] = useState(!id)
+  const [open, setOpen] = useState<string | null>(q.get('open')), [outletForm, setOutletForm] = useState(!id), [newLogo, setNewLogo] = useState<Blob | null>(null)
   // an outlet's own id, or any of its products' or programmes' ids (the calendar's Edit opens the outlet that way)
   const find = (r: Product[]) => r.find(x => x.id === id) ?? r.find(x => x.media.some(m => m.id === id || m.sellable.some(s => s.id === id)))
   const load = () => api<Product[]>('/seller/products').then(r => { setAll(r); return r }, e => { setError(e.message); return [] as Product[] })
@@ -257,7 +257,10 @@ export function ProductEditorPage({ id }: { id?: string }) {
     try {
       const body = { name, description, ...(notes.trim() ? { notes } : {}) }
       if (p) { await api(`/seller/products/${p.id}`, { method: 'PUT', body }); setNote(t('Outlet saved.')); setOutletForm(false); await load() }
-      else { const r = await api<{ id: string }>('/seller/products', { method: 'POST', body }); navigate(`/listings/p/${r.id}?add=1`) }
+      else { const r = await api<{ id: string }>('/seller/products', { method: 'POST', body })
+        // the logo chosen on the form goes up with the new outlet (if it fails the outlet is still saved, and the logo can be added from Edit outlet)
+        if (newLogo) await fetch(`/api/seller/products/${r.id}/logo`, { method: 'PUT', credentials: 'same-origin', body: newLogo, headers: { 'content-type': 'image/png' } }).catch(() => {})
+        navigate(`/listings/p/${r.id}?add=1`) }
     } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
   }
   async function remove() {
@@ -282,7 +285,7 @@ export function ProductEditorPage({ id }: { id?: string }) {
       <div className="ed-fh"><h2>{t('1. Outlet')}</h2><span className="spacer" />{p && <button type="button" className="btn" onClick={() => setOutletForm(false)}>{t('Cancel')}</button>}</div>
       <div className="grid2"><div className="field"><label htmlFor="pr-n">{t('Name')} <span className="req">*</span></label><input id="pr-n" dir="auto" maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder={t('For example: Skyline FM')} /></div></div>
       {p ? <LogoPicker name={p.name} url={p.logoUrl} endpoint={`/seller/products/${p.id}/logo`} />
-        : <p className="small muted">{t('You can add the logo (JPG or PNG) as soon as the outlet is saved. Until then buyers see its initials.')}</p>}
+        : <LogoPicker name={name.trim() || t('Outlet')} url={null} endpoint="" onBlob={setNewLogo} />}
       <div className="field"><label htmlFor="pr-d">{t('Description')} <span className="req">*</span></label><textarea id="pr-d" dir="auto" rows={2} maxLength={1000} value={description} onChange={e => setDescription(e.target.value)} /></div>
       <div className="field"><label htmlFor="pr-x">{t('Anything else buyers should know (optional)')}</label><textarea id="pr-x" dir="auto" rows={2} maxLength={500} value={notes} onChange={e => setNotes(e.target.value)} />
         <span className="small muted">{notes.length}/500 · {t('Emails and phone numbers are not allowed.')}</span></div>

@@ -55,7 +55,7 @@ export function where(q: Query, now: Date) {
 }
 
 /** A slot row with its bid count and whether this buyer has bid, in one pass rather than a query per row. */
-const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.sectors, o.audience, ${AUDIENCES_SQL} audiences, o.logo_key, pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
+const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, brand_name(o) outlet, o.channel, o.sectors, o.audience, ${AUDIENCES_SQL} audiences, o.logo_key, pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
   (select d.id from deals d where d.slot_id = s.id order by d.created_at desc limit 1) deal_id`
 const BID_COUNTS = (me: string) => `left join lateral (select count(*) n, bool_or(b.buyer_id = ${me}) mine from bids b where b.slot_id = s.id and b.status <> 'withdrawn') bc on true`
 
@@ -82,7 +82,7 @@ export async function listSlots(db: Db, q: Query, sort: Sort, offset: number, li
 /** Each programme on each day as one block for the week and day grids: when it runs, how many slots, from what price. */
 export async function programmes(db: Db, q: Query, now: Date) {
   const w = where(q, now), me = w.add(q.me), at = w.add(now)
-  return (await db.query(`select o.id outlet_id, o.name outlet, o.channel, p.id placement_id, p.name placement, ${DUBAI}::date::text date,
+  return (await db.query(`select o.id outlet_id, brand_name(o) outlet, o.channel, p.id placement_id, p.name placement, ${DUBAI}::date::text date,
       min(s.starts_at) starts_at, max(coalesce(s.ends_at, s.starts_at)) ends_at, bool_and(${ALL_DAY}) all_day, count(*)::int slots,
       count(*) filter (where s.status = 'open' and s.closes_at > ${at})::int open, min(${PRICE}) from_price, sum(coalesce(bc.n, 0))::int bids,
       coalesce(bool_or(s.top_buyer_id = ${me}), false) leads, coalesce(bool_or(bc.mine), false) mine,
@@ -147,13 +147,13 @@ export type OutletSort = 'name' | 'price' | 'slots'
 /** Outlets across a range of days (the "By outlet" view): a page of outlets, each with its count and lowest price per day. */
 export async function byOutlet(db: Db, q: Query, sort: OutletSort, offset: number, limit: number, now: Date) {
   const w = where(q, now)
-  const daily = `select o.id outlet_id, o.name outlet, o.channel, o.logo_key, ${DUBAI}::date::text date, count(*)::int slots, min(${PRICE}) from_price
-    ${w.from} ${w.where} group by o.id, o.name, o.channel, o.logo_key, ${DUBAI}::date`
+  const daily = `select o.id outlet_id, brand_name(o) outlet, o.channel, o.logo_key, pr.id brand_id, pr.logo_key brand_logo_key, ${DUBAI}::date::text date, count(*)::int slots, min(${PRICE}) from_price
+    ${w.from} ${w.where} group by o.id, o.name, o.channel, o.logo_key, pr.id, pr.logo_key, ${DUBAI}::date`
   const order = sort === 'price' ? 'from_price, outlet' : sort === 'slots' ? 'slots desc, outlet' : 'outlet'
   const rows = (await db.query(`with d as (${daily}),
-      o as (select outlet_id, outlet, channel, logo_key, sum(slots)::int slots, min(from_price) from_price,
+      o as (select outlet_id, outlet, channel, logo_key, brand_id, brand_logo_key, sum(slots)::int slots, min(from_price) from_price,
         json_agg(json_build_object('date', date, 'slots', slots, 'fromPrice', from_price) order by date) days, count(*) over ()::int total
-        from d group by outlet_id, outlet, channel, logo_key)
+        from d group by outlet_id, outlet, channel, logo_key, brand_id, brand_logo_key)
     select * from o order by ${order} ${page(offset, limit)}`, w.params)).rows
   return { total: (rows[0]?.total as number) ?? 0, rows }
 }

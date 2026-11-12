@@ -40,9 +40,9 @@ export function ProductsPage() {
       <a className="btn primary" href="/listings/new">+ {t('Add outlet')}</a></section>}
 
     <div className="pd-grid">{list.map(p => { const top = [...p.media].sort((a, b) => onSale(b).open - onSale(a).open).slice(0, 3)
-      return <a key={p.id} className="card pd-out" href={`/listings/p/${p.id}`} aria-label={p.name}>
+      return <article key={p.id} className="card pd-out">
         <span className="pd-oh"><OutletMark name={p.name} url={p.logoUrl} size={48} />
-          <span className="pd-ot"><b>{p.name}</b>{p.description && <span className="small muted">{p.description}</span>}</span>
+          <span className="pd-ot"><a className="pd-link" href={`/listings/p/${p.id}`}><b>{p.name}</b></a>{p.description && <span className="small muted" dir="auto">{p.description}</span>}</span>
           <i className="pd-go" aria-hidden><Ic d="M9 6l6 6-6 6" size={16} /></i></span>
         <span className="pd-count"><Ic d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" size={18} /><span><small>{t('Products')}</small><b className="num">{p.media.length}</b></span></span>
         {top.length > 0 ? <><span className="pd-topl small">{t('Top products')}</span>
@@ -51,7 +51,8 @@ export function ProductsPage() {
               {m.coverUrl ? <img src={m.coverUrl} alt="" width={56} height={36} loading="lazy" /> : <i className="pd-mic" aria-hidden><Ic d={ICON[m.channel] ?? ICON.other} size={16} /></i>}
               <span className="pd-tn"><b dir="auto">{productTitle(p, m)}</b><small>{mediaName(m)}</small></span>
               <span className={`pt-pill ${s.open ? 'good' : 'mute'}`}>{s.open ? t('{n} on sale', { n: s.open.toLocaleString('en-US') }) : t('Not listed')}</span></span> })}</span></>
-          : <span className="pd-none small muted">{t('No products yet. Open the outlet to add the first one.')}</span>}
-      </a> })}</div>
+          : <span className="pd-none small muted">{t('No products yet.')}</span>}
+        <a className="pd-add" href={`/listings/p/${p.id}?add=1`}>+ {t('Add a product')}</a>
+      </article> })}</div>
   </main>
 }

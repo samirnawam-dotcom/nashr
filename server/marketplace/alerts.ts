@@ -15,7 +15,7 @@ export async function sendSearchAlerts(db: Db, at: Date) {
   if (!searches.length) return 0
   const since = searches.reduce((m, s) => s.checked_at < m ? s.checked_at : m, searches[0].checked_at)
   const slots = (await db.query(
-    `select s.*, p.name placement, o.name outlet, o.channel, o.sectors, o.audience, ${AUDIENCES_SQL} audiences from slots s
+    `select s.*, p.name placement, brand_name(o) outlet, o.channel, o.sectors, o.audience, ${AUDIENCES_SQL} audiences from slots s
        join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
      where s.listed_at > $1 and s.listed_at <= $2 and s.status = 'open' and s.closes_at > $2 and ${OPEN_MARKET}`, [since, at])).rows
     .map(r => ({ listedAt: r.listed_at as Date, starts: r.starts_at as Date, slot: { outlet: r.outlet, placement: r.placement, channel: r.channel, saleType: r.sale_type,

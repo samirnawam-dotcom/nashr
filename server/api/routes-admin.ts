@@ -64,7 +64,7 @@ export function adminRoutes(route: RouteFn) {
     const base = `from deals d join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join slots s on s.id = d.slot_id
       join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where ${w.join(' and ')}`
     const cols = `d.id, d.ref, d.status, d.kind, d.amount, d.currency, d.commission_bp, d.next_deadline_at, d.created_at, d.accepted_at, bc.name buyer, sc.name seller,
-      o.name outlet, o.channel, s.label, s.starts_at`
+      brand_name(o) outlet, o.channel, s.label, s.starts_at`
     if (q.format === 'csv') {
       const rows = (await db.query(`select ${cols} ${base} order by d.created_at desc limit 20000`, params)).rows
       return sendCsv(reply, 'nashr-deals', ['Order', 'Status', 'Kind', 'Buyer', 'Publisher', 'Outlet', 'Channel', 'Slot', 'Airs', 'Price (AED, excl. VAT)', 'Commission %', 'Created', 'Accepted'],
@@ -93,7 +93,7 @@ export function adminRoutes(route: RouteFn) {
 
   // One slot with every bid on it, for Nashr to void a bid (SPEC G11).
   route('GET', '/api/admin/slots/:id', STAFF, async ({ db }, req) => {
-    const s = (await db.query(`select s.*, p.name placement, o.name outlet, o.channel, c.name company from slots s join placements p on p.id = s.placement_id
+    const s = (await db.query(`select s.*, p.name placement, brand_name(o) outlet, o.channel, c.name company from slots s join placements p on p.id = s.placement_id
       join outlets o on o.id = p.outlet_id join companies c on c.id = o.company_id where s.id = $1`, [req.params.id])).rows[0]
     if (!s) throw new NotFound()
     const bids = (await db.query(`select b.id, b.kind, b.amount, b.max_amount, b.status, b.seq, b.created_at, c.name buyer from bids b join companies c on c.id = b.buyer_id

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { tm } from '../i18n-server'
 import { api, type Campaign, type Client } from '../api'
-import { dayLabel, money, time } from '../format'
+import { dayLabel, money, time, slotWhen } from '../format'
 import { dubai } from '../calendar/layout'
 import { ChannelMark, CHANNEL_NAME } from '../calendar/CalendarPage'
 import { PhotoBand } from '../PhotoBand'
@@ -59,7 +59,7 @@ export function ResultsPage() {
           <th>{t('Proof')}</th><th className="r">{t('Reach')}</th></tr></thead>
           <tbody>{r.items.map(i => <tr key={i.id}><td className="num small"><a href={`/bookings/${i.id}`}>{i.ref}</a>{(i.client || i.campaign) && <div className="muted">{[i.client, i.campaign].filter(Boolean).join(' · ')}</div>}</td>
             <td><b>{i.outlet}</b><div className="small muted">{i.placement} · {tm(i.label)}</div></td>
-            <td className="small num">{dayLabel(dubai(i.startsAt).date)} · {time(i.startsAt)}</td><td className="r num">{money(i.price)}</td>
+            <td className="small num">{slotWhen(i.startsAt, i.channel)}</td><td className="r num">{money(i.price)}</td>
             <td className="small">{i.proof ? <span className="dot lead">{t('Received')}</span> : i.aired ? <span className="dot soon">{t('Due')}</span> : <span className="muted">{t('After airing')}</span>}</td>
             <td className="r num small">{i.reach ? people(i.reach) : '—'}</td></tr>)}</tbody></table></div>
       </>}

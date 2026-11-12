@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { tm } from '../i18n-server'
 import { api, type Campaign } from '../api'
-import { closesIn, dayLabel, money, time } from '../format'
+import { closesIn, dayLabel, money, time, slotWhen } from '../format'
 import { dubai } from '../calendar/layout'
 import { CHANNEL } from '../charts'
 import { navigate } from '../nav'
@@ -110,7 +110,7 @@ export function BuyerDashboard() {
         {!d.upcoming.length ? <p className="muted">{t("Nothing booked to run yet.")}</p>
           : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Outlet')}</th><th>{t('Slot')}</th><th>{t('Airs')}</th><th>{t('Status')}</th></tr></thead>
             <tbody>{d.upcoming.map(u => <tr key={u.dealId} onClick={() => navigate(`/bookings/${u.dealId}`)}>
-              <td><ChannelMark c={u.channel} /> <b>{u.outlet}</b></td><td>{tm(u.label)}</td><td className="small">{when(u.startsAt)}</td>
+              <td><ChannelMark c={u.channel} /> <b>{u.outlet}</b></td><td>{tm(u.label)}</td><td className="small">{slotWhen(u.startsAt, u.channel)}</td>
               <td><span className={`pt-pill ${u.status === 'secured' ? 'good' : 'info'}`}>{u.status === 'secured' ? t('Paid, money held') : t('Accepted, waiting for payment')}</span></td></tr>)}</tbody></table></div>}
       </section>
     </main>

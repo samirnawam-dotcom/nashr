@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { tm } from '../i18n-server'
 import { api, type Slot } from '../api'
-import { closesIn, dayLabel, money, time } from '../format'
+import { closesIn, dayLabel, money, time, slotWhen } from '../format'
 import { addDays, dubai, todayInDubai } from '../calendar/layout'
 import { ChannelMark, CHANNEL_NAME, CHANNELS } from '../calendar/CalendarPage'
 import { AUDIENCES } from '../../../server/shared/audiences'
@@ -104,7 +104,7 @@ function SegmentBody({ filter, calendarBase }: { filter: string; calendarBase: s
         <tbody>{next.map(s => <tr key={s.id}>
           <td><b>{s.outlet}</b> <ChannelMark c={s.channel} /></td>
           <td>{s.label && s.label !== s.placement ? `${s.placement} · ${tm(s.label)}` : s.placement}</td>
-          <td className="num">{dayLabel(dubai(s.startsAt).date)} · {time(s.startsAt)}</td>
+          <td className="num">{slotWhen(s.startsAt, s.channel)}</td>
           <td className="small">{closesIn(s.closesAt) ?? dayLabel(dubai(s.closesAt).date)}</td>
           <td className="r num">{money(s.topBid ?? s.startingPrice)}</td></tr>)}</tbody></table></div>
       <div className="row-flex section"><a className="btn primary" href={calendarBase}>{t('See all {n} open slots on the calendar', { n: total.toLocaleString('en-US') })}</a></div></section>}

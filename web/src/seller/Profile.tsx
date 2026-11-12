@@ -71,7 +71,7 @@ export function ProfilePage() {
   const STATUS: [Sec, string, string, boolean][] = [
     ['payouts', t('Payout account'), p.company.payoutsEnabled ? t('Verified') : t('Not connected'), p.company.payoutsEnabled],
     ['tax', t('Tax details'), p.company.trn ? t('TRN {trn}', { trn: p.company.trn }) : p.company.vatRegistered ? t('TRN missing') : t('Not VAT-registered'), !!done.tax],
-    ['outlets', t('Products'), p.outlets.length ? (p.outlets.length === 1 ? p.outlets[0].name : t('{n} media types', { n: p.outlets.length })) : t('None yet'), p.outlets.length > 0],
+    ['outlets', t('Products'), p.outlets.length ? (p.outlets.length === 1 ? p.outlets[0].name : t('{n} products', { n: p.outlets.length })) : t('None yet'), p.outlets.length > 0],
     ['ratecard', t('Rate card'), p.company.rateCard ? t('Shared with Nashr') : t('Not shared'), !!p.company.rateCard],
   ]
   const editing = p.outlets.find(o => o.id === outlet)

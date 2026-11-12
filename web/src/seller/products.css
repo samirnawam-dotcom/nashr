@@ -88,3 +88,10 @@
 .pd-tn { display: grid; min-width: 0; line-height: 1.25; }
 .pd-tn b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .pd-tn small { font-size: 12.5px; color: var(--slate); }
 @media (max-width: 760px) { .pd-grid { grid-template-columns: minmax(0, 1fr); } }
+/* the whole outlet card opens the outlet; "+ Add a product" under it is its own link */
+.pd-out { position: relative; }
+.pd-link { color: inherit; text-decoration: none; }
+.pd-link::after { content: ""; position: absolute; inset: 0; border-radius: 18px; }
+.pd-link:focus-visible { outline: 0; } .pd-link:focus-visible::after { box-shadow: var(--focus); }
+.pd-add { position: relative; z-index: 1; justify-self: start; margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); width: 100%; font: 600 14px var(--body); color: var(--teal); text-decoration: none; }
+.pd-add:hover { text-decoration: underline; text-underline-offset: 3px; }

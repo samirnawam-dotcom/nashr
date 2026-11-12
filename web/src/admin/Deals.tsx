@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { slotWhen } from '../format'
 import { useEffect, useState } from 'react'
 import { DEAL_STATUS, DealStatus, Loading, date, money, useAct, useLoad, when } from './common'
 import { DOC_TYPE } from '../documents/Documents'
@@ -87,7 +88,7 @@ export function AdminDealPage({ id }: { id: string }) {
     <main className="narrow wide">
       <p className="small"><a href="/deals">{t("Deals")}</a> › {d.ref}</p>
       <div className="profile-h"><div><h1>{d.outlet} · {tm(d.label)}</h1>
-        <p className="muted">{when(d.startsAt)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> {t('buys from')} <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
+        <p className="muted">{slotWhen(d.startsAt, d.channel)} · <a href={`/accounts/${d.buyer.id}`}>{d.buyer.name}</a> {t('buys from')} <a href={`/accounts/${d.seller.id}`}>{d.seller.name}</a> · <DealStatus s={d.status} /></p></div></div>
       {msg}
       {d.rating && <section className="card pad section rate"><h2>{d.rating.hidden ? t("Buyer's rating (hidden from the outlet page)") : t("Buyer's rating")}</h2><Stars value={d.rating.score} size={18} />
         {d.rating.comment && <p className="rate-comment">“{d.rating.comment}”</p>}
@@ -255,7 +256,7 @@ export function AdminSlotPage({ id }: { id: string }) {
   return <main className="narrow wide">
     <p className="small"><a href="/calendar">{t('Calendar')}</a> › {s.outlet}</p>
     <h1>{s.outlet} · {tm(s.label)}</h1>
-    <p className="muted">{s.company} · {s.placement} · {when(s.startsAt)} · {t(s.saleType === 'auction' ? 'Auction' : s.saleType === 'fixed' ? 'Fixed price' : 'Quick sale')} · {s.status === 'open' ? t('Open') : st(s.status)}</p>
+    <p className="muted">{s.company} · {s.placement} · {slotWhen(s.startsAt, s.channel)} · {t(s.saleType === 'auction' ? 'Auction' : s.saleType === 'fixed' ? 'Fixed price' : 'Quick sale')} · {s.status === 'open' ? t('Open') : st(s.status)}</p>
     {msg}
     <dl className="kpis">
       <div className="card"><dt>{t('Starting price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>

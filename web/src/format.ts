@@ -21,6 +21,6 @@ export function closesIn(iso: string, now = Date.now()) {
 }
 
 /** A moment for a slot of this media type: date and clock time for radio and TV, the date alone for everything else (owner's rule). */
-export const slotWhen = (iso: string, channel: string, opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }) =>
-  hasTime(channel) ? `${dayLabel(dubai(iso).date, opts)} · ${time(iso)}` : dayLabel(dubai(iso).date, opts)
+export const slotWhen = (iso: string, channel: string | null | undefined, opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }) =>
+  channel == null || hasTime(channel) ? `${dayLabel(dubai(iso).date, opts)} · ${time(iso)}` : dayLabel(dubai(iso).date, opts)
 export { hasTime }

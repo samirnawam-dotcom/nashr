@@ -4,7 +4,7 @@ import { NotFound, type RouteFn } from './app.js'
 import { companyProfile } from './profiles.js'
 import { containsContactDetails } from '../core/contact.js'
 import { requireTwoStepForMoney } from '../auth/two-step.js'
-import { buyerDeal, buyerSlot } from './shapes.js'
+import { buyerDeal, buyerSlot, brandOf } from './shapes.js'
 import { answerCounter, placeBid, requestBuyNow, showInterest, withdrawBuyNow, bookFixed } from '../marketplace/market.js'
 import { minNextBid } from '../core/money.js'
 import { audit } from '../core/audit.js'
@@ -29,7 +29,7 @@ const brief = { type: 'object', additionalProperties: false, properties: {
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.
 const DEAL_SQL = `select d.*, (select e.note from deal_events e where e.deal_id = d.id and e.event in ('decline', 'expire', 'lapse', 'cancel_by_seller', 'cancel_by_buyer', 'creative_missed', 'proof_missed', 'supersede') order by e.id desc limit 1) status_note,
-  s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, p.name placement, (select name from clients where id = d.client_id) client, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
+  s.label, s.starts_at, s.creative_due_at, brand_name(o) outlet, o.channel, p.name placement, (select name from clients where id = d.client_id) client, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
                   join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies sc on sc.id = d.seller_id`
 
 // Only markets that are open can be browsed or booked; KSA is "coming soon" (brief section 14).
@@ -61,7 +61,7 @@ export function buyerRoutes(route: RouteFn) {
     (await byAudience(db, query(me, req.query), at)).map(r => ({ audience: r.audience, slots: r.slots, outlets: r.outlets, fromPrice: Number(r.from_price), channels: r.channels })))
   route('GET', '/api/slots/outlets', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const { total, rows } = await byOutlet(db, query(me, req.query), req.query.sort ?? 'name', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
-    return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: logoUrl({ id: r.outlet_id, logo_key: r.logo_key }),
+    return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: brandOf(r).logoUrl,
       slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice) })) })) }
   })
 
@@ -69,7 +69,7 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
     const r = (await db.query(
-      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.blocked_industries, o.company_id seller_company, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, o.reach, o.reach_unit, coalesce(nullif(p.details->>'notes', ''), o.notes) notes,
+      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.blocked_industries, o.company_id seller_company, o.id outlet_id, brand_name(o) outlet, o.logo_key, o.channel, o.sectors, o.audience, o.reach, o.reach_unit, coalesce(nullif(p.details->>'notes', ''), o.notes) notes,
          pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, (select count(*)::int from bids b where b.slot_id = s.id) bids
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()

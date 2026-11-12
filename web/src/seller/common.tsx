@@ -1,4 +1,4 @@
-import { dayLabel, money, time } from '../format'
+import { dayLabel, money, time, slotWhen } from '../format'
 import { tm } from '../i18n-server'
 import { dubai } from '../calendar/layout'
 import '../directory/directory.css'
@@ -35,7 +35,7 @@ export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
   return <ul className="tasks card">{tasks.slice(0, limit).map((task, i) => (
     <li key={i} className={urgent(task.dueAt) ? 'urgent' : ''}><a href={task.dealId ? `/deals/${task.dealId}` : `/slots/${task.slotId}`}>
       <span className={`task-k ${task.type}`}>{t(TASK[task.type] ?? task.type)}</span>
-      <span className="task-body"><span><b>{task.outlet}</b>{sep}{tm(task.label)}</span><span className="muted small">{when(task.startsAt)}{task.buyer ? `${sep}${task.buyer}` : task.interested ? `${sep}${t('{n} buyers interested', { n: task.interested })}` : ''}</span>
+      <span className="task-body"><span><b>{task.outlet}</b>{sep}{tm(task.label)}</span><span className="muted small">{slotWhen(task.startsAt, (task as any).channel)}{task.buyer ? `${sep}${task.buyer}` : task.interested ? `${sep}${t('{n} buyers interested', { n: task.interested })}` : ''}</span>
         {task.kind === 'buy_now' && <span className="badge on">{t("This buyer will pay now")}</span>}
         {task.kind === 'fixed' && <span className="badge on">{t('Booked at your fixed price')}</span>}
         {task.belowReserve && <span className="badge" style={{ color: 'var(--amber)' }}>{t("Below your reserve")}</span>}</span>

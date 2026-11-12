@@ -40,18 +40,18 @@ export function dashboardRoutes(route: RouteFn) {
   route('GET', '/api/buyer/dashboard', ['buyer'], async ({ db, at, me }) => {
     const id = me.actAs.companyId
     const spend = payEvents('d.buyer_id = $1')
-    const deals = (await db.query(`select d.*, s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel,
+    const deals = (await db.query(`select d.*, s.label, s.starts_at, s.creative_due_at, brand_name(o) outlet, o.channel,
         coalesce(d.media_vat_bp, 0) vat_bp from deals d ${SLOT_JOIN} where d.buyer_id = $1`, [id])).rows
     const total = (d: any) => split(d.amount, { commissionBp: 0, mediaVatBp: d.vat_bp, feeVatBp: 0 }).buyerPays
     const held = deals.filter(d => ['secured', 'in_review', 'issue_open', 'disputed'].includes(d.status))
     const toPay = deals.filter(d => d.status === 'awaiting_payment')
 
     // Live bids: one row per slot this buyer bid on that is still open.
-    const bids = (await db.query(`select s.id slot_id, s.label, s.starts_at, s.closes_at, s.top_amount, s.top_buyer_id = $1 leading, o.name outlet, o.channel,
+    const bids = (await db.query(`select s.id slot_id, s.label, s.starts_at, s.closes_at, s.top_amount, s.top_buyer_id = $1 leading, brand_name(o) outlet, o.channel,
         max(b.max_amount) your_max, max(b.amount) your_bid
       from bids b join slots s on s.id = b.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
       where b.buyer_id = $1 and b.status in ('active', 'outbid') and s.status = 'open' and s.closes_at > $2
-      group by s.id, o.name, o.channel order by s.closes_at`, [id, at])).rows
+      group by s.id, o.id, o.name, o.channel order by s.closes_at`, [id, at])).rows
 
     // What needs the buyer: pay, send creative, review proof, answer an offer.
     const creativeOk = new Set((await db.query(`select distinct deal_id from creatives where status in ('approved', 'pending') and deal_id = any($1)`,
@@ -108,8 +108,8 @@ export function dashboardRoutes(route: RouteFn) {
     const inventory = (await db.query(`select s.status, count(*)::int n from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
       where o.company_id = $1 and s.kind = 'single' and s.starts_at > $2 and s.starts_at < $2::timestamptz + interval '28 days' group by s.status`, [id, at])).rows
     const inv = Object.fromEntries(inventory.map(r => [r.status, r.n]))
-    const placements = (await db.query(`select p.name placement, o.name outlet, sum(d.amount)::bigint v, count(*)::int n from deals d ${SLOT_JOIN}
-      where d.seller_id = $1 and d.status in ${PAID} and s.starts_at > $2::timestamptz - interval '90 days' group by p.name, o.name order by v desc limit 5`, [id, at])).rows
+    const placements = (await db.query(`select p.name placement, brand_name(o) outlet, sum(d.amount)::bigint v, count(*)::int n from deals d ${SLOT_JOIN}
+      where d.seller_id = $1 and d.status in ${PAID} and s.starts_at > $2::timestamptz - interval '90 days' group by p.name, o.id order by v desc limit 5`, [id, at])).rows
     const buyers = (await db.query(`select c.name, sum(d.amount)::bigint v, count(*)::int n from deals d join companies c on c.id = d.buyer_id
       where d.seller_id = $1 and d.status in ${PAID} and d.created_at > $2::timestamptz - interval '90 days' group by c.name order by v desc limit 5`, [id, at])).rows
     return {

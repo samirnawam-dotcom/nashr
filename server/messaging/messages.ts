@@ -53,7 +53,7 @@ export const markRead = (db: Db, dealId: string, companyId: string, at: Date) =>
 /** Every conversation this company has, newest first, with what it hasn't read yet. */
 export async function conversations(db: Db, companyId: string) {
   return (await db.query(`
-    select d.id, d.ref, d.status, s.label, o.name outlet, case when d.buyer_id = $1 then sc.name else bc.name end other,
+    select d.id, d.ref, d.status, s.label, brand_name(o) outlet, case when d.buyer_id = $1 then sc.name else bc.name end other,
            lm.body last_body, lm.created_at last_at, lm.company_id = $1 last_mine,
            (select count(*)::int from messages x where x.deal_id = d.id and x.company_id <> $1 and x.created_at > coalesce(r.read_at, '-infinity')) unread
     from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id

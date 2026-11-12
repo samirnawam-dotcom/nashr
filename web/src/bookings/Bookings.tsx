@@ -2,7 +2,7 @@ import { navigate } from '../nav'
 import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
 import { api, upload, type Client, type Rating } from '../api'
-import { dayLabel, money, time } from '../format'
+import { dayLabel, money, time, slotWhen } from '../format'
 import { dubai } from '../calendar/layout'
 import { DOC_TYPE } from '../documents/Documents'
 import '../directory/directory.css'
@@ -44,7 +44,7 @@ export function BookingsPage() {
       {deals && deals.length > 0 && <div className="table-wrap card"><table className="table">
         <thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th>{clients.length > 0 && <th>{t('Client')}</th>}<th>{t("Airs")}</th><th className="r">{t("Total")}</th><th>{t("Status")}</th></tr></thead>
         <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
-          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {tm(d.label)}</td>{clients.length > 0 && <td className="small"><bdi>{d.client ?? '—'}</bdi></td>}<td className="num">{when(d.startsAt)}</td>
+          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {tm(d.label)}</td>{clients.length > 0 && <td className="small"><bdi>{d.client ?? '—'}</bdi></td>}<td className="num">{slotWhen(d.startsAt, (d as any).channel)}</td>
           <td className="r num">{money(d.total, d.currency)}</td><td><Status s={d.status} /></td></tr>)}</tbody>
       </table></div>}
     </main>
@@ -120,7 +120,7 @@ export function BookingPage({ id }: { id: string }) {
   return (
     <main className="booking">
       <p className="small"><a href="/bookings">{t(t("Bookings"))}</a> {isAr ? '‹' : '›'} {t('Order {ref}', { ref: d.ref })}</p>
-      <div className="page-title"><div><h1>{d.outlet}, {tm(d.label)}</h1><p className="muted">{when(d.startsAt)} · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p></div><Status s={d.status} /></div>
+      <div className="page-title"><div><h1>{d.outlet}, {tm(d.label)}</h1><p className="muted">{slotWhen(d.startsAt, (d as any).channel)} · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p></div><Status s={d.status} /></div>
       <ClientLine id={d.id} clientId={d.clientId ?? null} onSaved={load} />
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">

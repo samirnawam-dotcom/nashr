@@ -16,7 +16,7 @@ export const OutletMark = ({ name, url, size = 40 }: { name: string; url?: strin
  * The logo on an outlet's profile, directory card, bookings and admin. Centre-cropped to a square and resized to 512×512 in the
  * browser, as a PNG so a transparent logo stays transparent; the phone's location and camera details never leave the device.
  */
-export function LogoPicker({ name, url, endpoint }: { name: string; url: string | null; endpoint: string }) {
+export function LogoPicker({ name, url, endpoint, onBlob }: { name: string; url: string | null; endpoint: string; onBlob?: (b: Blob | null) => void }) {
   const [logo, setLogo] = useState(url), [busy, setBusy] = useState(false), [error, setError] = useState(''), [note, setNote] = useState('')
   const input = useRef<HTMLInputElement>(null)
   async function pick(file: File) {
@@ -30,6 +30,8 @@ export function LogoPicker({ name, url, endpoint }: { name: string; url: string 
       const ctx = canvas.getContext('2d')!; ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, SIZE, SIZE)
       const blob = await new Promise<Blob>((ok, no) => canvas.toBlob(b => b ? ok(b) : no(new Error('encode')), 'image/png'))
+      // not saved yet (a new outlet): keep the picture and hand it back; it is uploaded when the outlet is saved
+      if (onBlob) { onBlob(blob); setLogo(URL.createObjectURL(blob)); setNote(t('Logo chosen. It is saved with the outlet.')); return }
       const r = await fetch(`/api${endpoint}`, { method: 'PUT', credentials: 'same-origin', body: blob, headers: { 'content-type': 'image/png' } })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) throw new ApiError(data.error ? tm(data.error) : t('The logo could not be uploaded.'), r.status)
@@ -38,6 +40,7 @@ export function LogoPicker({ name, url, endpoint }: { name: string; url: string 
     finally { setBusy(false); if (input.current) input.current.value = '' }
   }
   async function remove() {
+    if (onBlob) { onBlob(null); setLogo(null); setNote(''); return }
     setBusy(true); setError(''); setNote('')
     try {
       const r = await fetch(`/api${endpoint}`, { method: 'DELETE', credentials: 'same-origin' })

@@ -9,7 +9,7 @@ const PAID = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'pa
 
 export function insightRoutes(route: RouteFn) {
   route('GET', '/api/buyer/results', ['buyer'], async ({ db, me, at }, req) => {
-    const rows = (await db.query(`select d.id, d.ref, d.status, d.amount, coalesce(d.media_vat_bp, 0) vat_bp, s.label, s.starts_at, s.ends_at, o.name outlet, o.channel, o.reach,
+    const rows = (await db.query(`select d.id, d.ref, d.status, d.amount, coalesce(d.media_vat_bp, 0) vat_bp, s.label, s.starts_at, s.ends_at, brand_name(o) outlet, o.channel, o.reach,
         p.name placement, cmp.name campaign, cl.name client, (select count(*) from proofs pr where pr.deal_id = d.id)::int proofs
       from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
       left join bids b on b.id = d.bid_id left join campaigns cmp on cmp.id = b.campaign_id left join clients cl on cl.id = d.client_id
@@ -34,7 +34,7 @@ export function insightRoutes(route: RouteFn) {
   route('GET', '/api/seller/insights', ['seller'], async ({ db, me, at }) => {
     const since = new Date(at.getTime() - 90 * 86_400_000)
     // slots whose sale has finished in the last 90 days: sold, or left unsold
-    const per = (await db.query(`select p.id, p.name, o.name outlet, p.sale_type,
+    const per = (await db.query(`select p.id, p.name, brand_name(o) outlet, p.sale_type,
         count(*)::int slots, count(*) filter (where s.status = 'booked')::int sold,
         coalesce(sum(d.amount) filter (where s.status = 'booked'), 0)::bigint revenue,
         coalesce(sum(s.starting_price) filter (where s.status = 'booked'), 0)::bigint asked,
@@ -42,7 +42,7 @@ export function insightRoutes(route: RouteFn) {
       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
       left join lateral (select amount from deals x where x.slot_id = s.id and x.status in ${PAID} order by x.created_at desc limit 1) d on true
       where o.company_id = $1 and s.closes_at > $2 and s.closes_at <= $3 and s.status <> 'blocked' and s.kind = 'single'
-      group by p.id, p.name, o.name, p.sale_type order by revenue desc, slots desc`, [me.actAs.companyId, since, at])).rows
+      group by p.id, p.name, o.id, p.sale_type order by revenue desc, slots desc`, [me.actAs.companyId, since, at])).rows
     const sum = (k: string) => per.reduce((n, r) => n + Number(r[k]), 0)
     const slots = sum('slots'), sold = sum('sold'), revenue = sum('revenue'), asked = sum('asked')
     return {

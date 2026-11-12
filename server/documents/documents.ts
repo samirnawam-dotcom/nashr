@@ -49,7 +49,7 @@ async function issue(db: Db, d: Doc, at: Date) {
 }
 
 const describe = (db: Db, dealId: string) => one(db,
-  `select d.*, s.label, s.air_date::text air_date, o.name outlet, c.invoice_mode from deals d join slots s on s.id = d.slot_id
+  `select d.*, s.label, s.air_date::text air_date, brand_name(o) outlet, c.invoice_mode from deals d join slots s on s.id = d.slot_id
    join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies c on c.id = d.seller_id where d.id = $1`, [dealId])
 
 /** The Order: what was agreed, for both sides, when the publisher accepts. Prices excl. VAT, plus the media VAT the buyer will pay. */
@@ -122,7 +122,7 @@ export async function statement(db: Db, sellerId: string, month: string) {
   const opening = (await db.query(`select coalesce(sum(case when credit = $1 then amount else -amount end), 0)::bigint n from ledger_entries
     where (debit = $1 or credit = $1) and (at at time zone 'Asia/Dubai') < $2::date`, [acct, first])).rows[0].n
   const { rows } = await db.query(
-    `select l.at, d.ref, d.id deal_id, o.name outlet, s.label, l.debit, l.credit, l.amount, l.currency from ledger_entries l left join deals d on d.id = l.deal_id
+    `select l.at, d.ref, d.id deal_id, brand_name(o) outlet, s.label, l.debit, l.credit, l.amount, l.currency from ledger_entries l left join deals d on d.id = l.deal_id
      left join slots s on s.id = d.slot_id left join placements p on p.id = s.placement_id left join outlets o on o.id = p.outlet_id
      where (l.debit = $1 or l.credit = $1) and to_char(l.at at time zone 'Asia/Dubai', 'YYYY-MM') = $2 order by l.id`, [acct, month])
   const kind = (r: any) => r.credit === acct ? 'released' : r.credit === 'cash' ? 'paid' : 'deducted'

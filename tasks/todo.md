@@ -203,3 +203,4 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Bid drawer and the publisher's slot panel: audience, reach with what it counts, "anything else" as one line with the full text a tap away
 - [x] Calendar rows show the outlet's logo instead of the media type icon
 - [x] Products page: one card per outlet (logo, description, number of products, top 3 with what is on sale); inside an outlet, products grouped by media type, each row opening a summary with Details, Audience, Sectors, Requirements
+- [x] Round 2, completed against the document line by line: "+ Add a product" under each outlet card; logo chosen while creating an outlet; "Pick the product" on the calendar's listing panel; outlet-first names in bookings, inbox, transactions, messages, dashboards and documents (brand_name() in SQL, migration 039); no clock time for date-only media on booking, deal, inbox and results pages; the outlet's logo in the buyer's by-outlet view

@@ -1692,4 +1692,7 @@ export const AR_FLOW: Record<string, string> = {
   "product": "منتج",
   "1 programme": "برنامج واحد",
   "{n} programmes": "{n} برامج",
+  "Logo chosen. It is saved with the outlet.": "تم اختيار الشعار. يُحفظ مع المنفذ.",
+  "Pick the product": "اختر المنتج",
+  "{n} products": "{n} منتجات",
 }

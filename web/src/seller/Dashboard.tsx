@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { slotWhen } from '../format'
 import { tm } from '../i18n-server'
 import { useEffect, useState } from 'react'
 import { api } from '../api'
@@ -95,7 +96,7 @@ export function SellerDashboard() {
           <div className="panel-h"><h2>{t("Coming up on air")}</h2><div className="spacer" /><a href="/deals">{t("Deals")}</a></div>
           {!o.upcoming.length ? <p className="dash-empty">{t("No booked slots coming up.")}</p>
             : <div className="table-wrap"><table className="table"><tbody>{o.upcoming.map(u => <tr key={u.id} onClick={() => (navigate(`/deals/${u.id}`))}>
-              <td><b>{u.outlet}</b> · {tm(u.label)}<div className="small muted">{u.buyer}</div></td><td className="num small">{when(u.startsAt)}</td><td><DealStatus s={u.status} /></td></tr>)}</tbody></table></div>}
+              <td><b>{u.outlet}</b> · {tm(u.label)}<div className="small muted">{u.buyer}</div></td><td className="num small">{slotWhen(u.startsAt, (u as any).channel)}</td><td><DealStatus s={u.status} /></td></tr>)}</tbody></table></div>}
         </section>
       </div>
     </main>

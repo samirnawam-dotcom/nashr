@@ -202,7 +202,7 @@ function Lanes({ days, slots, open, onOpen, onAdd, onDay, picked, onPick }: { da
   // only slots nobody has bid on can change: on sale with no bids, or off sale
   const can = (s: SSlot) => (s.status === 'open' && !s.bids) || s.status === 'blocked', idsOf = (l: SSlot[]) => l.filter(can).map(s => s.id)
   const today = todayInDubai(), lanes = new Map<string, SSlot[]>()
-  for (const s of slots) { const k = `${s.title}\n${s.outlet}`; lanes.set(k, [...(lanes.get(k) ?? []), s]) }
+  for (const s of slots) { const k = `${s.title}\n${s.outletId ?? s.outlet}`; lanes.set(k, [...(lanes.get(k) ?? []), s]) }
   const on = (l: SSlot[], d: string) => l.filter(s => dubai(s.startsAt).date === d).sort((x, y) => Number(x.kind !== 'single') - Number(y.kind !== 'single') || x.startsAt.localeCompare(y.startsAt))
   const pill = (s: SSlot) => { const [label, k] = bidState(s), timed = s.kind === 'single' && !isLong(s) && hasTime(s.channel)
     return <button key={s.id} type="button" className={`ln-ev cc-ev s-${k} ${s.kind === 'single' ? '' : 'pkg'} ${open === s.id ? 'on' : ''} ${picked ? (picked.includes(s.id) ? 'picked' : can(s) ? 'pickable' : 'locked') : ''}`}

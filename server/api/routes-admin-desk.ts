@@ -17,7 +17,7 @@ import { coverUrl, logoUrl } from './routes-covers.js'
 import { dealRating } from './routes-ratings.js'
 import { staffTwoStep } from '../auth/access.js'
 import { byDay, byOutlet, listSlots, scopedQuery } from '../marketplace/search.js'
-import { sellerSlot } from './shapes.js'
+import { sellerSlot, brandOf } from './shapes.js'
 import { MEDIA } from '../shared/media.js'
 
 const STAFF: ['admin'] = ['admin'] // founders pass every admin check (app.ts)
@@ -71,7 +71,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
         exists (select 1 from password_resets r where r.user_id = users.id and r.issued_at is null and r.used_at is null) reset_requested
       from users where company_id = $1 order by created_at`, [c.id])).rows
     const outlets = (await db.query(`select id, name, channel, sectors, logo_key from outlets where company_id = $1 order by name`, [c.id])).rows
-    const deals = (await db.query(`select d.id, d.ref, d.status, d.amount, d.created_at, s.label, o.name outlet from deals d join slots s on s.id = d.slot_id
+    const deals = (await db.query(`select d.id, d.ref, d.status, d.amount, d.created_at, s.label, brand_name(o) outlet from deals d join slots s on s.id = d.slot_id
         join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.buyer_id = $1 or d.seller_id = $1 order by d.created_at desc limit 50`, [c.id])).rows
     const commission = (await db.query(`select value, valid_from, changed_by from settings where key = $1 order by valid_from desc`, [`commission:${c.id}`])).rows
     return { id: c.id, name: c.name, type: c.type, trn: c.trn, vatRegistered: c.vat_registered, payoutsEnabled: c.payouts_enabled,
@@ -92,7 +92,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   route('GET', '/api/admin/slots/days', STAFF, async ({ db, at }, req) => byDay(db, scopedQuery(req.query, 'admin', null), at))
   route('GET', '/api/admin/slots/outlets', STAFF, async ({ db, at }, req) => {
     const { total, rows } = await byOutlet(db, scopedQuery(req.query, 'admin', null), req.query.sort ?? 'name', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
-    return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: logoUrl({ id: r.outlet_id, logo_key: r.logo_key }),
+    return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: brandOf(r).logoUrl,
       slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice) })) })) }
   })
 
@@ -132,7 +132,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
 
   // The full file on one deal, for operations and disputes: every event with its actor, the money, the ledger.
   route('GET', '/api/admin/deals/:id', STAFF, async ({ db }, req) => {
-    const d = (await db.query(`select d.*, s.label, s.starts_at, s.creative_due_at, o.name outlet, o.channel, bc.name buyer, sc.name seller, b.brief,
+    const d = (await db.query(`select d.*, s.label, s.starts_at, s.creative_due_at, brand_name(o) outlet, o.channel, bc.name buyer, sc.name seller, b.brief,
         coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_preview
         from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
         join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join bids b on b.id = d.bid_id where d.id = $1`, [req.params.id])).rows[0]
@@ -163,7 +163,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
 
   route('GET', '/api/admin/disputes', STAFF, async ({ db }) => (await db.query(
     `select d.id, d.ref, d.status, d.amount, d.next_deadline_at, d.decide_by, d.chargeback,
-       (select count(*)::int from dispute_statements ds where ds.deal_id = d.id) statements, bc.name buyer, sc.name seller, o.name outlet, s.label, i.reason, i.note, i.offer, i.opened_at
+       (select count(*)::int from dispute_statements ds where ds.deal_id = d.id) statements, bc.name buyer, sc.name seller, brand_name(o) outlet, s.label, i.reason, i.note, i.offer, i.opened_at
      from deals d join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join slots s on s.id = d.slot_id
      join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
      left join lateral (select * from issues i where i.deal_id = d.id order by opened_at desc limit 1) i on true
@@ -219,7 +219,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
     return { from, to, sellersStillOwe: outstanding, scorecard: (await scorecard(db, from, to)).map(m => ({ ...m, met: met(m) })),
       byMonth: await q(`select to_char(d.created_at at time zone 'Asia/Dubai', 'YYYY-MM') as month, ${agg} ${base} group by 1 order by 1`),
       byChannel: await q(`select o.channel, ${agg} ${base} group by 1 order by gmv desc`),
-      byOutlet: await q(`select o.name outlet, o.channel, ${agg} ${base} group by 1, 2 order by gmv desc limit 50`),
+      byOutlet: await q(`select brand_name(o) outlet, o.channel, ${agg} ${base} group by 1, 2 order by gmv desc limit 50`),
       bySaleType: await q(`select d.kind, ${agg} ${base} group by 1 order by gmv desc`),
       // Refund losses (brief 12A): refunds sent, card costs recovered from buyers and sellers, what sellers still owe.
       // ponytail: the provider's own refund fees are recorded with Stripe (B5); until then "card costs" are Nashr's estimate.
@@ -234,7 +234,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
 
   // Quote requests from the directory, and the directory entries for outlets not on Nashr.
   route('GET', '/api/admin/quotes', STAFF, async ({ db }) => (await db.query(
-    `select q.id, q.message, q.status, q.created_at, o.name outlet, o.id outlet_id, c.name buyer from quote_requests q join outlets o on o.id = q.outlet_id
+    `select q.id, q.message, q.status, q.created_at, brand_name(o) outlet, o.id outlet_id, c.name buyer from quote_requests q join outlets o on o.id = q.outlet_id
      join companies c on c.id = q.buyer_id order by (q.status = 'open') desc, q.created_at desc limit 300`)).rows
     .map(r => ({ id: r.id, message: r.message, status: r.status, createdAt: r.created_at, outlet: r.outlet, outletId: r.outlet_id, buyer: r.buyer })))
 

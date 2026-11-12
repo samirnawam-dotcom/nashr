@@ -72,7 +72,7 @@ export function clientRoutes(route: RouteFn) {
     const c = (await db.query(`${TOTALS} and c.id = $2`, [me.actAs.companyId, req.params.id])).rows[0]
     if (!c) throw new NotFound()
     // one connection runs one query at a time
-    const deals = await db.query(`select d.id, d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, o.name outlet, o.channel from deals d join slots s on s.id = d.slot_id
+    const deals = await db.query(`select d.id, d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, brand_name(o) outlet, o.channel from deals d join slots s on s.id = d.slot_id
                 join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.client_id = $1 order by s.starts_at desc`, [c.id])
     const docs = await db.query(`select x.id, x.type, x.number, x.total, x.currency, x.issued_at, d.ref from documents x join deals d on d.id = x.deal_id
                 where d.client_id = $1 and x.recipient_id = $2 order by x.issued_at desc`, [c.id, me.actAs.companyId])
@@ -89,7 +89,7 @@ export function clientRoutes(route: RouteFn) {
     const c = (await db.query(`select * from clients where id = $1 and buyer_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
     if (!c) throw new NotFound()
     const rows = (await db.query(
-      `select d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, o.name outlet, o.channel, p.name placement, cmp.name campaign,
+      `select d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, brand_name(o) outlet, o.channel, p.name placement, cmp.name campaign,
          coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
          (select string_agg(x.number, ' ' order by x.issued_at) from documents x where x.deal_id = d.id and x.recipient_id = d.buyer_id) docs
        from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id

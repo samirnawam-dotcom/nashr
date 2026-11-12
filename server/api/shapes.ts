@@ -27,7 +27,7 @@ export const buyerSlot = (r: any, me: string | null) => ({
 export const buyerDeal = (d: any) => {
   const s = split(d.amount, { commissionBp: 0, mediaVatBp: d.vat_bp, feeVatBp: 0 })
   return {
-    id: d.id, ref: d.ref, kind: d.kind, status: buyerStatus[d.status] ?? d.status, outlet: d.outlet, label: d.label, startsAt: d.starts_at,
+    id: d.id, ref: d.ref, kind: d.kind, status: buyerStatus[d.status] ?? d.status, outlet: d.outlet, channel: d.channel ?? null, label: d.label, startsAt: d.starts_at,
     currency: d.currency, price: d.amount, vat: s.mediaVat, total: s.buyerPays, nextDeadlineAt: d.next_deadline_at, reason: d.status_note ?? null, client: d.client ?? null,
     counter: d.counter_amount != null ? { price: Number(d.counter_amount), note: d.counter_note ?? null, at: d.countered_at } : null,
   }
@@ -43,7 +43,7 @@ export const sellerDeal = (d: any, bids: any[] = []) => {
   const rates = { commissionBp: d.commission_bp ?? d.default_commission_bp, mediaVatBp: d.vat_bp, feeVatBp: d.fee_vat_bp ?? 0 }
   const s = split(d.amount, rates)
   return {
-    id: d.id, ref: d.ref, status: d.status, label: d.label, startsAt: d.starts_at, nextDeadlineAt: d.next_deadline_at,
+    id: d.id, ref: d.ref, status: d.status, channel: d.channel ?? null, label: d.label, startsAt: d.starts_at, nextDeadlineAt: d.next_deadline_at,
     buyer: { company: d.buyer_name },           // company name and ad details only, never contact details (brief section 6)
     brief: d.brief, checks: d.brief ? briefChecks(d.brief, { channel: d.channel, sectors: d.sectors }) : null,
     belowReserve: d.reserve_price != null && d.amount < d.reserve_price, paymentFailed: !!d.payment_failed,

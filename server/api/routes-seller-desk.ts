@@ -31,13 +31,13 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
   const q = async (sql: string) => (await db.query(sql, [me, at])).rows
   const base = `from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                 join companies b on b.id = d.buyer_id where d.seller_id = $1`
-  const cols = `d.id deal_id, d.ref, s.id slot_id, s.label, s.starts_at, o.name outlet, b.name buyer, d.amount, coalesce(d.amount < s.reserve_price, false) below_reserve, d.counter_amount`
+  const cols = `d.id deal_id, d.ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet, b.name buyer, d.amount, coalesce(d.amount < s.reserve_price, false) below_reserve, d.counter_amount`
   const rows = [
     ...(await q(`select 'decide' type, ${cols}, d.next_deadline_at due, d.kind ${base} and d.status = 'awaiting_seller' and $2::timestamptz is not null`)),
-    ...(await q(`select 'choose' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.name outlet, null buyer, s.top_amount amount, false below_reserve, s.choice_deadline_at due, null kind
+    ...(await q(`select 'choose' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet, null buyer, s.top_amount amount, false below_reserve, s.choice_deadline_at due, null kind
                  from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                  where o.company_id = $1 and s.status = 'awaiting_choice' and s.choice_deadline_at > $2`)),
-    ...(await q(`select 'interest' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.name outlet,
+    ...(await q(`select 'interest' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet,
                  (select case when count(*) = 1 then max(c.name) end from bids b join companies c on c.id = b.buyer_id
                    where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') buyer,
                  (select count(*)::int from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') interested,
@@ -60,7 +60,7 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
                  and not exists (select 1 from documents x where x.deal_id = d.id and x.type = 'media_invoice')`)),
   ]
   return rows.sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity)).map(r => ({
-    type: r.type, dealId: r.deal_id, ref: r.ref, slotId: r.slot_id, outlet: r.outlet, label: r.label, startsAt: r.starts_at,
+    type: r.type, dealId: r.deal_id, ref: r.ref, slotId: r.slot_id, outlet: r.outlet, channel: r.channel ?? null, label: r.label, startsAt: r.starts_at,
     buyer: r.buyer, amount: r.amount, dueAt: r.due, kind: r.kind, belowReserve: r.type === 'decide' && r.below_reserve, counter: r.counter_amount != null ? Number(r.counter_amount) : null, ...(r.type === 'interest' ? { interested: r.interested } : {}) }))
 }
 
@@ -76,7 +76,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     const outlet = typeof req.query.outlet === 'string' && /^[0-9a-f-]{36}$/.test(req.query.outlet) ? req.query.outlet : null
     const from = new Date(at.getTime() - days * 86_400_000), prev = new Date(from.getTime() - days * 86_400_000)
     // Rates are fixed when the publisher accepts; before that, the publisher's current commission and VAT give the expected figures.
-    const deals = (await db.query(`select d.*, o.id outlet_id, o.name outlet, o.channel, p.name placement, s.label, s.starts_at, c.name buyer,
+    const deals = (await db.query(`select d.*, o.id outlet_id, brand_name(o) outlet, o.channel, p.name placement, s.label, s.starts_at, c.name buyer,
         (select min(e.at) from deal_events e where e.deal_id = d.id and e.event = 'pay') paid_at,
         coalesce(d.commission_bp, (select (value)::int from settings where key = 'commission:' || d.seller_id order by valid_from desc limit 1),
           (select (value)::int from settings where key = 'default_commission_bp' order by valid_from desc limit 1)) commission_bp,
@@ -133,7 +133,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
         (select count(*)::int from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where o.company_id = $1 and s.status = 'open' and s.starts_at > $2) open_slots`,
       [id, at])).rows[0]
     const held = (await db.query(`select * from deals where seller_id = $1 and status in ${HELD}`, [id])).rows
-    const upcoming = (await db.query(`select d.id, d.ref, d.status, s.label, s.starts_at, o.name outlet, b.name buyer from deals d join slots s on s.id = d.slot_id
+    const upcoming = (await db.query(`select d.id, d.ref, d.status, s.label, s.starts_at, brand_name(o) outlet, b.name buyer from deals d join slots s on s.id = d.slot_id
         join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies b on b.id = d.buyer_id
         where d.seller_id = $1 and d.status in ('awaiting_payment', 'secured') and s.starts_at > $2 order by s.starts_at limit 6`, [id, at])).rows
     const todo = await inbox(db, id, at)
@@ -148,7 +148,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
 
   // One slot for the seller's calendar panel: bids by company (buyers' contact details never), deals, reserve.
   route('GET', '/api/seller/slots/:id', SELLER, async ({ db, me, at }, req) => {
-    const s = (await db.query(`select s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.logo_key, o.audience, o.reach, o.reach_unit, coalesce(nullif(p.details->>'notes', ''), o.notes) notes,
+    const s = (await db.query(`select s.*, p.name placement, o.id outlet_id, brand_name(o) outlet, o.channel, o.logo_key, o.audience, o.reach, o.reach_unit, coalesce(nullif(p.details->>'notes', ''), o.notes) notes,
         pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key from slots s join placements p on p.id = s.placement_id
         join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id where s.id = $1 and o.company_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
     if (!s) throw new NotFound()
@@ -245,7 +245,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
   // Earnings: what is held for bookings in progress, what is released and waiting for transfer, and every payout.
   route('GET', '/api/seller/earnings', SELLER, async ({ db, me }) => {
     const id = me.actAs.companyId
-    const deals = (await db.query(`select d.*, s.label, s.starts_at, o.name outlet from deals d join slots s on s.id = d.slot_id
+    const deals = (await db.query(`select d.*, s.label, s.starts_at, brand_name(o) outlet from deals d join slots s on s.id = d.slot_id
         join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
         where d.seller_id = $1 and d.status in ${HELD.slice(0, -1)}, 'released', 'paid_out') order by s.starts_at desc limit 500`, [id])).rows
     const payouts = (await db.query(`select at, amount, currency, ref from ledger_entries where debit = $1 and credit = 'cash' order by id desc limit 100`,
@@ -287,7 +287,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     const c = (await db.query(`select c.name, c.trn, c.address, c.vat_registered, c.invoice_mode, c.payouts_enabled, f.id rate_card_id, f.name rate_card_name
       from companies c left join files f on f.id = c.rate_card_file where c.id = $1`, [me.actAs.companyId])).rows[0]
     const outlets = (await db.query(`select * from outlets where company_id = $1 order by name`, [me.actAs.companyId])).rows
-    const placements = (await db.query(`select p.*, o.name outlet,
+    const placements = (await db.query(`select p.*, brand_name(o) outlet,
         (select count(*)::int from slots s where s.placement_id = p.id and s.status = 'open' and s.starts_at > now()) open_slots,
         (select max(s.air_date)::text from slots s where s.placement_id = p.id) listed_until
         from placements p join outlets o on o.id = p.outlet_id where o.company_id = $1 order by p.archived, o.name, p.name`, [me.actAs.companyId])).rows

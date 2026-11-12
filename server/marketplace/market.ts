@@ -106,7 +106,7 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
   } else if (max > slot.top_max) { // challenger takes the lead
     const price = reserveFloor(slot, Math.max(a.amount, Math.min(max, minNextBid(slot.top_max, step))), max)
     await db.query(`update bids set status = 'outbid' where slot_id = $1 and buyer_id = $2 and status = 'active'`, [slot.id, slot.top_buyer_id])
-    const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+    const { outlet } = await one(db, `select brand_name(o) outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
     // an auto-bidder hears that their maximum was passed, so they can raise it; a plain bidder that they were outbid
     const autoBidder = slot.top_max > slot.top_amount
     await notify(db, slot.top_buyer_id, 'bid.outbid', null, { slotId: slot.id, outlet, label: slot.label, ...(autoBidder ? { max: slot.top_max } : {}), top: price }, at)
@@ -120,7 +120,7 @@ export async function placeBid(db: Db, a: { slotId: string; buyerId: string; amo
       : { id: slot.top_bid_id }
     top = { bidId: bid.id, amount: price, buyerId: slot.top_buyer_id, max: slot.top_max }
     if (price > slot.top_amount) { // tell the auto-bidder it worked, and when it has reached the cap
-      const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+      const { outlet } = await one(db, `select brand_name(o) outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
       await notify(db, slot.top_buyer_id, price >= slot.top_max ? 'bid.auto_cap' : 'bid.auto_raised', null,
         { slotId: slot.id, outlet, label: slot.label, amount: price, max: slot.top_max }, at)
     }
@@ -165,7 +165,7 @@ export async function voidBid(db: Db, bidId: string, reason: string, actor: stri
     await db.query(`update bids set status = case when buyer_id = $2 then 'active' else 'outbid' end where slot_id = $1 and status in ('active', 'outbid') and kind in ('bid', 'auto')`, [slot.id, lead.buyer_id])
     await db.query(`update slots set top_bid_id = $2, top_amount = $3, top_buyer_id = $4, top_max = $5 where id = $1`, [slot.id, top.id, price, lead.buyer_id, leadMax])
   }
-  const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  const { outlet } = await one(db, `select brand_name(o) outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
   await notify(db, bid.buyer_id, 'bid.voided', null, { slotId: slot.id, outlet, label: slot.label, reason: reason.trim() }, at)
   await audit(db, actor, 'bid.voided', 'slot', slot.id, { bidId, buyer: bid.buyer_id, reason: reason.trim() }, at)
 }
@@ -227,7 +227,7 @@ export async function showInterest(db: Db, a: { slotId: string; buyerId: string;
   await db.query(`update bids set status = 'withdrawn' where slot_id = $1 and buyer_id = $2 and kind = 'interest' and status = 'active'`, [slot.id, a.buyerId])
   const bid = await insertBid(db, slot, { buyerId: a.buyerId, kind: 'interest', amount, brief: a.brief, campaignId: tag.campaignId, clientId: tag.clientId }, at)
   // The publisher hears at once: the interest is a request waiting on them (it shows in their inbox until bidding closes).
-  const { outlet, seller } = await one(db, `select o.name outlet, o.company_id seller from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  const { outlet, seller } = await one(db, `select brand_name(o) outlet, o.company_id seller from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
   await notify(db, seller, 'interest.received', null, { slotId: slot.id, outlet, label: slot.label, amount }, at)
   return bid
 }
@@ -236,7 +236,7 @@ export async function showInterest(db: Db, a: { slotId: string; buyerId: string;
 export async function expireInterests(db: Db, slotId: string, at: Date) {
   const slot = await lockSlot(db, slotId)
   const gone = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and kind = 'interest' and status = 'active' returning buyer_id`, [slot.id])).rows
-  const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  const { outlet } = await one(db, `select brand_name(o) outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
   for (const b of gone) await notify(db, b.buyer_id, 'interest.expired', null, { slotId: slot.id, outlet, label: slot.label }, at)
   return gone.length
 }
@@ -260,7 +260,7 @@ export async function closeAuction(db: Db, slotId: string, at: Date) {
   const bid = await one(db, `select * from bids where id = $1`, [slot.top_bid_id])
   const deal = await openDeal(db, slot, bid, 'auction', 'system', at)
   // The winner hears at once; the others learn bidding closed (they may still be offered the slot if the publisher passes).
-  const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+  const { outlet } = await one(db, `select brand_name(o) outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
   await notify(db, bid.buyer_id, 'bid.won', deal.id, { slotId: slot.id, outlet, label: slot.label, amount: bid.amount }, at)
   for (const b of (await db.query(`select distinct buyer_id from bids where slot_id = $1 and buyer_id <> $2 and status <> 'withdrawn'`, [slot.id, bid.buyer_id])).rows)
     await notify(db, b.buyer_id, 'bid.closed_lost', null, { slotId: slot.id, outlet, label: slot.label, amount: bid.amount }, at)
@@ -302,7 +302,7 @@ export async function releaseBids(db: Db, slotId: string, at: Date, except?: str
   const gone = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid') returning buyer_id`, [slotId])).rows
   const buyers = [...new Set(gone.map(b => b.buyer_id as string))]
   if (!buyers.length) return
-  const s = await one(db, `select s.label, o.name outlet from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1`, [slotId])
+  const s = await one(db, `select s.label, brand_name(o) outlet from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1`, [slotId])
   for (const b of buyers) await notify(db, b, 'bid.not_selected', null, { slotId, outlet: s.outlet, label: s.label }, at)
 }
 
@@ -336,7 +336,7 @@ export async function accept(db: Db, dealId: string, actor: string, at: Date) {
   // until payment is secured, so the seller can pick another one if this buyer does not pay (SPEC 11.1 #7).
   if (deal.kind === 'buy_now' || deal.kind === 'quick_sale') {
     const others = (await db.query(`update bids set status = 'not_selected' where slot_id = $1 and status in ('active', 'outbid') returning buyer_id, kind`, [slot.id])).rows
-    const { outlet } = await one(db, `select o.name outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
+    const { outlet } = await one(db, `select brand_name(o) outlet from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
     for (const b of others.filter(b => b.kind === 'interest' && b.buyer_id !== deal.buyer_id))
       await notify(db, b.buyer_id, 'interest.not_selected', null, { slotId: slot.id, outlet, label: slot.label }, at)
   }
@@ -361,7 +361,7 @@ export async function decline(db: Db, dealId: string, reason: string, actor: str
  * with the publisher and keeps its deadline; the buyer agrees (the booking is accepted at that price) or keeps their offer.
  */
 export async function counter(db: Db, dealId: string, amount: number, note: string | null, actor: string, at: Date) {
-  const deal = await one(db, `select d.*, s.label, o.name outlet from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
+  const deal = await one(db, `select d.*, s.label, brand_name(o) outlet from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
     join outlets o on o.id = p.outlet_id where d.id = $1 for update of d`, [dealId])
   if (deal.status !== 'awaiting_seller') throw new MarketError('Only a request waiting on you can get a counter offer.')
   if (deal.next_deadline_at && new Date(deal.next_deadline_at) <= at) throw new MarketError('This request has expired.')

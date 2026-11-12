@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { tm } from '../i18n-server'
 import { api, type Campaign } from '../api'
-import { dayLabel, money, time } from '../format'
+import { dayLabel, money, time, slotWhen } from '../format'
 import { dubai } from '../calendar/layout'
 import { Status } from '../bookings/Bookings'
 import './media-plan.css'
@@ -74,7 +74,7 @@ export function MediaPlanPage({ id }: { id: string }) {
           {!c.bookings.length ? <p className="muted">{t("Nothing booked yet.")}</p> :
             <table className="plan-table"><thead><tr><th>{t("Order")}</th><th>{t("Outlet and slot")}</th><th>{t("Airs")}</th><th className="r">{t("Price")}</th><th>{t("Status")}</th></tr></thead>
               <tbody>{c.bookings.map(b => <tr key={b.id}><td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {tm(b.label)}</td>
-                <td className="num">{dayLabel(dubai(b.startsAt).date)} · {time(b.startsAt)}</td><td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table>}
+                <td className="num">{slotWhen(b.startsAt, (b as any).channel)}</td><td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table>}
         </section>
 
         <footer className="plan-foot">{t('Prices in AED, excluding VAT. Times in Dubai time. Payments are held by Nashr until the publisher proves the ad ran.')}
