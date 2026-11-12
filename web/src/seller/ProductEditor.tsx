@@ -268,6 +268,8 @@ export function ProductEditorPage({ id }: { id?: string }) {
     try { await api(`/seller/products/${p.id}/delete`, { method: 'POST', body: {} }); navigate('/listings') } catch (e: any) { setError(tm(e.message)) }
   }
   if (id && !all) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}</main>
+  // an address for an outlet that is not there (deleted, or an old link): say so rather than offer a blank form
+  if (id && !p) return <main className="nf"><span className="nf-code num" aria-hidden>404</span><h1>{t('Not found')}</h1><p className="muted">{t('This page does not exist, or it has moved.')}</p><a className="btn primary" href="/listings">{t('Products')}</a></main>
   const groups = p ? MEDIA.filter(c => p.media.some(m => m.channel === c)) : []
   const saved = async (mid: string, isNew: boolean) => { await load(); setEditing(null); setNote(t('Product saved.')); setOpen(mid); if (isNew) setListing(mid) }
   return <main className="ed">

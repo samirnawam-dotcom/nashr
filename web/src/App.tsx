@@ -51,11 +51,9 @@ const SellerDealPage = L(load_seller_Deals, 'SellerDealPage')
 const SellerDealsPage = L(load_seller_Deals, 'SellerDealsPage')
 const load_seller_Earnings = () => import('./seller/Earnings')
 const EarningsPage = L(load_seller_Earnings, 'EarningsPage')
-const load_seller_Listings = () => import('./seller/Listings')
 const ProductsPage = L(() => import('./seller/Products'), 'ProductsPage')
 const ProductEditorPage = L(() => import('./seller/ProductEditor'), 'ProductEditorPage')
-const NewPlacementPage = L(load_seller_Listings, 'NewPlacementPage')
-const ImportPlacementsPage = L(load_seller_Listings, 'ImportPlacementsPage')
+const ImportRateCardPage = L(() => import('./seller/RateCardImport'), 'ImportRateCardPage')
 const load_seller_Profile = () => import('./seller/Profile')
 const ProfilePage = L(load_seller_Profile, 'ProfilePage')
 const load_buyer_Dashboard = () => import('./buyer/Dashboard')
@@ -66,7 +64,6 @@ const AudiencesPage = L(load_segments, 'AudiencesPage'), AudiencePage = L(load_s
 const InsightsPage = L(load_articles, 'InsightsPage'), ArticlePage = L(load_articles, 'ArticlePage')
 const MessagesPage = L(() => import('./messages/Messages'), 'MessagesPage')
 const CompanyPage = L(() => import('./buyer/Company'), 'CompanyPage')
-const EditPlacementPage = L(load_seller_Listings, 'EditPlacementPage')
 const StatementPage = L(() => import('./seller/Statement'), 'StatementPage')
 const load_Athena = () => import('./Athena')
 const AthenaPage = L(load_Athena, 'AthenaPage')
@@ -136,10 +133,11 @@ const SELLER: Routes = [
   [/^\/earnings/, () => <SubTabs tabs={REPORT_TABS()}><EarningsPage /></SubTabs>],
   [/^\/messages\/([\w-]+)$/, id => <SubTabs tabs={INBOX_TABS()}><MessagesPage open={id} role="seller" /></SubTabs>],
   [/^\/messages/, () => <SubTabs tabs={INBOX_TABS()}><MessagesPage role="seller" /></SubTabs>],
-  [/^\/listings\/([\w-]+)\/edit$/, id => <EditPlacementPage id={id} />],
+  // old bookmarks of the single-placement edit page open the outlet that holds it
+  [/^\/listings\/([\w-]+)\/edit$/, id => <Moved to={`/listings/p/${id}`} />],
   [/^\/listings\/new$/, () => <ProductEditorPage />],
   [/^\/listings\/p\/([\w-]+)$/, id => <ProductEditorPage key={id} id={id} />],
-  [/^\/listings\/import$/, () => <ImportPlacementsPage />],
+  [/^\/listings\/import$/, () => <ImportRateCardPage />],
   [/^\/listings/, () => <ProductsPage />],
   [/^\/profile/, () => <ProfilePage />],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
@@ -181,6 +179,10 @@ const GUEST: Routes = [...LEGAL,
   [/^\/directory/, () => <DirectoryPage />],
 ]
 const routesFor = (role: string): Routes => [...LEGAL, [/^\/account$/, () => <MyAccountPage />], ...(role === 'seller' ? SELLER : role === 'admin' || role === 'founder' ? ADMIN(role === 'founder') : BUYER)]
+/** An address that moved: go to the new one without leaving the old one in the history. */
+// (a tick later: on a first load this runs before the app has started listening for address changes)
+function Moved({ to }: { to: string }) { useEffect(() => { const k = setTimeout(() => navigate(to, true), 0); return () => clearTimeout(k) }, [to]); return null }
+
 const isActive = (path: string, p: string, seller = false) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
   // the publisher's merged items: Inbox holds requests and messages, Reports holds transactions, balances and documents
