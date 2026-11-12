@@ -56,7 +56,8 @@ export function ListingsPage() {
 
 const aed = (v: string) => v.trim() ? Math.round(Number(v.replace(/,/g, '')) * 100) : undefined
 
-export { NewPlacementPage, ImportPlacementsPage } from './PlacementForm'
+export { NewPlacementPage } from './PlacementForm'
+export { ImportRateCardPage as ImportPlacementsPage } from './RateCardImport'
 
 /** A switch that only makes sense with a reserve: when bidding closes at or above it, the winner is accepted without waiting for the publisher. */
 function AutoAccept({ on, reserve, onChange }: { on: boolean; reserve: boolean; onChange: (v: boolean) => void }) {

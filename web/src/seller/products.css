@@ -95,3 +95,10 @@
 .pd-link:focus-visible { outline: 0; } .pd-link:focus-visible::after { box-shadow: var(--focus); }
 .pd-add { position: relative; z-index: 1; justify-self: start; margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); width: 100%; font: 600 14px var(--body); color: var(--teal); text-decoration: none; }
 .pd-add:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Rate card import: the three names a row uses, in the owner's words */
+.rc-how { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.rc-how li { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
+.rc-how b { font: 650 14.5px var(--display); } .rc-how span { font-size: 13.5px; color: var(--slate); line-height: 1.45; }
+.rc .table td { vertical-align: top; }
+@media (max-width: 760px) { .rc-how { grid-template-columns: minmax(0, 1fr); } }
