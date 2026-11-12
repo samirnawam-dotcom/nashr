@@ -143,7 +143,7 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
       {HAS_PROGRAMMES.includes(f.channel) && <label className="ed-switch"><input type="checkbox" checked={byProgramme} onChange={e => setD({ programmes: e.target.checked })} />
         <span><b>{t('Sell it by programme')}</b><span className="small muted">{t('Each show, for example Morning Markets, gets its own days, airtime and breaks. Leave off to sell it as one.')}</span></span></label>}
       {byProgramme && <p className="ed-after small">{t("You'll add each programme after saving.")}</p>}
-      {older && <p className="ed-after small">{t('This product is sold through what you added before: {names}. List them from the product\'s row.', { names: (m?.sellable ?? []).map(x => x.name).join(', ') })}</p>}
+      {older && <p className="ed-after small">{t('This product is sold through what you added before: {names}. Edit or list them from the product\'s row.', { names: (m?.sellable ?? []).map(x => x.name).join(', ') })}</p>}
       {!byProgramme && !older && TYPE_FIELDS[f.channel] && <><h3 className="ed-sec">{t('{type} details', { type: f.channel === OTHER ? f.channelOther || t('Other') : t(MEDIA_LABEL[f.channel]) })}</h3>
         <div className="ed-type"><TypeFields idp={idp} fields={TYPE_FIELDS[f.channel]} d={f.details} set={setD} err={err} /></div>
         {f.channel === 'magazine' && <p className="small muted">{t('No time field: the date the magazine comes out is picked when you list it.')}</p>}</>}
@@ -212,6 +212,41 @@ function ProgrammeForm({ media, p, onSaved, onCancel }: { media: Media; p?: Sell
         <div className="field"><label htmlFor={`${idp}-pc`}>{t('Creative due (days before it runs)')}</label><input id={`${idp}-pc`} inputMode="numeric" value={cd} onChange={e => setCd(e.target.value.replace(/\D/g, ''))} /></div>
         <div className="field"><label htmlFor={`${idp}-pb`}>{t('Bidding closes (days before it runs)')}</label><input id={`${idp}-pb`} inputMode="numeric" value={bc} onChange={e => setBc(e.target.value.replace(/\D/g, ''))} /></div></div></details>
     <div className="ed-save">{error && <p className="error" role="alert">{error}</p>}<span className="spacer" /><button type="button" className="btn primary" disabled={busy} onClick={save}>{p ? t('Save') : t('Add programme')}</button></div>
+  </section>
+}
+
+/**
+ * Something an older newspaper, website and the like already sold before the product form: its name, what the buyer gets, its
+ * specs, price and deadlines. The days it runs stay as they are (those make the slots); how it is sold is chosen when it is listed.
+ */
+function ItemForm({ s, onSaved, onCancel }: { s: Sellable; onSaved: (slots: number) => void; onCancel: () => void }) {
+  const [name, setName] = useState(s.name), [about, setAbout] = useState(s.description ?? ''), [specs, setSpecs] = useState(s.specs ?? '')
+  const [price, setPrice] = useState(String(s.startingPrice / 100)), [cd, setCd] = useState(String(s.creativeDays)), [bc, setBc] = useState(String(s.closeDays))
+  const [tried, setTried] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const fils = Math.round(Number(price) * 100), dl = cd !== '' && bc !== '' ? deadlineProblem(Number(cd), Number(bc)) : 'Add both deadlines.'
+  const problems: [string, string][] = [...(name.trim() ? [] : [['name', 'Add the name buyers see.']] as [string, string][]), ...(fils > 0 ? [] : [['price', 'Add the price.']] as [string, string][]), ...(dl ? [['deadlines', dl]] as [string, string][] : [])]
+  const err = (k: string) => tried ? problems.find(x => x[0] === k)?.[1] : undefined, idp = `it-${s.id}`
+  async function save() {
+    setTried(true); setError(''); if (problems.length) return
+    setBusy(true)
+    try {
+      // the prices and the accept rule it was listed with go back as they are: only the listing step changes those
+      const r = await api<{ slotsUpdated: number }>(`/seller/placements/${s.id}`, { method: 'PUT', body: { name: name.trim(), startingPrice: fils, creativeLeadHours: Number(cd) * 24, closeLeadHours: Number(bc) * 24,
+        description: about, specs, buyNowPrice: s.buyNowPrice ?? undefined, reservePrice: s.reservePrice ?? undefined, anyBreakPrice: s.anyBreakPrice ?? undefined, packagePrice: s.packagePrice ?? undefined, autoAccept: !!s.autoAccept } })
+      onSaved(r.slotsUpdated)
+    } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
+  }
+  return <section className="card pad ed-form form ed-prog">
+    <div className="ed-fh"><h3>{t('Edit {name}', { name: s.name })}</h3><span className="spacer" /><button type="button" className="btn" onClick={onCancel}>{t('Cancel')}</button></div>
+    <div className="field"><label htmlFor={`${idp}-n`}>{t('Name buyers see')} <span className="req">*</span></label><input id={`${idp}-n`} dir="auto" maxLength={80} value={name} onChange={e => setName(e.target.value)} /><Err m={err('name')} /></div>
+    <div className="field"><label htmlFor={`${idp}-a`}>{t('What the buyer gets (optional)')}</label><textarea id={`${idp}-a`} dir="auto" rows={2} maxLength={600} value={about} onChange={e => setAbout(e.target.value)} /></div>
+    <div className="field"><label htmlFor={`${idp}-s`}>{t('Creative specs (optional)')}</label><textarea id={`${idp}-s`} dir="auto" rows={2} maxLength={400} value={specs} onChange={e => setSpecs(e.target.value)} placeholder={t('For example: 30 seconds, or 300×250')} /></div>
+    <div className="ed-3"><div className="field"><label htmlFor={`${idp}-p`}>{t('Default price (AED)')} <span className="req">*</span></label><input id={`${idp}-p`} inputMode="decimal" value={price} onChange={e => setPrice(e.target.value.replace(/[^\d.]/g, ''))} /><Err m={err('price')} /></div>
+      <div className="field"><label htmlFor={`${idp}-c`}>{t('Creative due (days before it runs)')} <span className="req">*</span></label><input id={`${idp}-c`} inputMode="numeric" value={cd} onChange={e => setCd(e.target.value.replace(/\D/g, ''))} /></div>
+      <div className="field"><label htmlFor={`${idp}-b`}>{t('Bidding closes (days before it runs)')} <span className="req">*</span></label><input id={`${idp}-b`} inputMode="numeric" value={bc} onChange={e => setBc(e.target.value.replace(/\D/g, ''))} /></div></div>
+    <Err m={err('deadlines')} />
+    <p className="small muted">{s.days?.length ? t('It runs on {days}.', { days: daysText(s.days) }) + ' ' : ''}{t('Dates already on sale with no bid take the new name, price and deadlines; a date someone has bid on keeps what they bid on.')}</p>
+    <div className="ed-save">{error && <p className="error" role="alert">{error}</p>}<span className="spacer" /><button type="button" className="btn primary" disabled={busy} onClick={save}>{t('Save')}</button></div>
   </section>
 }
 
@@ -339,8 +374,9 @@ export function ProductEditorPage({ id }: { id?: string }) {
               {isOpen && <ProductSummary m={m} />}
               {isOpen && items && <div className="ed-progs">
                 <div className="ed-mh"><h3>{t('What it sells')}</h3></div>
-                {m.sellable.map(s => <div key={s.id} className="ed-prow"><span><b dir="auto">{p.name} · {s.name}</b><span className="small muted">{s.days?.length ? daysText(s.days) : ''}{s.openSlots > 0 ? ` · ${t('{n} on sale', { n: s.openSlots })}` : ''}</span></span>
-                  <button type="button" className="btn primary" onClick={() => setListing(`p-${s.id}`)}>{t('List')}</button></div>)}
+                {m.sellable.map(s => prog === s.id ? <ItemForm key={s.id} s={s} onCancel={() => setProg(null)} onSaved={async n => { await load(); setProg(null); setNote(n > 0 ? t(n === 1 ? 'Saved. 1 date on sale was updated.' : 'Saved. {n} dates on sale were updated.', { n }) : t('Saved.')) }} />
+                  : <div key={s.id} className="ed-prow"><span><b dir="auto">{p.name} · {s.name}</b><span className="small muted">{s.days?.length ? daysText(s.days) : ''} · {money(s.startingPrice)}{s.openSlots > 0 ? ` · ${t('{n} on sale', { n: s.openSlots })}` : ''}</span></span>
+                  <button type="button" className="btn" onClick={() => setProg(s.id)}>{t('Edit')}</button><button type="button" className="btn primary" onClick={() => setListing(`p-${s.id}`)}>{t('List')}</button></div>)}
                 {m.sellable.map(s => listing === `p-${s.id}` && <ListingPanel key={`l-${s.id}`} products={[p]} placementId={s.id} onClose={() => setListing(null)} onDone={load} />)}
               </div>}
               {isOpen && byProgramme && <div className="ed-progs">

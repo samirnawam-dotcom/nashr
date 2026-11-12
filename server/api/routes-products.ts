@@ -47,7 +47,7 @@ export function productRoutes(route: RouteFn) {
     const place = (p: any) => ({ id: p.id, kind: p.kind, name: p.name, days: p.days, startsAt: p.starts_at_local?.slice(0, 5) ?? null, endsAt: p.ends_at_local?.slice(0, 5) ?? null,
       breaks: p.breaks, format: p.format, saleType: p.sale_type, startingPrice: Number(p.starting_price), defaultPrice: p.default_price ? Number(p.default_price) : null,
       buyNowPrice: p.buy_now_price, reservePrice: p.reserve_price, anyBreakPrice: p.any_break_price, packagePrice: p.package_price, listing: p.listing, horizonWeeks: p.horizon_weeks,
-      creativeDays: Math.round(p.creative_lead_hours / 24), closeDays: Math.round(p.close_lead_hours / 24), details: p.details ?? {}, openSlots: p.open_slots, nextAt: p.next_at, sold: p.sold })
+      creativeDays: Math.round(p.creative_lead_hours / 24), closeDays: Math.round(p.close_lead_hours / 24), details: p.details ?? {}, autoAccept: p.auto_accept, description: p.description, specs: p.specs, openSlots: p.open_slots, nextAt: p.next_at, sold: p.sold })
     return products.map(p => ({ id: p.id, name: p.name, description: p.description, notes: p.notes, logoUrl: brandLogoUrl(p.id, p.logo_key),
       media: media.filter(m => m.product_id === p.id).map(m => ({ id: m.id, channel: m.channel, channelOther: m.channel_other, name: m.name, description: m.description, language: m.language,
         nameAr: m.name_ar ?? null, website: m.website ?? null, audience: m.audience, audiences: m.audiences ?? [], blockedAdvertisers: m.blocked_advertisers ?? [], markets: m.markets, reach: m.reach, reachUnit: m.reach_unit, sectors: m.sectors, blocked: m.blocked_industries, defaultPrice: m.default_price ? Number(m.default_price) : null,

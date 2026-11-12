@@ -1721,6 +1721,15 @@ test('a product made before the product form is completed from what it already s
   // done once: a price the publisher then changes is not put back
   await pool.query(`update outlets set default_price = 999900 where id = $1`, [m.id])
   expect((await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0].defaultPrice).toBe(999900)
+  // what it already sold can be edited as its form sends it: name, what the buyer gets, specs, price, deadlines; its other prices and accept rule stay
+  const it = (await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0].sellable[0]
+  await pool.query(`update placements set buy_now_price = 900000, reserve_price = 300000 where id = $1`, [it.id])
+  const edit = { name: 'Evening Drive', startingPrice: 210000, creativeLeadHours: 48, closeLeadHours: 144, description: 'A 30-second spot.', specs: 'MP3, 30 seconds',
+    buyNowPrice: 900000, reservePrice: 300000, autoAccept: !!it.autoAccept }
+  expect((await call(sellerX, 'PUT', `/api/seller/placements/${it.id}`, { ...edit, closeLeadHours: 72 })).json().error).toMatch('Bidding must close')
+  expect((await call(sellerX, 'PUT', `/api/seller/placements/${it.id}`, edit)).statusCode).toBe(200)
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0].sellable[0]).toMatchObject({ id: it.id, name: 'Evening Drive', startingPrice: 210000, creativeDays: 2, closeDays: 6,
+    description: 'A 30-second spot.', specs: 'MP3, 30 seconds', buyNowPrice: 900000, reservePrice: 300000, days: it.days })
 })
 
 test("products by the owner's rules: product, media types with their own fields, programmes, and listing for dates with how it is sold", async () => {

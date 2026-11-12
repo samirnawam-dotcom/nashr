@@ -209,8 +209,8 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Old single-placement pages removed (edit page, the old listings list and add-placement form behind it); old edit links open the outlet instead; an unknown outlet address says Not found
 - [x] Removed the two uncalled placement routes (list dates, archive) and the hidden outlet form in Your business; audience tags and "advertisers you will not run" moved to the product form so nothing buyers rely on was lost
 - [x] A product's Arabic name and website are on the product form (optional), in its summary, and still feed the directory
-- [ ] Placement create and edit routes, and the old outlet create and edit routes, are called only by API tests
+- [ ] The placement create route and the old outlet create and edit routes are called only by API tests (the placement edit route is used by the older items' Edit)
 - [x] A product's Arabic name shows under its title on its Directory page (English, Arabic, phone); nothing extra when there is none
 - [x] Older products (made before the product form) are completed from what they already sell: price, deadlines, language, file type, audience from tags; the form no longer asks for them. A product with no description is still asked for one
-- [ ] Older newspaper/website products are sold through the items they had before; those items can be listed but not edited from the new screens
+- [x] Older newspaper/website products are sold through the items they had before; each item now has Edit beside List: name, what the buyer gets, specs, price, deadlines (the days it runs stay as they are)
 - [x] Description optional for older products and outlets: one that never had a description saves without it (label reads "Description (optional)"); once it has one it cannot be emptied, and every new product or outlet still needs it

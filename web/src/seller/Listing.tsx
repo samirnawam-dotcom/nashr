@@ -12,7 +12,7 @@ import { money } from './common'
  * it is already picked), the dates, how it is sold, and the price (pre-filled from its default price).
  */
 export type Sellable = { id: string; kind: 'main' | 'programme'; name: string; days: number[]; startsAt: string | null; endsAt: string | null; breaks: { label: string; at?: string }[]
-  format: string | null; saleType: string; startingPrice: number; defaultPrice: number | null; buyNowPrice: number | null; reservePrice: number | null
+  format: string | null; saleType: string; startingPrice: number; defaultPrice: number | null; buyNowPrice: number | null; reservePrice: number | null; autoAccept?: boolean; description?: string | null; specs?: string | null
   anyBreakPrice: number | null; packagePrice: number | null; listing: string; horizonWeeks: number; creativeDays: number; closeDays: number; details: Record<string, any>
   openSlots: number; nextAt: string | null; sold: number }
 export type Media = { nameAr?: string | null; website?: string | null; audiences?: string[]; blockedAdvertisers?: string[]; id: string; channel: string; channelOther: string | null; name: string; description: string | null; language: string | null; audience: string | null
