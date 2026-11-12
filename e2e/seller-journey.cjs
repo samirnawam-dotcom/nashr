@@ -46,8 +46,10 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   if (await p.locator('.cv-table .st:not(.st-on_sale)').count()) throw new Error('the status filter let other statuses through')
   await p.click('.cv-views button:has-text("Month")'); await p.waitForSelector('.cv-mcell'); await shot('s6c-month')
   // Products (owner's rules): a programme listed for chosen dates with how it is sold and its price
-  await p.click('.side .nav >> text=Products'); await p.waitForSelector('.pd-prod'); await shot('s7-products')
-  await p.click('.pd-rows li:has-text("Drive Home") button:has-text("List")'); await p.waitForSelector('.lst')
+  await p.click('.side .nav >> text=Products'); await p.waitForSelector('.pd-out'); await shot('s7-products')
+  // one card per outlet; inside it the products, and a radio product opens to its programmes
+  await p.click('.pd-out >> nth=0'); await p.waitForSelector('.pr-row'); await p.click('.pr-row .pr-open >> nth=0'); await p.waitForSelector('.pr-sum'); await shot('s7b-outlet')
+  await p.click('.ed-prow:has-text("Drive Home") button:has-text("List")'); await p.waitForSelector('.lst')
   await p.click('.lst-dates button:has-text("12 weeks")'); await p.click('.lst-sold button:has-text("Fixed price")'); await p.fill('#lst-sp', '4400')
   await p.click('button:has-text("Save listing")'); await p.waitForSelector('.lst .ok'); await shot('s8-listed')
   if (!/Listed:|Nothing new/.test(await p.locator('.lst .ok').textContent())) throw new Error('listing failed')

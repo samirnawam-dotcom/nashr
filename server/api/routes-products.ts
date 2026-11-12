@@ -1,6 +1,7 @@
 import { NotFound, type RouteFn } from './app.js'
 import { archiveProduct, bulkSlots, ensureProducts, listIt, repeatWeek, saveMedia, saveProduct, saveProgramme } from '../catalog/products.js'
 import { MEDIA } from '../shared/media.js'
+import { brandLogoUrl } from './routes-covers.js'
 
 /*
  * Products, media types, programmes and listings for the publisher (owner's rules, 10 Nov 2026).
@@ -43,7 +44,7 @@ export function productRoutes(route: RouteFn) {
       breaks: p.breaks, format: p.format, saleType: p.sale_type, startingPrice: Number(p.starting_price), defaultPrice: p.default_price ? Number(p.default_price) : null,
       buyNowPrice: p.buy_now_price, reservePrice: p.reserve_price, anyBreakPrice: p.any_break_price, packagePrice: p.package_price, listing: p.listing, horizonWeeks: p.horizon_weeks,
       creativeDays: Math.round(p.creative_lead_hours / 24), closeDays: Math.round(p.close_lead_hours / 24), details: p.details ?? {}, openSlots: p.open_slots, nextAt: p.next_at, sold: p.sold })
-    return products.map(p => ({ id: p.id, name: p.name, description: p.description, notes: p.notes, logoUrl: p.logo_key ? `/api/files/${p.logo_key.replace(/^files\//, '')}` : null,
+    return products.map(p => ({ id: p.id, name: p.name, description: p.description, notes: p.notes, logoUrl: brandLogoUrl(p.id, p.logo_key),
       media: media.filter(m => m.product_id === p.id).map(m => ({ id: m.id, channel: m.channel, channelOther: m.channel_other, name: m.name, description: m.description, language: m.language,
         audience: m.audience, markets: m.markets, reach: m.reach, reachUnit: m.reach_unit, sectors: m.sectors, blocked: m.blocked_industries, defaultPrice: m.default_price ? Number(m.default_price) : null,
         creativeDays: m.creative_days, closeDays: m.close_days, specType: m.spec_type, specDetail: m.spec_detail, notes: m.notes, details: m.details ?? {}, coverUrl: m.cover_key ? `/api/outlets/${m.id}/cover` : null,

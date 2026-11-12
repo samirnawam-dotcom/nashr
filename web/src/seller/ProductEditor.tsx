@@ -3,19 +3,23 @@ import { api } from '../api'
 import { navigate } from '../nav'
 import { t } from '../i18n'
 import { tm } from '../i18n-server'
-import { ICON } from '../media'
+import { ICON, art } from '../media'
+import { money } from './common'
+import { LogoPicker, OutletMark } from '../LogoPicker'
 import { INDUSTRIES } from '../calendar/BidDrawer'
 import { CoverPicker } from '../CoverPicker'
 import { MEDIA, MEDIA_LABEL } from '../../../server/shared/media'
-import { HAS_PROGRAMMES, LANGUAGES, MARKETS, OTHER, PROGRAMME_FIELDS, REACH_UNITS, SPEC_TYPES, TYPE_FIELDS, WEEKDAY_SETS, deadlineProblem, fieldProblems, mediaProblems,
+import { HAS_PROGRAMMES, LANGUAGES, MARKETS, OTHER, PROGRAMME_FIELDS, REACH_UNITS, SPEC_TYPES, TYPE_FIELDS, WEEKDAY_SETS, deadlineProblem, fieldProblems, label, mediaProblems,
   type Field, type MediaInput, type Opt } from '../../../server/shared/products'
-import { ListingPanel, mediaName, type Media, type Product, type Sellable } from './Listing'
+import { ListingPanel, byProgramme as soldByProgramme, mediaName, productTitle, type Media, type Product, type Sellable } from './Listing'
+import { Ic, daysText, onSale } from './Products'
 import './products.css'
 import './editor.css'
 
 /*
- * Add or edit a product (owner's rules): the product (name, description, anything else buyers should know), then each media type
- * with the fields every type has plus only its own, and for Radio, TV and Podcast its programmes if it sells by programme.
+ * An outlet's page (owner's fixes round 2). The outlet is the brand: its name, logo, description and anything else buyers should
+ * know. Under it are its products, one per media type it sells (a radio station, a newspaper, a website), grouped by media type;
+ * a product row opens into a summary of what the publisher filled in. Radio, TV and podcast products can be sold by programme.
  * Every pick-list ends with Other, which opens a box for the publisher's own words.
  */
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -109,17 +113,17 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
   }
   const aed = (v: string) => Math.round(Number(v.replace(/,/g, '')) * 100) || 0
   return <section className="card pad ed-form form">
-    <div className="ed-fh"><h2>{m ? t('Edit {name}', { name: mediaName(m) }) : t('Add a media type')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onCancel}>{t('Cancel')}</button></div>
+    <div className="ed-fh"><h2>{m ? t('Edit {name}', { name: m.name }) : t('Add a product')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onCancel}>{t('Cancel')}</button></div>
     <div className="field"><span className="lbl">{t('Media type')} <span className="req">*</span></span>
       <div className="ed-types" role="radiogroup" aria-label={t('Media type')}>{MEDIA.map(c => <button key={c} type="button" role="radio" aria-checked={f.channel === c} disabled={!!m && m.channel !== c}
         className={f.channel === c ? 'on' : ''} onClick={() => set({ channel: c, details: c === f.channel ? f.details : {}, specType: '' })}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON[c] ?? ICON.digital} /></svg>{t(MEDIA_LABEL[c])}</button>)}</div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON[c] ?? ICON.other} /></svg>{t(MEDIA_LABEL[c])}</button>)}</div>
       {f.channel === OTHER && <input className="ed-mt" dir="auto" maxLength={60} aria-label={t('Other: say what it is')} placeholder={t('Say what it is')} value={f.channelOther ?? ''} onChange={e => set({ channelOther: e.target.value })} />}
       <Err m={err('channel') ?? err('channelOther')} /></div>
     {f.channel && <>
       <h3 className="ed-sec">{t('About it')}</h3>
       <div className="grid2">
-        <div className="field"><label htmlFor={`${idp}-name`}>{t('Name buyers see')} <span className="req">*</span></label><input id={`${idp}-name`} dir="auto" maxLength={80} value={f.name} onChange={e => set({ name: e.target.value })} placeholder={t('For example: Skyline FM 92.4')} /><Err m={err('name')} /></div>
+        <div className="field"><label htmlFor={`${idp}-name`}>{t('Name buyers see')} <span className="req">*</span></label><input id={`${idp}-name`} dir="auto" maxLength={80} value={f.name} onChange={e => set({ name: e.target.value })} placeholder={t('For example: Skyline FM Radio')} /><Err m={err('name')} /></div>
         <div className="field"><label htmlFor={`${idp}-lang`}>{t('Language')} <span className="req">*</span></label><Pick id={`${idp}-lang`} value={f.language} options={LANGUAGES} onChange={v => set({ language: v })} /><Err m={err('language')} /></div>
       </div>
       <div className="field"><label htmlFor={`${idp}-desc`}>{t('Description')} <span className="req">*</span></label><textarea id={`${idp}-desc`} dir="auto" rows={3} maxLength={1000} value={f.description} onChange={e => set({ description: e.target.value })} /><Err m={err('description')} /></div>
@@ -127,6 +131,7 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
 
       {HAS_PROGRAMMES.includes(f.channel) && <label className="ed-switch"><input type="checkbox" checked={byProgramme} onChange={e => setD({ programmes: e.target.checked })} />
         <span><b>{t('Sell it by programme')}</b><span className="small muted">{t('Each show, for example Morning Markets, gets its own days, airtime and breaks. Leave off to sell it as one.')}</span></span></label>}
+      {byProgramme && <p className="ed-after small">{t("You'll add each programme after saving.")}</p>}
       {!byProgramme && TYPE_FIELDS[f.channel] && <><h3 className="ed-sec">{t('{type} details', { type: f.channel === OTHER ? f.channelOther || t('Other') : t(MEDIA_LABEL[f.channel]) })}</h3>
         <div className="ed-type"><TypeFields idp={idp} fields={TYPE_FIELDS[f.channel]} d={f.details} set={setD} err={err} /></div>
         {f.channel === 'magazine' && <p className="small muted">{t('No time field: the date the magazine comes out is picked when you list it.')}</p>}</>}
@@ -160,7 +165,7 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
         <span className="small muted">{(f.notes ?? '').length}/500 · {t('Emails and phone numbers are not allowed.')}</span><Err m={err('notes')} /></div>
     </>}
     <div className="ed-save">{error && <p className="error" role="alert">{error}</p>}<span className="spacer" />
-      <button type="button" className="btn primary" disabled={busy || !f.channel} onClick={save}>{m ? t('Save') : t('Add media type')}</button></div>
+      <button type="button" className="btn primary" disabled={busy || !f.channel} onClick={save}>{m ? t('Save') : t('Add product')}</button></div>
   </section>
 }
 
@@ -187,7 +192,7 @@ function ProgrammeForm({ media, p, onSaved, onCancel }: { media: Media; p?: Sell
     <div className="ed-type"><TypeFields idp={idp} fields={fields} d={d} set={x => setDd(y => ({ ...y, ...x }))} err={err} /></div>
     <div className="field"><label htmlFor={`${idp}-pnotes`}>{t('Anything else buyers should know (optional)')}</label><textarea id={`${idp}-pnotes`} dir="auto" rows={2} maxLength={500} value={notes} onChange={e => setNotes(e.target.value)} /></div>
     <details className="pl-more"><summary>{t('Price and deadlines for this programme (optional)')}</summary>
-      <p className="small muted">{t('Left empty, they come from the media type: {price}, creative {c} days and bidding {b} days before.', { price: media.defaultPrice ? `AED ${(media.defaultPrice / 100).toLocaleString('en-US')}` : '—', c: media.creativeDays ?? '—', b: media.closeDays ?? '—' })}</p>
+      <p className="small muted">{t('Left empty, they come from the product: {price}, creative {c} days and bidding {b} days before.', { price: media.defaultPrice ? `AED ${(media.defaultPrice / 100).toLocaleString('en-US')}` : '—', c: media.creativeDays ?? '—', b: media.closeDays ?? '—' })}</p>
       <div className="ed-3"><div className="field"><label htmlFor={`${idp}-pp`}>{t('Default price (AED)')}</label><input id={`${idp}-pp`} inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} /></div>
         <div className="field"><label htmlFor={`${idp}-pc`}>{t('Creative due (days before it runs)')}</label><input id={`${idp}-pc`} inputMode="numeric" value={cd} onChange={e => setCd(e.target.value.replace(/\D/g, ''))} /></div>
         <div className="field"><label htmlFor={`${idp}-pb`}>{t('Bidding closes (days before it runs)')}</label><input id={`${idp}-pb`} inputMode="numeric" value={bc} onChange={e => setBc(e.target.value.replace(/\D/g, ''))} /></div></div></details>
@@ -195,63 +200,130 @@ function ProgrammeForm({ media, p, onSaved, onCancel }: { media: Media; p?: Sell
   </section>
 }
 
+/** One line of the summary: shown only when the publisher filled it in. */
+const Fact = ({ k, v }: { k: string; v?: string | number | null }) => v == null || v === '' ? null : <div><dt>{k}</dt><dd dir="auto">{v}</dd></div>
+const TABS: [string, string][] = [['details', 'Details'], ['audience', 'Audience'], ['sectors', 'Sectors'], ['requirements', 'Requirements']]
+
+/** A product's summary, made only from what the publisher filled in on its form: details, audience, sectors, requirements. */
+function ProductSummary({ m }: { m: Media }) {
+  const [tab, setTab] = useState('details'), d = m.details ?? {}, byProgramme = HAS_PROGRAMMES.includes(m.channel) && soldByProgramme(m)
+  const main = m.sellable.find(s => s.kind === 'main'), timed = ['radio', 'tv'].includes(m.channel)
+  const fields = byProgramme ? [] : TYPE_FIELDS[m.channel] ?? []
+  const value = (f: Field): string => f.kind === 'days' ? (d.days?.length ? daysText(d.days) : '') : f.kind === 'airtime' ? (timed && d.airStart ? `${d.airStart}–${d.airEnd ?? ''}` : '')
+    : f.kind === 'breaks' ? (timed ? (d.breaks ?? []).map((b: any) => b.at).filter(Boolean).join(', ') : '') : f.options ? t(label(f.options, d[f.key])) : String(d[f.key] ?? '')
+  const list = (v?: string[] | null) => (v ?? []).map(x => t(x)).join(', ')
+  return <div className="pr-sum">
+    <div className="seg pr-tabs" role="tablist" aria-label={m.name}>{TABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>)}</div>
+    {tab === 'details' && <dl className="pr-facts">
+      <Fact k={t('Media type')} v={mediaName(m)} />
+      {fields.map(f => <Fact key={f.key} k={f.kind === 'airtime' ? t('Airtime') : f.kind === 'breaks' ? t('Breaks') : t(f.label)} v={value(f)} />)}
+      {byProgramme && <Fact k={t('Sold by')} v={t(m.sellable.length === 1 ? '1 programme' : '{n} programmes', { n: m.sellable.length })} />}
+      {!byProgramme && !fields.some(f => f.kind === 'days') && main?.days?.length ? <Fact k={t('Days')} v={daysText(main.days)} /> : null}
+      <Fact k={t('Language')} v={m.language ? t(label(LANGUAGES, m.language)) : ''} />
+    </dl>}
+    {tab === 'audience' && <dl className="pr-facts">
+      <Fact k={t('Audience')} v={m.audience} />
+      <Fact k={t('Reach')} v={m.reach ? `${m.reach.toLocaleString('en-US')}${m.reachUnit ? ` ${t(label(REACH_UNITS, m.reachUnit)).toLowerCase()}` : ''}` : ''} />
+      <Fact k={t('Markets')} v={(m.markets ?? []).map(x => t(label(MARKETS, x))).join(', ')} />
+    </dl>}
+    {tab === 'sectors' && <dl className="pr-facts">
+      <Fact k={t('Sectors accepted')} v={m.sectors?.length ? list(m.sectors) : t('All sectors')} />
+      <Fact k={t('Sectors not accepted')} v={list(m.blocked)} />
+    </dl>}
+    {tab === 'requirements' && <dl className="pr-facts">
+      <Fact k={t('Creative specs')} v={[m.specType ? t(label(SPEC_TYPES[m.channel] ?? SPEC_TYPES.other, m.specType)) : '', m.specDetail].filter(Boolean).join(', ')} />
+      <Fact k={t('Creative due')} v={m.creativeDays != null ? t('{n} days before it runs', { n: m.creativeDays }) : ''} />
+      <Fact k={t('Bidding closes')} v={m.closeDays != null ? t('{n} days before it runs', { n: m.closeDays }) : ''} />
+      <Fact k={t('Default price')} v={m.defaultPrice ? money(m.defaultPrice) : ''} />
+      <Fact k={t('Anything else buyers should know')} v={m.notes} />
+    </dl>}
+  </div>
+}
+
 export function ProductEditorPage({ id }: { id?: string }) {
   const q = new URLSearchParams(location.search)
   const [all, setAll] = useState<Product[] | null>(null), [error, setError] = useState(''), [note, setNote] = useState('')
   const [name, setName] = useState(''), [description, setDescription] = useState(''), [notes, setNotes] = useState(''), [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState<string | null>(q.get('add') ? 'new' : q.get('media')), [prog, setProg] = useState<string | null>(null), [listing, setListing] = useState<string | null>(null)
-  // a product's own id, or any of its programmes' or media types' placements (the calendar's Edit opens the product that way)
+  const [open, setOpen] = useState<string | null>(q.get('open')), [outletForm, setOutletForm] = useState(!id)
+  // an outlet's own id, or any of its products' or programmes' ids (the calendar's Edit opens the outlet that way)
   const find = (r: Product[]) => r.find(x => x.id === id) ?? r.find(x => x.media.some(m => m.id === id || m.sellable.some(s => s.id === id)))
   const load = () => api<Product[]>('/seller/products').then(r => { setAll(r); return r }, e => { setError(e.message); return [] as Product[] })
-  useEffect(() => { load().then(r => { const p = find(r); if (p) { setName(p.name); setDescription(p.description ?? ''); setNotes(p.notes ?? '') } }) }, [id])
+  useEffect(() => { load().then(r => { const p = find(r); if (p) { setName(p.name); setDescription(p.description ?? ''); setNotes(p.notes ?? '')
+    const m = p.media.find(m => m.id === id || m.sellable.some(s => s.id === id)); if (m) setOpen(m.id) } }) }, [id])
   const p = all ? find(all) : undefined
-  async function saveProduct() {
+  async function saveOutlet() {
     setBusy(true); setError(''); setNote('')
     try {
       const body = { name, description, ...(notes.trim() ? { notes } : {}) }
-      if (p) { await api(`/seller/products/${p.id}`, { method: 'PUT', body }); setNote(t('Product saved.')); await load() }
+      if (p) { await api(`/seller/products/${p.id}`, { method: 'PUT', body }); setNote(t('Outlet saved.')); setOutletForm(false); await load() }
       else { const r = await api<{ id: string }>('/seller/products', { method: 'POST', body }); navigate(`/listings/p/${r.id}?add=1`) }
     } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
   }
+  async function remove() {
+    if (!p || !confirm(t('Delete {name}? What is not yet sold stops being sold; bookings already made carry on.', { name: p.name }))) return
+    try { await api(`/seller/products/${p.id}/delete`, { method: 'POST', body: {} }); navigate('/listings') } catch (e: any) { setError(tm(e.message)) }
+  }
   if (id && !all) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}</main>
+  const groups = p ? MEDIA.filter(c => p.media.some(m => m.channel === c)) : []
+  const saved = async (mid: string, isNew: boolean) => { await load(); setEditing(null); setNote(t('Product saved.')); setOpen(mid); if (isNew) setListing(mid) }
   return <main className="ed">
-    <p className="small"><a href="/listings">{t('Products')}</a> › {p ? p.name : t('Add product')}</p>
-    <div className="pt-head"><div><h1>{p ? p.name : t('Add product')}</h1><p className="muted">{t('The product is your brand. Add each media type it has; for radio, TV and podcasts, add programmes if you sell by show.')}</p></div></div>
-    <ol className="ed-steps" aria-label={t('Steps')}><li className={p ? 'done' : 'now'}>{t('Product')}</li><li className={p && p.media.length ? 'done' : p ? 'now' : ''}>{t('Media types')}</li><li className={p?.media.some(m => m.sellable.some(s => s.openSlots > 0)) ? 'done' : ''}>{t('List it')}</li></ol>
+    <p className="small"><a href="/listings">{t('Products')}</a> › {p ? p.name : t('Add outlet')}</p>
+    <div className="pt-head"><div><h1>{p ? p.name : t('Add outlet')}</h1><p className="muted">{t('The outlet is your brand. Add each product it sells; for radio, TV and podcasts, add programmes if you sell by show.')}</p></div></div>
+    <ol className="ed-steps" aria-label={t('Steps')}><li className={p ? 'done' : 'now'}>{t('Outlet')}</li><li className={p && p.media.length ? 'done' : p ? 'now' : ''}>{t('Products')}</li><li className={p?.media.some(m => m.sellable.some(s => s.openSlots > 0)) ? 'done' : ''}>{t('List it')}</li></ol>
     {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
 
-    <section className="card pad form ed-prod">
-      <h2>{t('1. Product')}</h2>
+    {p && !outletForm ? <section className="card ed-outlet">
+      <OutletMark name={p.name} url={p.logoUrl} size={56} />
+      <div className="ed-ot"><h2>{t('1. Outlet')}</h2><b>{p.name}</b>{p.description && <span className="small muted" dir="auto">{p.description}</span>}</div>
+      <button type="button" className="btn" onClick={() => setOutletForm(true)}><Ic d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={16} />{t('Edit outlet')}</button>
+      <button type="button" className="btn danger" onClick={remove}>{t('Delete')}</button>
+    </section> : <section className="card pad form ed-prod">
+      <div className="ed-fh"><h2>{t('1. Outlet')}</h2><span className="spacer" />{p && <button type="button" className="btn" onClick={() => setOutletForm(false)}>{t('Cancel')}</button>}</div>
       <div className="grid2"><div className="field"><label htmlFor="pr-n">{t('Name')} <span className="req">*</span></label><input id="pr-n" dir="auto" maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder={t('For example: Skyline FM')} /></div></div>
+      {p ? <LogoPicker name={p.name} url={p.logoUrl} endpoint={`/seller/products/${p.id}/logo`} />
+        : <p className="small muted">{t('You can add the logo (JPG or PNG) as soon as the outlet is saved. Until then buyers see its initials.')}</p>}
       <div className="field"><label htmlFor="pr-d">{t('Description')} <span className="req">*</span></label><textarea id="pr-d" dir="auto" rows={2} maxLength={1000} value={description} onChange={e => setDescription(e.target.value)} /></div>
       <div className="field"><label htmlFor="pr-x">{t('Anything else buyers should know (optional)')}</label><textarea id="pr-x" dir="auto" rows={2} maxLength={500} value={notes} onChange={e => setNotes(e.target.value)} />
         <span className="small muted">{notes.length}/500 · {t('Emails and phone numbers are not allowed.')}</span></div>
-      <div className="ed-save"><span className="spacer" /><button type="button" className="btn primary" disabled={busy || !name.trim() || !description.trim()} onClick={saveProduct}>{p ? t('Save product') : t('Save and add media types')}</button></div>
-    </section>
+      <div className="ed-save"><span className="spacer" /><button type="button" className="btn primary" disabled={busy || !name.trim() || !description.trim()} onClick={saveOutlet}>{p ? t('Save outlet') : t('Save and add products')}</button></div>
+    </section>}
 
     {p && <section className="ed-media">
-      <div className="ed-mh"><h2>{t('2. Media types')}</h2>{editing !== 'new' && <button type="button" className="btn primary" onClick={() => setEditing('new')}>+ {t('Add a media type')}</button>}</div>
-      {editing === 'new' && <MediaForm product={p} onCancel={() => setEditing(null)} onSaved={async mid => { await load(); setEditing(null); setNote(t('Media type saved.')); setListing(mid) }} />}
-      {!p.media.length && editing !== 'new' && <p className="muted">{t('No media types yet. Add the first one: radio, TV, newspaper, magazine, website, newsletter, podcast or social media.')}</p>}
-      {p.media.map(m => editing === m.id ? <MediaForm key={m.id} product={p} m={m} onCancel={() => setEditing(null)} onSaved={async () => { await load(); setEditing(null); setNote(t('Media type saved.')) }} />
-        : <article key={m.id} className="card ed-mcard">
-          <div className="ed-mrow"><span className="pd-mic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[m.channel] ?? ICON.digital} /></svg></span>
-            <div className="pd-mt"><b>{mediaName(m)} · {m.name}</b><span className="small muted">{m.defaultPrice ? t('default {amount}', { amount: `AED ${(m.defaultPrice / 100).toLocaleString('en-US')}` }) : ''}{m.closeDays != null ? ` · ${t('bidding closes {n} days before', { n: m.closeDays })}` : ''}</span></div>
-            <button type="button" className="btn" onClick={() => setEditing(m.id)}>{t('Edit')}</button></div>
-          {listing === m.id && m.sellable.length > 0 && <div className="ed-listnow"><p><b>{t('Saved. List it now?')}</b></p>
-            <ListingPanel products={[{ ...p, media: [m] }]} onClose={() => setListing(null)} onDone={load} /></div>}
-          {HAS_PROGRAMMES.includes(m.channel) && m.details.programmes && <div className="ed-progs">
-            <div className="ed-mh"><h3>{t('Programmes')}</h3>{prog !== `new-${m.id}` && <button type="button" className="btn" onClick={() => setProg(`new-${m.id}`)}>+ {t('Add a programme')}</button>}</div>
-            {prog === `new-${m.id}` && <ProgrammeForm media={m} onCancel={() => setProg(null)} onSaved={async () => { await load(); setProg(null); setNote(t('Programme saved.')) }} />}
-            {m.sellable.filter(s => s.kind === 'programme').map(s => prog === s.id ? <ProgrammeForm key={s.id} media={m} p={s} onCancel={() => setProg(null)} onSaved={async () => { await load(); setProg(null); setNote(t('Programme saved.')) }} />
-              : <div key={s.id} className="ed-prow"><span><b>{s.name}</b><span className="small muted">{s.days?.length ? s.days.map(x => t(DAYS[x - 1])).join(', ') : ''}{s.startsAt ? ` · ${s.startsAt}–${s.endsAt}` : ''}{s.breaks?.length ? ` · ${t(s.breaks.length === 1 ? '1 break' : '{n} breaks', { n: s.breaks.length })}` : ''}</span></span>
-                <button type="button" className="btn" onClick={() => setProg(s.id)}>{t('Edit')}</button><button type="button" className="btn primary" onClick={() => setListing(`p-${s.id}`)}>{t('List')}</button></div>)}
-            {m.sellable.filter(s => s.kind === 'programme').map(s => listing === `p-${s.id}` && <ListingPanel key={`l-${s.id}`} products={[p]} placementId={s.id} onClose={() => setListing(null)} onDone={load} />)}
-          </div>}
-          {!(HAS_PROGRAMMES.includes(m.channel) && m.details.programmes) && m.sellable[0] && listing !== m.id && <div className="ed-prow"><span className="small muted">{t('Sold as one: {name}', { name: m.sellable[0].name })}</span>
-            <button type="button" className="btn primary" onClick={() => setListing(`p-${m.sellable[0].id}`)}>{t('List')}</button></div>}
-          {!(HAS_PROGRAMMES.includes(m.channel) && m.details.programmes) && m.sellable[0] && listing === `p-${m.sellable[0].id}` && <ListingPanel products={[p]} placementId={m.sellable[0].id} onClose={() => setListing(null)} onDone={load} />}
-        </article>)}
+      <div className="ed-mh"><h2>{t('2. Products')}</h2>{editing !== 'new' && <button type="button" className="btn primary" onClick={() => setEditing('new')}>+ {t('Add a product')}</button>}</div>
+      {editing === 'new' && <MediaForm product={p} onCancel={() => setEditing(null)} onSaved={mid => saved(mid, true)} />}
+      {!p.media.length && editing !== 'new' && <p className="empty">{t('No products yet. Add the first one: a radio station, a TV channel, a newspaper, a magazine, a website, a newsletter, a podcast or a social media account.')}</p>}
+      {groups.map(c => { const rows = p.media.filter(m => m.channel === c)
+        return <div key={c} className="pr-group">
+          <h3 className="pr-gh"><Ic d={ICON[c] ?? ICON.other} size={17} />{t(MEDIA_LABEL[c])} <span className="num">({rows.length})</span></h3>
+          {rows.map(m => { const byProgramme = HAS_PROGRAMMES.includes(m.channel) && soldByProgramme(m), s = onSale(m), isOpen = open === m.id, one = !byProgramme ? m.sellable[0] : undefined
+            if (editing === m.id) return <MediaForm key={m.id} product={p} m={m} onCancel={() => setEditing(null)} onSaved={mid => saved(mid, false)} />
+            return <article key={m.id} className={`card pr-row ${isOpen ? 'open' : ''}`}>
+              <div className="pr-main">
+                <button type="button" className="pr-open" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : m.id)}>
+                  <i className="pr-chev" aria-hidden><Ic d={isOpen ? 'M6 9l6 6 6-6' : 'M9 6l6 6-6 6'} size={16} /></i>
+                  <img className="pr-cover" src={m.coverUrl ?? art(m.channel, 'card')} alt="" width={96} height={60} loading="lazy" />
+                  <span className="pr-what"><b dir="auto">{productTitle(p, m)}</b>{m.description && <span className="small muted" dir="auto">{m.description}</span>}</span></button>
+                <span className="pr-price num">{m.defaultPrice ? money(m.defaultPrice) : '—'}<small>{t('default')}</small></span>
+                <span className={`pt-pill ${s.open ? 'good' : 'mute'}`}>{s.text}</span>
+                <span className="pr-acts"><a className="btn sm" href={`/schedule?view=week&q=${encodeURIComponent(p.name)}`}>{t('Calendar')}</a>
+                  {(one || m.sellable.length > 0) && <button type="button" className="btn primary sm" onClick={() => { setOpen(m.id); setListing(listing === m.id ? null : m.id) }}>{t('List')}</button>}
+                  <button type="button" className="btn sm" onClick={() => setEditing(m.id)}>{t('Edit')}</button></span>
+              </div>
+              {listing === m.id && m.sellable.length > 0 && <div className="ed-listnow"><ListingPanel products={[{ ...p, media: [m] }]} placementId={one?.id} onClose={() => setListing(null)} onDone={load} /></div>}
+              {isOpen && <ProductSummary m={m} />}
+              {isOpen && byProgramme && <div className="ed-progs">
+                <div className="ed-mh"><h3>{t('Programmes')}</h3>{prog !== `new-${m.id}` && <button type="button" className="btn" onClick={() => setProg(`new-${m.id}`)}>+ {t('Add a programme')}</button>}</div>
+                {!m.sellable.length && prog !== `new-${m.id}` && <p className="small muted">{t('Sold by programme, but no programme added yet.')}</p>}
+                {prog === `new-${m.id}` && <ProgrammeForm media={m} onCancel={() => setProg(null)} onSaved={async () => { await load(); setProg(null); setNote(t('Programme saved.')) }} />}
+                {m.sellable.filter(s => s.kind === 'programme').map(s => prog === s.id ? <ProgrammeForm key={s.id} media={m} p={s} onCancel={() => setProg(null)} onSaved={async () => { await load(); setProg(null); setNote(t('Programme saved.')) }} />
+                  : <div key={s.id} className="ed-prow"><span><b dir="auto">{p.name} · {s.name}</b><span className="small muted">{s.days?.length ? daysText(s.days) : ''}{s.startsAt ? ` · ${s.startsAt}–${s.endsAt}` : ''}{s.breaks?.length ? ` · ${t(s.breaks.length === 1 ? '1 break' : '{n} breaks', { n: s.breaks.length })}` : ''}
+                    {s.openSlots > 0 ? ` · ${t('{n} on sale', { n: s.openSlots })}` : ''}</span></span>
+                    <button type="button" className="btn" onClick={() => setProg(s.id)}>{t('Edit')}</button><button type="button" className="btn primary" onClick={() => setListing(`p-${s.id}`)}>{t('List')}</button></div>)}
+                {m.sellable.filter(s => s.kind === 'programme').map(s => listing === `p-${s.id}` && <ListingPanel key={`l-${s.id}`} products={[p]} placementId={s.id} onClose={() => setListing(null)} onDone={load} />)}
+              </div>}
+            </article> })}
+        </div> })}
     </section>}
   </main>
 }

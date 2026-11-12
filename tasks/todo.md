@@ -193,3 +193,13 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Guest calendar: one slim "browsing as a guest" line above the grid; Directory added to the public menu
 - [x] Arabic check of the five public pages: hero cards no longer overlap, Latin names cut at their end, prices in dirhams, headline figure in Arabic words, audience arrows mirrored
 - [x] Arabic check of the signed-in pages (28 screens, three roles, plus phone): "Break N" and common slot labels translated everywhere they show; 99+ badge; web-address fields; Latin text punctuation; Results page no longer scrolls sideways on a phone (both languages)
+
+## Phase O: owner's document "Fixes round 2" (11 Nov 2026)
+- [x] New names: Product (the brand) is now Outlet; Media type (the level) is now Product; labels on the Products page, the outlet page and the product form
+- [x] Outlet form: logo upload (JPG or PNG), shown on Products, the calendar and the bid drawer; initials when there is none
+- [x] Names everywhere start with the outlet: "The National · Full page", "Skyline FM · Morning Markets" (a newspaper's own unit is named by its format; migration 038 renames existing ones)
+- [x] Product form: one icon per media type; "You'll add each programme after saving." under Sell it by programme
+- [x] No clock time for media sold by the date (newspaper, magazine, website, newsletter, social, podcast, other): list, drawer, sale closes, creative due
+- [x] Bid drawer and the publisher's slot panel: audience, reach with what it counts, "anything else" as one line with the full text a tap away
+- [x] Calendar rows show the outlet's logo instead of the media type icon
+- [x] Products page: one card per outlet (logo, description, number of products, top 3 with what is on sale); inside an outlet, products grouped by media type, each row opening a summary with Details, Audience, Sectors, Requirements

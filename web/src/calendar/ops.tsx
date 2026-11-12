@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { dayLabel, money, time } from '../format'
+import { dayLabel, hasTime, money, slotWhen, time } from '../format'
+import { OutletMark } from '../LogoPicker'
 import { dubai, monthGrid, todayInDubai } from './layout'
 import { ChannelMark, Chevron, SaleType, useLatest } from './CalendarPage'
 import { t, ltr } from '../i18n'
@@ -13,7 +14,7 @@ import './calendar.css'
  * what they show: every status, the reserve, the publisher's name for Nashr.
  */
 
-export type OpsSlot = { id: string; outletId?: string; dealId: string | null; company: string | null; outlet: string; channel: string; placement: string; label: string; kind: string
+export type OpsSlot = { brand?: string; title?: string; logoUrl?: string | null; id: string; outletId?: string; dealId: string | null; company: string | null; outlet: string; channel: string; placement: string; label: string; kind: string
   saleType: 'auction' | 'quick_sale' | 'fixed'; startsAt: string; endsAt: string | null; closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null
   reservePrice: number | null; topBid: number | null; bids: number }
 export type OpsDay = { date: string; slots: number; onSale: number; waiting: number; booked: number; off: number; fromPrice: number }
@@ -53,7 +54,7 @@ export function OpsList({ base, qs, who, onOpen, reload = 0, narrow }: { base: s
   const grouped = sort === 'time', today = todayInDubai()
   const rows: (OpsSlot | string)[] = []
   items.forEach((x, i) => { const d = dubai(x.startsAt).date; if (grouped && (i === 0 || dubai(items[i - 1].startsAt).date !== d)) rows.push(d); rows.push(x) })
-  const timeOf = (r: OpsSlot) => r.endsAt || dubai(r.startsAt).minutes ? ltr(time(r.startsAt)) : t('All day')
+  const timeOf = (r: OpsSlot) => !hasTime(r.channel) ? '' : r.endsAt || dubai(r.startsAt).minutes ? ltr(time(r.startsAt)) : t('All day')
   return (
     <section className="card cv-list" aria-label={t('Slots')}>
       <div className="cv-list-bar">
@@ -67,9 +68,9 @@ export function OpsList({ base, qs, who, onOpen, reload = 0, narrow }: { base: s
       {items.length > 0 && narrow && <ul className="cv-cards">{rows.map(r => typeof r === 'string'
         ? <li key={r} className={`cv-day ${r === today ? 'today' : ''}`}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'short' })}</li>
         : <li key={r.id}><button className={`cv-card ch-b-${r.channel}`} onClick={() => onOpen(r)}>
-          <span className="cv-card-top"><span className="num cv-when">{grouped ? timeOf(r) : `${dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })} · ${timeOf(r)}`}</span>
+          <span className="cv-card-top"><span className="num cv-when">{grouped ? timeOf(r) : [dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' }), timeOf(r)].filter(Boolean).join(' · ')}</span>
             <b className="num">{money(r.topBid ?? r.startingPrice)}</b></span>
-          <span className="cv-card-name"><ChannelMark c={r.channel} /><b>{r.outlet}</b>{who === 'admin' && r.company && r.company !== r.outlet && <span className="small muted">· {r.company}</span>}</span>
+          <span className="cv-card-name"><OutletMark name={r.brand ?? r.outlet} url={r.logoUrl} size={22} /><b>{r.brand ?? r.outlet}</b>{who === 'admin' && r.company && r.company !== r.outlet && <span className="small muted">· {r.company}</span>}</span>
           <span className="small muted">{r.placement}{r.label !== r.placement ? ` · ${tm(r.label)}` : ''}</span>
           <span className="cv-card-meta small"><StatusDot s={r.status} who={who} />{r.bids > 0 && <span className="muted">{t('{n} bids', { n: r.bids })}</span>}
             {r.reservePrice ? <span className="muted">{t('Reserve')} {money(r.reservePrice)}</span> : null}</span>
@@ -80,15 +81,15 @@ export function OpsList({ base, qs, who, onOpen, reload = 0, narrow }: { base: s
         <tbody>{rows.map(r => typeof r === 'string'
           ? <tr key={r} className="cv-dayrow"><th colSpan={9} className={r === today ? 'today' : ''}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'long' })}</th></tr>
           : <tr key={r.id} data-slot={r.id} onClick={() => onOpen(r)} className=''>
-            <td className="num nowrap">{grouped ? '' : <span className="muted">{dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })} · </span>}{timeOf(r)}</td>
-            <td><span className="cv-outlet"><ChannelMark c={r.channel} /><span><b>{r.outlet}</b>{who === 'admin' && r.company && r.company !== r.outlet && <span className="small muted">{r.company}</span>}</span></span></td>
+            <td className="num nowrap">{grouped ? '' : <span className="muted">{dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })}{timeOf(r) ? ' · ' : ''}</span>}{timeOf(r)}</td>
+            <td><span className="cv-outlet"><OutletMark name={r.brand ?? r.outlet} url={r.logoUrl} size={26} /><span><b>{r.brand ?? r.outlet}</b>{who === 'admin' && r.company && r.company !== r.outlet && <span className="small muted">{r.company}</span>}</span></span></td>
             <td><span className="cv-slot">{r.placement}</span>{r.label !== r.placement && <span className="small muted"> · {tm(r.label)}</span>}</td>
             <td><SaleType t={r.saleType} /></td>
             <td className="r num"><b>{money(r.topBid ?? r.startingPrice)}</b>{r.topBid ? <div className="small muted">{t('top bid')}</div> : null}</td>
             <td className="r num small">{r.reservePrice ? money(r.reservePrice) : '—'}</td>
             <td className="r num">{r.bids || '—'}</td>
             <td><StatusDot s={r.status} who={who} /></td>
-            <td className="small num nowrap">{r.status === 'open' ? `${dayLabel(dubai(r.closesAt).date, { day: 'numeric', month: 'short' })} · ${time(r.closesAt)}` : '—'}</td>
+            <td className="small num nowrap">{r.status === 'open' ? slotWhen(r.closesAt, r.channel, { day: 'numeric', month: 'short' }) : '—'}</td>
           </tr>)}</tbody></table></div>}
       {total != null && items.length < total && <div className="cv-more-row"><button className="btn" disabled={busy} onClick={() => load(items.length)}>
         {busy ? t('Loading…') : t('Show {n} more', { n: Math.min(50, total - items.length) })}</button></div>}

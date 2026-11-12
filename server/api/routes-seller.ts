@@ -68,8 +68,8 @@ const otherBids = async (db: pg.PoolClient, d: any) => (await db.query(
 
 export function sellerRoutes(route: RouteFn) {
   route('GET', '/api/seller/slots', SELLER, async ({ db, me }, req) => (await db.query(
-    `select s.*, p.name placement, o.name outlet, o.channel, (select count(*)::int from bids b where b.slot_id = s.id) bids from slots s
-     join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+    `select s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.logo_key, pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, (select count(*)::int from bids b where b.slot_id = s.id) bids from slots s
+     join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id
      where o.company_id = $1 and ($2::timestamptz is null or s.starts_at >= $2) and ($3::timestamptz is null or s.starts_at < $3) order by s.starts_at`,
     [me.actAs.companyId, req.query.from ?? null, req.query.to ?? null])).rows.map(sellerSlot))
 

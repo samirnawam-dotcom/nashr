@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type Slot } from '../api'
-import { closesIn, dayLabel, money, time } from '../format'
+import { closesIn, dayLabel, hasTime, money, time } from '../format'
+import { OutletMark } from '../LogoPicker'
 import { addDays, dubai, layoutDay, monthGrid, todayInDubai, weekOf } from './layout'
 import { BidDrawer, INDUSTRIES } from './BidDrawer'
 import { useLive } from '../live'
@@ -38,6 +39,8 @@ const LIST_DAYS = 28, PAGE = 50, OUTLET_PAGE = 50, HOUR = 64, MAX_COLS = 3
 export const Gavel = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8" /></svg>
 export const Bolt = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
 export const Tag = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8zM7 7h.01" /></svg>
+/** The clock time of a slot, for media that have one (radio, TV); nothing for the rest, which are sold by the date alone. */
+export const clock = (r: { channel: string; startsAt: string; endsAt: string | null }) => !hasTime(r.channel) ? '' : r.endsAt || dubai(r.startsAt).minutes ? time(r.startsAt) : t('All day')
 /** The three ways a slot is sold, with one label and one icon each, used everywhere (SPEC 12.1). */
 export const SALE_TYPES = ['auction', 'quick_sale', 'fixed'] as const
 export const SaleIcon = ({ k }: { k: string }) => k === 'auction' ? <Gavel /> : k === 'fixed' ? <Tag /> : <Bolt />
@@ -344,10 +347,10 @@ function ListView({ s, from, to, narrow, reload, onSort, onOpen }: { s: State; f
       {narrow ? <ul className="cv-cards">{rows.map(r => typeof r === 'string'
         ? <li key={r} className={`cv-day ${r === today ? 'today' : ''}`}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'short' })}</li>
         : <li key={r.id}><button className={`cv-card ch-b-${r.channel}`} onClick={() => onOpen(r.id)}>
-          <span className="cv-card-top"><span className="num cv-when">{grouped ? (r.endsAt || dubai(r.startsAt).minutes ? time(r.startsAt) : t('All day')) : `${dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })} · ${time(r.startsAt)}`}</span>
+          <span className="cv-card-top"><span className="num cv-when">{grouped ? clock(r) : [dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' }), clock(r)].filter(Boolean).join(' · ')}</span>
             <b className="num">{money(r.topBid ?? r.startingPrice)}</b></span>
-          <span className="cv-card-name"><ChannelMark c={r.channel} /><b>{r.outlet}</b></span>
-          <span className="small muted">{r.placement}{r.label !== r.placement ? ` · ${tm(r.label)}` : ''}</span>
+          <span className="cv-card-name"><OutletMark name={r.brand ?? r.outlet} url={r.logoUrl} size={22} /><b>{r.brand ?? r.outlet}</b></span>
+          <span className="small muted">{r.placement}{r.label !== r.placement ? ` · ${tm(r.label)}` : ''} · {CHANNEL_NAME[r.channel] ?? r.channel}</span>
           <span className="cv-card-meta small"><SaleType t={r.saleType} />{status(r)}</span>
         </button></li>)}</ul>
       : <div className="table-wrap"><table className="table cv-table">
@@ -355,9 +358,9 @@ function ListView({ s, from, to, narrow, reload, onSort, onOpen }: { s: State; f
         <tbody>{rows.map(r => typeof r === 'string'
           ? <tr key={r} className="cv-dayrow"><th colSpan={8} className={r === today ? 'today' : ''}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'long' })}</th></tr>
           : <tr key={r.id} data-slot={r.id} className={r.available ? '' : 'cv-taken'} onClick={() => onOpen(r.id)}>
-            <td className="num nowrap">{grouped ? '' : <span className="muted">{dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })} · </span>}
-              {r.endsAt || dubai(r.startsAt).minutes ? ltr(time(r.startsAt)) : t('All day')}</td>
-            <td><span className="cv-outlet">{r.logoUrl ? <img src={r.logoUrl} width={24} height={24} alt="" className="cv-logo" loading="lazy" /> : <ChannelMark c={r.channel} />}<b>{r.outlet}</b></span></td>
+            <td className="num nowrap">{grouped ? '' : <span className="muted">{dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })}{clock(r) ? ' · ' : ''}</span>}
+              {clock(r) ? ltr(clock(r)) : ''}</td>
+            <td><span className="cv-outlet"><OutletMark name={r.brand ?? r.outlet} url={r.logoUrl} size={26} /><span><b>{r.brand ?? r.outlet}</b><span className="small muted">{CHANNEL_NAME[r.channel] ?? r.channel}</span></span></span></td>
             <td><span className="cv-slot">{r.placement}</span>{r.label !== r.placement && <span className="small muted"> · {tm(r.label)}</span>}</td>
             <td><SaleType t={r.saleType} /></td>
             <td className="r num"><b>{money(r.topBid ?? r.startingPrice)}</b>{r.topBid ? <div className="small muted">{t('top bid')}</div> : null}</td>
@@ -557,9 +560,9 @@ function SlotsPanel({ p, s, onClose, onOpen }: { p: Panel; s: State; onClose: ()
         {!shown ? <p className="muted">{t('Loading…')}</p>
         : <ul className="list">{shown.map(x =>
             <li key={x.id}><button className="row" onClick={() => onOpen(x.id)} disabled={!x.available}>
-              <span>{p.list ? <><span className="cv-outlet"><ChannelMark c={x.channel} /><b>{x.outlet}</b></span><br />
-                <span className="small muted">{x.placement}{x.label !== x.placement ? ` · ${tm(x.label)}` : ''}{x.endsAt || dubai(x.startsAt).minutes ? <span className="num"> · {time(x.startsAt)}</span> : null}</span></>
-                : <><b>{tm(x.label)}</b>{x.kind === 'single' && (x.endsAt || dubai(x.startsAt).minutes) ? <span className="muted num"> · {time(x.startsAt)}</span> : null}
+              <span>{p.list ? <><span className="cv-outlet"><OutletMark name={x.brand ?? x.outlet} url={x.logoUrl} size={22} /><b>{x.brand ?? x.outlet}</b></span><br />
+                <span className="small muted">{x.placement}{x.label !== x.placement ? ` · ${tm(x.label)}` : ''}{clock(x) ? <span className="num"> · {clock(x)}</span> : null}</span></>
+                : <><b>{tm(x.label)}</b>{x.kind === 'single' && clock(x) ? <span className="muted num"> · {clock(x)}</span> : null}
                   {p.query?.outlet && <span className="small muted"> · {x.placement}</span>}</>}
                 <br /><SaleType t={x.saleType} /></span>
               <span className="right"><b className="num">{money(x.topBid ?? x.startingPrice)}</b><br /><span className="small">{status(x)}</span></span>

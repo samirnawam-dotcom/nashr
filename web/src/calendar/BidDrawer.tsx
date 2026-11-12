@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { tm } from '../i18n-server'
 import { api, type Campaign, type Client, type Slot } from '../api'
-import { dayLabel, money, time } from '../format'
+import { dayLabel, hasTime, money, slotWhen, time } from '../format'
+import { OutletMark } from '../LogoPicker'
+import { Reach } from './Reach'
 import { addDays, dubai, isAllDay } from './layout'
 import { SaleType, status } from './CalendarPage'
 import { SignInPrompt, useGuest } from '../guest'
@@ -79,22 +81,25 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   const weekLong = !!s.endsAt && new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime() >= 86_400_000
   const when = weekLong ? `${dayLabel(dubai(s.startsAt).date, { day: 'numeric', month: 'short' })} – ${dayLabel(addDays(dubai(s.endsAt!).date, -1), { day: 'numeric', month: 'short' })}`
     : isAllDay(s) ? dayLabel(dubai(s.startsAt).date, { weekday: 'short', day: 'numeric', month: 'short' })
+    : !hasTime(s.channel) ? dayLabel(dubai(s.startsAt).date, { weekday: 'short', day: 'numeric', month: 'short' })
     : `${dayLabel(dubai(s.startsAt).date)} · ${time(s.startsAt)}${!s.endsAt ? '' : seconds(s) < 120 ? ` · ${t('{n} seconds', { n: seconds(s) })}` : `–${time(s.endsAt)}`}`
   const closes = new Date(s.closesAt)
   return (
-    <Shell onClose={onClose} title={`${s.outlet} · ${s.placement}`} sub={`${tm(s.label)} · ${when}`}>
+    <Shell onClose={onClose} title={s.title ?? `${s.outlet} · ${s.placement}`} sub={[s.label !== s.placement ? tm(s.label) : '', when].filter(Boolean).join(' · ')} mark={<OutletMark name={s.brand ?? s.outlet} url={s.logoUrl} size={48} />}>
       <div className="row-flex"><SaleType t={s.saleType} /><span className="small">{status(s)}</span></div>
       {s.saleType === 'auction' && s.available && closes.getTime() - now < 3_600_000 && closes.getTime() > now && <p className="bid-countdown" role="timer" aria-live="off">
         {t('Bidding closes in {time}', { time: `${Math.floor((closes.getTime() - now) / 60_000)}:${String(Math.floor((closes.getTime() - now) / 1000) % 60).padStart(2, '0')}` })}</p>}
-      {s.saleType === 'auction' && <p className="small muted">{t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })}</p>}
+      {s.saleType === 'auction' && <p className="small muted">{hasTime(s.channel) ? t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })
+        : t('Bidding closes {when}', { when: slotWhen(s.closesAt, s.channel) })}</p>}
 
       {s.details && (s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">
         {s.details.description && <div><dt>{t('What you get')}</dt><dd>{s.details.description}</dd></div>}
         {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd>{s.details.specs}</dd></div>}
         {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
         {s.details.notAccepted?.length ? <div><dt>{t('Does not accept')}</dt><dd>{s.details.notAccepted.map(i => t(i)).join(', ')}</dd></div> : null}
-        <div><dt>{t('Creative due')}</dt><dd>{dayLabel(dubai(s.creativeDueAt).date, { weekday: 'short', day: 'numeric', month: 'short' })}, {time(s.creativeDueAt)}</dd></div>
+        <div><dt>{t('Creative due')}</dt><dd>{slotWhen(s.creativeDueAt, s.channel)}</dd></div>
       </dl>}
+      <Reach audience={s.audience} reach={s.reach} reachUnit={s.reachUnit} notes={s.notes} />
       {s.publisher && <div className="drawer-seller"><span className="small muted">{t('Sold by')}</span><CompanyCard p={s.publisher} compact /></div>}
       <dl className="prices">
         <div><dt>{s.saleType === 'auction' ? t('Starting price') : s.saleType === 'fixed' ? t('Price') : t('Asking price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>
@@ -185,12 +190,12 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   )
 }
 
-function Shell({ title, sub, onClose, children }: { title?: string; sub?: string; onClose: () => void; children: React.ReactNode }) {
+function Shell({ title, sub, mark, onClose, children }: { title?: string; sub?: string; mark?: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [])
   return (
     <div className="scrim" onClick={onClose}>
       <aside className="drawer" role="dialog" aria-label={title} onClick={e => e.stopPropagation()}>
-        <header className="drawer-h"><div>{title && <h2>{title}</h2>}{sub && <p className="muted small">{sub}</p>}</div>
+        <header className="drawer-h">{mark}<div className="drawer-t">{title && <h2>{title}</h2>}{sub && <p className="muted small">{sub}</p>}</div>
           <button className="btn" onClick={onClose} aria-label={t("Close")}>✕</button></header>
         {children}
       </aside>

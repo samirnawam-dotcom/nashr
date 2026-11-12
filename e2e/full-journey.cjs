@@ -94,16 +94,16 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await pub.click('.biz-nav button:has-text("Tax and invoices")'); await pub.fill('#trn', '100123456700003'); await pub.click('section:has(#trn) button:has-text("Save")'); await pub.waitForSelector('text=Tax details saved.')
     await pub.shot('f4-profile'); say()
 
-    step = '5 publisher: product, media type, programmes, listed'
-    // The owner's rules: a product (the brand), its media type with that type's own fields, programmes, then each listed with how it is sold
-    await nav(pub, 'Listings'); await pub.click('a:has-text("Add product")'); await pub.waitForSelector('#pr-n')
-    await pub.fill('#pr-n', `Palm Radio ${run}`); await pub.fill('#pr-d', 'Drive-time radio across the Emirates.'); await pub.click('button:has-text("Save and add media types")')
+    step = '5 publisher: outlet, product, programmes, listed'
+    // The owner's rules (round 2 names): an outlet (the brand), its product with that media type's own fields, programmes, then each listed with how it is sold
+    await nav(pub, 'Listings'); await pub.click('a:has-text("Add outlet")'); await pub.waitForSelector('#pr-n')
+    await pub.fill('#pr-n', `Palm Radio ${run}`); await pub.fill('#pr-d', 'Drive-time radio across the Emirates.'); await pub.click('button:has-text("Save and add products")')
     await pub.waitForSelector('.ed-types'); await pub.click('.ed-types button:has-text("Radio")')
     await pub.fill('#new-name', `Palm Radio ${run}`); await pub.selectOption('#new-lang', 'english'); await pub.fill('#new-desc', 'Drive-time radio across the Emirates.')
     await pub.check('.ed-switch input'); await pub.fill('#new-aud', 'Commuters 25-45')
     await pub.uncheck('label.check:has-text("All sectors") input'); await pub.check('#new-sec-Banking'); await pub.check('#new-sec-Retail')
     await pub.fill('#new-dp', '2000'); await pub.fill('#new-cd', '2'); await pub.fill('#new-bc', '6'); await pub.selectOption('#new-st', 'MP3'); await pub.fill('#new-sd', '30 seconds')
-    await pub.shot('f5-media'); await pub.click('button:has-text("Add media type")'); await pub.waitForSelector('text=Media type saved.')
+    await pub.shot('f5-media'); await pub.click('.ed-form .ed-save button:has-text("Add product")'); await pub.waitForSelector('text=Product saved.')
     const programme = async (name, from, to, at, sold, extra) => {
       await pub.click('.ed-progs button:has-text("Add a programme")'); await pub.waitForSelector('.ed-prog')
       await pub.fill('.ed-prog input[id$="-pn"]', name); await pub.click('.ed-prog .ed-quick button:has-text("Every day")')

@@ -212,6 +212,8 @@ export const SERVER_AR: Record<string, string> = {
   "Add a description.": "أضف وصفًا.",
   "Keep it to 500 characters.": "لا تتجاوز 500 حرف.",
   "This product was not found.": "لم يُعثر على هذا المنتج.",
+  "Add the outlet name.": "أضف اسم المنفذ.",
+  "This outlet was not found.": "لم يُعثر على هذا المنفذ.",
   "Enter the new price.": "أدخل السعر الجديد.",
   "Nothing is listed in this week to repeat.": "لا يوجد شيء معروض في هذا الأسبوع لتكراره.",
   "This media type was not found.": "لم يُعثر على نوع الوسيلة هذا.",

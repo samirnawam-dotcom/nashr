@@ -10,3 +10,7 @@ export const MEDIA_LABEL: Record<string, string> = {
 }
 /** The older type a newer one follows for file rules and photos. */
 export const family = (m: string) => m === 'newspaper' || m === 'magazine' || m === 'print' ? 'print' : m === 'newsletter' || m === 'social' || m === 'other' ? 'digital' : m
+
+/** Media sold by the time of day (a break at 07:15). Everything else is sold by the date only, so screens show no clock time for it. */
+export const TIMED = ['radio', 'tv']
+export const hasTime = (channel: string | null | undefined) => TIMED.includes(channel ?? '')

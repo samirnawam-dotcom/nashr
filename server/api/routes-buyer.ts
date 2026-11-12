@@ -69,8 +69,9 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
     const r = (await db.query(
-      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.blocked_industries, o.company_id seller_company, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, (select count(*)::int from bids b where b.slot_id = s.id) bids
-       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
+      `select s.*, p.name placement, p.description placement_description, p.specs placement_specs, p.language placement_language, p.unit placement_unit, o.blocked_industries, o.company_id seller_company, o.id outlet_id, o.name outlet, o.logo_key, o.channel, o.sectors, o.audience, o.reach, o.reach_unit, coalesce(nullif(p.details->>'notes', ''), o.notes) notes,
+         pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, (select count(*)::int from bids b where b.slot_id = s.id) bids
+       from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, max(max_amount) filter (where max_amount > amount and kind in ('bid', 'auto')) auto_max,
       bool_or(brief is not null) has_brief, count(*) filter (where kind in ('bid', 'auto', 'interest') and status <> 'withdrawn')::int n
@@ -81,6 +82,7 @@ export function buyerRoutes(route: RouteFn) {
     return { ...buyerSlot(r, company), youBid: mine.n > 0, creativeDueAt: r.creative_due_at, yourDeal,
       minNextBid: r.top_amount ? minNextBid(r.top_amount, await setting(db, 'min_step_bp', at)) : r.starting_price,
       yourMax: mine.max, yourAutoMax: mine.auto_max, briefOnFile: !!mine.has_brief,
+      reach: r.reach ?? null, reachUnit: r.reach_unit ?? null, notes: r.notes ?? null,
       details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit, notAccepted: r.blocked_industries ?? [] },
       publisher: await companyProfile(db, r.seller_company) }
   })

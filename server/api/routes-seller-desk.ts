@@ -1,4 +1,5 @@
 import { inTurn } from '../core/db.js'
+import { brandOf } from './shapes.js'
 import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { MarketError } from '../marketplace/market.js'
@@ -147,8 +148,9 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
 
   // One slot for the seller's calendar panel: bids by company (buyers' contact details never), deals, reserve.
   route('GET', '/api/seller/slots/:id', SELLER, async ({ db, me, at }, req) => {
-    const s = (await db.query(`select s.*, p.name placement, o.name outlet, o.channel from slots s join placements p on p.id = s.placement_id
-        join outlets o on o.id = p.outlet_id where s.id = $1 and o.company_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
+    const s = (await db.query(`select s.*, p.name placement, o.id outlet_id, o.name outlet, o.channel, o.logo_key, o.audience, o.reach, o.reach_unit, coalesce(nullif(p.details->>'notes', ''), o.notes) notes,
+        pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key from slots s join placements p on p.id = s.placement_id
+        join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id where s.id = $1 and o.company_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
     if (!s) throw new NotFound()
     const bids = (await db.query(`select b.id, b.kind, b.amount, b.status, b.created_at, b.brief, b.buyer_id, c.name from bids b join companies c on c.id = b.buyer_id
         where b.slot_id = $1 and b.status <> 'withdrawn' order by b.amount desc, b.seq`, [s.id])).rows
@@ -159,7 +161,7 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     const ids = deals.map(d => d.id)
     const creatives = ids.length ? (await db.query(`select deal_id, version, status, file_key, file_type, uploaded_at from creatives where deal_id = any($1) order by version desc`, [ids])).rows : []
     const proofs = ids.length ? (await db.query(`select distinct on (deal_id) deal_id, items, submitted_at from proofs where deal_id = any($1) order by deal_id, submitted_at desc`, [ids])).rows : []
-    return { id: s.id, placementId: s.placement_id, outlet: s.outlet, channel: s.channel, placement: s.placement, label: s.label, kind: s.kind, saleType: s.sale_type, status: s.status,
+    return { id: s.id, placementId: s.placement_id, outlet: s.outlet, ...brandOf(s), audience: s.audience ?? null, reach: s.reach ?? null, reachUnit: s.reach_unit ?? null, notes: s.notes ?? null, channel: s.channel, placement: s.placement, label: s.label, kind: s.kind, saleType: s.sale_type, status: s.status,
       startsAt: s.starts_at, endsAt: s.ends_at, closesAt: s.closes_at, creativeDueAt: s.creative_due_at, choiceDeadlineAt: s.choice_deadline_at,
       startingPrice: s.starting_price, buyNowPrice: s.buy_now_price, reservePrice: s.reserve_price, topBid: s.top_amount,
       bids: bids.map(b => ({ id: b.id, kind: b.kind, amount: b.amount, status: b.status, at: b.created_at, company: b.name,

@@ -12,6 +12,8 @@ const IMAGE = ['image/jpeg', 'image/png']
 export const coverUrl = (o: { id: string; cover_key?: string | null }) => o.cover_key ? `/api/outlets/${o.id}/cover?v=${o.cover_key.slice(6, 14)}` : null
 /** The public URL for an outlet's logo, or null: the page then shows its initials. */
 export const logoUrl = (o: { id: string; logo_key?: string | null }) => o.logo_key ? `/api/outlets/${o.id}/logo?v=${o.logo_key.slice(5, 13)}` : null
+/** The logo of the brand an outlet row belongs to (owner's "Outlet"), or null. */
+export const brandLogoUrl = (id: string | null | undefined, key: string | null | undefined) => id && key ? `/api/brands/${id}/logo?v=${key.slice(-8)}` : null
 const URL_OF = { cover: coverUrl, logo: logoUrl }
 
 /**
@@ -19,6 +21,33 @@ const URL_OF = { cover: coverUrl, logo: logoUrl }
  * Anyone may see a cover, signed in or not: it is public by design, like the outlet page it sits on.
  */
 export function coverRoutes(route: RouteFn, storage: Storage) {
+  // The brand's logo (owner's rules round 2): one per outlet, shown on Products, the calendar and the bid drawer.
+  route('PUT', '/api/seller/products/:id/logo', ['seller'], async ({ db, at, me }, req, reply) => {
+    const body = req.body
+    if (!Buffer.isBuffer(body) || !body.length) throw new MarketError('Choose a photo to upload.')
+    if (body.length > MAX_COVER) return reply.code(413).send({ error: 'The photo is too large. Use one under 3 MB.' })
+    if (!IMAGE.includes(sniffType(body))) throw new MarketError('Use a JPEG or PNG photo.')
+    const key = `logo-${randomUUID()}`
+    const r = await db.query(`update products set logo_key = $2 where id = $1 and company_id = $3 and not archived returning id`, [req.params.id, key, me.actAs.companyId])
+    if (!r.rowCount) throw new NotFound()
+    await storage.put(key, body)
+    await audit(db, `seller:${me.actAs.companyId}`, 'product.logo_set', 'product', req.params.id, null, at)
+    return { logoUrl: brandLogoUrl(req.params.id, key) }
+  })
+  route('DELETE', '/api/seller/products/:id/logo', ['seller'], async ({ db, at, me }, req) => {
+    const r = await db.query(`update products set logo_key = null where id = $1 and company_id = $2`, [req.params.id, me.actAs.companyId])
+    if (!r.rowCount) throw new NotFound()
+    await audit(db, `seller:${me.actAs.companyId}`, 'product.logo_removed', 'product', req.params.id, null, at)
+    return { ok: true }
+  })
+  route('GET', '/api/brands/:id/logo', 'public', async ({ db }, req, reply) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) throw new NotFound()
+    const key = (await db.query(`select logo_key from products where id = $1`, [req.params.id])).rows[0]?.logo_key
+    const bytes = key ? await storage.get(key).catch(() => null) : null
+    if (!bytes) throw new NotFound()
+    return reply.type(sniffType(bytes)).header('cache-control', 'public, max-age=31536000, immutable').send(bytes)
+  })
+
   for (const kind of ['cover', 'logo'] as const) {
   const col = `${kind}_key`
   async function set(db: any, at: Date, actor: string, outlet: string, owner: string | null, body: unknown, reply: any) {

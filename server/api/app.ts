@@ -44,10 +44,10 @@ export const cookie = (req: FastifyRequest) =>
 
 /** Not yours and not found look the same, so nobody can probe other companies' records (SPEC 5.5). */
 export class NotFound extends Error {}
-/** The only routes that take raw bytes instead of JSON: private files, and outlet cover photos and logos. */
+/** The only routes that take raw bytes instead of JSON: private files, outlet cover photos and logos, and a brand's logo. */
 const isUpload = (method: string, url: string) => {
   const path = url.split('?')[0]
-  return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/(cover|logo)$/.test(path))
+  return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/(cover|logo)$/.test(path)) || (method === 'PUT' && /^\/api\/seller\/products\/[^/]+\/logo$/.test(path))
 }
 
 // Attempt limits (sign-in, resets, two-step codes): counted in Postgres, so every copy of the API shares them. The count is

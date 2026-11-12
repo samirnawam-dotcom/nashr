@@ -33,13 +33,13 @@ export async function ensureProducts(db: Db, companyId: string) {
 }
 
 export async function saveProduct(db: Db, a: { id?: string; companyId: string; name: string; description: string; notes?: string | null }, actor: string, at: Date) {
-  if (!a.name?.trim()) throw new MarketError('Add the product name.')
+  if (!a.name?.trim()) throw new MarketError('Add the outlet name.')
   if (!a.description?.trim()) throw new MarketError('Add a description.')
   if ((a.notes ?? '').length > 500) throw new MarketError('Keep it to 500 characters.')
   noContacts(a.name, a.description, a.notes)
   if (a.id) {
     const r = await db.query(`update products set name = $3, description = $4, notes = $5 where id = $1 and company_id = $2 and not archived`, [a.id, a.companyId, a.name.trim(), a.description.trim(), a.notes?.trim() || null])
-    if (!r.rowCount) throw new MarketError('This product was not found.')
+    if (!r.rowCount) throw new MarketError('This outlet was not found.')
     await audit(db, actor, 'product.updated', 'product', a.id, null, at)
     return a.id
   }
@@ -51,7 +51,7 @@ export async function saveProduct(db: Db, a: { id?: string; companyId: string; n
 /** Delete a product: what is not yet sold stops being sold; bookings already made carry on. */
 export async function archiveProduct(db: Db, id: string, companyId: string, actor: string, at: Date) {
   const r = await db.query(`update products set archived = true where id = $1 and company_id = $2 and not archived`, [id, companyId])
-  if (!r.rowCount) throw new MarketError('This product was not found.')
+  if (!r.rowCount) throw new MarketError('This outlet was not found.')
   await db.query(`update outlets set archived = true where product_id = $1`, [id])
   await db.query(`update placements p set archived = true from outlets o where o.id = p.outlet_id and o.product_id = $1`, [id])
   await db.query(`update slots s set status = 'blocked' from placements p, outlets o where p.id = s.placement_id and o.id = p.outlet_id and o.product_id = $1
@@ -65,14 +65,14 @@ export async function saveMedia(db: Db, a: { id?: string; productId: string; com
   noContacts(m.name, m.description, m.audience, m.notes, m.specDetail, m.channelOther)
   await checkDeadlines(db, { creativeLeadHours: m.creativeDays * 24, closeLeadHours: m.closeDays * 24 }, at)
   const product = (await db.query(`select id from products where id = $1 and company_id = $2 and not archived`, [a.productId, a.companyId])).rows[0]
-  if (!product) throw new MarketError('This product was not found.')
+  if (!product) throw new MarketError('This outlet was not found.')
   const cols = [m.name.trim(), m.channel, m.channel === 'other' ? m.channelOther?.trim() : null, m.description.trim(), m.language, m.audience.trim(), m.markets,
     m.reach ?? null, m.reach ? m.reachUnit ?? null : null, m.sectors, m.blocked, m.defaultPrice, m.creativeDays, m.closeDays, m.specType, m.specDetail?.trim() || null,
     m.notes?.trim() || null, JSON.stringify(m.details ?? {})]
   let id = a.id
   if (id) {
     const own = (await db.query(`select channel from outlets where id = $1 and company_id = $2`, [id, a.companyId])).rows[0]
-    if (!own) throw new MarketError('This media type was not found.')
+    if (!own) throw new MarketError('This product was not found.')
     if (own.channel !== m.channel) throw new MarketError('The media type cannot change once it is added. Add a new one instead.')
     await db.query(`update outlets set name = $3, channel = $4, channel_other = $5, description = $6, language = $7, audience = $8, markets = $9, reach = $10, reach_unit = $11,
       sectors = $12, blocked_industries = $13, default_price = $14, creative_days = $15, close_days = $16, spec_type = $17, spec_detail = $18, notes = $19, details = $20
@@ -94,8 +94,8 @@ async function syncMain(db: Db, outletId: string, actor: string, at: Date) {
   const main = (await db.query(`select id from placements where outlet_id = $1 and kind = 'main' order by archived, id limit 1`, [outletId])).rows[0]
   if (byProgramme) { if (main) await db.query(`update placements set archived = true where id = $1`, [main.id]); return }
   const f = TYPE_FIELDS[o.channel] ?? [], opt = (k: string) => f.find(x => x.key === k)?.options
-  const fmt = label(opt('format'), d.format), name = [o.channel === 'social' ? label(opt('platform'), d.platform) : '', fmt, o.channel === 'newspaper' ? label(opt('section'), d.section) : '']
-    .filter(Boolean).join(' · ') || o.name
+  // named by its format (a social product by its platform too); screens put the outlet's name in front: "The National · Custom"
+  const fmt = label(opt('format'), d.format), name = [o.channel === 'social' ? label(opt('platform'), d.platform) : '', fmt].filter(Boolean).join(' · ') || o.name
   const week = o.channel === 'digital' && d.runs === '1w'
   const days: number[] = ['magazine', 'social'].includes(o.channel) ? [1, 2, 3, 4, 5, 6, 7] : (d.days?.length ? d.days : [1, 2, 3, 4, 5, 6, 7])
   const timed = ['radio', 'tv'].includes(o.channel)
@@ -122,7 +122,7 @@ async function syncMain(db: Db, outletId: string, actor: string, at: Date) {
 /** A programme under Radio, TV or Podcast: its own days, airtime, breaks and format; price and deadlines from the media type unless changed. */
 export async function saveProgramme(db: Db, a: { id?: string; outletId: string; companyId: string; p: ProgrammeInput }, actor: string, at: Date) {
   const o = (await db.query(`select * from outlets where id = $1 and company_id = $2 and not archived`, [a.outletId, a.companyId])).rows[0]
-  if (!o) throw new MarketError('This media type was not found.')
+  if (!o) throw new MarketError('This product was not found.')
   if (!HAS_PROGRAMMES.includes(o.channel)) throw new MarketError('Only Radio, TV and Podcast have programmes.')
   const p = a.p, d = p.details ?? {}
   if (!p.name?.trim()) throw new MarketError('Add the programme name.')

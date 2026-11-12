@@ -1,7 +1,8 @@
 import { navigate } from '../nav'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import { dayLabel, time } from '../format'
+import { dayLabel, hasTime, slotWhen, time } from '../format'
+import { OutletMark } from '../LogoPicker'
 import { addDays, dubai, monthGrid, todayInDubai, weekOf } from '../calendar/layout'
 import { DealStatus, SLOT_STATUS, money, when } from './common'
 import { ListingPanel, type Product } from './Listing'
@@ -9,11 +10,12 @@ import { SALE_TYPES, SaleIcon, saleLabel, useLatest, useNarrow } from '../calend
 import { DateNav, FilterFold, OpsList, statusesOf, useAddress } from '../calendar/ops'
 import { CHANNEL_NAME, ICON, art } from '../media'
 import { family } from '../../../server/shared/media'
+import { Reach } from '../calendar/Reach'
 import { ltr, sep, t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { tm } from '../i18n-server'
 
-type SSlot = { id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
+type SSlot = { brand: string; title: string; logoUrl: string | null; id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
 
 type View = 'day' | 'week' | 'list' | 'month'
@@ -66,7 +68,7 @@ export function SchedulePage() {
   // Day, week and month filter what is on screen in the browser, with the same rules the server uses for the list.
   const words = a.q.toLowerCase().split(/\s+/).filter(Boolean)
   const base = (slots ?? []).filter(x => (!sales.length || sales.includes(x.saleType))
-    && (!a.outlet || x.outletId === a.outlet) && words.every(w => `${x.outlet} ${x.placement}`.toLowerCase().includes(w)))
+    && (!a.outlet || x.outletId === a.outlet) && words.every(w => `${x.brand} ${x.outlet} ${x.placement}`.toLowerCase().includes(w)))
   const shown = states.length ? base.filter(x => states.includes(bidState(x)[1])) : base
   const step = (n: number) => { if (view === 'month') { const d = new Date(a.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
     update({ date: addDays(a.date, n * (view === 'list' ? 28 : view === 'day' ? 1 : 7)) }, true) }
@@ -200,14 +202,14 @@ function Lanes({ days, slots, open, onOpen, onAdd, onDay, picked, onPick }: { da
   // only slots nobody has bid on can change: on sale with no bids, or off sale
   const can = (s: SSlot) => (s.status === 'open' && !s.bids) || s.status === 'blocked', idsOf = (l: SSlot[]) => l.filter(can).map(s => s.id)
   const today = todayInDubai(), lanes = new Map<string, SSlot[]>()
-  for (const s of slots) { const k = `${s.outlet}\n${s.placement}`; lanes.set(k, [...(lanes.get(k) ?? []), s]) }
+  for (const s of slots) { const k = `${s.title}\n${s.outlet}`; lanes.set(k, [...(lanes.get(k) ?? []), s]) }
   const on = (l: SSlot[], d: string) => l.filter(s => dubai(s.startsAt).date === d).sort((x, y) => Number(x.kind !== 'single') - Number(y.kind !== 'single') || x.startsAt.localeCompare(y.startsAt))
-  const pill = (s: SSlot) => { const [label, k] = bidState(s), timed = s.kind === 'single' && !isLong(s)
-    return <button key={s.id} type="button" className={`ln-ev cc-ev s-${k} ${timed ? '' : 'pkg'} ${open === s.id ? 'on' : ''} ${picked ? (picked.includes(s.id) ? 'picked' : can(s) ? 'pickable' : 'locked') : ''}`}
+  const pill = (s: SSlot) => { const [label, k] = bidState(s), timed = s.kind === 'single' && !isLong(s) && hasTime(s.channel)
+    return <button key={s.id} type="button" className={`ln-ev cc-ev s-${k} ${s.kind === 'single' ? '' : 'pkg'} ${open === s.id ? 'on' : ''} ${picked ? (picked.includes(s.id) ? 'picked' : can(s) ? 'pickable' : 'locked') : ''}`}
       aria-pressed={picked ? picked.includes(s.id) : undefined} disabled={!!picked && !can(s)} onClick={() => picked ? onPick([s.id]) : onOpen(s.id)}
-      title={`${s.placement} · ${tm(s.label)}${timed ? ` · ${time(s.startsAt)}` : ''} · ${label} · ${money(price(s))}`}>
+      title={`${s.title} · ${tm(s.label)}${timed ? ` · ${time(s.startsAt)}` : ''} · ${label} · ${money(price(s))}`}>
       <span className={`bchip b-${k} ln-s`}>{k === 'acc' ? '✓' : k === 'bid' ? s.bids : k === 'pend' ? '!' : <i aria-hidden />}</span>
-      <span className="ln-t num">{timed ? time(s.startsAt) : tm(s.label)}</span>
+      <span className="ln-t num">{timed ? time(s.startsAt) : s.kind === 'single' ? label.replace(/\s*\(\d+\)$/, '') : tm(s.label)}</span>
       <span className="ln-p num">{short(price(s))}</span></button> }
   return <div className="cw ln card scroll-x" role="grid" aria-label={t('Week')}>
     <div className="ln-inner">
@@ -219,9 +221,9 @@ function Lanes({ days, slots, open, onOpen, onAdd, onDay, picked, onPick }: { da
           {l.length > 0 && <Mix list={l} />}</span> })}</div>
       {[...lanes.entries()].sort((x, y) => x[0].localeCompare(y[0])).map(([key, l]) => { const s0 = l[0], sold = l.filter(s => bidState(s)[1] === 'acc').length
         return <div className="ln-row" key={key}>
-          <div className={`ln-who cc-ev f-${family(s0.channel)} ${picked ? 'pick' : ''}`} role={picked ? 'button' : undefined} tabIndex={picked ? 0 : undefined}
-            onClick={picked ? () => onPick(idsOf(l)) : undefined} onKeyDown={picked ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(idsOf(l)) } } : undefined}><span className="ln-ic"><ChIcon c={s0.channel} size={17} /></span>
-            <span className="ln-name"><b>{s0.placement}</b><span className="small muted">{CHANNEL_NAME[s0.channel] ?? s0.channel}{s0.outlet !== s0.placement ? `${sep}${s0.outlet}` : ''}</span>
+          <div className={`ln-who cc-ev f-${family(s0.channel)} ${picked ? 'pick' : ''}`} title={s0.title} role={picked ? 'button' : undefined} tabIndex={picked ? 0 : undefined}
+            onClick={picked ? () => onPick(idsOf(l)) : undefined} onKeyDown={picked ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(idsOf(l)) } } : undefined}><OutletMark name={s0.brand} url={s0.logoUrl} size={34} />
+            <span className="ln-name"><b>{s0.title}</b><span className="small muted">{CHANNEL_NAME[s0.channel] ?? s0.channel}</span>
               <span className="ln-stat small num">{t('{sold} of {n} booked', { sold, n: l.length })}</span></span></div>
           {days.map(d => <div key={d} className={`ln-cell ${d === today ? 'today' : ''} ${d < today ? 'past' : ''}`}>{on(l, d).map(pill)}</div>)}
         </div> })}
@@ -231,14 +233,16 @@ function Lanes({ days, slots, open, onOpen, onAdd, onDay, picked, onPick }: { da
 
 /** A day as the owner drew it: hours down the side, one tinted card per slot with its type, length, bid status and price. */
 function DayList({ slots, open, onOpen }: { slots: SSlot[]; open: string | null; onOpen: (id: string) => void }) {
-  const hours = [...new Set(slots.map(s => Math.floor(dubai(s.startsAt).minutes / 60)))].sort((x, y) => x - y)
+  // radio and TV sit under their hour; everything sold by the date alone comes first, with no clock beside it
+  const hourOf = (s: SSlot) => hasTime(s.channel) ? Math.floor(dubai(s.startsAt).minutes / 60) : -1
+  const hours = [...new Set(slots.map(hourOf))].sort((x, y) => x - y)
   return <div className="cc-day card">{hours.map(h => <div className="cc-hour" key={h}>
-    <span className="cc-hl num">{ltr(`${String(h).padStart(2, '0')}:00`)}</span>
-    <div className="cc-hitems">{slots.filter(s => Math.floor(dubai(s.startsAt).minutes / 60) === h).map(s =>
+    <span className="cc-hl num">{h < 0 ? '' : ltr(`${String(h).padStart(2, '0')}:00`)}</span>
+    <div className="cc-hitems">{slots.filter(s => hourOf(s) === h).map(s =>
       <button key={s.id} type="button" className={`cc-ev f-${family(s.channel)} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}>
-        <ChIcon c={s.channel} size={20} />
-        <span className="cc-what"><b>{s.placement}</b><span className="small muted">{tm(s.label)}{sep}{CHANNEL_NAME[s.channel] ?? s.channel}{sep}{s.outlet}</span></span>
-        <span className="cc-chips"><span className="cc-pill">{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</span>{length(s) && <span className="cc-pill">{length(s)}</span>}
+        <OutletMark name={s.brand} url={s.logoUrl} size={36} />
+        <span className="cc-what"><b>{s.title}</b><span className="small muted">{[s.label !== s.placement ? tm(s.label) : '', CHANNEL_NAME[s.channel] ?? s.channel].filter(Boolean).join(sep)}</span></span>
+        <span className="cc-chips">{hasTime(s.channel) && <span className="cc-pill">{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</span>}{hasTime(s.channel) && length(s) && <span className="cc-pill">{length(s)}</span>}
           <span className="cc-pill">{saleLabel(s.saleType)}</span></span>
         <BidChip s={s} />
         <span className="cc-price num">{money(price(s))}</span>
@@ -251,13 +255,13 @@ function DayList({ slots, open, onOpen }: { slots: SSlot[]; open: string | null;
  */
 function WeekGrid({ days, slots, open, onOpen, onAdd }: { days: string[]; slots: SSlot[]; open: string | null; onOpen: (id: string) => void; onAdd: (d: string) => void }) {
   const long = isLong
-  const timed = slots.filter(s => !long(s) && s.kind === 'single'), allDay = slots.filter(s => long(s) || s.kind !== 'single')
+  const timed = slots.filter(s => !long(s) && s.kind === 'single' && hasTime(s.channel)), allDay = slots.filter(s => !timed.includes(s))
   const hourOf = (s: SSlot) => Math.floor(dubai(s.startsAt).minutes / 60)
   const hours = [...new Set(timed.map(hourOf))].sort((x, y) => x - y), today = todayInDubai()
   const card = (s: SSlot) => <button key={s.id} type="button" className={`wk-ev cc-ev f-${family(s.channel)} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}
-    title={`${s.outlet} · ${s.placement} · ${tm(s.label)} · ${bidState(s)[0]}`}>
-    <span className="wk-l1"><ChIcon c={s.channel} size={13} /><b>{s.placement}</b></span>
-    <span className="wk-l2 muted">{tm(s.label)}{s.kind === 'single' && !long(s) ? ` · ${time(s.startsAt)}` : ''}</span>
+    title={`${s.title} · ${tm(s.label)} · ${bidState(s)[0]}`}>
+    <span className="wk-l1"><OutletMark name={s.brand} url={s.logoUrl} size={16} /><b>{s.title}</b></span>
+    <span className="wk-l2 muted">{tm(s.label)}{timed.includes(s) ? ` · ${time(s.startsAt)}` : ''}</span>
     <span className="wk-l3"><BidChip s={s} /><span className="wk-p num">{short(price(s))}</span></span></button>
   const row = (label: string, pick: (d: string) => SSlot[], key: string) => <div className="cw-row" key={key}>
     <span className="cw-t num">{label}</span>
@@ -293,7 +297,7 @@ function MonthGrid({ date, grid, slots, onDay }: { date: string; grid: string[][
   </div>
 }
 
-type Panel = SSlot & { creativeDueAt: string; choiceDeadlineAt: string | null
+type Panel = SSlot & { audience: string | null; reach: number | null; reachUnit: string | null; notes: string | null; creativeDueAt: string; choiceDeadlineAt: string | null
   bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean; acceptable?: boolean; profile?: CompanyProfile | null
     brief: { advertiser: string | null; industry: string | null; message: string | null; language: string | null; notes: string | null } | null }[]
   placementId?: string; channel: string
@@ -342,13 +346,14 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
   const TABS: [typeof on, string][] = [['details', t('Details')], ['bids', s.bids.length ? t('Bids ({n})', { n: s.bids.length }) : t('Bids')], ['assets', files ? t('Assets ({n})', { n: files }) : t('Assets')]]
   return <>
     <header className="sp-head">
-      <img src={art(s.channel, 'card')} alt="" width={96} height={72} decoding="async" />
-      <div className="sp-head-t"><h2>{s.placement}</h2><p className="muted small">{tm(s.label)}{sep}{s.outlet}</p><p className="small">{when(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</p></div>
+      <OutletMark name={s.brand} url={s.logoUrl} size={64} />
+      <div className="sp-head-t"><h2>{s.title}</h2><p className="muted small">{[s.label !== s.placement ? tm(s.label) : '', CHANNEL_NAME[s.channel] ?? s.channel].filter(Boolean).join(sep)}</p>
+        <p className="small">{slotWhen(s.startsAt, s.channel)}{hasTime(s.channel) && s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</p></div>
       {onClose && <button className="btn icon" onClick={onClose} aria-label={t("Close")}>✕</button>}</header>
     <div className="sp-state"><BidChip s={{ status: s.status, saleType: s.saleType, bids: s.bids.filter(b => ['active', 'outbid', 'selected'].includes(b.status)).length }} />
       <b className="sp-price num">{money(s.topBid ?? s.startingPrice)}</b>
       <span className="small muted">{s.saleType === 'auction' ? t('Auction') : s.saleType === 'quick_sale' ? t('Quick sale') : t('Fixed price')}
-        {s.status === 'open' && s.saleType === 'auction' ? ` · ${t('bidding closes {when}', { when: when(s.closesAt) })}` : ''}</span></div>
+        {s.status === 'open' && s.saleType === 'auction' ? ` · ${t('bidding closes {when}', { when: slotWhen(s.closesAt, s.channel) })}` : ''}</span></div>
     {s.status === 'awaiting_choice' && <p className="warn">{s.choiceDeadlineAt ? t('The winner did not go ahead. Choose another bid by {when}, or let it relist as a quick sale.', { when: when(s.choiceDeadlineAt) }) : t('The winner did not go ahead. Choose another bid, or let it relist as a quick sale.')}</p>}
     <div className="seg sp-tabs" role="tablist" aria-label={t('Slot')}>{TABS.map(([k, l]) =>
       <button key={k} role="tab" id={`sp-${k}`} aria-selected={on === k} aria-controls="sp-body" className={on === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
@@ -357,11 +362,12 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
     {on === 'details' && <>
       <ul className="sp-rows">
         <li><TabSvg d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /><span>{dayLabel(dubai(s.startsAt).date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span></li>
-        <li><TabSvg d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><span>{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? ` – ${time(s.endsAt)}` : ''}{s.endsAt && mins(s) < 5 ? ` · ${length(s)}` : ''} {t('(UAE)')}</span></li>
+        {hasTime(s.channel) && <li><TabSvg d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" /><span>{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? ` – ${time(s.endsAt)}` : ''}{s.endsAt && mins(s) < 5 ? ` · ${length(s)}` : ''} {t('(UAE)')}</span></li>}
         <li><ChIcon c={s.channel} size={17} /><span>{CHANNEL_NAME[s.channel] ?? s.channel}{sep}{s.placement}</span></li>
-        <li><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" /><span>{t('Sale closes {when}', { when: when(s.closesAt) })}</span></li>
-        <li><TabSvg d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" /><span>{t('Creative due {when}', { when: when(s.creativeDueAt) })}</span></li>
+        <li><TabSvg d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5" /><span>{t('Sale closes {when}', { when: slotWhen(s.closesAt, s.channel) })}</span></li>
+        <li><TabSvg d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" /><span>{t('Creative due {when}', { when: slotWhen(s.creativeDueAt, s.channel) })}</span></li>
       </ul>
+      <Reach audience={s.audience} reach={s.reach} reachUnit={s.reachUnit} notes={s.notes} />
       <dl className="prices">
         <div><dt>{s.saleType === 'auction' ? t('Starting price') : t('Price')}</dt><dd className="num">{money(s.startingPrice)}</dd></div>
         {s.reservePrice && <div><dt>{t("Reserve (buyers don't see it)")}</dt><dd className="num">{money(s.reservePrice)}</dd></div>}

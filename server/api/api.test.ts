@@ -1732,6 +1732,29 @@ test("products by the owner's rules: product, media types with their own fields,
   expect(again).toMatchObject({ programmes: 1, slots: l.slots * 2 })
   expect((await call(sellerX, 'POST', '/api/seller/listings/repeat', { from: '2026-11-16', weeks: 2 })).json().slots).toBe(0)
 
+  // owner's fixes round 2: the brand (the "outlet") has a logo; every slot says whose it is and its title starts with that name
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
+  const putLogo = (who: Who) => app.inject({ method: 'PUT', url: `/api/seller/products/${p}/logo`, payload: png, headers: { cookie: who.cookie, 'content-type': 'image/png' } })
+  expect((await putLogo(sellerY)).statusCode).toBe(404)
+  const brandLogo = (await putLogo(sellerX)).json().logoUrl
+  expect(brandLogo).toMatch(new RegExp(`^/api/brands/${p}/logo\\?v=`))
+  expect((await call(null, 'GET', brandLogo)).statusCode).toBe(200)                                   // public, like the outlet page it sits on
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p).logoUrl).toBe(brandLogo)
+  const mine = (await call(sellerX, 'GET', '/api/seller/slots?from=2026-11-16T00:00:00%2B04:00&to=2026-11-23T00:00:00%2B04:00')).json().find((x: any) => x.placement === 'Live read')
+  expect(mine).toMatchObject({ brand: 'Skyline Media', title: 'Skyline Media · Live read', logoUrl: brandLogo })
+  const panel = (await call(sellerX, 'GET', `/api/seller/slots/${mine.id}`)).json()
+  expect(panel).toMatchObject({ brand: 'Skyline Media', title: 'Skyline Media · Live read', audience: 'Commuters 25-45', reach: 180000, reachUnit: 'listeners' })
+  const seen = (await call(buyerA, 'GET', `/api/slots/${mine.id}`)).json()
+  expect(seen).toMatchObject({ brand: 'Skyline Media', title: 'Skyline Media · Live read', logoUrl: brandLogo, reach: 180000, reachUnit: 'listeners' })
+  // a newspaper's own unit is named by its format alone; the section stays in its details
+  const paper = (await call(sellerX, 'POST', `/api/seller/products/${p}/media`, { channel: 'newspaper', name: 'Skyline Weekly', description: 'A weekly paper.', language: 'english', audience: 'General readers',
+    markets: ['UAE'], reach: null, reachUnit: null, sectors: [], blocked: [], defaultPrice: AED(12_000), creativeDays: 2, closeDays: 5, specType: 'PDF', notes: 'Printed on Sundays.',
+    details: { frequency: 'weekly', days: [1], format: 'full_page', section: 'news' } })).json().id
+  const paperMain = (await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p).media.find((x: any) => x.id === paper).sellable[0]
+  expect(paperMain.name).toBe('Full page')
+  expect((await call(sellerX, 'DELETE', `/api/seller/products/${p}/logo`)).statusCode).toBe(200)
+  expect((await call(null, 'GET', brandLogo)).statusCode).toBe(404)
+
   // sold by programme: the media type's own placement steps aside, each programme lists on its own
   await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, details: { ...radio.details, programmes: true } })
   const prog = (await call(sellerX, 'POST', `/api/seller/media/${m}/programmes`, { name: 'Morning Markets', notes: 'Business news with a live interview.', defaultPrice: AED(4_000),

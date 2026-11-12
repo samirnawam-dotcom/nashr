@@ -21,10 +21,16 @@ export type Media = { id: string; channel: string; channelOther: string | null; 
 export type Product = { id: string; name: string; description: string | null; notes: string | null; logoUrl: string | null; media: Media[] }
 
 export const mediaName = (m: Pick<Media, 'channel' | 'channelOther'>) => m.channel === 'other' ? m.channelOther || t('Other') : CHANNEL_NAME[m.channel] ?? m.channel
-/** "Skyline Media · Radio · Morning Markets": every sellable thing the publisher can list, named the way the owner wrote it. */
+/** A title always starts with the outlet's name, then the programme or the format: "Skyline FM · Morning Markets", "The National · Custom". */
+export const titleOf = (p: Pick<Product, 'name'>, s: Pick<Sellable, 'name'>) => s.name && s.name !== p.name ? `${p.name} · ${s.name}` : p.name
+/** A product's title: "The National · Custom" when it is sold as one, its own name ("Skyline FM Radio") when it is sold by programme. */
+/** Radio, TV and podcast products can be sold show by show (also true of products made before the tick-box existed). */
+export const byProgramme = (m: Media) => !!m.details?.programmes || m.sellable.some(s => s.kind === 'programme')
+export const productTitle = (p: Pick<Product, 'name'>, m: Media) => { const main = byProgramme(m) ? undefined : m.sellable.find(s => s.kind === 'main')
+  return main ? titleOf(p, main) : m.name && m.name !== p.name ? m.name : `${p.name} · ${mediaName(m)}` }
+/** Every sellable thing the publisher can list, named the way the owner wrote it. */
 export function choices(products: Product[]) {
-  return products.flatMap(p => p.media.flatMap(m => m.sellable.map(s => ({ id: s.id, s, m, p,
-    label: [p.name, mediaName(m), s.kind === 'programme' ? s.name : m.name !== p.name ? m.name : ''].filter(Boolean).join(' · ') }))))
+  return products.flatMap(p => p.media.flatMap(m => m.sellable.map(s => ({ id: s.id, s, m, p, label: `${titleOf(p, s)} (${mediaName(m)})` }))))
 }
 
 const LENGTHS: [string, string, number][] = [['once', 'One time only', 0], ['4', '4 weeks', 4], ['8', '8 weeks', 8], ['12', '12 weeks', 12], ['rolling', 'Keep it on sale', 8], ['other', 'Other', 0]]
@@ -61,7 +67,7 @@ export function ListingPanel({ products, placementId, date, onClose, onDone }: {
   }
   return <section className="card pad form lst" aria-label={t('List it')}>
     <div className="lst-h"><h2>{t('List it')}</h2><span className="spacer" /><button type="button" className="btn" onClick={onClose}>{t('Close')}</button></div>
-    {!all.length ? <p className="muted">{t('Add a product first; then list it here.')} <a href="/listings/new">{t('Add product')}</a></p> : <>
+    {!all.length ? <p className="muted">{t('Add an outlet and a product first; then list it here.')} <a href="/listings/new">{t('Add outlet')}</a></p> : <>
       <ol className="lst-steps">
         {!placementId && <li><span className="lst-n">1</span><div className="field"><label htmlFor="lst-p">{t('Product')}</label>
           <select id="lst-p" value={id} onChange={e => setId(e.target.value)}>{all.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}</select>

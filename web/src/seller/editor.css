@@ -54,3 +54,38 @@
 .ed-listnow { display: grid; gap: 8px; }
 .ed-listnow p { margin: 0; }
 @media (max-width: 760px) { .ed-type, .ed-3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Owner's fixes round 2: the outlet header, product rows grouped by media type, and the four-tab summary */
+.ed-outlet { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 16px 18px; border-radius: 16px; }
+.ed-outlet .logo-img { border-radius: 14px; }
+.ed-ot { display: grid; gap: 2px; min-width: 0; }
+.ed-ot h2 { font: 600 12.5px var(--body); color: var(--faint); letter-spacing: 0; margin: 0; }
+.ed-ot b { font: 700 18px/1.2 var(--display); letter-spacing: -.02em; }
+.ed-ot .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-after { margin: -4px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--teal-1); color: var(--teal-press); font-weight: 500; }
+.pr-group { display: grid; gap: 8px; margin-top: 14px; }
+.pr-gh { display: flex; align-items: center; gap: 8px; margin: 0; font: 650 15px var(--display); color: var(--ink); } .pr-gh svg { color: var(--teal); } .pr-gh .num { color: var(--faint); font-weight: 500; }
+.pr-row { border-radius: 16px; overflow: hidden; }
+.pr-row.open { border-color: var(--teal-3); box-shadow: var(--shadow-2); }
+.pr-main { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 14px; align-items: center; padding: 10px 14px 10px 8px; }
+.pr-open { display: grid; grid-template-columns: 22px 96px minmax(0, 1fr); gap: 12px; align-items: center; min-width: 0; padding: 4px; border: 0; border-radius: 12px; background: none; text-align: start; font: inherit; color: var(--ink); cursor: pointer; }
+.pr-open:hover { background: var(--surface-2); }
+.pr-chev { display: grid; place-items: center; color: var(--slate); font-style: normal; }
+.pr-cover { width: 96px; height: 60px; object-fit: cover; border-radius: 10px; }
+.pr-what { display: grid; gap: 2px; min-width: 0; }
+.pr-what b { font: 650 15.5px/1.25 var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-what .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-price { display: grid; justify-items: end; font: 700 15.5px var(--display); white-space: nowrap; } .pr-price small { font: 400 12px var(--body); color: var(--slate); }
+.pr-acts { display: flex; gap: 6px; }
+.pr-sum { display: grid; gap: 14px; padding: 14px 18px 18px; border-top: 1px solid var(--line); background: var(--surface-2); }
+.pr-tabs { justify-self: start; }
+.pr-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 24px; margin: 0; }
+.pr-facts dt { font-size: 12.5px; color: var(--faint); } .pr-facts dd { margin: 2px 0 0; font-size: 14.5px; font-weight: 500; overflow-wrap: anywhere; }
+.pr-row .ed-progs, .pr-row .ed-listnow { padding: 14px 18px; border-top: 1px solid var(--line); }
+@media (max-width: 900px) {
+  .ed-outlet { grid-template-columns: 56px minmax(0, 1fr); } .ed-outlet .btn { grid-column: span 1; }
+  .pr-main { grid-template-columns: minmax(0, 1fr) auto; padding: 8px; }
+  .pr-open { grid-column: 1 / -1; grid-template-columns: 22px 72px minmax(0, 1fr); } .pr-cover { width: 72px; height: 46px; }
+  .pr-acts { grid-column: 1 / -1; flex-wrap: wrap; }
+}
+.pr-row .ed-progs { border-radius: 0; background: var(--surface); }
