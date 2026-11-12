@@ -210,3 +210,4 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Removed the two uncalled placement routes (list dates, archive) and the hidden outlet form in Your business; audience tags and "advertisers you will not run" moved to the product form so nothing buyers rely on was lost
 - [x] A product's Arabic name and website are on the product form (optional), in its summary, and still feed the directory
 - [ ] Placement create and edit routes, and the old outlet create and edit routes, are called only by API tests
+- [x] A product's Arabic name shows under its title on its Directory page (English, Arabic, phone); nothing extra when there is none

@@ -121,7 +121,7 @@ export function OutletPage({ id }: { id: string }) {
       <div className="profile-cover" aria-hidden><img src={o.coverUrl ?? art(o.channel)} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channel}-wide.jpg` }} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h">
         <Logo o={o} size={64} />
-        <div><h1>{o.name}</h1><p className="muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.audience ? ` · ${o.audience}` : ''}</p>
+        <div><h1>{o.name}</h1>{o.nameAr && <p className="profile-ar" lang="ar" dir="rtl">{o.nameAr}</p>}<p className="muted">{CHANNEL[o.channel]}{o.tier ? ` · ${o.tier}` : ''}{o.audience ? ` · ${o.audience}` : ''}</p>
           {o.rating.count > 0 && <Stars value={o.rating.average!} count={o.rating.count} size={16} />}</div>
         <div className="spacer" />
         {campaigns.length > 0 && <select className="btn" aria-label={t("Add to campaign")} value="" onChange={e => e.target.value && addToCampaign(e.target.value)}>

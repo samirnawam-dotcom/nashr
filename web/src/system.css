@@ -1057,3 +1057,6 @@ main.nf p { margin: 0 0 8px; }
 /* a name written only in Latin letters is cut at its end; mixed lines ("The National · صفحة كاملة") keep the page's right-to-left order */
 :root[dir="rtl"] .rq-what b { unicode-bidi: plaintext; text-align: right; }
 .page-title p a.small, .profile-h p a.small { white-space: nowrap; }
+/* A product's Arabic name under its title on its directory page, as on its card in the list */
+.profile-h p.profile-ar { margin: 4px 0 0; font: 600 17px/1.5 var(--arabic); color: var(--slate); text-align: end; }   /* it reads right to left, but sits under the title on an English page */
+:root[dir="rtl"] .profile-h p.profile-ar { text-align: start; }
