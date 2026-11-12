@@ -99,6 +99,8 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
   const [allSectors, setAllSectors] = useState(!(m?.sectors?.length)), [notRun, setNotRun] = useState((m?.blockedAdvertisers ?? []).join(', '))
   const set = (patch: Partial<MediaInput>) => setF(x => ({ ...x, ...patch })), setD = (patch: Record<string, any>) => setF(x => ({ ...x, details: { ...x.details, ...patch } }))
   const byProgramme = HAS_PROGRAMMES.includes(f.channel) && !!f.details.programmes
+  // a product made before this form (a newspaper, a website…) that is sold through the items it already had
+  const older = !HAS_PROGRAMMES.includes(f.channel) && !!f.details.programmes
   const site = (f.website ?? '').trim(), siteBad = !!site && !/^https?:\/\/\S+\.\S+/.test(site)
   const problems = [...mediaProblems({ ...f, details: byProgramme ? { programmes: true } : f.details }), ...(siteBad ? [['website', 'The website must start with https:// or http://.']] as [string, string][] : [])], err = (k: string) => tried ? problems.find(p => p[0] === k)?.[1] : undefined
   const dl = deadlineProblem(f.creativeDays, f.closeDays), idp = m?.id ?? 'new'
@@ -140,7 +142,8 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
       {HAS_PROGRAMMES.includes(f.channel) && <label className="ed-switch"><input type="checkbox" checked={byProgramme} onChange={e => setD({ programmes: e.target.checked })} />
         <span><b>{t('Sell it by programme')}</b><span className="small muted">{t('Each show, for example Morning Markets, gets its own days, airtime and breaks. Leave off to sell it as one.')}</span></span></label>}
       {byProgramme && <p className="ed-after small">{t("You'll add each programme after saving.")}</p>}
-      {!byProgramme && TYPE_FIELDS[f.channel] && <><h3 className="ed-sec">{t('{type} details', { type: f.channel === OTHER ? f.channelOther || t('Other') : t(MEDIA_LABEL[f.channel]) })}</h3>
+      {older && <p className="ed-after small">{t('This product is sold through what you added before: {names}. List them from the product\'s row.', { names: (m?.sellable ?? []).map(x => x.name).join(', ') })}</p>}
+      {!byProgramme && !older && TYPE_FIELDS[f.channel] && <><h3 className="ed-sec">{t('{type} details', { type: f.channel === OTHER ? f.channelOther || t('Other') : t(MEDIA_LABEL[f.channel]) })}</h3>
         <div className="ed-type"><TypeFields idp={idp} fields={TYPE_FIELDS[f.channel]} d={f.details} set={setD} err={err} /></div>
         {f.channel === 'magazine' && <p className="small muted">{t('No time field: the date the magazine comes out is picked when you list it.')}</p>}</>}
 
@@ -316,7 +319,8 @@ export function ProductEditorPage({ id }: { id?: string }) {
       {groups.map(c => { const rows = p.media.filter(m => m.channel === c)
         return <div key={c} className="pr-group">
           <h3 className="pr-gh"><Ic d={ICON[c] ?? ICON.other} size={17} />{t(MEDIA_LABEL[c])} <span className="num">({rows.length})</span></h3>
-          {rows.map(m => { const byProgramme = HAS_PROGRAMMES.includes(m.channel) && soldByProgramme(m), s = onSale(m), isOpen = open === m.id, one = !byProgramme ? m.sellable[0] : undefined
+          {rows.map(m => { const byProgramme = HAS_PROGRAMMES.includes(m.channel) && soldByProgramme(m), s = onSale(m), isOpen = open === m.id
+            const items = !byProgramme && soldByProgramme(m), one = byProgramme || items ? undefined : m.sellable[0]   // items: an older product sold through what it already had
             if (editing === m.id) return <MediaForm key={m.id} product={p} m={m} onCancel={() => setEditing(null)} onSaved={mid => saved(mid, false)} />
             return <article key={m.id} className={`card pr-row ${isOpen ? 'open' : ''}`}>
               <div className="pr-main">
@@ -332,6 +336,12 @@ export function ProductEditorPage({ id }: { id?: string }) {
               </div>
               {listing === m.id && m.sellable.length > 0 && <div className="ed-listnow"><ListingPanel products={[{ ...p, media: [m] }]} placementId={one?.id} onClose={() => setListing(null)} onDone={load} /></div>}
               {isOpen && <ProductSummary m={m} />}
+              {isOpen && items && <div className="ed-progs">
+                <div className="ed-mh"><h3>{t('What it sells')}</h3></div>
+                {m.sellable.map(s => <div key={s.id} className="ed-prow"><span><b dir="auto">{p.name} · {s.name}</b><span className="small muted">{s.days?.length ? daysText(s.days) : ''}{s.openSlots > 0 ? ` · ${t('{n} on sale', { n: s.openSlots })}` : ''}</span></span>
+                  <button type="button" className="btn primary" onClick={() => setListing(`p-${s.id}`)}>{t('List')}</button></div>)}
+                {m.sellable.map(s => listing === `p-${s.id}` && <ListingPanel key={`l-${s.id}`} products={[p]} placementId={s.id} onClose={() => setListing(null)} onDone={load} />)}
+              </div>}
               {isOpen && byProgramme && <div className="ed-progs">
                 <div className="ed-mh"><h3>{t('Programmes')}</h3>{prog !== `new-${m.id}` && <button type="button" className="btn" onClick={() => setProg(`new-${m.id}`)}>+ {t('Add a programme')}</button>}</div>
                 {!m.sellable.length && prog !== `new-${m.id}` && <p className="small muted">{t('Sold by programme, but no programme added yet.')}</p>}

@@ -211,3 +211,5 @@ Decisions made while building (flag to owner if they disagree):
 - [x] A product's Arabic name and website are on the product form (optional), in its summary, and still feed the directory
 - [ ] Placement create and edit routes, and the old outlet create and edit routes, are called only by API tests
 - [x] A product's Arabic name shows under its title on its Directory page (English, Arabic, phone); nothing extra when there is none
+- [x] Older products (made before the product form) are completed from what they already sell: price, deadlines, language, file type, audience from tags; the form no longer asks for them. A product with no description is still asked for one
+- [ ] Older newspaper/website products are sold through the items they had before; those items can be listed but not edited from the new screens

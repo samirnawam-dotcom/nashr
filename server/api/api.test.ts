@@ -1694,6 +1694,26 @@ test("the calendar side panel: a slot's bids, and its booking's creative under A
   expect((await call(sellerY, 'GET', `/api/seller/slots/${slotX}`)).statusCode).toBe(404)
 })
 
+test('a product made before the product form is completed from what it already sells, so its first edit asks for nothing it has', async () => {
+  // Skyline FM is such a product: an outlet with a placement, and no price, deadlines, language or file type of its own
+  await pool.query(`update outlets set audiences = '{commuters,executives}', audience = null where company_id = $1`, [sellerX.companyId])
+  await pool.query(`update placements p set language = 'both' from outlets o where o.id = p.outlet_id and o.company_id = $1`, [sellerX.companyId])
+  const m = (await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0]
+  const item = (await pool.query(`select starting_price, creative_lead_hours, close_lead_hours from placements where outlet_id = $1`, [m.id])).rows[0]
+  expect(m).toMatchObject({ defaultPrice: Number(item.starting_price), creativeDays: Math.round(item.creative_lead_hours / 24), language: 'bilingual', specType: 'MP3',
+    audience: 'Drive-time commuters, Business owners and executives', details: { programmes: true } })
+  expect(m.closeDays).toBeGreaterThanOrEqual(m.creativeDays + 3)
+  // so saving it as the form sends it goes through, and its programme is still the one thing it sells
+  const body = { channel: m.channel, name: m.name, description: m.description ?? 'Business radio.', language: m.language, audience: m.audience, markets: m.markets, reach: m.reach, reachUnit: m.reachUnit,
+    sectors: m.sectors, blocked: m.blocked, defaultPrice: m.defaultPrice, creativeDays: m.creativeDays, closeDays: m.closeDays, specType: m.specType, details: m.details }
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m.id}`, body)).statusCode).toBe(200)
+  const after = (await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0]
+  expect(after.sellable.map((x: any) => x.kind)).toEqual(m.sellable.map((x: any) => x.kind))
+  // done once: a price the publisher then changes is not put back
+  await pool.query(`update outlets set default_price = 999900 where id = $1`, [m.id])
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json()[0].media[0].defaultPrice).toBe(999900)
+})
+
 test("products by the owner's rules: product, media types with their own fields, programmes, and listing for dates with how it is sold", async () => {
   const p = (await call(sellerX, 'POST', '/api/seller/products', { name: 'Skyline Media', description: 'Radio and digital in Dubai.' })).json().id
   const radio = { channel: 'radio', name: 'Skyline FM 92.4', description: 'Drive-time radio.', language: 'bilingual', audience: 'Commuters 25-45', markets: ['UAE', 'Oman'],

@@ -1736,4 +1736,6 @@ export const AR_FLOW: Record<string, string> = {
   "Name in Arabic (optional)": "الاسم بالعربية (اختياري)",
   "Website (optional)": "الموقع الإلكتروني (اختياري)",
   "The website must start with https:// or http://.": "يجب أن يبدأ عنوان الموقع بـ https:// أو http://.",
+  "This product is sold through what you added before: {names}. List them from the product's row.": "هذا المنتج يُباع عبر ما أضفته سابقًا: {names}. اعرضها للبيع من صف المنتج.",
+  "What it sells": "ما يبيعه",
 }

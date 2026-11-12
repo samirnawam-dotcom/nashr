@@ -3,6 +3,7 @@ import { audit } from '../core/audit.js'
 import { MarketError } from '../marketplace/market.js'
 import { containsContactDetails } from '../core/contact.js'
 import { checkDeadlines, checkTimes, createPlacement, generateSlots, type Break } from './placements.js'
+import { AUDIENCES } from '../shared/audiences.js'
 import { HAS_PROGRAMMES, PROGRAMME_FIELDS, SPEC_TYPES, TYPE_FIELDS, deadlineProblem, fieldProblems, label, mediaProblems, type MediaInput, type ProgrammeInput } from '../shared/products.js'
 
 /*
@@ -29,6 +30,30 @@ export async function ensureProducts(db: Db, companyId: string) {
   for (const o of (await db.query(`select id, name, description, logo_key from outlets where company_id = $1 and product_id is null`, [companyId])).rows) {
     const p = await one(db, `insert into products (company_id, name, description, logo_key) values ($1, $2, $3, $4) returning id`, [companyId, o.name, o.description, o.logo_key])
     await db.query(`update outlets set product_id = $2 where id = $1`, [o.id, p.id])
+  }
+  await completeOlder(db, companyId)
+}
+
+/**
+ * Products made before the product form have no default price, deadlines, language or file type of their own, so the form asked
+ * for all of them on the first edit. What it sells already carries them, so they are filled in from there, once: the lowest
+ * starting price, the deadlines its items use, their language, the file type their specs name. Nothing is made up: a product
+ * with nothing on sale is left alone, and a missing description or audience (with no audience tags to read) is still asked for.
+ */
+const LANG: Record<string, string> = { english: 'english', arabic: 'arabic', both: 'bilingual', hindi: 'Hindi', urdu: 'Urdu' }
+async function completeOlder(db: Db, companyId: string) {
+  const older = (await db.query(`select o.* from outlets o where o.company_id = $1 and not o.archived and o.default_price is null
+      and exists (select 1 from placements p where p.outlet_id = o.id and not p.archived)`, [companyId])).rows
+  for (const o of older) {
+    const items = (await db.query(`select language, starting_price, creative_lead_hours, close_lead_hours, specs from placements where outlet_id = $1 and not archived`, [o.id])).rows
+    const creative = Math.max(0, Math.round(Math.min(...items.map(i => i.creative_lead_hours)) / 24))
+    const close = Math.max(Math.round(Math.min(...items.map(i => i.close_lead_hours)) / 24), creative + 3)
+    const langs = items.map(i => LANG[i.language]).filter(Boolean), language = langs.sort((a, b) => langs.filter(x => x === b).length - langs.filter(x => x === a).length)[0] ?? null
+    const specs = items.map(i => i.specs ?? '').join(' ').toLowerCase(), types = SPEC_TYPES[o.channel] ?? SPEC_TYPES.other
+    const tags = (o.audiences ?? []).map((k: string) => AUDIENCES.find(a => a[0] === k)?.[1]).filter(Boolean).join(', ')
+    await db.query(`update outlets set default_price = $2, creative_days = coalesce(creative_days, $3), close_days = coalesce(close_days, $4), language = coalesce(language, $5),
+        spec_type = coalesce(spec_type, $6), audience = coalesce(nullif(audience, ''), $7), details = details || '{"programmes": true}'::jsonb where id = $1`,
+      [o.id, Math.min(...items.map(i => Number(i.starting_price))), creative, close, language, (types.find(t => specs.includes(t[0].toLowerCase())) ?? types[0])[0], tags || null])
   }
 }
 
@@ -98,6 +123,8 @@ async function syncMain(db: Db, outletId: string, actor: string, at: Date) {
   const d = o.details ?? {}, byProgramme = HAS_PROGRAMMES.includes(o.channel) && !!d.programmes
   const main = (await db.query(`select id from placements where outlet_id = $1 and kind = 'main' order by archived, id limit 1`, [outletId])).rows[0]
   if (byProgramme) { if (main) await db.query(`update placements set archived = true where id = $1`, [main.id]); return }
+  // an older newspaper, website and so on is sold through the items it already had; it gets no unit of its own until those are gone
+  if (d.programmes && !main) return
   const f = TYPE_FIELDS[o.channel] ?? [], opt = (k: string) => f.find(x => x.key === k)?.options
   // named by its format (a social product by its platform too); screens put the outlet's name in front: "The National · Custom"
   const fmt = label(opt('format'), d.format), name = [o.channel === 'social' ? label(opt('platform'), d.platform) : '', fmt].filter(Boolean).join(' · ') || o.name
