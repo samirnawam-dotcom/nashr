@@ -9,7 +9,6 @@ import { split } from '../core/money.js'
 import { audit } from '../core/audit.js'
 import { balance } from '../payments/ledger.js'
 import { FakeProvider, type PaymentProvider } from '../payments/provider.js'
-import { generateSlots } from '../catalog/placements.js'
 import { confirmPreRun } from '../fulfilment/prerun.js'
 import { checklistFor } from '../fulfilment/proof.js'
 import { REJECT_REASONS } from '../fulfilment/creative.js'
@@ -382,31 +381,4 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     await audit(db, `seller:${me.actAs.companyId}`, 'payouts.connected', 'company', me.actAs.companyId, { provider: 'test' }, at)
     return { ok: true }
   })
-
-  route('POST', '/api/seller/placements/:id/slots', SELLER, async ({ db, at, me }, req) => {
-    const p = (await db.query(`select p.id from placements p join outlets o on o.id = p.outlet_id where p.id = $1 and o.company_id = $2 and not p.archived`,
-      [req.params.id, me.actAs.companyId])).rows[0]
-    if (!p) throw new NotFound()
-    const made = await generateSlots(db, p.id, req.body.from, req.body.days, at)
-    // From the calendar the publisher may set the price for these dates (the product's own price is the default). Only single
-    // slots nobody has bid on take it; package and any-break prices stay as the product sets them.
-    let priced = 0
-    if (req.body.startingPrice != null) {
-      priced = (await db.query(`update slots s set starting_price = $4 where s.placement_id = $1 and s.kind = 'single' and s.status = 'open'
-          and s.air_date >= $2::date and s.air_date < $2::date + $3::int and s.top_amount is null
-          and not exists (select 1 from bids b where b.slot_id = s.id)`, [p.id, req.body.from, req.body.days, req.body.startingPrice])).rowCount ?? 0
-      await audit(db, `seller:${me.actAs.companyId}`, 'slots.priced', 'placement', p.id, { from: req.body.from, days: req.body.days, startingPrice: req.body.startingPrice, slots: priced }, at)
-    }
-    return { slots: made, priced }
-  }, { type: 'object', required: ['from', 'days'], additionalProperties: false, properties: { from: { type: 'string', format: 'date' }, days: { type: 'integer', minimum: 1, maximum: 120 },
-    startingPrice: { type: 'integer', minimum: 100, maximum: 100_000_000_00 } } })
-
-  // Archiving stops new listings; slots already on sale stay as they are.
-  route('POST', '/api/seller/placements/:id/archive', SELLER, async ({ db, at, me }, req) => {
-    const r = await db.query(`update placements p set archived = $3 from outlets o where p.id = $1 and o.id = p.outlet_id and o.company_id = $2`,
-      [req.params.id, me.actAs.companyId, req.body.archived])
-    if (!r.rowCount) throw new NotFound()
-    await audit(db, `seller:${me.actAs.companyId}`, req.body.archived ? 'placement.archived' : 'placement.restored', 'placement', req.params.id, null, at)
-    return { ok: true }
-  }, { type: 'object', required: ['archived'], properties: { archived: { type: 'boolean' } } })
 }

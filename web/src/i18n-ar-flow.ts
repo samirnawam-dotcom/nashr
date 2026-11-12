@@ -1729,4 +1729,8 @@ export const AR_FLOW: Record<string, string> = {
   "{n} rows": "{n} صفوف",
   "The programme was not added, so this row was not listed.": "لم يُضف البرنامج، لذا لم يُعرض هذا الصف للبيع.",
   "Nothing left to import": "لا شيء آخر للاستيراد",
+  "Audience tags (optional)": "وسوم الجمهور (اختياري)",
+  "Buyers filter the calendar by these, and the product shows on the matching Audiences pages.": "يصفّي المشترون التقويم بها، ويظهر المنتج في صفحات الجماهير المطابقة.",
+  "Audience tags": "وسوم الجمهور",
+  "Advertisers not run": "معلنون لا يُقبلون",
 }

@@ -63,6 +63,8 @@ export type MediaInput = {
   channel: string; channelOther?: string; name: string; description: string; language: string; audience: string; markets: string[]
   reach?: number | null; reachUnit?: string | null; sectors: string[]; blocked: string[]; defaultPrice: number; creativeDays: number; closeDays: number
   specType: string; specDetail?: string; notes?: string; details: Record<string, any>
+  /** Audience tags buyers filter by (shared/audiences.ts) and advertisers this product will not run; left as they are when not sent. */
+  audiences?: string[]; blockedAdvertisers?: string[]
 }
 export type ProgrammeInput = { name: string; notes?: string; defaultPrice?: number | null; creativeDays?: number | null; closeDays?: number | null; details: Record<string, any> }
 

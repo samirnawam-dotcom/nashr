@@ -3,20 +3,14 @@ import './business.css'
 import { api, upload } from '../api'
 import { navigate } from '../nav'
 import { PhotoBand } from '../PhotoBand'
-import { CoverPicker } from '../CoverPicker'
 import { Team } from '../Team'
 import { useNeedsTwoStep } from '../twoStep'
 import { t } from '../i18n'
-import { LogoPicker } from '../LogoPicker'
 import { CompanyProfileEditor } from '../CompanyCard'
-import { AudiencePicker } from '../Audiences'
-import { INDUSTRIES } from '../calendar/BidDrawer'
-import { MEDIA, MEDIA_LABEL } from '../../../server/shared/media'
 
 type Outlet = { id: string; name: string; nameAr: string | null; channel: string; sectors: string[]; description: string | null; website: string | null; audience: string | null; coverUrl: string | null; logoUrl: string | null
   audiences: string[]; blockedIndustries: string[]; blockedAdvertisers: string[]; reach: number | null }
 type P = { company: { name: string; trn: string | null; address: string | null; vatRegistered: boolean; invoiceMode: string; payoutsEnabled: boolean; rateCard: { fileId: string; name: string } | null }; outlets: Outlet[] }
-const CHANNELS = MEDIA.map(m => [m, MEDIA_LABEL[m]])
 
 type Sec = 'profile' | 'outlets' | 'payouts' | 'tax' | 'ratecard' | 'team'
 const SECTIONS: [Sec, string, string][] = [
@@ -36,10 +30,11 @@ export function ProfilePage() {
   const [p, setP] = useState<P | null>(null), [error, setError] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
   const [tax, setTax] = useState({ trn: '', vatRegistered: false, invoiceMode: 'generate', address: '' })
   const [sec, setSecState] = useState<Sec | null>(() => (new URLSearchParams(location.search).get('s') as Sec) || null)
-  const [outlet, setOutlet] = useState<string | null>(null)
-  const setSec = (x: Sec) => { setSecState(x); setOutlet(null); setNote(''); setError(''); const u = new URL(location.href); u.searchParams.set('s', x); history.replaceState(null, '', u) }
+  const setSec = (x: Sec) => { setSecState(x); setNote(''); setError(''); const u = new URL(location.href); u.searchParams.set('s', x); history.replaceState(null, '', u) }
   const load = () => api<P>('/seller/profile').then(x => { setP(x); setTax({ trn: x.company.trn ?? '', vatRegistered: x.company.vatRegistered, invoiceMode: x.company.invoiceMode, address: x.company.address ?? '' }) }, e => setError(e.message))
   useEffect(() => { load() }, [])
+  // products are added and edited on the Products page; an old address for the outlet form here goes there
+  useEffect(() => { if (sec === 'outlets') navigate('/listings', true) }, [sec])
   async function act(method: string, path: string, body: object, done: string) {
     setBusy(true); setError(''); setNote('')
     try { await api(path, { method, body }); setNote(done); await load(); return true } catch (e: any) { setError(e.message); return false } finally { setBusy(false) }
@@ -74,7 +69,6 @@ export function ProfilePage() {
     ['outlets', t('Products'), p.outlets.length ? (p.outlets.length === 1 ? p.outlets[0].name : t('{n} products', { n: p.outlets.length })) : t('None yet'), p.outlets.length > 0],
     ['ratecard', t('Rate card'), p.company.rateCard ? t('Shared with Nashr') : t('Not shared'), !!p.company.rateCard],
   ]
-  const editing = p.outlets.find(o => o.id === outlet)
   return (
     <main className="biz">
       <PhotoBand title={t('Your business')} sub={t('How buyers see you, where your money goes, and who works with you. Pick a section.')} />
@@ -84,25 +78,10 @@ export function ProfilePage() {
       <div className="biz-grid">
         <nav className="biz-nav card" aria-label={t('Sections')}>{SECTIONS.map(([k, l, d]) =>
           <button key={k} type="button" className={cur === k ? 'on' : ''} aria-current={cur === k ? 'page' : undefined} onClick={() => setSec(k)}>
-            <Ic d={d} /><span>{t(l)}</span>{done[k] === false && <span className="biz-need" aria-label={t('Needs setting up')} />}
-            {k === 'outlets' && p.outlets.length > 0 && <span className="biz-n">{p.outlets.length}</span>}</button>)}</nav>
+            <Ic d={d} /><span>{t(l)}</span>{done[k] === false && <span className="biz-need" aria-label={t('Needs setting up')} />}</button>)}</nav>
         <div className="biz-body">
           {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}
           {cur === 'profile' && <CompanyProfileEditor audience="buyers" />}
-
-          {cur === 'outlets' && (outlet === 'new' || editing || !p.outlets.length
-            ? <>{p.outlets.length > 0 && <button type="button" className="btn biz-back" onClick={() => setOutlet(null)}>← {t('All outlets')}</button>}
-              <OutletForm key={outlet ?? 'first'} o={editing} first={!p.outlets.length} busy={busy}
-                onSave={b => editing ? act('PUT', `/seller/outlets/${editing.id}`, b, t('{name} saved.', { name: editing.name })) : act('POST', '/seller/outlets', b, t("Outlet added.")).then(ok => ok && setOutlet(null))} /></>
-            : <section className="card pad biz-sec">
-              <div className="biz-sec-h"><div><h2>{t('Outlets')}</h2><p className="muted small">{t('The stations, channels, publications and shows buyers book with. Open one to edit it.')}</p></div>
-                <button type="button" className="btn primary" onClick={() => setOutlet('new')}>+ {t('Add outlet')}</button></div>
-              <ul className="biz-outlets">{p.outlets.map(o => <li key={o.id}><button type="button" onClick={() => setOutlet(o.id)}>
-                {o.logoUrl ? <img src={o.logoUrl} alt="" width={52} height={52} /> : <span className="biz-logo" aria-hidden>{o.name.slice(0, 2).toUpperCase()}</span>}
-                <span className="biz-o"><b>{o.name}</b><span className="small muted">{t(CHANNELS.find(c => c[0] === o.channel)?.[1] ?? o.channel)}{o.reach ? ` · ${t('{n} reached', { n: o.reach.toLocaleString('en-US') })}` : ''}</span>
-                  <span className="small">{o.sectors.length ? t('{n} sectors', { n: o.sectors.length }) : t('Every sector')} · {o.audiences.length ? t('{n} audiences', { n: o.audiences.length }) : t('No audiences tagged')}{o.blockedIndustries.length ? ` · ${t('{n} blocked', { n: o.blockedIndustries.length })}` : ''}</span></span>
-                <span className="biz-edit">{t('Edit')}</span></button></li>)}</ul>
-            </section>)}
 
           {cur === 'payouts' && <section className="card pad biz-sec">
             <h2>{t("Payout account")}</h2>
@@ -133,57 +112,6 @@ export function ProfilePage() {
       </div>
     </main>
   )
-}
-
-function OutletForm({ o, first, busy, onSave }: { o?: Outlet; first?: boolean; busy: boolean; onSave: (b: object) => unknown }) {
-  const [f, setF] = useState({ name: o?.name ?? '', nameAr: o?.nameAr ?? '', channel: o?.channel ?? 'radio', sectors: o?.sectors ?? [] as string[],
-    description: o?.description ?? '', website: o?.website ?? '', audience: o?.audience ?? '', reach: o?.reach ? String(o.reach) : '', blockedAdvertisers: o?.blockedAdvertisers.join(', ') ?? '' })
-  const [audiences, setAudiences] = useState<string[]>(o?.audiences ?? []), [blocked, setBlocked] = useState<string[]>(o?.blockedIndustries ?? [])
-  const [tab, setTab] = useState('details')
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value })
-  const body = { name: f.name, ...(o ? {} : { channel: f.channel }), sectors: f.sectors,
-    ...(f.nameAr ? { nameAr: f.nameAr } : {}), ...(f.description ? { description: f.description } : {}), ...(f.website ? { website: f.website } : {}), ...(f.audience ? { audience: f.audience } : {}),
-    audiences, blockedIndustries: blocked, blockedAdvertisers: [...new Set(f.blockedAdvertisers.split(',').map(x => x.trim()).filter(x => x.length > 1))],
-    ...(Number(f.reach) > 0 ? { reach: Math.round(Number(f.reach)) } : {}) }
-  const id = o?.id ?? 'new'
-  return <section className="card pad biz-sec form">
-    <div className="biz-sec-h"><h2>{o ? o.name : first ? t('Your outlet') : t('New outlet')}</h2></div>
-    {first && <p className="small muted">{t('The station, channel, publication or show buyers book with. You can add more later.')}</p>}
-    <div className="seg biz-tabs" role="tablist" aria-label={t('Outlet')}>{([['details', t('Details')], ['audience', t('Audience')], ['safety', t('Brand safety')], ...(o ? [['images', t('Logo and cover')]] : [])] as [string, string][]).map(([k, l]) =>
-      <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
-    {tab === 'details' && <>
-      <div className="grid2">
-        <div className="field"><label htmlFor={`n-${id}`}>{t("Name")}</label><input dir="auto" id={`n-${id}`} value={f.name} onChange={set('name')} /></div>
-        <div className="field"><label htmlFor={`a-${id}`}>{t("Name in Arabic")}</label><input id={`a-${id}`} dir="rtl" lang="ar" value={f.nameAr} onChange={set('nameAr')} /></div>
-      </div>
-      <div className="grid2">
-        {!o && <div className="field"><label htmlFor={`c-${id}`}>{t("Channel")}</label><select id={`c-${id}`} value={f.channel} onChange={set('channel')}>{CHANNELS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></div>}
-        <div className="field"><label htmlFor={`w-${id}`}>{t("Website")}</label><input dir="auto" id={`w-${id}`} placeholder="https://" value={f.website} onChange={set('website')} /></div>
-      </div>
-      <div className="field"><label htmlFor={`d-${id}`}>{t("Description")}</label><textarea dir="auto" id={`d-${id}`} rows={3} value={f.description} onChange={set('description')} /></div>
-    </>}
-    {tab === 'audience' && <>
-      <div className="grid2">
-        <div className="field"><label htmlFor={`au-${id}`}>{t("Audience")}</label><input dir="auto" id={`au-${id}`} value={f.audience} onChange={set('audience')} placeholder={t("Business commuters, 25-45")} /></div>
-        <div className="field"><label htmlFor={`r-${id}`}>{t('People reached per airing or edition (your estimate, optional)')}</label><input id={`r-${id}`} inputMode="numeric" value={f.reach} onChange={e => setF({ ...f, reach: e.target.value.replace(/\D/g, '') })} placeholder="120000" /></div>
-      </div>
-      <div className="field"><span className="small muted">{t('Sectors you accept (tick any number; none ticked means every sector)')}</span>
-        <div className="aud-pick" role="group" aria-label={t('Sectors you accept')}>{[...new Set([...INDUSTRIES.filter(x => x !== 'Other'), ...f.sectors])].map(k => { const on = f.sectors.includes(k)
-          return <label key={k} className={`aud-chip ${on ? 'on' : ''}`} htmlFor={`sec-${id}-${k}`}><input id={`sec-${id}-${k}`} type="checkbox" checked={on}
-            onChange={() => setF({ ...f, sectors: on ? f.sectors.filter(x => x !== k) : [...f.sectors, k] })} />{t(k)}</label> })}</div></div>
-      <div className="field"><span className="small muted">{t('Who it reaches (buyers filter by these)')}</span><AudiencePicker idPrefix={`aud-${id}`} value={audiences} onChange={setAudiences} /></div>
-    </>}
-    {tab === 'safety' && <>
-      <span className="small muted">{t("Buyers in these industries can't bid on or book this outlet. They see it before they try.")}</span>
-      <div className="aud-pick" role="group" aria-label={t('Industries you do not accept')}>{INDUSTRIES.filter(i => i !== 'Other').map(i => { const on = blocked.includes(i)
-        return <label key={i} className={`aud-chip ${on ? 'on' : ''}`}><input type="checkbox" checked={on} onChange={() => setBlocked(on ? blocked.filter(x => x !== i) : [...blocked, i])} />{t(i)}</label> })}</div>
-      <div className="field"><label htmlFor={`ba-${id}`}>{t('Advertisers you will not run (comma-separated, e.g. competitors)')}</label><input dir="auto" id={`ba-${id}`} value={f.blockedAdvertisers} onChange={set('blockedAdvertisers')} /></div>
-    </>}
-    {tab === 'images' && o && <div className="biz-images"><LogoPicker name={o.name} url={o.logoUrl ?? null} endpoint={`/seller/outlets/${o.id}/logo`} />
-      <CoverPicker url={o.coverUrl ?? null} channel={o.channel} endpoint={`/seller/outlets/${o.id}/cover`} /></div>}
-    {tab !== 'images' && <div className="biz-save"><span className="small muted">{t("Buyers see this in the directory. Emails and phone numbers are not allowed.")}</span>
-      <button className="btn primary" disabled={busy || !f.name} onClick={() => onSave(body)}>{o ? t("Save") : t('Add outlet')}</button></div>}
-  </section>
 }
 
 /** The rate card the publisher shares with Nashr: any file (PDF, spreadsheet or image), replaceable at any time. Buyers don't see it. */

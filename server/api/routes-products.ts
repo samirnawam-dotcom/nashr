@@ -1,6 +1,7 @@
 import { NotFound, type RouteFn } from './app.js'
 import { archiveProduct, bulkSlots, ensureProducts, listIt, repeatWeek, saveMedia, saveProduct, saveProgramme } from '../catalog/products.js'
 import { MEDIA } from '../shared/media.js'
+import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import { brandLogoUrl } from './routes-covers.js'
 
 /*
@@ -22,7 +23,9 @@ const MEDIA_BODY = { type: 'object', additionalProperties: false,
   required: ['channel', 'name', 'description', 'language', 'audience', 'markets', 'sectors', 'blocked', 'defaultPrice', 'creativeDays', 'closeDays', 'specType', 'details'],
   properties: { channel: { enum: [...MEDIA] }, channelOther: text(60), name: text(80), description: text(1000), language: text(40), audience: text(300), markets: strs(8),
     reach: { type: ['integer', 'null'], minimum: 1, maximum: 1_000_000_000 }, reachUnit: { type: ['string', 'null'], maxLength: 40 }, sectors: strs(30), blocked: strs(30),
-    defaultPrice: money, creativeDays: days, closeDays: days, specType: text(60), specDetail: text(120), notes: text(500), details: DETAILS } }
+    defaultPrice: money, creativeDays: days, closeDays: days, specType: text(60), specDetail: text(120), notes: text(500), details: DETAILS,
+    audiences: { type: 'array', maxItems: 12, uniqueItems: true, items: { enum: AUDIENCE_KEYS } },
+    blockedAdvertisers: { type: 'array', maxItems: 30, uniqueItems: true, items: { type: 'string', minLength: 2, maxLength: 80 } } } }
 const PROGRAMME = { type: 'object', additionalProperties: false, required: ['name', 'details'], properties: {
   name: text(80), notes: text(500), defaultPrice: { anyOf: [money, { type: 'null' }] }, creativeDays: { anyOf: [days, { type: 'null' }] }, closeDays: { anyOf: [days, { type: 'null' }] }, details: DETAILS } }
 const LISTING = { type: 'object', additionalProperties: false, required: ['placementId', 'from', 'length', 'saleType', 'startingPrice'], properties: {
@@ -46,7 +49,7 @@ export function productRoutes(route: RouteFn) {
       creativeDays: Math.round(p.creative_lead_hours / 24), closeDays: Math.round(p.close_lead_hours / 24), details: p.details ?? {}, openSlots: p.open_slots, nextAt: p.next_at, sold: p.sold })
     return products.map(p => ({ id: p.id, name: p.name, description: p.description, notes: p.notes, logoUrl: brandLogoUrl(p.id, p.logo_key),
       media: media.filter(m => m.product_id === p.id).map(m => ({ id: m.id, channel: m.channel, channelOther: m.channel_other, name: m.name, description: m.description, language: m.language,
-        audience: m.audience, markets: m.markets, reach: m.reach, reachUnit: m.reach_unit, sectors: m.sectors, blocked: m.blocked_industries, defaultPrice: m.default_price ? Number(m.default_price) : null,
+        audience: m.audience, audiences: m.audiences ?? [], blockedAdvertisers: m.blocked_advertisers ?? [], markets: m.markets, reach: m.reach, reachUnit: m.reach_unit, sectors: m.sectors, blocked: m.blocked_industries, defaultPrice: m.default_price ? Number(m.default_price) : null,
         creativeDays: m.creative_days, closeDays: m.close_days, specType: m.spec_type, specDetail: m.spec_detail, notes: m.notes, details: m.details ?? {}, coverUrl: m.cover_key ? `/api/outlets/${m.id}/cover` : null,
         sellable: places.filter(x => x.outlet_id === m.id).map(place) })) }))
   })

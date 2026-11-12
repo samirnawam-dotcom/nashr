@@ -7,6 +7,8 @@ import { ICON, art } from '../media'
 import { money } from './common'
 import { LogoPicker, OutletMark } from '../LogoPicker'
 import { INDUSTRIES } from '../calendar/BidDrawer'
+import { AudiencePicker } from '../Audiences'
+import { AUDIENCES } from '../../../server/shared/audiences'
 import { CoverPicker } from '../CoverPicker'
 import { MEDIA, MEDIA_LABEL } from '../../../server/shared/media'
 import { HAS_PROGRAMMES, LANGUAGES, MARKETS, OTHER, PROGRAMME_FIELDS, REACH_UNITS, SPEC_TYPES, TYPE_FIELDS, WEEKDAY_SETS, deadlineProblem, fieldProblems, label, mediaProblems,
@@ -90,11 +92,11 @@ const blank = (): MediaInput => ({ channel: '', name: '', description: '', langu
   defaultPrice: 0, creativeDays: 2, closeDays: 5, specType: '', specDetail: '', notes: '', details: {} })
 const fromMedia = (m: Media): MediaInput => ({ channel: m.channel, channelOther: m.channelOther ?? '', name: m.name, description: m.description ?? '', language: m.language ?? '', audience: m.audience ?? '',
   markets: m.markets ?? [], reach: m.reach, reachUnit: m.reachUnit, sectors: m.sectors ?? [], blocked: m.blocked ?? [], defaultPrice: m.defaultPrice ?? 0, creativeDays: m.creativeDays ?? 2,
-  closeDays: m.closeDays ?? 5, specType: m.specType ?? '', specDetail: m.specDetail ?? '', notes: m.notes ?? '', details: m.details ?? {} })
+  closeDays: m.closeDays ?? 5, specType: m.specType ?? '', specDetail: m.specDetail ?? '', notes: m.notes ?? '', details: m.details ?? {}, audiences: m.audiences ?? [], blockedAdvertisers: m.blockedAdvertisers ?? [] })
 
 function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Media; onSaved: (id: string) => void; onCancel: () => void }) {
   const [f, setF] = useState<MediaInput>(m ? fromMedia(m) : blank()), [tried, setTried] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const [allSectors, setAllSectors] = useState(!(m?.sectors?.length))
+  const [allSectors, setAllSectors] = useState(!(m?.sectors?.length)), [notRun, setNotRun] = useState((m?.blockedAdvertisers ?? []).join(', '))
   const set = (patch: Partial<MediaInput>) => setF(x => ({ ...x, ...patch })), setD = (patch: Record<string, any>) => setF(x => ({ ...x, details: { ...x.details, ...patch } }))
   const byProgramme = HAS_PROGRAMMES.includes(f.channel) && !!f.details.programmes
   const problems = mediaProblems({ ...f, details: byProgramme ? { programmes: true } : f.details }), err = (k: string) => tried ? problems.find(p => p[0] === k)?.[1] : undefined
@@ -106,7 +108,8 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
     setBusy(true)
     try {
       const body = { ...f, sectors: allSectors ? [] : f.sectors, reach: f.reach || null, reachUnit: f.reach ? f.reachUnit || null : null, channelOther: f.channel === OTHER ? f.channelOther : undefined,
-        specDetail: f.specDetail || undefined, notes: f.notes || undefined }
+        specDetail: f.specDetail || undefined, notes: f.notes || undefined,
+        audiences: f.audiences ?? [], blockedAdvertisers: [...new Set(notRun.split(',').map(x => x.trim()).filter(x => x.length > 1))] }
       const r = m ? await api<{ id: string }>(`/seller/media/${m.id}`, { method: 'PUT', body }) : await api<{ id: string }>(`/seller/products/${product.id}/media`, { method: 'POST', body })
       onSaved(r.id)
     } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
@@ -138,6 +141,8 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
 
       <h3 className="ed-sec">{t('Who it reaches')}</h3>
       <div className="field"><label htmlFor={`${idp}-aud`}>{t('Audience')} <span className="req">*</span></label><input id={`${idp}-aud`} dir="auto" maxLength={300} value={f.audience} onChange={e => set({ audience: e.target.value })} placeholder={t('Business commuters, 25-45')} /><Err m={err('audience')} /></div>
+      <div className="field"><span className="lbl">{t('Audience tags (optional)')}</span><AudiencePicker idPrefix={`${idp}-tag`} value={f.audiences ?? []} onChange={v => set({ audiences: v })} />
+        <span className="small muted">{t('Buyers filter the calendar by these, and the product shows on the matching Audiences pages.')}</span></div>
       <div className="field"><span className="lbl">{t('Markets')} <span className="req">*</span></span><Multi idp={`${idp}-mk`} label={t('Markets')} value={f.markets} options={MARKETS} onChange={v => set({ markets: v })} /><Err m={err('markets')} /></div>
       <div className="grid2">
         <div className="field"><label htmlFor={`${idp}-reach`}>{t('Reach (optional)')}</label><input id={`${idp}-reach`} inputMode="numeric" value={f.reach ? f.reach.toLocaleString('en-US') : ''} onChange={e => set({ reach: Number(e.target.value.replace(/\D/g, '')) || null })} placeholder="120,000" /></div>
@@ -147,6 +152,7 @@ function MediaForm({ product, m, onSaved, onCancel }: { product: Product; m?: Me
         <label className="check"><input type="checkbox" checked={allSectors} onChange={e => setAllSectors(e.target.checked)} /> {t('All sectors')}</label>
         {!allSectors && <Multi idp={`${idp}-sec`} label={t('Sectors accepted')} value={f.sectors} options={sectorOpts} onChange={v => set({ sectors: v })} />}</div>
       <div className="field"><span className="lbl">{t('Sectors not accepted (optional)')}</span><Multi idp={`${idp}-blk`} label={t('Sectors not accepted')} value={f.blocked} options={sectorOpts} onChange={v => set({ blocked: v })} /></div>
+      <div className="field"><label htmlFor={`${idp}-notrun`}>{t('Advertisers you will not run (comma-separated, e.g. competitors)')}</label><input id={`${idp}-notrun`} dir="auto" value={notRun} onChange={e => setNotRun(e.target.value)} /></div>
 
       <h3 className="ed-sec">{t('Price and deadlines')}</h3>
       <div className="ed-3">
@@ -224,11 +230,13 @@ function ProductSummary({ m }: { m: Media }) {
     {tab === 'audience' && <dl className="pr-facts">
       <Fact k={t('Audience')} v={m.audience} />
       <Fact k={t('Reach')} v={m.reach ? `${m.reach.toLocaleString('en-US')}${m.reachUnit ? ` ${t(label(REACH_UNITS, m.reachUnit)).toLowerCase()}` : ''}` : ''} />
+      <Fact k={t('Audience tags')} v={(m.audiences ?? []).map(k => t(AUDIENCES.find(a => a[0] === k)?.[1] ?? k)).join(', ')} />
       <Fact k={t('Markets')} v={(m.markets ?? []).map(x => t(label(MARKETS, x))).join(', ')} />
     </dl>}
     {tab === 'sectors' && <dl className="pr-facts">
       <Fact k={t('Sectors accepted')} v={m.sectors?.length ? list(m.sectors) : t('All sectors')} />
       <Fact k={t('Sectors not accepted')} v={list(m.blocked)} />
+      <Fact k={t('Advertisers not run')} v={(m.blockedAdvertisers ?? []).join(', ')} />
     </dl>}
     {tab === 'requirements' && <dl className="pr-facts">
       <Fact k={t('Creative specs')} v={[m.specType ? t(label(SPEC_TYPES[m.channel] ?? SPEC_TYPES.other, m.specType)) : '', m.specDetail].filter(Boolean).join(', ')} />

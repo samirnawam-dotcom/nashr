@@ -1640,18 +1640,18 @@ test('the publisher dashboard: what needs a decision, sales and net after commis
   expect((await call(buyerA, 'GET', '/api/seller/portal')).statusCode).toBe(403)
 })
 
-test('putting a product on the calendar at a chosen price: open slots nobody has bid on take it; bad prices are refused', async () => {
+test('a new price for several slots at once: open slots nobody has bid on take it; one with a bid keeps its own; bad prices are refused', async () => {
   const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
   await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
-  const r = await call(sellerX, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: AED(3_000) })
+  const ids = (await pool.query(`select id from slots where placement_id = $1 and kind = 'single'`, [placement])).rows.map(r => r.id)
+  const r = await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids, action: 'price', startingPrice: AED(3_000) })
   expect(r.statusCode).toBe(200)
-  expect(r.json().priced).toBeGreaterThan(0)
+  expect(r.json()).toEqual({ changed: ids.length - 1, skipped: 1 })
   const rows = (await pool.query(`select id, starting_price from slots where placement_id = $1 and kind = 'single'`, [placement])).rows
   expect(rows.find(s => s.id === slotX).starting_price).toBe(AED(3_500))             // already bid on: keeps its price
   expect(rows.filter(s => s.id !== slotX).every(s => s.starting_price === AED(3_000))).toBe(true)
-  expect(rows.filter(s => s.id !== slotX)).toHaveLength(r.json().priced)
-  expect((await call(sellerX, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: 5 })).statusCode).toBe(400)
-  expect((await call(sellerY, 'POST', `/api/seller/placements/${placement}/slots`, { from: '2026-11-09', days: 7, startingPrice: AED(3_000) })).statusCode).toBe(404)
+  expect((await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids, action: 'price', startingPrice: 5 })).statusCode).toBe(400)
+  expect((await call(sellerY, 'POST', '/api/seller/slots/bulk', { ids, action: 'price', startingPrice: AED(2_000) })).json()).toEqual({ changed: 0, skipped: ids.length })   // another publisher's slots
 })
 
 test('counter offers: the publisher names another price; the buyer agrees (accepted at that price) or keeps their offer', async () => {
@@ -1746,6 +1746,13 @@ test("products by the owner's rules: product, media types with their own fields,
   expect(panel).toMatchObject({ brand: 'Skyline Media', title: 'Skyline Media · Live read', audience: 'Commuters 25-45', reach: 180000, reachUnit: 'listeners' })
   const seen = (await call(buyerA, 'GET', `/api/slots/${mine.id}`)).json()
   expect(seen).toMatchObject({ brand: 'Skyline Media', title: 'Skyline Media · Live read', logoUrl: brandLogo, reach: 180000, reachUnit: 'listeners' })
+  // audience tags and advertisers not run are set on the product form (they were only on the old outlet form); a save that does not send them leaves them
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, audiences: ['not_an_audience'] })).statusCode).toBe(400)
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, { ...radio, audiences: ['commuters', 'executives'], blockedAdvertisers: ['Rival Bank'] })).statusCode).toBe(200)
+  expect((await call(sellerX, 'PUT', `/api/seller/media/${m}`, radio)).statusCode).toBe(200)
+  expect((await call(sellerX, 'GET', '/api/seller/products')).json().find((x: any) => x.id === p).media.find((x: any) => x.id === m)).toMatchObject({ audiences: ['commuters', 'executives'], blockedAdvertisers: ['Rival Bank'] })
+  // and buyers find the product's slots by them
+  expect((await call(buyerA, 'GET', '/api/slots/list?from=2026-11-16T00:00:00%2B04:00&to=2026-11-23T00:00:00%2B04:00&limit=100')).json().items.find((x: any) => x.id === mine.id).audiences).toEqual(['commuters', 'executives'])
   // a newspaper's own unit is named by its format alone; the section stays in its details
   const paper = (await call(sellerX, 'POST', `/api/seller/products/${p}/media`, { channel: 'newspaper', name: 'Skyline Weekly', description: 'A weekly paper.', language: 'english', audience: 'General readers',
     markets: ['UAE'], reach: null, reachUnit: null, sectors: [], blocked: [], defaultPrice: AED(12_000), creativeDays: 2, closeDays: 5, specType: 'PDF', notes: 'Printed on Sundays.',

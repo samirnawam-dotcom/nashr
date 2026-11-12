@@ -15,7 +15,7 @@ export type Sellable = { id: string; kind: 'main' | 'programme'; name: string; d
   format: string | null; saleType: string; startingPrice: number; defaultPrice: number | null; buyNowPrice: number | null; reservePrice: number | null
   anyBreakPrice: number | null; packagePrice: number | null; listing: string; horizonWeeks: number; creativeDays: number; closeDays: number; details: Record<string, any>
   openSlots: number; nextAt: string | null; sold: number }
-export type Media = { id: string; channel: string; channelOther: string | null; name: string; description: string | null; language: string | null; audience: string | null
+export type Media = { audiences?: string[]; blockedAdvertisers?: string[]; id: string; channel: string; channelOther: string | null; name: string; description: string | null; language: string | null; audience: string | null
   markets: string[]; reach: number | null; reachUnit: string | null; sectors: string[]; blocked: string[]; defaultPrice: number | null; creativeDays: number | null; closeDays: number | null
   specType: string | null; specDetail: string | null; notes: string | null; details: Record<string, any>; coverUrl: string | null; sellable: Sellable[] }
 export type Product = { id: string; name: string; description: string | null; notes: string | null; logoUrl: string | null; media: Media[] }
