@@ -44,6 +44,8 @@ export const sellerDeal = (d: any, bids: any[] = []) => {
   const s = split(d.amount, rates)
   return {
     id: d.id, ref: d.ref, status: d.status, channel: d.channel ?? null, label: d.label, startsAt: d.starts_at, nextDeadlineAt: d.next_deadline_at,
+    // whose it is, outlet first (owner's rule): "Skyline FM · Morning Markets"
+    title: d.outlet ? (d.placement && d.placement !== d.outlet ? `${d.outlet} · ${d.placement}` : d.outlet) : null,
     buyer: { company: d.buyer_name },           // company name and ad details only, never contact details (brief section 6)
     brief: d.brief, checks: d.brief ? briefChecks(d.brief, { channel: d.channel, sectors: d.sectors }) : null,
     belowReserve: d.reserve_price != null && d.amount < d.reserve_price, paymentFailed: !!d.payment_failed,

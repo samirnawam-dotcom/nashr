@@ -32,7 +32,7 @@ const reason = { type: 'object', required: ['reason'], properties: { reason: { t
 // Before acceptance the money preview uses the rates that acceptance would freeze: the publisher's own rate or the default.
 const DEAL_SQL = `select d.*, d.status = 'awaiting_payment' and exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'charge' and m.status = 'failed')
     and not exists (select 1 from money_ops m where m.deal_id = d.id and m.kind = 'charge' and m.status in ('pending', 'requires_action', 'succeeded')) payment_failed,
-  s.label, s.starts_at, s.reserve_price, o.channel, o.sectors, bc.name buyer_name, b.brief, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
+  s.label, s.starts_at, s.reserve_price, o.channel, o.sectors, brand_name(o) outlet, p.name placement, bc.name buyer_name, b.brief, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
     coalesce((select (value)::int from settings where key = 'commission:' || d.seller_id order by valid_from desc limit 1),
              (select (value)::int from settings where key = 'default_commission_bp' order by valid_from desc limit 1)) default_commission_bp
   from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id

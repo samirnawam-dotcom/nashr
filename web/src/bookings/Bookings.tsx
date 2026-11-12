@@ -120,7 +120,7 @@ export function BookingPage({ id }: { id: string }) {
   return (
     <main className="booking">
       <p className="small"><a href="/bookings">{t(t("Bookings"))}</a> {isAr ? '‹' : '›'} {t('Order {ref}', { ref: d.ref })}</p>
-      <div className="page-title"><div><h1>{d.outlet}, {tm(d.label)}</h1><p className="muted">{slotWhen(d.startsAt, (d as any).channel)} · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p></div><Status s={d.status} /></div>
+      <div className="page-title"><div><h1>{d.outlet} · {tm(d.label)}</h1><p className="muted">{slotWhen(d.startsAt, (d as any).channel)} · <a className="small" href={`/help?deal=${d.id}#contact`}>{t('Get help with this booking')}</a></p></div><Status s={d.status} /></div>
       <ClientLine id={d.id} clientId={d.clientId ?? null} onSaved={load} />
       <Tracker status={d.status} timeline={d.timeline} />
       <div className="booking-cols"><div className="booking-main">

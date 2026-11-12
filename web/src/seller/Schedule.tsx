@@ -13,7 +13,7 @@ import { family } from '../../../server/shared/media'
 import { Reach } from '../calendar/Reach'
 import { ltr, sep, t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
-import { tm } from '../i18n-server'
+import { tm, tmTitle } from '../i18n-server'
 
 type SSlot = { brand: string; title: string; logoUrl: string | null; id: string; outletId?: string; outlet: string; channel: string; placement: string; label: string; kind: string; saleType: string; startsAt: string; endsAt: string | null
   closesAt: string; status: string; startingPrice: number; buyNowPrice: number | null; reservePrice: number | null; topBid: number | null; bids: number }
@@ -223,7 +223,7 @@ function Lanes({ days, slots, open, onOpen, onAdd, onDay, picked, onPick }: { da
         return <div className="ln-row" key={key}>
           <div className={`ln-who cc-ev f-${family(s0.channel)} ${picked ? 'pick' : ''}`} title={s0.title} role={picked ? 'button' : undefined} tabIndex={picked ? 0 : undefined}
             onClick={picked ? () => onPick(idsOf(l)) : undefined} onKeyDown={picked ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPick(idsOf(l)) } } : undefined}><OutletMark name={s0.brand} url={s0.logoUrl} size={34} />
-            <span className="ln-name"><b>{s0.title}</b><span className="small muted">{CHANNEL_NAME[s0.channel] ?? s0.channel}</span>
+            <span className="ln-name"><b>{tmTitle(s0.title)}</b><span className="small muted">{CHANNEL_NAME[s0.channel] ?? s0.channel}</span>
               <span className="ln-stat small num">{t('{sold} of {n} booked', { sold, n: l.length })}</span></span></div>
           {days.map(d => <div key={d} className={`ln-cell ${d === today ? 'today' : ''} ${d < today ? 'past' : ''}`}>{on(l, d).map(pill)}</div>)}
         </div> })}
@@ -241,7 +241,7 @@ function DayList({ slots, open, onOpen }: { slots: SSlot[]; open: string | null;
     <div className="cc-hitems">{slots.filter(s => hourOf(s) === h).map(s =>
       <button key={s.id} type="button" className={`cc-ev f-${family(s.channel)} ${open === s.id ? 'on' : ''}`} onClick={() => onOpen(s.id)}>
         <OutletMark name={s.brand} url={s.logoUrl} size={36} />
-        <span className="cc-what"><b>{s.title}</b><span className="small muted">{[s.label !== s.placement ? tm(s.label) : '', CHANNEL_NAME[s.channel] ?? s.channel].filter(Boolean).join(sep)}</span></span>
+        <span className="cc-what"><b>{tmTitle(s.title)}</b><span className="small muted">{[s.label !== s.placement ? tm(s.label) : '', CHANNEL_NAME[s.channel] ?? s.channel].filter(Boolean).join(sep)}</span></span>
         <span className="cc-chips">{hasTime(s.channel) && <span className="cc-pill">{time(s.startsAt)}{s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</span>}{hasTime(s.channel) && length(s) && <span className="cc-pill">{length(s)}</span>}
           <span className="cc-pill">{saleLabel(s.saleType)}</span></span>
         <BidChip s={s} />
@@ -347,7 +347,7 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
   return <>
     <header className="sp-head">
       <OutletMark name={s.brand} url={s.logoUrl} size={64} />
-      <div className="sp-head-t"><h2>{s.title}</h2><p className="muted small">{[s.label !== s.placement ? tm(s.label) : '', CHANNEL_NAME[s.channel] ?? s.channel].filter(Boolean).join(sep)}</p>
+      <div className="sp-head-t"><h2>{tmTitle(s.title)}</h2><p className="muted small">{[s.label !== s.placement ? tm(s.label) : '', CHANNEL_NAME[s.channel] ?? s.channel].filter(Boolean).join(sep)}</p>
         <p className="small">{slotWhen(s.startsAt, s.channel)}{hasTime(s.channel) && s.endsAt && mins(s) >= 5 ? `–${time(s.endsAt)}` : ''}</p></div>
       {onClose && <button className="btn icon" onClick={onClose} aria-label={t("Close")}>✕</button>}</header>
     <div className="sp-state"><BidChip s={{ status: s.status, saleType: s.saleType, bids: s.bids.filter(b => ['active', 'outbid', 'selected'].includes(b.status)).length }} />
