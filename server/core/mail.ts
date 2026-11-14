@@ -26,16 +26,16 @@ export function renderEmail(lang: Lang, e: { title: string; paragraphs: string[]
   const dir = lang === 'ar' ? 'rtl' : 'ltr', align = lang === 'ar' ? 'right' : 'left'
   const font = lang === 'ar' ? "'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif" : "'IBM Plex Sans', Arial, Helvetica, sans-serif"
   const html = `<!doctype html><html lang="${lang}" dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(e.title)}</title></head>
-<body style="margin:0;padding:0;background:#f2f4f3;font-family:${font};color:#0f2322">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f4f3;padding:24px 12px"><tr><td align="center">
+<body style="margin:0;padding:0;background:#f5f5f8;font-family:${font};color:#0d0c1d">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f8;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden" dir="${dir}">
-<tr><td style="background:#082528;padding:18px 24px;text-align:${align};color:#ffffff;font-size:18px;font-weight:700">Nashr <span style="color:#e3a52b">نشر</span></td></tr>
+<tr><td style="background:#1e1650;padding:18px 24px;text-align:${align};color:#ffffff;font-size:18px;font-weight:700">Nashr <span style="color:#c9b8ff">نشر</span></td></tr>
 <tr><td style="padding:24px;text-align:${align};font-size:15px;line-height:1.6">
 <h1 dir="auto" style="margin:0 0 12px;font-size:20px;line-height:1.35">${esc(e.title)}</h1>
 ${e.paragraphs.map(p => `<p dir="auto" style="margin:0 0 12px">${esc(p)}</p>`).join('\n')}
-${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="display:inline-block;background:#106b63;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:600">${esc(e.cta.label)}</a></p>` : ''}
+${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="display:inline-block;background:#6b3cf6;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:600">${esc(e.cta.label)}</a></p>` : ''}
 </td></tr>
-<tr><td style="padding:16px 24px;border-top:1px solid #e3e8e6;text-align:${align};font-size:12px;color:#5b6b69;line-height:1.5">${esc(e.footer)}</td></tr>
+<tr><td style="padding:16px 24px;border-top:1px solid #e7e5ef;text-align:${align};font-size:12px;color:#5e5b72;line-height:1.5">${esc(e.footer)}</td></tr>
 </table></td></tr></table></body></html>`
   const text = [e.title, '', ...e.paragraphs, ...(e.cta ? ['', `${e.cta.label}: ${e.cta.url}`] : []), '', '—', e.footer].join('\n')
   return { html, text }
