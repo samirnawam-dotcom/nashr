@@ -214,3 +214,16 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Older products (made before the product form) are completed from what they already sell: price, deadlines, language, file type, audience from tags; the form no longer asks for them. A product with no description is still asked for one
 - [x] Older newspaper/website products are sold through the items they had before; each item now has Edit beside List: name, what the buyer gets, specs, price, deadlines (the days it runs stay as they are)
 - [x] Description optional for older products and outlets: one that never had a description saves without it (label reads "Description (optional)"); once it has one it cannot be emptied, and every new product or outlet still needs it
+
+## Phase P: owner's "Buyer side fixes" (14 Nov 2026)
+- [x] Sidebar: Dashboard, Calendar, Directory, Campaigns, Clients, Inbox, Reports; Company and Help in the name menu
+- [x] Inbox: to do (pay now, send creative, approve proof, most urgent first) then messages
+- [x] Reports: Bookings (accepted only; Listing, Runs; new status words), Results, Receipts and invoices
+- [x] Company: industry from the sector list, logo. Clients: logo, billing email, no budget (budgets on campaigns only)
+- [x] Campaigns are the plan: dates, optional budget, one brief sent with every tagged bid; products at estimated cost; stages Added to Ran
+- [x] Bid drawer: campaign first, brief preview and "Edit for this bid", budget line, "+ Add to campaign", stray "0" gone
+- [x] Calendar "Campaign" drawer replaces the Plan basket; "See dates" and "Book slots" narrow the calendar
+- [x] Directory: outlets first then products, "From AED", 4-tab summary, sort, price range, fits my budget, saved star, compare up to 3
+- [x] Calendar: labelled filter rows, Day and Week only, logos, "on sale", Sort by, price range, fits my budget, "Closes in" tag
+- [ ] Owner to confirm: Audiences and Athena left out of the buyer sidebar (not in the new list); the public Audiences pages stay
+- [ ] Older campaign plans of outlets not on Nashr (quote-only) have no products to carry over
