@@ -77,10 +77,6 @@
 .pr-what .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pr-price { display: grid; justify-items: end; font: 700 15.5px var(--display); white-space: nowrap; } .pr-price small { font: 400 12px var(--body); color: var(--slate); }
 .pr-acts { display: flex; gap: 6px; }
-.pr-sum { display: grid; gap: 14px; padding: 14px 18px 18px; border-top: 1px solid var(--line); background: var(--surface-2); }
-.pr-tabs { justify-self: start; }
-.pr-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 24px; margin: 0; }
-.pr-facts dt { font-size: 12.5px; color: var(--faint); } .pr-facts dd { margin: 2px 0 0; font-size: 14.5px; font-weight: 500; overflow-wrap: anywhere; }
 .pr-row .ed-progs, .pr-row .ed-listnow { padding: 14px 18px; border-top: 1px solid var(--line); }
 @media (max-width: 900px) {
   .ed-outlet { grid-template-columns: 56px minmax(0, 1fr); } .ed-outlet .btn { grid-column: span 1; }

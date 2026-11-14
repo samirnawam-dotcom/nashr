@@ -15,7 +15,7 @@ const PASSWORD = 'nashr-demo-2026'
 const BRIEF = { advertiser: 'Demo brand', industry: 'Banking', message: 'Demo campaign', language: 'english', landingUrl: 'https://example.com', creativeToFollow: true }
 
 await migrate()
-await pool.query(`truncate staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_lines, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
+await pool.query(`truncate saved_outlets, staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_lines, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
   prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
 await pool.query(`delete from settings where valid_from > '2000-01-01'`)
 

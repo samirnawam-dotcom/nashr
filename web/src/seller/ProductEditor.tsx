@@ -17,6 +17,7 @@ import { ListingPanel, byProgramme as soldByProgramme, mediaName, productTitle, 
 import { Ic, daysText, onSale } from './Products'
 import './products.css'
 import './editor.css'
+import { ProductSummary } from '../products/Summary'
 
 /*
  * An outlet's page (owner's fixes round 2). The outlet is the brand: its name, logo, description and anything else buyers should
@@ -248,50 +249,6 @@ function ItemForm({ s, onSaved, onCancel }: { s: Sellable; onSaved: (slots: numb
     <p className="small muted">{s.days?.length ? t('It runs on {days}.', { days: daysText(s.days) }) + ' ' : ''}{t('Dates already on sale with no bid take the new name, price and deadlines; a date someone has bid on keeps what they bid on.')}</p>
     <div className="ed-save">{error && <p className="error" role="alert">{error}</p>}<span className="spacer" /><button type="button" className="btn primary" disabled={busy} onClick={save}>{t('Save')}</button></div>
   </section>
-}
-
-/** One line of the summary: shown only when the publisher filled it in. */
-const Fact = ({ k, v }: { k: string; v?: string | number | null }) => v == null || v === '' ? null : <div><dt>{k}</dt><dd dir="auto">{v}</dd></div>
-const TABS: [string, string][] = [['details', 'Details'], ['audience', 'Audience'], ['sectors', 'Sectors'], ['requirements', 'Requirements']]
-
-/** A product's summary, made only from what the publisher filled in on its form: details, audience, sectors, requirements. */
-function ProductSummary({ m }: { m: Media }) {
-  const [tab, setTab] = useState('details'), d = m.details ?? {}, byProgramme = HAS_PROGRAMMES.includes(m.channel) && soldByProgramme(m)
-  const main = m.sellable.find(s => s.kind === 'main'), timed = ['radio', 'tv'].includes(m.channel)
-  const fields = byProgramme ? [] : TYPE_FIELDS[m.channel] ?? []
-  const value = (f: Field): string => f.kind === 'days' ? (d.days?.length ? daysText(d.days) : '') : f.kind === 'airtime' ? (timed && d.airStart ? `${d.airStart}–${d.airEnd ?? ''}` : '')
-    : f.kind === 'breaks' ? (timed ? (d.breaks ?? []).map((b: any) => b.at).filter(Boolean).join(', ') : '') : f.options ? t(label(f.options, d[f.key])) : String(d[f.key] ?? '')
-  const list = (v?: string[] | null) => (v ?? []).map(x => t(x)).join(', ')
-  return <div className="pr-sum">
-    <div className="seg pr-tabs" role="tablist" aria-label={m.name}>{TABS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t(l)}</button>)}</div>
-    {tab === 'details' && <dl className="pr-facts">
-      <Fact k={t('Media type')} v={mediaName(m)} />
-      {fields.map(f => <Fact key={f.key} k={f.kind === 'airtime' ? t('Airtime') : f.kind === 'breaks' ? t('Breaks') : t(f.label)} v={value(f)} />)}
-      {byProgramme && <Fact k={t('Sold by')} v={t(m.sellable.length === 1 ? '1 programme' : '{n} programmes', { n: m.sellable.length })} />}
-      {!byProgramme && !fields.some(f => f.kind === 'days') && main?.days?.length ? <Fact k={t('Days')} v={daysText(main.days)} /> : null}
-      <Fact k={t('Language')} v={m.language ? t(label(LANGUAGES, m.language)) : ''} />
-      <Fact k={t('Name in Arabic')} v={m.nameAr} />
-      <Fact k={t('Website')} v={m.website} />
-    </dl>}
-    {tab === 'audience' && <dl className="pr-facts">
-      <Fact k={t('Audience')} v={m.audience} />
-      <Fact k={t('Reach')} v={m.reach ? `${m.reach.toLocaleString('en-US')}${m.reachUnit ? ` ${t(label(REACH_UNITS, m.reachUnit)).toLowerCase()}` : ''}` : ''} />
-      <Fact k={t('Audience tags')} v={(m.audiences ?? []).map(k => t(AUDIENCES.find(a => a[0] === k)?.[1] ?? k)).join(', ')} />
-      <Fact k={t('Markets')} v={(m.markets ?? []).map(x => t(label(MARKETS, x))).join(', ')} />
-    </dl>}
-    {tab === 'sectors' && <dl className="pr-facts">
-      <Fact k={t('Sectors accepted')} v={m.sectors?.length ? list(m.sectors) : t('All sectors')} />
-      <Fact k={t('Sectors not accepted')} v={list(m.blocked)} />
-      <Fact k={t('Advertisers not run')} v={(m.blockedAdvertisers ?? []).join(', ')} />
-    </dl>}
-    {tab === 'requirements' && <dl className="pr-facts">
-      <Fact k={t('Creative specs')} v={[m.specType ? t(label(SPEC_TYPES[m.channel] ?? SPEC_TYPES.other, m.specType)) : '', m.specDetail].filter(Boolean).join(', ')} />
-      <Fact k={t('Creative due')} v={m.creativeDays != null ? t('{n} days before it runs', { n: m.creativeDays }) : ''} />
-      <Fact k={t('Bidding closes')} v={m.closeDays != null ? t('{n} days before it runs', { n: m.closeDays }) : ''} />
-      <Fact k={t('Default price')} v={m.defaultPrice ? money(m.defaultPrice) : ''} />
-      <Fact k={t('Anything else buyers should know')} v={m.notes} />
-    </dl>}
-  </div>
 }
 
 export function ProductEditorPage({ id }: { id?: string }) {

@@ -246,7 +246,7 @@ describe('buyer screens', () => {
   const upload = (who: Who, bytes: string, type: string, name = 'spot.mp3') =>
     app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from(bytes), headers: { cookie: who.cookie, 'content-type': type, 'x-file-name': name } })
 
-  test('directory: three price levels, each labelled; off-platform outlets ask for a quote', async () => {
+  test('directory: outlets first with "From" their lowest default price, popularity order, saved outlets; off-platform outlets ask for a quote', async () => {
     const off = (await pool.query(`insert into outlets (name, channel, est_low, est_high) values ('Arabian Business', 'magazine', $1, $2) returning id`, [AED(8_000), AED(12_000)])).rows[0].id
     const outletX = (await pool.query(`select o.id from outlets o where company_id = $1`, [sellerX.companyId])).rows[0].id
     // three completed sales on Nashr make a typical price
@@ -256,9 +256,26 @@ describe('buyer screens', () => {
       await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'auction', 'paid_out', $5, 'AED', now())`,
         [slotX, bidId, buyerA.companyId, sellerX.companyId, amount])
     const dir = (await call(buyerA, 'GET', '/api/directory')).json()
-    expect(dir.find((o: any) => o.id === off)).toMatchObject({ onNashr: false, price: { level: 'estimate', label: 'Estimate, unconfirmed', from: AED(8_000) } })
-    expect(dir.find((o: any) => o.id === outletX)).toMatchObject({ onNashr: true, price: { level: 'typical', label: 'Typical on Nashr', from: AED(4_000), to: AED(6_000) } })
-    expect(dir.find((o: any) => o.name === 'Gulf Radio')).toMatchObject({ price: { level: 'rate', label: "Publisher's rate", from: AED(3_500) } })
+    // not on Nashr: no price of ours, "Request a quote"; on Nashr: from the lowest default price of its products
+    expect(dir.find((o: any) => o.id === off)).toMatchObject({ onNashr: false, fromPrice: null })
+    const sky = dir.find((o: any) => o.id === outletX)
+    expect(sky).toMatchObject({ onNashr: true, channels: ['radio'], saved: false })
+    expect(sky.fromPrice).toBe(Number((await pool.query(`select min(starting_price) m from placements where outlet_id = $1 and not archived`, [outletX])).rows[0].m))
+    expect(dir.find((o: any) => o.name === 'Gulf Radio')).toMatchObject({ fromPrice: AED(3_500) })
+    // most popular first (bookings and bids in 90 days); buyers see the order, never the counts
+    expect(dir[0].id).toBe(outletX)
+    expect(JSON.stringify(dir)).not.toMatch(/"popular"|"bids"/)
+    // a star saves an outlet for this buyer only
+    expect((await call(buyerA, 'PUT', `/api/directory/${outletX}/saved`)).json()).toEqual({ saved: true })
+    expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === outletX).saved).toBe(true)
+    expect((await call(buyerB, 'GET', '/api/directory')).json().find((o: any) => o.id === outletX).saved).toBe(false)
+    expect((await call(null, 'PUT', `/api/directory/${outletX}/saved`)).statusCode).toBe(401)
+    // the outlet page lists its products with what they sell, and the same summary fields the publisher filled in
+    const page = (await call(buyerA, 'GET', `/api/directory/${sky.slug}`)).json()
+    expect(page).toMatchObject({ id: outletX, name: 'Skyline FM', products: [{ id: outletX, channel: 'radio', sellable: [{ name: 'Morning Markets' }] }] })
+    expect((await call(buyerA, 'GET', `/api/directory/${outletX}`)).json().name).toBe('Skyline FM') // by id too
+    expect((await call(sellerX, 'GET', `/api/directory/${outletX}`)).statusCode).toBe(403)
+    expect((await call(buyerA, 'DELETE', `/api/directory/${outletX}/saved`)).json()).toEqual({ saved: false })
     expect((await call(buyerA, 'GET', `/api/outlets/${outletX}`)).json()).toMatchObject({ completedSales: 3, placements: [{ name: 'Morning Markets', openSlots: 1 }] })
     expect((await call(sellerX, 'GET', `/api/outlets/${outletX}`)).statusCode).toBe(403)
 
@@ -499,7 +516,7 @@ describe('admin screens', () => {
     expect((await call(admin, 'PUT', `/api/admin/outlets/${off}`, { estHigh: AED(9_000), tier: 'Tier 1' })).statusCode).toBe(200)
     const onNashr = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
     expect((await call(admin, 'PUT', `/api/admin/outlets/${onNashr}`, { name: 'Hacked' })).json().error).toMatch('not on Nashr')
-    expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === off).price).toMatchObject({ level: 'estimate', to: AED(9_000) })
+    expect((await call(buyerA, 'GET', `/api/outlets/${off}`)).json().price).toMatchObject({ level: 'estimate', to: AED(9_000) })
   })
 })
 

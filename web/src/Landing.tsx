@@ -24,8 +24,7 @@ const BOARD: [string, string, [string, string][]][] = [
 const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
 const FORMATS = ['digital', 'newspaper', 'magazine', 'newsletter', 'radio', 'tv', 'podcast', 'social']
 
-type Outlet = { id: string; slug: string; name: string; channel: string; logoUrl: string | null; comingSoon: boolean; onNashr: boolean
-  price: { label: string; from: number | null; to: number | null } | null }
+type Outlet = { id: string; slug: string; name: string; channels: string[]; logoUrl: string | null; comingSoon: boolean; onNashr: boolean; fromPrice: number | null }
 
 export function Landing() {
   const steps = useRef<HTMLOListElement>(null)
@@ -250,9 +249,9 @@ function Outlets() {
   if (list.length < 3) return null
   const card = (o: Outlet, copy = false) => <a className="ol-card" href={`/directory/${o.slug}`} key={`${copy ? 'b' : 'a'}-${o.id}`} tabIndex={copy ? -1 : undefined}>
     {o.logoUrl ? <img src={o.logoUrl} alt="" width={48} height={48} loading="lazy" decoding="async" />
-      : <span className="ol-ic" aria-hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[o.channel] ?? ICON.digital} /></svg></span>}
-    <span className="ol-t"><b>{o.name}</b><span>{CHANNEL_NAME[o.channel] ?? o.channel}</span>
-      {o.price?.from != null && <span className="from">{t('from {amount}', { amount: money(o.price.from).replace(/\.00$/, '') })}</span>}</span></a>
+      : <span className="ol-ic" aria-hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[o.channels[0]] ?? ICON.digital} /></svg></span>}
+    <span className="ol-t"><b>{o.name}</b><span>{o.channels.map(c => CHANNEL_NAME[c] ?? c).join(' · ')}</span>
+      {o.fromPrice != null && <span className="from">{t('from {amount}', { amount: money(o.fromPrice).replace(/\.00$/, '') })}</span>}</span></a>
   return <section className="block outlets" aria-labelledby="outlets-h">
     <div className="wrap outlets-head">
       <div><h2 id="outlets-h">{t('Outlets you can book today')}</h2>

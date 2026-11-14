@@ -56,8 +56,88 @@ const outletCard = (r: any) => ({ id: r.id, slug: slugOf(r.name, r.id), name: r.
 
 export function planRoutes(route: RouteFn) {
   // The directory is for buyers, visitors browsing before they sign in, and Nashr; signed-in sellers cannot see it (brief section 6).
-  route('GET', '/api/directory', [...BUYER, 'admin', 'guest'], async ({ db }) =>
-    (await db.query(`${OUTLET_SQL} order by c.payouts_enabled is not true, o.name`)).rows.map(outletCard))
+  // ---- The Directory (owner's buyer-side fixes): outlets first, then their products --------------------------------------
+  // An outlet is the brand: its products row when the publisher has one, else the single outlets row (older outlets, and outlets
+  // not on Nashr that take a quote request). Its products are the outlets rows under it, each with what it sells.
+  async function brands(db: any, at: Date, me: string | null, key?: string) {
+    const rows = (await db.query(`select o.*, coalesce(o.product_id, o.id) brand_key, brand_name(o) brand, pr.logo_key brand_logo_key, pr.description brand_description,
+        c.payouts_enabled and ${OPEN} ? o.market bookable, not (${OPEN} ? o.market) coming_soon, coalesce(pr.created_at, c.created_at) joined,
+        coalesce(o.default_price, (select min(p.starting_price) from placements p where p.outlet_id = o.id and not p.archived)) price,
+        (select count(*)::int from slots s join placements p on p.id = s.placement_id where p.outlet_id = o.id and s.status = 'open' and s.closes_at > $1) on_sale,
+        -- popularity, worked out by Nashr: each booking and each bid in the last 90 days, counted once (buyers see the order only)
+        (select count(*)::int from bids b join slots s on s.id = b.slot_id join placements p on p.id = s.placement_id where p.outlet_id = o.id and b.created_at > $1::timestamptz - interval '90 days')
+          + (select count(*)::int from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id where p.outlet_id = o.id and d.created_at > $1::timestamptz - interval '90 days') popular,
+        (select round(avg(x.score)::numeric, 1)::float from ratings x where x.outlet_id = o.id and not x.hidden) rating_avg,
+        (select count(*)::int from ratings x where x.outlet_id = o.id and not x.hidden) rating_n
+      from outlets o left join companies c on c.id = o.company_id left join products pr on pr.id = o.product_id
+      where not o.archived and not coalesce(pr.archived, false) and (o.company_id is null or exists (select 1 from placements p where p.outlet_id = o.id and not p.archived) or o.default_price is not null)
+        ${key ? `and coalesce(o.product_id, o.id) = $2` : ''}
+      order by brand_name(o), o.name`, key ? [at, key] : [at])).rows
+    const saved = me ? new Set((await db.query(`select brand_key from saved_outlets where company_id = $1`, [me])).rows.map((r: any) => r.brand_key)) : new Set()
+    const by = new Map<string, any[]>()
+    for (const r of rows) by.set(r.brand_key, [...(by.get(r.brand_key) ?? []), r])
+    const list = [...by.entries()].map(([k, rs]) => {
+      const f = rs[0], prices = rs.map(r => r.price).filter((x: any) => x != null).map(Number), rated = rs.filter(r => r.rating_n > 0)
+      const n = rated.reduce((a, r) => a + r.rating_n, 0)
+      return { key: k, rows: rs, card: { popularRank: 0, newestRank: 0,
+        id: k, slug: slugOf(f.brand, k), name: f.brand, nameAr: rs.find(r => r.name_ar)?.name_ar ?? null,
+        logoUrl: brandLogoUrl(f.product_id, f.brand_logo_key) ?? logoUrl(rs.find(r => r.logo_key) ?? f) ?? f.logo_url ?? null,
+        coverUrl: coverUrl(rs.find(r => r.cover_key) ?? f), channels: [...new Set(rs.map(r => r.channel))],
+        sectors: [...new Set(rs.flatMap(r => r.sectors ?? []))], audiences: [...new Set(rs.flatMap(r => r.audiences ?? []))],
+        audience: rs.map(r => r.audience).filter(Boolean)[0] ?? null, market: f.market, comingSoon: rs.some(r => r.coming_soon), onNashr: rs.some(r => r.bookable),
+        // "From AED 2,000": the lowest default price of its products; outlets not on Nashr keep "Request a quote"
+        fromPrice: f.company_id && prices.length ? Math.min(...prices) : null, currency: f.company_id ? 'AED' : f.est_currency,
+        onSale: rs.reduce((a, r) => a + r.on_sale, 0), products: rs.length,
+        rating: { average: n ? Math.round(rated.reduce((a, r) => a + r.rating_avg * r.rating_n, 0) / n * 10) / 10 : null, count: n },
+        saved: saved.has(k) } , popular: rs.reduce((a, r) => a + r.popular, 0), joined: Math.min(...rs.map(r => r.joined ? new Date(r.joined).getTime() : 0)) }
+    })
+    // the orders the buyer can sort by (they see the order, never the counts behind it)
+    const rank = (cmp: (a: any, b: any) => number) => new Map([...list].sort(cmp).map((x, i) => [x.key, i]))
+    const popular = rank((a, b) => (b.popular - a.popular) || a.card.name.localeCompare(b.card.name))
+    const newest = rank((a, b) => (b.joined - a.joined) || a.card.name.localeCompare(b.card.name))
+    for (const x of list) Object.assign(x.card, { popularRank: popular.get(x.key), newestRank: newest.get(x.key) })
+    return list
+  }
+
+  route('GET', '/api/directory', [...BUYER, 'admin', 'guest'], async ({ db, at, me }) =>
+    (await brands(db, at, me?.role === 'buyer' ? me.actAs.companyId : null)).sort((a, b) => a.card.popularRank - b.card.popularRank).map(x => x.card))
+
+  // One outlet: its products grouped by media type, each with the same summary the publisher sees, and what it sells.
+  route('GET', '/api/directory/:key', [...BUYER, 'admin', 'guest'], async ({ db, at, me }, req) => {
+    const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(req.params.key)
+    // by the outlet's readable address, by its id, or by one of its products' ids (older links)
+    const key = isId ? (await db.query(`select coalesce(o.product_id, o.id) k from outlets o where o.id = $1 or o.product_id = $1 limit 1`, [req.params.key])).rows[0]?.k
+      : (await db.query(`select coalesce(o.product_id, o.id) k from outlets o where not o.archived and lower(trim(both '-' from regexp_replace(brand_name(o), '[^a-zA-Z0-9]+', '-', 'g'))) = $1
+          order by o.company_id is null, o.id limit 1`, [req.params.key])).rows[0]?.k
+    const b = key && (await brands(db, at, me?.role === 'buyer' ? me.actAs.companyId : null, key))[0]
+    if (!b) throw new NotFound()
+    const places = (await db.query(`select p.*, (select count(*)::int from slots s where s.placement_id = p.id and s.status = 'open' and s.closes_at > $2) open_slots,
+        (select min(s.starts_at) from slots s where s.placement_id = p.id and s.status = 'open' and s.closes_at > $2) next_at
+      from placements p where p.outlet_id = any($1::uuid[]) and not p.archived order by p.kind, p.name`, [b.rows.map((r: any) => r.id), at])).rows
+    const ratings = await Promise.all(b.rows.map((r: any) => outletRating(db, r.id)))
+    const f = b.rows[0]
+    return { ...b.card, description: f.brand_description ?? f.description, website: b.rows.find((r: any) => r.website)?.website ?? null,
+      recent: ratings.flatMap(r => r.recent).sort((x, y) => +new Date(y.at) - +new Date(x.at)).slice(0, 5),
+      products: b.rows.map((m: any) => ({ id: m.id, name: m.name, channel: m.channel, channelOther: m.channel_other, description: m.description, nameAr: m.name_ar, website: m.website,
+        language: m.language, audience: m.audience, audiences: m.audiences ?? [], markets: m.markets ?? [], reach: m.reach, reachUnit: m.reach_unit, sectors: m.sectors ?? [],
+        blocked: m.blocked_industries ?? [], specType: m.spec_type, specDetail: m.spec_detail, notes: m.notes, details: m.details ?? {},
+        creativeDays: m.creative_days, closeDays: m.close_days, defaultPrice: m.price == null ? null : Number(m.price), coverUrl: coverUrl(m), onSale: m.on_sale,
+        sellable: places.filter((p: any) => p.outlet_id === m.id).map((p: any) => ({ id: p.id, kind: p.kind, name: p.name, days: p.days, saleType: p.sale_type,
+          startsAt: p.starts_at_local?.slice(0, 5) ?? null, endsAt: p.ends_at_local?.slice(0, 5) ?? null,
+          price: Number(p.default_price ?? m.price ?? p.starting_price), startingPrice: Number(p.starting_price), creativeDays: Math.round(p.creative_lead_hours / 24),
+          openSlots: p.open_slots, nextAt: p.next_at, description: p.description })) })) }
+  })
+
+  // Saved outlets: a star on every outlet card and outlet page (no campaign needed)
+  route('PUT', '/api/directory/:key/saved', BUYER, async ({ db, at, me }, req) => {
+    if (!(await db.query(`select 1 from outlets where coalesce(product_id, id) = $1`, [req.params.key])).rowCount) throw new NotFound()
+    await db.query(`insert into saved_outlets (company_id, brand_key, created_at) values ($1, $2, $3) on conflict do nothing`, [me.actAs.companyId, req.params.key, at])
+    return { saved: true }
+  })
+  route('DELETE', '/api/directory/:key/saved', BUYER, async ({ db, me }, req) => {
+    await db.query(`delete from saved_outlets where company_id = $1 and brand_key = $2`, [me.actAs.companyId, req.params.key])
+    return { saved: false }
+  })
 
   route('GET', '/api/outlets/:id', [...BUYER, 'admin', 'guest'], async ({ db, at }, req) => {
     // By readable address (/directory/gulf-news) or by id (older links).
