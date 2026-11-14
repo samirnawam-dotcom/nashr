@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { tm, tmTitle } from '../i18n-server'
-import { api, type Campaign, type Client, type Slot } from '../api'
+import { api, upload, type CampaignBrief, type Client, type Slot } from '../api'
 import { dayLabel, hasTime, money, slotWhen, time } from '../format'
 import { OutletMark } from '../LogoPicker'
 import { Reach } from './Reach'
@@ -10,45 +10,58 @@ import { SignInPrompt, useGuest } from '../guest'
 import { t } from '../i18n'
 import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { useLive } from '../live'
-import { usePlan } from './Plan'
+import { useCampaigns, useCurrentCampaign } from './CampaignDrawer'
+import { IndustryPick } from '../IndustryPick'
 
-type Detail = Slot & { yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
+type Detail = Slot & { placementId?: string; yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
 export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
 export { INDUSTRIES } from '../industries'
 import { INDUSTRIES } from '../industries'
-const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign', LAST_CLIENT = 'nashr:last-client'
+const LAST_BRIEF = 'nashr:last-brief', LAST_CLIENT = 'nashr:last-client'
 const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Date(s.startsAt).getTime()) / 1000)
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
 
 export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose: () => void; onDone: () => void }) {
-  const guest = useGuest(), plan = usePlan()
+  const guest = useGuest()
   const [s, setS] = useState<Detail | null>(null)
   const [amount, setAmount] = useState(''), [auto, setAuto] = useState(false), [max, setMax] = useState('')
-  // The brief goes with every first bid on a slot; the last one is offered again so buyers type it once per campaign.
-  const [brief, setBrief] = useState(() => {
-    const blank = { advertiser: '', industry: 'Banking', message: '', language: 'english', landingUrl: '', creativeToFollow: true, notes: '', disclaimer: '' }
-    try { return { ...blank, ...JSON.parse(localStorage.getItem(LAST_BRIEF) ?? '{}') } } catch { return blank }
+  // No campaign: the brief is filled in for this bid (the last one is offered again). With a campaign, its brief goes instead.
+  type B = CampaignBrief & { notes?: string; fileName?: string }
+  const [brief, setBrief] = useState<B>(() => {
+    const blank: B = { advertiser: '', industry: '', message: '', language: 'english', languageOther: '', landingUrl: '', creativeToFollow: true, notes: '', disclaimer: '' }
+    try { const { draftFileKey: _, ...last } = JSON.parse(localStorage.getItem(LAST_BRIEF) ?? '{}'); return { ...blank, ...last } } catch { return blank }
   })
-  const [error, setError] = useState(''), [done, setDone] = useState(''), [warn, setWarn] = useState(''), [busy, setBusy] = useState(false)
-  // Tag the booking to a campaign so it counts against that budget; the last choice is offered again.
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [campaignId, setCampaignId] = useState(() => { try { return localStorage.getItem(LAST_CAMPAIGN) ?? '' } catch { return '' } })
-  useEffect(() => { if (!guest) api<Campaign[]>('/campaigns').then(c => { const active = c.filter(x => x.status === 'active'); setCampaigns(active)
-    if (!active.some(x => x.id === campaignId)) setCampaignId('') }, () => {}) }, [])
+  const [error, setError] = useState(''), [done, setDone] = useState(''), [warn, setWarn] = useState(''), [busy, setBusy] = useState(false), [uploading, setUploading] = useState(false)
+  // The campaign comes first (owner's buyer-side fixes): its brief and creative go with the bid unless "Edit for this bid" is chosen.
+  const { list: campaigns, reload: reloadCampaigns } = useCampaigns(!guest), [campaignId, setCampaignId] = useCurrentCampaign()
+  const campaign = campaigns.find(c => c.id === campaignId), [ownBrief, setOwnBrief] = useState(false), [adding, setAdding] = useState(false), [added, setAdded] = useState('')
+  const editHere = !campaign || ownBrief
+  function editForThisBid() { if (campaign?.brief) setBrief({ ...brief, ...campaign.brief, notes: brief.notes, fileName: campaign.brief.draftFileKey ? t('Campaign creative') : undefined }); setOwnBrief(true) }
   // Agencies: the client the booking is for (its budget, its brand safety, its receipts). A campaign made for a client decides it.
   const [clients, setClients] = useState<Client[]>([])
   const [clientId, setClientId] = useState(() => { try { return localStorage.getItem(LAST_CLIENT) ?? '' } catch { return '' } })
   useEffect(() => { if (!guest) api<Client[]>('/clients').then(c => { const active = c.filter(x => x.status === 'active'); setClients(active)
     if (!active.some(x => x.id === clientId)) setClientId('') }, () => {}) }, [])
-  const campaignClient = campaigns.find(c => c.id === campaignId)?.clientId ?? ''
+  const campaignClient = campaign?.clientId ?? ''
   const forClient = campaignClient || clientId
   function pickClient(id: string) {
     const was = clients.find(c => c.id === forClient), next = clients.find(c => c.id === id)
     setClientId(id)
     // the brief follows the client unless the buyer typed another advertiser
     if (next && (!brief.advertiser || brief.advertiser === was?.name))
-      setBrief({ ...brief, advertiser: next.name, ...(next.industry && INDUSTRIES.includes(next.industry) ? { industry: next.industry } : {}) })
+      setBrief({ ...brief, advertiser: next.name, ...(next.industry ? { industry: next.industry } : {}) })
+  }
+  async function file(x: File) {
+    setUploading(true); setError('')
+    try { const u = await upload(x); setBrief({ ...brief, draftFileKey: `files/${u.id}`, fileName: u.name, creativeToFollow: false }) } catch (e: any) { setError(e.message) } finally { setUploading(false) }
+  }
+  /** "+ Add to campaign": the product this slot belongs to goes into the chosen campaign's plan. */
+  async function addToCampaign(id = campaignId) {
+    if (!id) { setAdding(true); return }
+    setError('')
+    try { await api(`/campaigns/${id}/lines`, { method: 'POST', body: { placementId: s!.placementId } }); setCampaignId(id); setAdding(false)
+      setAdded(t('Added to {name}.', { name: campaigns.find(c => c.id === id)?.name ?? '' })); reloadCampaigns() } catch (e: any) { setError(e.message) }
   }
 
   const load = () => api<Detail>(`/slots/${slotId}`).then(d => { setS(d); setAmount(String(d.minNextBid / 100))
@@ -66,14 +79,17 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   async function send(path: string, body: object, message: string | ((r: any) => string)) {
     setBusy(true); setError(''); setDone(''); setWarn('')
     try {
-      const b = s!.briefOnFile ? {} : { brief: { ...brief, landingUrl: brief.landingUrl || undefined, notes: brief.notes || undefined, disclaimer: brief.disclaimer?.trim() || undefined } }
+      const { fileName: _, ...own } = brief
+      // with a campaign, its brief goes unless edited here; without one, the brief filled in here (once per slot)
+      const b = !editHere || (!campaign && s!.briefOnFile) ? {} : { brief: { ...own, languageOther: own.language === 'other' ? own.languageOther?.trim() : undefined, landingUrl: own.landingUrl || undefined,
+        notes: own.notes || undefined, disclaimer: own.disclaimer?.trim() || undefined, draftFileKey: own.draftFileKey || undefined, creativeToFollow: !own.draftFileKey || !!own.creativeToFollow } }
       const r = await api<any>(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}), ...(forClient && !campaignClient ? { clientId: forClient } : {}) } })
       if (r?.beatenByAutoBid) message = () => ''
       if (r?.beatenByAutoBid) setWarn(t("Your bid is in, but another buyer's auto-bid is higher, so you are not leading. The top bid is now {top}. Bid at least {min}, or set a higher maximum.", { top: money(r.topAmount), min: money(r.minNextBid) }))
       message = typeof message === 'string' ? message : message(r)
-      try { localStorage.setItem(LAST_CAMPAIGN, campaignId); localStorage.setItem(LAST_CLIENT, clientId) } catch { /* fine */ }
-      if (!s!.briefOnFile) try { localStorage.setItem(LAST_BRIEF, JSON.stringify(brief)) } catch { /* private mode: nothing to remember */ }
-      if (message) setDone(message); onDone(); await load()
+      try { localStorage.setItem(LAST_CLIENT, clientId) } catch { /* fine */ }
+      if (!campaign && !s!.briefOnFile) try { localStorage.setItem(LAST_BRIEF, JSON.stringify({ ...own, draftFileKey: undefined })) } catch { /* private mode: nothing to remember */ }
+      if (message) setDone(message); onDone(); await load(); if (campaign) reloadCampaigns()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   if (!s) return <Shell onClose={onClose}>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</Shell>
@@ -92,7 +108,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       {s.saleType === 'auction' && <p className="small muted">{hasTime(s.channel) ? t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })
         : t('Bidding closes {when}', { when: slotWhen(s.closesAt, s.channel) })}</p>}
 
-      {s.details && (s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">
+      {s.details && !!(s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">
         {s.details.description && <div><dt>{t('What you get')}</dt><dd>{s.details.description}</dd></div>}
         {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd>{s.details.specs}</dd></div>}
         {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
@@ -111,6 +127,46 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       {s.saleType === 'auction' && !guest && s.yourDeal?.kind === 'auction' && <p className="ok">{t('You won this slot.')} <a href={`/bookings/${s.yourDeal.id}`}>{t('See it in Bookings')}</a></p>}
       {s.available && guest && <SignInPrompt to={s.saleType === 'auction' ? 'bid on this slot' : 'book this slot'} />}
       {s.available && !guest && <>
+        {/* the campaign first (owner's buyer-side fixes); optional */}
+        <section className="form bd-campaign">
+          <div className="field"><label htmlFor="camp">{t('Campaign (optional)')}</label>
+            <select id="camp" value={campaignId} onChange={e => { setCampaignId(e.target.value); setOwnBrief(false) }}><option value="">{t('No campaign')}</option>
+              {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+          {campaign && !ownBrief && <div className="bd-brief" role="note">
+            <p className="small">{t('Your campaign brief and creative will be sent to {outlet}.', { outlet: s.brand ?? s.outlet })}</p>
+            {campaign.brief ? <p className="bd-brief-p"><b dir="auto">{campaign.brief.advertiser}</b> · {t(campaign.brief.industry)}<br /><span dir="auto">{campaign.brief.message}</span></p>
+              : <p className="small warn">{t('This campaign has no brief yet.')}</p>}
+            <button type="button" className="linkish small" onClick={editForThisBid}>{t('Edit for this bid')}</button></div>}
+        </section>
+
+        {clients.length > 0 && <div className="field"><label htmlFor="client">{t('Client (optional)')}</label>
+          <select id="client" value={forClient} disabled={!!campaignClient} onChange={e => pickClient(e.target.value)}><option value="">{t('No client')}</option>
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          {campaignClient && <span className="small muted">{t('Set by the campaign.')}</span>}</div>}
+
+        {editHere && !(!campaign && s.briefOnFile) && <section className="form">
+          <h3>{ownBrief ? t('Brief for this bid') : t('Booking brief')}</h3>
+          {ownBrief && <p className="small muted">{t('Only this bid uses these changes; the campaign keeps its brief.')} <button type="button" className="linkish" onClick={() => setOwnBrief(false)}>{t('Use the campaign brief')}</button></p>}
+          <div className="field"><label htmlFor="adv">{t("Advertiser or brand")} <span className="req">*</span></label><input id="adv" dir="auto" value={brief.advertiser} onChange={e => setBrief({ ...brief, advertiser: e.target.value })} /></div>
+          <div className="field"><label htmlFor="ind">{t("Industry")} <span className="req">*</span></label><IndustryPick id="ind" value={brief.industry} onChange={v => setBrief({ ...brief, industry: v })} /></div>
+          <div className="field"><label htmlFor="msg">{t('What the ad will say')} <span className="req">*</span> <span className="muted">({brief.message.length}/280)</span></label>
+            <textarea id="msg" dir="auto" rows={3} maxLength={280} value={brief.message} onChange={e => setBrief({ ...brief, message: e.target.value })} /></div>
+          <div className="field"><label htmlFor="lang">{t("Creative language")} <span className="req">*</span></label><div className="ed-pick"><select id="lang" value={brief.language} onChange={e => setBrief({ ...brief, language: e.target.value as B['language'] })}>
+            <option value="english">{t("English")}</option><option value="arabic">{t("Arabic")}</option><option value="bilingual">{t("Bilingual")}</option><option value="other">{t('Other')}</option></select>
+            {brief.language === 'other' && <input aria-label={t('Which language')} placeholder={t('Which language')} dir="auto" maxLength={60} value={brief.languageOther ?? ''} onChange={e => setBrief({ ...brief, languageOther: e.target.value })} />}</div></div>
+          {s.channel === 'digital' && <div className="field"><label htmlFor="url">{t("Landing page link")} <span className="req">*</span></label><input id="url" dir="ltr" placeholder="https://" value={brief.landingUrl ?? ''} onChange={e => setBrief({ ...brief, landingUrl: e.target.value })} /></div>}
+          <div className="field"><span className="label">{t('Creative')} <span className="req">*</span></span><div className="cp-creative">
+            <label className={`btn ${uploading ? 'disabled' : ''}`}><input type="file" className="visually-hidden" disabled={uploading} onChange={e => e.target.files?.[0] && file(e.target.files[0])} />
+              {uploading ? t('Uploading…') : brief.draftFileKey ? t('Replace file') : t('Upload a file')}</label>
+            {brief.draftFileKey ? <span className="small"><bdi>{brief.fileName}</bdi> <button type="button" className="linkish" onClick={() => setBrief({ ...brief, draftFileKey: undefined, fileName: undefined, creativeToFollow: true })}>{t('Remove')}</button></span>
+              : <label className="check"><input type="checkbox" checked={!!brief.creativeToFollow} onChange={e => setBrief({ ...brief, creativeToFollow: e.target.checked })} /> {t("Creative to follow")}</label>}</div></div>
+          <div className="field"><label htmlFor="disc">{t('Required disclaimer or licence number (optional)')}</label>
+            <input id="disc" dir="auto" maxLength={500} value={brief.disclaimer ?? ''} onChange={e => setBrief({ ...brief, disclaimer: e.target.value })} placeholder={t('e.g. Licensed by the Central Bank of the UAE')} />
+            <span className="small muted">{t('The publisher must include it and confirm it in their proof.')}</span></div>
+          <div className="field"><label htmlFor="notes">{t("Notes for the publisher (optional)")}</label><textarea id="notes" dir="auto" rows={2} value={brief.notes ?? ''} onChange={e => setBrief({ ...brief, notes: e.target.value })} />
+            <span className="small muted">{t("Emails and phone numbers are not allowed. Talk to the publisher through Nashr.")}</span></div>
+        </section>}
+
         {s.saleType === 'auction' ? <section className="form">
           <BidStatus s={s} />
           <div className="seg bid-mode" role="radiogroup" aria-label={t('How to bid')}>
@@ -131,30 +187,12 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           <div className="field"><label htmlFor="offer">{t("Your offer (AED, optional, not below the asking price)")}</label><input id="offer" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
         </section>}
 
-        {clients.length > 0 && <div className="field"><label htmlFor="client">{t('For client')}</label>
-          <select id="client" value={forClient} disabled={!!campaignClient} onChange={e => pickClient(e.target.value)}><option value="">{t('No client')}</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          {campaignClient && <span className="small muted">{t('Set by the campaign.')}</span>}</div>}
-        {!s.briefOnFile && <section className="form">
-          <h3>{t("Booking brief")}</h3>
-          <div className="field"><label htmlFor="adv">{t("Advertiser or brand")}</label><input id="adv" value={brief.advertiser} onChange={e => setBrief({ ...brief, advertiser: e.target.value })} /></div>
-          <div className="field"><label htmlFor="ind">{t("Industry")}</label><select id="ind" value={brief.industry} onChange={e => setBrief({ ...brief, industry: e.target.value })}>{INDUSTRIES.map(i => <option key={i} value={i}>{t(i)}</option>)}</select></div>
-          <div className="field"><label htmlFor="msg">{t('What the ad will say')} <span className="muted">({brief.message.length}/280)</span></label>
-            <textarea id="msg" rows={3} maxLength={280} value={brief.message} onChange={e => setBrief({ ...brief, message: e.target.value })} /></div>
-          <div className="field"><label htmlFor="lang">{t("Creative language")}</label><select id="lang" value={brief.language} onChange={e => setBrief({ ...brief, language: e.target.value })}>
-            <option value="english">{t("English")}</option><option value="arabic">{t("Arabic")}</option><option value="bilingual">{t("Bilingual")}</option></select></div>
-          {s.channel === 'digital' && <div className="field"><label htmlFor="url">{t("Landing page link")}</label><input id="url" placeholder="https://" value={brief.landingUrl} onChange={e => setBrief({ ...brief, landingUrl: e.target.value })} /></div>}
-          <label className="check"><input type="checkbox" checked={brief.creativeToFollow} onChange={e => setBrief({ ...brief, creativeToFollow: e.target.checked })} /> {t("Creative to follow")}</label>
-          <div className="field"><label htmlFor="disc">{t('Required disclaimer or licence number (regulated advertisers, optional)')}</label>
-            <input id="disc" dir="auto" maxLength={500} value={brief.disclaimer ?? ''} onChange={e => setBrief({ ...brief, disclaimer: e.target.value })} placeholder={t('e.g. Licensed by the Central Bank of the UAE')} />
-            <span className="small muted">{t('The publisher must include it and confirm it in their proof.')}</span></div>
-          <div className="field"><label htmlFor="notes">{t("Notes for the publisher")}</label><textarea id="notes" rows={2} value={brief.notes} onChange={e => setBrief({ ...brief, notes: e.target.value })} />
-            <span className="small muted">{t("Emails and phone numbers are not allowed. Talk to the publisher through Nashr.")}</span></div>
-        </section>}
-
-        {campaigns.length > 0 && <div className="field"><label htmlFor="camp">{t("Campaign")}</label>
-          <select id="camp" value={campaignId} onChange={e => setCampaignId(e.target.value)}><option value="">{t("No campaign")}</option>
-            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name} · {t('{amount} left', { amount: money(c.remaining) })}</option>)}</select></div>}
+        {/* the campaign's budget, the buyer's only: what is left, and what is left after this bid */}
+        {campaign && campaign.remaining != null && (() => {
+          const price = s.saleType === 'auction' ? (auto ? toFils(max) || s.minNextBid : toFils(amount) || 0) : s.saleType === 'fixed' ? s.startingPrice : toFils(amount) || s.startingPrice
+          const after = campaign.remaining - price
+          return <p className={`bd-budget small ${after < 0 ? 'over' : ''}`} role="note">{t('{left} left · after this bid {after}', { left: money(campaign.remaining), after: money(after) })}
+            <span className="muted"> · {t('Only you see this.')}</span></p> })()}
 
         {exposure && s.saleType === 'auction' && (() => {
           const bid = (auto ? toFils(max) : toFils(amount)) || 0, mine = s.youLead && s.topBid ? s.topBid : 0, withThis = exposure.total - mine + bid
@@ -163,6 +201,11 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             <span className="small muted">{n ? t('If everything you lead or requested goes through') : t('Nothing else you lead or requested yet')}</span>
             <dl className="exposure-sum num"><div><dt>{t('Now')}</dt><dd>{money(exposure.total)}</dd></div><div><dt>{t('With this bid')}</dt><dd><b>{money(withThis)}</b></dd></div></dl>
             <span className="small muted">{t('Excluding VAT. Bids are binding, so plan within your budget.')}</span></div> })()}
+        {adding && <div className="bd-add" role="group" aria-label={t('Add to campaign')}>
+          {campaigns.length ? <><select aria-label={t('Campaign')} defaultValue="" onChange={e => e.target.value && addToCampaign(e.target.value)}><option value="">{t('Choose a campaign…')}</option>
+            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><a className="small" href="/campaigns?new=1">+ {t('New campaign')}</a></>
+            : <span className="small">{t('No campaign yet.')} <a href="/campaigns?new=1">{t('New campaign')}</a></span>}</div>}
+        {added && <p className="ok small" role="status">{added} <a href={`/campaigns/${campaignId}`}>{t('Open the campaign')}</a></p>}
         {error && <p className="error" role="alert">{error}</p>}
         {done && <p className="ok" role="status">{done}</p>}
         {warn && <p className="warn" role="status">{warn}</p>}
@@ -179,8 +222,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
               ? <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/book`, {}, r => r.status === 'accepted_pay_now'
                   ? t('Booked and confirmed. Pay from Bookings to secure it.') : t('Booked. The publisher confirms within 24 hours; you pay only then.'))}>{t('Book for {price}', { price: money(s.startingPrice) })}</button>
             : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
-          {!s.yourDeal && !s.youBid && <button type="button" className={`btn plan-add ${plan.has(s.id) ? 'in' : ''}`} aria-pressed={plan.has(s.id)} disabled={!plan.has(s.id) && plan.full} onClick={() => plan.toggle(s.id)}>
-            {plan.has(s.id) ? `✓ ${t('In your plan')}` : `+ ${t('Add to plan')}`}</button>}
+          {s.placementId && <button type="button" className="btn plan-add" onClick={() => addToCampaign()}>+ {t('Add to campaign')}</button>}
           {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>
       </>}

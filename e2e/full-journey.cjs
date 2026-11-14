@@ -138,7 +138,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     say(await buy.locator('.cv-table tbody tr').count(), 'rows')
 
     step = '7 buyer: buy-now request'
-    const brief = async p => { await p.fill('#adv', 'Desert Bank'); await p.fill('#msg', 'Open a business account in ten minutes.') }
+    const brief = async p => { await p.fill('#adv', 'Desert Bank'); await p.selectOption('#ind', 'Banking'); await p.fill('#msg', 'Open a business account in ten minutes.') }
     await buy.click(`.cv-table tbody tr:has-text("Morning Drive") .cv-act >> nth=0`); await buy.waitForSelector('.drawer h2')
     await brief(buy); await buy.shot('f7-drawer')
     await buy.click('.drawer-f .btn:has-text("Request at")'); await buy.waitForSelector('.drawer .ok, .drawer .error')

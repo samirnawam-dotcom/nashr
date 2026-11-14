@@ -8,7 +8,7 @@ import { useLive } from '../live'
 import { rememberPlace, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { SavedSearches } from './SavedSearches'
-import { PlanDrawer, usePlan } from './Plan'
+import { CampaignDrawer, setCurrentCampaign, useCampaigns, useCurrentCampaign } from './CampaignDrawer'
 import { activeCount, DAYPARTS, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
 import { AUDIENCES } from '../../../server/shared/audiences'
 import { isAr, ltr, t } from '../i18n'
@@ -31,7 +31,8 @@ export type Prog = { outletId: string; outlet: string; channel: string; placemen
   allDay: boolean; slots: number; open: number; fromPrice: number; bids: number; youLead: boolean; youBid: boolean; closesAt: string | null; saleTypes: string[] }
 type DayTotal = { date: string; slots: number; outlets: number; fromPrice: number; channels: string[] }
 type OutletRow = { outletId: string; outlet: string; channel: string; logoUrl: string | null; slots: number; fromPrice: number; days: { date: string; slots: number; fromPrice: number }[] }
-type State = { view: View; date: string; f: SlotFilter; mine: boolean; all: boolean; sort: Sort; osort: OSort }
+// product and campaign narrow the calendar to one product ("See dates") or one campaign's products ("Book slots")
+type State = { view: View; date: string; f: SlotFilter; mine: boolean; all: boolean; sort: Sort; osort: OSort; product?: string; item?: string; productName?: string; campaign?: string }
 
 const VIEWS: [View, string, string][] = [['list', t('List'), 'l'], ['day', t('Day'), 'd'], ['week', t('Week'), 'w'], ['month', t('Month'), 'm'], ['outlets', t('By outlet'), 'o']]
 const SORTS: [Sort, string][] = [['time', t('Air time')], ['closing', t('Closing soonest')], ['price_asc', t('Price: low to high')], ['price_desc', t('Price: high to low')], ['bids', t('Most bids')]]
@@ -75,7 +76,8 @@ function readState(narrow: boolean): State {
   return { view, date: /^\d{4}-\d{2}-\d{2}$/.test(p.get('date') ?? '') ? p.get('date')! : todayInDubai(),
     f: { channels: list('ch'), saleTypes: list('sale'), sector: p.get('sector') || undefined, maxPrice: p.get('max') ? Number(p.get('max')) : undefined,
       dayparts: list('dp') as Daypart[] | undefined, q: p.get('q') || undefined, closingWithinHours: p.get('soon') ? Number(p.get('soon')) : undefined, audiences: list('aud') },
-    mine: p.get('mine') === '1', all: p.get('all') === '1', sort: (p.get('sort') as Sort) || 'time', osort: (p.get('osort') as OSort) || 'name' }
+    mine: p.get('mine') === '1', all: p.get('all') === '1', sort: (p.get('sort') as Sort) || 'time', osort: (p.get('osort') as OSort) || 'name',
+    product: p.get('product') || undefined, item: p.get('item') || undefined, productName: p.get('pname') || undefined, campaign: p.get('campaign') || undefined }
 }
 function writeState(s: State, push: boolean) {
   const p = new URLSearchParams(location.search)
@@ -83,6 +85,7 @@ function writeState(s: State, push: boolean) {
   put('view', s.view); put('date', s.date); put('ch', s.f.channels?.join(',')); put('sale', s.f.saleTypes?.join(',')); put('sector', s.f.sector)
   put('max', s.f.maxPrice); put('dp', s.f.dayparts?.join(',')); put('aud', s.f.audiences?.join(',')); put('q', s.f.q); put('soon', s.f.closingWithinHours); put('mine', s.mine && '1'); put('all', s.all && '1')
   put('sort', s.sort === 'time' ? null : s.sort); put('osort', s.osort === 'name' ? null : s.osort)
+  put('product', s.product); put('item', s.item); put('pname', (s.product || s.item) && s.productName); put('campaign', s.campaign)
   const url = `${location.pathname}?${p.toString()}`
   if (url !== location.pathname + location.search) history[push ? 'pushState' : 'replaceState'](null, '', url)
 }
@@ -94,6 +97,7 @@ function query(s: State, from: string, to: string, extra: Record<string, string 
   if (f.sector) p.set('sector', f.sector); if (f.maxPrice != null) p.set('max', String(f.maxPrice)); if (f.dayparts?.length) p.set('dp', f.dayparts.join(','))
   if (f.q?.trim()) p.set('q', f.q.trim()); if (f.closingWithinHours != null) p.set('soon', String(f.closingWithinHours)); if (f.audiences?.length) p.set('aud', f.audiences.join(','))
   if (s.mine) p.set('mine', '1'); if (!s.all) p.set('open', '1')
+  if (s.product) p.set('outlet', s.product); if (s.item) p.set('placement', s.item); if (s.campaign) p.set('campaign', s.campaign)
   for (const [k, v] of Object.entries(extra)) p.set(k, String(v))
   return p.toString()
 }
@@ -118,7 +122,9 @@ export function useLatest() {
 }
 
 export function CalendarPage() {
-  const guest = useGuest(), narrow = useNarrow(), plan = usePlan(), [planOpen, setPlanOpen] = useState(false)
+  const guest = useGuest(), narrow = useNarrow(), [planOpen, setPlanOpen] = useState(false)
+  // the campaign drawer (owner's buyer-side fixes: "Plan" becomes "Campaign")
+  const [campaignId] = useCurrentCampaign(), { list: campaigns } = useCampaigns(!guest), campaign = campaigns.find(c => c.id === campaignId)
   useMeta(PAGES['/calendar'])
   const [s, setS] = useState<State>(() => readState(narrow))
   const [qText, setQText] = useState(s.f.q ?? '')
@@ -155,8 +161,10 @@ export function CalendarPage() {
   }, [])
 
   const total = totals?.reduce((n, d) => n + d.slots, 0) ?? null
-  const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: SALE_TYPES.length }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
-  const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined }, mine: false, all: false }) }
+  const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: SALE_TYPES.length }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0) + (s.product || s.item ? 1 : 0) + (s.campaign ? 1 : 0)
+  // "Book slots" on a campaign: it becomes the campaign the bid drawer and the Campaign drawer use
+  useEffect(() => { if (s.campaign && !guest) setCurrentCampaign(s.campaign) }, [s.campaign])
+  const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined }, mine: false, all: false, product: undefined, item: undefined, productName: undefined, campaign: undefined }) }
   const step = (n: number) => {
     if (s.view === 'month') { const d = new Date(s.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
     update({ date: addDays(s.date, n * (narrow ? 7 : s.view === 'day' ? 1 : s.view === 'list' ? LIST_DAYS : 7)) }, true) // phones show a week in every view but month
@@ -196,9 +204,9 @@ export function CalendarPage() {
           <button className="btn icon" aria-label={t('Next')} title={t('Next (→)')} onClick={() => step(1)}><Chevron dir="fwd" /></button>
           <DateJump date={s.date} onDate={d => update({ date: d }, true)} />
         </div>
-        {!guest && <button type="button" className={`btn cv-plan ${plan.ids.length ? 'has' : ''}`} onClick={() => setPlanOpen(true)}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 5h10M9 12h10M9 19h10M4 5l1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2" /></svg>
-          {t('Plan')}{plan.ids.length > 0 && <span className="cv-plan-n num">{plan.ids.length}</span>}</button>}
+        {!guest && <button type="button" className={`btn cv-plan ${campaign ? 'has' : ''}`} onClick={() => setPlanOpen(true)} title={campaign?.name}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
+          {t('Campaign')}{campaign && campaign.lines > 0 && <span className="cv-plan-n num">{campaign.lines}</span>}</button>}
         <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l, key]) =>
           <button key={v} role="tab" aria-selected={s.view === v} className={s.view === v ? 'on' : ''} title={`${l} (${key.toUpperCase()})`} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
       </header>
@@ -217,6 +225,12 @@ export function CalendarPage() {
           {active > 0 && <button className="btn" onClick={clear}>{t('Clear all')}</button>}</footer>
       </div></div>}
 
+      {(s.product || s.item || s.campaign) && <div className="cv-scope" role="status">
+        {s.campaign && <span className="cv-chip">{t('Products in {name}', { name: campaigns.find(c => c.id === s.campaign)?.name ?? t('this campaign') })}
+          <button type="button" aria-label={t('Show everything')} onClick={() => update({ campaign: undefined })}>✕</button></span>}
+        {(s.product || s.item) && <span className="cv-chip">{s.productName ? t('Only {name}', { name: s.productName }) : t('One product')}
+          <button type="button" aria-label={t('Show everything')} onClick={() => update({ product: undefined, item: undefined, productName: undefined })}>✕</button></span>}
+      </div>}
       {total === 0 && <div className="cv-empty" role="status">
         <p><b>{active ? t('Nothing matches these filters in this period.') : t('Nothing open to book in this period.')}</b>{' '}
           <span className="muted">{t('Bidding closes a few days before air, so the nearest days are often already closed.')}</span></p>
@@ -237,7 +251,7 @@ export function CalendarPage() {
 
       {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}
       {open && <BidDrawer slotId={open} onClose={() => setOpen(null)} onDone={() => setReload(n => n + 1)} />}
-      {planOpen && !open && <PlanDrawer onClose={() => setPlanOpen(false)} onDone={() => setReload(n => n + 1)} onOpen={id => setOpen(id)} />}
+      {planOpen && !open && <CampaignDrawer onClose={() => setPlanOpen(false)} onSeeDates={(id, name) => { setPlanOpen(false); setQText(''); update({ item: id, product: undefined, productName: name, campaign: undefined, f: { q: undefined } }, true) }} />}
     </main>
   )
 }

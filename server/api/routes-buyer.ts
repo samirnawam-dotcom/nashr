@@ -82,7 +82,7 @@ export function buyerRoutes(route: RouteFn) {
     return { ...buyerSlot(r, company), youBid: mine.n > 0, creativeDueAt: r.creative_due_at, yourDeal,
       minNextBid: r.top_amount ? minNextBid(r.top_amount, await setting(db, 'min_step_bp', at)) : r.starting_price,
       yourMax: mine.max, yourAutoMax: mine.auto_max, briefOnFile: !!mine.has_brief,
-      reach: r.reach ?? null, reachUnit: r.reach_unit ?? null, notes: r.notes ?? null,
+      placementId: r.placement_id, reach: r.reach ?? null, reachUnit: r.reach_unit ?? null, notes: r.notes ?? null,
       details: { description: r.placement_description, specs: r.placement_specs, language: r.placement_language, unit: r.placement_unit, notAccepted: r.blocked_industries ?? [] },
       publisher: await companyProfile(db, r.seller_company) }
   })

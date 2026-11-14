@@ -8,7 +8,7 @@ import { MarketError } from './market.js'
  * search.test.ts checks that the two agree.
  */
 
-export type Query = SlotFilter & { from: string; to: string; me: string | null; open?: boolean; mine?: boolean; placement?: string; date?: string; outlet?: string
+export type Query = SlotFilter & { from: string; to: string; me: string | null; open?: boolean; mine?: boolean; placement?: string; date?: string; outlet?: string; campaign?: string
   tmin?: number; tmax?: number
   // who is looking: buyers see the open market; a publisher sees its own outlets in every status; Nashr sees everything
   scope?: 'buyer' | 'seller' | 'admin'; company?: string; statuses?: string[] } // a window of Dubai minutes in the day (a folded block in the grid)
@@ -49,6 +49,8 @@ export function where(q: Query, now: Date) {
   if (q.placement) w.push(`p.id = ${add(q.placement)}`)
   // an outlet (the brand: every product it has) or one product
   if (q.outlet) { const x = add(q.outlet); w.push(`(o.id = ${x} or o.product_id = ${x})`) }
+  // one of the buyer's own campaigns: only the products in its plan (owner's buyer-side fixes: "Book slots")
+  if (q.campaign && q.me) w.push(`p.id in (select l.placement_id from campaign_lines l join campaigns k on k.id = l.campaign_id where k.id = ${add(q.campaign)} and k.buyer_id = ${add(q.me)})`)
   if (q.date) w.push(`${DUBAI}::date = ${add(q.date)}::date`)
   if (q.tmin != null && Number.isFinite(q.tmin)) w.push(`${MINUTE} >= ${add(q.tmin)}`, `not ${ALL_DAY}`)
   if (q.tmax != null && Number.isFinite(q.tmax)) w.push(`${MINUTE} < ${add(q.tmax)}`)
@@ -182,7 +184,7 @@ export function parseQuery(r: Record<string, string | undefined>, me: string | n
   const num = (v?: string) => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
   return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max),
     dayparts: list(r.dp) as SlotFilter['dayparts'], q: r.q || undefined, closingWithinHours: num(r.soon), audiences: list(r.aud),
-    mine: r.mine === '1', open: r.open === '1', placement: r.placement || undefined, date: r.date || undefined, outlet: r.outlet || undefined,
+    mine: r.mine === '1', open: r.open === '1', placement: r.placement || undefined, date: r.date || undefined, outlet: r.outlet || undefined, campaign: r.campaign || undefined,
     tmin: num(r.tmin), tmax: num(r.tmax), statuses: list(r.st) }
 }
 
