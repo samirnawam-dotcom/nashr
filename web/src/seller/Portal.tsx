@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { tm } from '../i18n-server'
+import { tm, tmTitle } from '../i18n-server'
 import { api } from '../api'
 import { navigate } from '../nav'
 import { dayLabel, money } from '../format'
@@ -156,7 +156,7 @@ export function PortalDashboard() {
         : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Buyer')}</th><th>{t('Outlet')}</th><th>{t('Placement')}</th>
           <th className="r">{t('Gross sale')}</th><th className="r">{t('Fee')}</th><th className="r">{t('Net')}</th><th>{t('Status')}</th><th className="r">{t('Date')}</th></tr></thead>
           <tbody>{d.transactions.map(x => { const [l, c] = txStatus(x.status); return <tr key={x.id} onClick={() => navigate(`/deals/${x.id}`)}>
-            <td><b>{x.buyer}</b></td><td><ChannelMark c={x.channel} /> {x.outlet}</td><td className="small">{x.product}</td>
+            <td><b>{x.buyer}</b></td><td><ChannelMark c={x.channel} /> {x.outlet}</td><td className="small">{tmTitle(x.product)}</td>
             <td className="r num">{money(x.gross)}</td><td className="r num muted">{x.fee ? `− ${money(x.fee)}` : '—'}</td><td className="r num"><b>{money(x.net)}</b></td>
             <td><span className={`pt-pill ${c}`}>{t(l)}</span></td><td className="r small">{dayLabel(dubai(x.date).date, { day: 'numeric', month: 'short' })}</td></tr> })}</tbody></table></div>}
     </section>

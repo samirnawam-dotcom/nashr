@@ -1867,4 +1867,12 @@ export const AR_FLOW: Record<string, string> = {
   "Sale type:": "نوع البيع:",
   "{n} outlets with dates on sale this week": "{n} من الوسائل لديها تواريخ معروضة هذا الأسبوع",
   "Choose a file": "اختر ملفًا",
+  "One time only": "مرة واحدة فقط",
+  "4 weeks": "4 أسابيع",
+  "8 weeks": "8 أسابيع",
+  "12 weeks": "12 أسبوعًا",
+  "Buyers bid against each other; you accept the best bid.": "يتنافس المشترون بالمزايدة؛ وتقبل أنت أفضل عرض.",
+  "One price. Several buyers can make offers at that price; you pick one.": "سعر واحد. يمكن لعدة مشترين التقدّم بهذا السعر؛ وتختار أنت واحدًا.",
+  "Buyers can offer lower, higher or the same as the price; you pick one.": "يمكن للمشترين عرض سعر أقل أو أعلى أو مساوٍ؛ وتختار أنت واحدًا.",
+  "List it for the dates you choose": "اعرضه للبيع في التواريخ التي تختارها",
 }
