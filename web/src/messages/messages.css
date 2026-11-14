@@ -87,3 +87,21 @@
 .thread-locked { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; background: var(--surface-2); }
 .thread-locked svg { color: var(--slate); margin-top: 2px; }
 .thread-locked p { margin: 4px 0 0; }
+
+/* Inbox: what the buyer has to act on, above the conversations */
+.messages-head.sub { margin-top: 28px; }
+.messages-head.sub h2 { margin: 0 0 4px; font-size: 18px; }
+.todo { padding: 18px 20px; }
+.todo h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 18px; }
+.todo-n { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--teal); color: #fff; font-size: 12.5px; display: inline-grid; place-items: center; }
+.todo ul { list-style: none; margin: 0; padding: 0; }
+.todo li + li { border-top: 1px solid var(--line); }
+.todo-row { display: flex; align-items: center; gap: 14px; padding: 12px 4px; color: inherit; text-decoration: none; }
+.todo-row:hover { background: var(--surface-2); }
+.todo-what { flex: none; min-width: 118px; padding: 5px 10px; border-radius: 8px; font: 600 13px var(--body); text-align: center; }
+.todo-what.pay { background: var(--amber-1); color: var(--amber); }
+.todo-what.creative { background: var(--teal-1); color: var(--signal-ink); }
+.todo-what.proof { background: var(--green-1); color: var(--green); }
+.todo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.todo-by { flex: none; color: var(--slate); }
+@media (max-width: 640px) { .todo-row { flex-wrap: wrap; } .todo-what { min-width: 0; } .todo-by { width: 100%; } }

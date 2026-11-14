@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
 import { locale, sep, t } from './i18n'
+import { IndustryPick } from './IndustryPick'
+import { LogoPicker, OutletMark } from './LogoPicker'
 
 /*
  * The other side's business profile, shown before a deal is agreed (owner decision): who they are and their record on Nashr.
  * Never contact details: emails, phone numbers and people's names stay inside a paid booking's messages.
  */
 export type CompanyProfile = {
-  name: string; type: 'brand' | 'agency' | 'publisher'; industry: string | null; website: string | null; about: string | null
+  name: string; logoUrl?: string | null; type: 'brand' | 'agency' | 'publisher'; industry: string | null; website: string | null; about: string | null
   memberSince: string; verified: true; taxRegistered: boolean; vatRegistered: boolean
   record: { completed: number; payRate?: number; acceptRate?: number; rating?: { average: number; count: number } }
   outlets?: string[]
@@ -32,11 +34,11 @@ export function CompanyCard({ p, title, compact }: { p: CompanyProfile | null | 
   if (!p) return null
   const url = safeUrl(p.website)
   if (compact) return <details className="co-mini">
-    <summary><span className="co-badge" aria-hidden>{initials(p.name)}</span><b>{p.name}</b><span className="co-verified">{t('Verified')}</span></summary>
+    <summary>{p.logoUrl ? <OutletMark name={p.name} url={p.logoUrl} size={26} /> : <span className="co-badge" aria-hidden>{initials(p.name)}</span>}<b>{p.name}</b><span className="co-verified">{t('Verified')}</span></summary>
     <p className="small muted">{companySummary(p)}</p>{p.about && <p className="small" dir="auto">{p.about}</p>}</details>
   return <div className="co-card">
     {title && <span className="small muted">{title}</span>}
-    <div className="co-head"><span className="co-badge lg" aria-hidden>{initials(p.name)}</span>
+    <div className="co-head">{p.logoUrl ? <OutletMark name={p.name} url={p.logoUrl} size={44} /> : <span className="co-badge lg" aria-hidden>{initials(p.name)}</span>}
       <div><h3>{p.name}</h3><span className="co-verified">{t('Verified by Nashr')}</span></div></div>
     {p.about && <p dir="auto">{p.about}</p>}
     <dl className="co-facts">
@@ -71,7 +73,9 @@ export function CompanyProfileEditor({ audience }: { audience: 'buyers' | 'publi
       : t('Buyers see this when they look at your slots, before they book. Contact details are never shown.')}</p>
     <div className="co-edit-grid">
       <div className="form">
-        {p.type !== 'publisher' && <div className="field"><label htmlFor="cp-i">{t('Industry')}</label><input id="cp-i" dir="auto" maxLength={80} value={f.industry} onChange={e => setF({ ...f, industry: e.target.value })} placeholder={t('Banking')} /></div>}
+        {p.type !== 'publisher' && <LogoPicker name={p.name} url={p.logoUrl ?? null} endpoint="/company/logo" saved={t('Logo saved. Publishers see it now.')} />}
+        {p.type !== 'publisher' && <div className="field"><label htmlFor="cp-i">{t('Industry')}</label><IndustryPick id="cp-i" value={f.industry} onChange={v => setF({ ...f, industry: v })} />
+          <span className="small muted">{t('Publishers that do not run ads for your industry are told before they decide.')}</span></div>}
         <div className="field"><label htmlFor="cp-w">{t('Website')}</label><input id="cp-w" dir="ltr" maxLength={300} placeholder="https://" value={f.website} onChange={e => setF({ ...f, website: e.target.value })} /></div>
         <div className="field"><label htmlFor="cp-a">{t('About the company')}</label><textarea id="cp-a" dir="auto" rows={4} maxLength={600} value={f.about} onChange={e => setF({ ...f, about: e.target.value })} /></div>
         {error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}

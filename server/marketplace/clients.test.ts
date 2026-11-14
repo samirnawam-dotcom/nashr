@@ -46,13 +46,10 @@ describe('agencies book for their clients', () => {
     await expect(tx(x => requestBuyNow(x, { slotId: b2.id, buyerId: agency, brief: BRIEF, clientId: rival }, now))).rejects.toThrow('does not run ads for this advertiser')
   })
 
-  test('a budget set to stop refuses what would go over it; a plain budget only informs', async () => {
-    const tight = await client(agency, 'Tight Budget', { budget: AED(6_000), budgetStop: true })
-    await tx(x => requestBuyNow(x, { slotId: b1.id, buyerId: agency, brief: BRIEF, clientId: tight }, now)) // AED 5,500
-    await expect(tx(x => placeBid(x, { slotId: b2.id, buyerId: agency, amount: AED(3_500), brief: BRIEF, clientId: tight }, now)))
-      .rejects.toThrow('over its budget: AED 500 is left')
-    const loose = await client(agency, 'Loose Budget', { budget: AED(1_000) })
-    await tx(x => placeBid(x, { slotId: b2.id, buyerId: agency, amount: AED(3_500), brief: BRIEF, clientId: loose }, now))
+  test('budgets live on campaigns only: a client never refuses a booking on budget', async () => {
+    const c = await client(agency, 'Any Budget', { budget: AED(1_000), budgetStop: true }) // an old client budget is ignored
+    await tx(x => requestBuyNow(x, { slotId: b1.id, buyerId: agency, brief: BRIEF, clientId: c }, now)) // AED 5,500
+    await tx(x => placeBid(x, { slotId: b2.id, buyerId: agency, amount: AED(3_500), brief: BRIEF, clientId: c }, now))
   })
 
   test('a campaign made for a client carries the client; naming another client is refused', async () => {

@@ -1,4 +1,5 @@
 import type pg from 'pg'
+import { companyLogoUrl } from './routes-covers.js'
 
 /*
  * A company's business profile as the other side of a deal sees it before purchase (owner decision, 8 Nov):
@@ -6,7 +7,7 @@ import type pg from 'pg'
  * Record figures appear only once there is enough history to mean something (SPEC 12.1 "hide data we don't have").
  */
 export type CompanyProfile = {
-  name: string; type: 'brand' | 'agency' | 'publisher'; industry: string | null; website: string | null; about: string | null
+  name: string; logoUrl: string | null; type: 'brand' | 'agency' | 'publisher'; industry: string | null; website: string | null; about: string | null
   memberSince: string; verified: true; taxRegistered: boolean; vatRegistered: boolean
   record: { completed: number; payRate?: number; acceptRate?: number; rating?: { average: number; count: number } }
   outlets?: string[]
@@ -20,7 +21,7 @@ export async function companyProfile(db: pg.PoolClient, companyId: string): Prom
   if (!c) return null
   const publisher = c.type === 'publisher'
   const profile: CompanyProfile = {
-    name: c.name, type: publisher ? 'publisher' : c.applied_as === 'agency' ? 'agency' : 'brand', industry: c.industry, website: c.website, about: c.about,
+    name: c.name, logoUrl: companyLogoUrl(c.id, c.logo_key), type: publisher ? 'publisher' : c.applied_as === 'agency' ? 'agency' : 'brand', industry: c.industry, website: c.website, about: c.about,
     memberSince: c.created_at, verified: true, taxRegistered: !!c.trn, vatRegistered: !!c.vat_registered, record: { completed: 0 },
   }
   if (publisher) {

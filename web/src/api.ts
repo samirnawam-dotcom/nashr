@@ -47,5 +47,5 @@ export type Outlet = { id: string; slug?: string; name: string; nameAr: string |
 export type Campaign = { id: string; name: string; budget: number; launchDate: string | null; objective: string | null; audience: string | null
   message: string | null; status: 'active' | 'completed'; committed: number; pending: number; planned: number; remaining: number; clientId?: string | null; client?: string | null }
 /** A client an agency books for. Budget and amounts in fils, excl. VAT; remaining counts requests still waiting on publishers. */
-export type Client = { id: string; name: string; industry: string | null; trn: string | null; address: string | null; budget: number | null; budgetStop: boolean
-  status: 'active' | 'archived'; committed: number; pending: number; paid: number; bookings: number; remaining: number | null }
+export type Client = { id: string; name: string; industry: string | null; trn: string | null; address: string | null; billingEmail: string | null; logoUrl: string | null
+  status: 'active' | 'archived'; committed: number; pending: number; paid: number; bookings: number }

@@ -28,7 +28,7 @@ const brief = { type: 'object', additionalProperties: false, properties: {
   creativeToFollow: { type: 'boolean' }, notes: { type: 'string', maxLength: 2000 }, disclaimer: { type: 'string', maxLength: 500 } } }
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.
-const DEAL_SQL = `select d.*, (select e.note from deal_events e where e.deal_id = d.id and e.event in ('decline', 'expire', 'lapse', 'cancel_by_seller', 'cancel_by_buyer', 'creative_missed', 'proof_missed', 'supersede') order by e.id desc limit 1) status_note,
+const DEAL_SQL = `select d.*, (select c.status from creatives c where c.deal_id = d.id order by c.version desc limit 1) creative_status, (select e.note from deal_events e where e.deal_id = d.id and e.event in ('decline', 'expire', 'lapse', 'cancel_by_seller', 'cancel_by_buyer', 'creative_missed', 'proof_missed', 'supersede') order by e.id desc limit 1) status_note,
   s.label, s.starts_at, s.creative_due_at, brand_name(o) outlet, o.channel, p.name placement, (select name from clients where id = d.client_id) client, coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp from deals d join slots s on s.id = d.slot_id
                   join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id join companies sc on sc.id = d.seller_id`
 

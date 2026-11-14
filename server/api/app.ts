@@ -48,6 +48,7 @@ export class NotFound extends Error {}
 const isUpload = (method: string, url: string) => {
   const path = url.split('?')[0]
   return (method === 'POST' && path === '/api/files') || (method === 'PUT' && /^\/api\/(seller|admin)\/outlets\/[^/]+\/(cover|logo)$/.test(path)) || (method === 'PUT' && /^\/api\/seller\/products\/[^/]+\/logo$/.test(path))
+    || (method === 'PUT' && (path === '/api/company/logo' || /^\/api\/clients\/[^/]+\/logo$/.test(path)))
 }
 
 // Attempt limits (sign-in, resets, two-step codes): counted in Postgres, so every copy of the API shares them. The count is

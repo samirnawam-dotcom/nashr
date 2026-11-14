@@ -44,7 +44,7 @@ export function PlanDrawer({ onClose, onDone, onOpen }: { onClose: () => void; o
   }, [])
   const live = rows.filter(r => r.s && !r.gone && !r.sent), total = live.reduce((n, r) => n + priceOf(r.s!), 0)
   const campaign = campaigns.find(c => c.id === campaignId), campaignClient = campaign?.clientId ?? '', forClient = campaignClient || clientId
-  const left = campaign ? campaign.remaining : clients.find(c => c.id === forClient)?.remaining ?? null
+  const left = campaign ? campaign.remaining : null
   const needBrief = live.some(r => !r.s!.briefOnFile), briefOk = !needBrief || (brief.advertiser.trim() && brief.message.trim())
   const drop = (id: string) => { plan.remove(id); setRows(r => r.filter(x => x.id !== id)) }
 

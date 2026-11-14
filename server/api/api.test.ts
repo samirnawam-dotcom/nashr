@@ -1821,3 +1821,26 @@ test("products by the owner's rules: product, media types with their own fields,
   expect((await call(sellerX, 'GET', '/api/seller/products')).json().some((x: any) => x.id === p)).toBe(false)
   expect((await pool.query(`select count(*)::int n from slots where placement_id = $1 and status = 'open'`, [main.id])).rows[0].n).toBe(0)
 })
+
+test("buyer-side fixes: a client has a logo and billing email and no budget; the buyer's company has a logo publishers see", async () => {
+  const PNG = Buffer.concat([Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'), Buffer.alloc(64, 7)])
+  const put = (who: Who, url: string) => app.inject({ method: 'PUT', url, payload: PNG, headers: { cookie: who.cookie, 'content-type': 'image/png' } })
+  expect((await call(buyerA, 'POST', '/api/clients', { name: 'Gulf Shoes', billingEmail: 'not-an-email' })).statusCode).toBe(400)
+  const old = (await call(buyerA, 'POST', '/api/clients', { name: 'Desert Cars', budget: 100000 })).json().id // budgets live on campaigns only: ignored
+  expect((await pool.query(`select budget from clients where id = $1`, [old])).rows[0].budget).toBeNull()
+  const id = (await call(buyerA, 'POST', '/api/clients', { name: 'Gulf Shoes', industry: 'Retail', billingEmail: 'accounts@gulfshoes.example' })).json().id
+  expect((await put(buyerA, `/api/clients/${id}/logo`)).statusCode).toBe(200)
+  expect((await put(buyerB, `/api/clients/${id}/logo`)).statusCode).toBe(404)
+  const c = (await call(buyerA, 'GET', '/api/clients')).json().find((x: any) => x.id === id)
+  expect(c).toMatchObject({ billingEmail: 'accounts@gulfshoes.example', industry: 'Retail' })
+  expect(c).not.toHaveProperty('budget')
+  expect((await call(buyerA, 'GET', c.logoUrl)).statusCode).toBe(200)
+  expect((await call(buyerB, 'GET', c.logoUrl)).statusCode).toBe(404) // another buyer never sees it
+  // the company logo is on the profile publishers see before they decide
+  expect((await put(buyerA, '/api/company/logo')).statusCode).toBe(200)
+  const prof = (await call(buyerA, 'GET', '/api/company/profile')).json()
+  expect(prof.logoUrl).toMatch(/^\/api\/companies\/[0-9a-f-]+\/logo/)
+  expect((await call(null, 'GET', prof.logoUrl)).statusCode).toBe(200)
+  expect((await call(buyerA, 'DELETE', '/api/company/logo')).statusCode).toBe(200)
+  expect((await call(buyerA, 'GET', '/api/company/profile')).json().logoUrl).toBeNull()
+})

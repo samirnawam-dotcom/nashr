@@ -6,6 +6,7 @@ import { audit } from '../core/audit.js'
 import { buyerStatus } from './shapes.js'
 import { sendCsv } from './csv.js'
 import { split } from '../core/money.js'
+import { clientLogoUrl } from './routes-covers.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const BOOKED = `('awaiting_payment', 'secured', 'in_review', 'issue_open', 'disputed', 'released', 'paid_out')`
@@ -23,16 +24,16 @@ const TOTALS = `select c.*,
     (select count(*) from deals d where d.client_id = c.id and d.status in ${BOOKED})::int bookings
   from clients c where c.buyer_id = $1`
 
-const card = (c: any) => ({ id: c.id, name: c.name, industry: c.industry, trn: c.trn, address: c.address, budget: c.budget == null ? null : Number(c.budget),
-  budgetStop: c.budget_stop, status: c.status, committed: Number(c.committed), pending: Number(c.pending), paid: Number(c.paid), bookings: c.bookings,
-  remaining: c.budget == null ? null : Number(c.budget) - Number(c.committed) - Number(c.pending) })
+// no budget: budgets live on campaigns only (owner's buyer-side fixes)
+const card = (c: any) => ({ id: c.id, name: c.name, industry: c.industry, trn: c.trn, address: c.address, billingEmail: c.billing_email, logoUrl: clientLogoUrl(c.id, c.logo_key),
+  status: c.status, committed: Number(c.committed), pending: Number(c.pending), paid: Number(c.paid), bookings: c.bookings })
 
 const body = { type: 'object', additionalProperties: false, properties: {
   name: { type: 'string', minLength: 1, maxLength: 200 }, industry: { type: 'string', maxLength: 100 }, trn: { type: 'string', maxLength: 30 },
-  address: { type: 'string', maxLength: 500 }, budget: { type: ['integer', 'null'], minimum: 1 }, budgetStop: { type: 'boolean' },
+  address: { type: 'string', maxLength: 500 }, billingEmail: { type: 'string', maxLength: 200, pattern: '^([^@\\s]+@[^@\\s]+\\.[^@\\s]+)?$' },
   status: { enum: ['active', 'archived'] } } }
 
-const COLS: Record<string, string> = { name: 'name', industry: 'industry', trn: 'trn', address: 'address', budget: 'budget', budgetStop: 'budget_stop', status: 'status' }
+const COLS: Record<string, string> = { name: 'name', industry: 'industry', trn: 'trn', address: 'address', billingEmail: 'billing_email', status: 'status' }
 
 function check(b: any) {
   if (b.name != null && !b.name.trim()) throw new MarketError('Add the client\'s name.')
@@ -49,8 +50,8 @@ export function clientRoutes(route: RouteFn) {
 
   route('POST', '/api/clients', BUYER, async ({ db, at, me }, req) => {
     const b = req.body; check(b)
-    const c = (await db.query(`insert into clients (buyer_id, name, industry, trn, address, budget, budget_stop, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
-      [me.actAs.companyId, b.name.trim(), b.industry || null, b.trn || null, b.address || null, b.budget ?? null, b.budgetStop ?? false, at]).catch(nameTaken)).rows[0]
+    const c = (await db.query(`insert into clients (buyer_id, name, industry, trn, address, billing_email, created_at) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+      [me.actAs.companyId, b.name.trim(), b.industry || null, b.trn || null, b.address || null, b.billingEmail?.trim() || null, at]).catch(nameTaken)).rows[0]
     await audit(db, `user:${me.userId}`, 'client.added', 'client', c.id, { name: b.name }, at)
     return { id: c.id }
   }, { ...body, required: ['name'] })

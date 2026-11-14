@@ -40,7 +40,7 @@ const signIn = async (p, email, code) => {
 }
 // The publisher's menu (owner's rules): Products, Inbox, Reports; settings sit in the menu under the account's name
 const nav = async (p, label) => {
-  const via = { Listings: ['Products'], Requests: ['Inbox'], Balances: ['Reports', 'Balances'], 'Your business': [null, 'Your business'] }[label]
+  const via = { Listings: ['Products'], Bookings: ['Reports'], Messages: ['Inbox'], Requests: ['Inbox'], Balances: ['Reports', 'Balances'], 'Your business': [null, 'Your business'] }[label]
   if (via && via[0] === null) { await p.click('.side .name-btn'); await p.click(`.name-pop a:has-text("${via[1]}")`) }
   else if (via) { await p.click(`.side .nav a:has-text("${via[0]}")`); if (via[1]) await p.click(`.sub-tabs a:has-text("${via[1]}")`) }
   else await p.click(`.nav a:has-text("${label}")`)
@@ -156,7 +156,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '10 buyer is told, pays'
     const bn = await bell(buy); say('bell:', bn.items?.map?.(n => n.kind).join(',') ?? JSON.stringify(bn).slice(0, 120))
     await nav(buy, 'Bookings'); await buy.shot('f10-bookings'); await buy.click('.table tbody tr >> nth=0'); await buy.waitForSelector('.sum')
-    await buy.selectOption('#card', 'pm_card_4242'); await buy.click('button:has-text("Pay")'); await buy.waitForSelector('main .page-title:has-text("Payment secured")')
+    await buy.selectOption('#card', 'pm_card_4242'); await buy.click('button:has-text("Pay")'); await buy.waitForSelector('main .page-title:has-text("Paid")')
     const dealId = buy.url().split('/').pop(); say(dealId)
 
     step = '11 creative: buyer sends, publisher approves'
@@ -175,7 +175,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
 
     step = '13 buyer approves proof, money released'
     await buy.reload(); await buy.waitForSelector('button:has-text("Approve proof")'); await buy.click('button:has-text("Approve proof")')
-    await buy.waitForSelector('main .page-title:has-text("Released")'); await buy.shot('f13-released')
+    await buy.waitForSelector('main .page-title:has-text("Completed")'); await buy.shot('f13-released')
     await nav(pub, 'Balances'); await pub.shot('f13-earnings'); say()
 
     step = '14 auction: two buyers bid, bidding closes, publisher picks'
@@ -202,7 +202,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await nav(pub, 'Requests'); await pub.shot('f14-inbox'); await pub.goto(BASE + `/deals/${ad.id}`); await pub.waitForSelector('button:has-text("Accept")'); await pub.shot('f14-choose')
     await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer')
     await buy2.goto(BASE + `/bookings/${ad.id}`); await buy2.waitForSelector('.sum'); await buy2.selectOption('#card', 'pm_card_4242'); await buy2.click('button:has-text("Pay")')
-    await buy2.waitForSelector('main .page-title:has-text("Payment secured")'); say(ad.status)
+    await buy2.waitForSelector('main .page-title:has-text("Paid")'); say(ad.status)
 
     step = '15 quick sale: interest, publisher accepts'
     await buy.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy.waitForSelector('.cv-table tbody tr:has-text("Evening Drive")')
@@ -215,7 +215,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await pub.click('td button:has-text("Accept")'); await pub.waitForURL(/\/deals\//); await pub.waitForSelector('text=Booking brief'); await pub.shot('f15-deal')
     const qb = await bell(buy); if (!JSON.stringify(qb).includes('deal.awaiting_payment')) throw new Error('the buyer was not told')
     await buy.goto(BASE + '/bookings'); await buy.click('.table tbody tr >> nth=0'); await buy.waitForSelector('.sum')
-    await buy.selectOption('#card', 'pm_card_4242'); await buy.click('button:has-text("Pay")'); await buy.waitForSelector('main .page-title:has-text("Payment secured")')
+    await buy.selectOption('#card', 'pm_card_4242'); await buy.click('button:has-text("Pay")'); await buy.waitForSelector('main .page-title:has-text("Paid")')
     say()
 
     step = '16 fixed price: book now, each side sees the other, publisher confirms, buyer pays'
@@ -229,7 +229,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     if (/@|\+971/.test(await pub.locator('.co-card').textContent())) throw new Error('contact details shown before purchase')
     await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer')
     await buy2.goto(BASE + '/bookings'); await buy2.click('.table tbody tr:has-text("pay now") >> nth=0'); await buy2.waitForSelector('.sum')
-    await buy2.selectOption('#card', 'pm_card_4242'); await buy2.click('button:has-text("Pay")'); await buy2.waitForSelector('main .page-title:has-text("Payment secured")')
+    await buy2.selectOption('#card', 'pm_card_4242'); await buy2.click('button:has-text("Pay")'); await buy2.waitForSelector('main .page-title:has-text("Paid")')
     say(booked)
 
     for (const p of [pub, buy, buy2, staff]) if (p.errors.length) throw new Error(`${p.who} errors: ${p.errors.join(' | ')}`)

@@ -34,7 +34,7 @@ const ok = (cond, what) => { if (!cond) throw new Error('FAILED: ' + what); cons
   ok(/declined/i.test(await p.textContent('.card-pay .error')), 'a declined card shows the bank\'s answer')
   // Bank asks to confirm (3-D Secure), then Stripe's signed webhook secures the booking
   await p.fill('#mock-card', '4000 0025 0000 3155'); await p.click('.card-pay button')
-  await p.waitForSelector('main .page-title:has-text("Payment secured")', { timeout: 30_000 })
+  await p.waitForSelector('main .page-title:has-text("Paid")', { timeout: 30_000 })
   ok(true, '3-D Secure confirmed and the webhook secured the booking')
   out && await p.screenshot({ path: out + '/stripe-paid.png' })
   const docs = (await (await ctx.request.get(`${BASE}/api/deals/${dealId}`)).json()).documents.map(d => d.type)

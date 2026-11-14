@@ -52,11 +52,7 @@ async function tagFor(db: Db, a: Tag, buyerId: string, amount: number) {
   if (!clientId) return { campaignId: a.campaignId ?? null, clientId: null, client: null }
   const client = (await db.query(`select * from clients where id = $1 and buyer_id = $2 and status = 'active' for update`, [clientId, buyerId])).rows[0]
   if (!client) throw new MarketError('Choose one of your active clients.')
-  if (client.budget != null && client.budget_stop) {
-    const { used } = await one(db, `select coalesce(sum(amount), 0)::bigint used from deals where client_id = $1 and status in ${BOOKED}`, [clientId])
-    if (Number(used) + amount > Number(client.budget))
-      throw new MarketError(`This would take ${client.name} over its budget: ${aed(Number(client.budget) - Number(used))} is left.`)
-  }
+  // budgets live on campaigns only (owner's buyer-side fixes), so a client never refuses a booking on budget
   return { campaignId: a.campaignId ?? null, clientId, client }
 }
 
@@ -387,14 +383,6 @@ export async function answerCounter(db: Db, dealId: string, buyerId: string, agr
     await audit(db, actor, 'deal.counter_refused', 'deal', dealId, { amount }, at)
     await notify(db, deal.seller_id, 'deal.counter_refused', dealId, { amount, was: Number(deal.amount) }, at)
     return
-  }
-  if (deal.client_id && amount > Number(deal.amount)) { // a client whose budget is set to stop still refuses what would take it over
-    const client = await one(db, `select * from clients where id = $1 for update`, [deal.client_id])
-    if (client.budget != null && client.budget_stop) {
-      const { used } = await one(db, `select coalesce(sum(amount), 0)::bigint used from deals where client_id = $1 and status in ${BOOKED}`, [deal.client_id])
-      if (Number(used) > Number(client.budget))
-        throw new MarketError(`This would take ${client.name} over its budget: ${aed(Math.max(0, Number(client.budget) - Number(used) + amount))} is left.`)
-    }
   }
   await audit(db, actor, 'deal.counter_agreed', 'deal', dealId, { from: Number(deal.amount), to: amount }, at)
   await notify(db, deal.seller_id, 'deal.counter_agreed', dealId, { amount }, at)

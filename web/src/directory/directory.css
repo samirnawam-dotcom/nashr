@@ -64,3 +64,4 @@ main.booking { max-width: 1180px; }
 }
 
 }
+.cl-name { display: inline-flex; align-items: center; gap: 10px; }

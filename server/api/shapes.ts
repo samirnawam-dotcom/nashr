@@ -28,7 +28,7 @@ export const buyerDeal = (d: any) => {
   const s = split(d.amount, { commissionBp: 0, mediaVatBp: d.vat_bp, feeVatBp: 0 })
   return {
     id: d.id, ref: d.ref, kind: d.kind, status: buyerStatus[d.status] ?? d.status, outlet: d.outlet, channel: d.channel ?? null, label: d.label, startsAt: d.starts_at,
-    currency: d.currency, price: d.amount, vat: s.mediaVat, total: s.buyerPays, nextDeadlineAt: d.next_deadline_at, reason: d.status_note ?? null, client: d.client ?? null,
+    currency: d.currency, price: d.amount, vat: s.mediaVat, total: s.buyerPays, nextDeadlineAt: d.next_deadline_at, reason: d.status_note ?? null, client: d.client ?? null, creative: d.creative_status ?? null,
     counter: d.counter_amount != null ? { price: Number(d.counter_amount), note: d.counter_note ?? null, at: d.countered_at } : null,
   }
 }

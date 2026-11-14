@@ -13,6 +13,8 @@ export const coverUrl = (o: { id: string; cover_key?: string | null }) => o.cove
 /** The public URL for an outlet's logo, or null: the page then shows its initials. */
 export const logoUrl = (o: { id: string; logo_key?: string | null }) => o.logo_key ? `/api/outlets/${o.id}/logo?v=${o.logo_key.slice(5, 13)}` : null
 /** The logo of the brand an outlet row belongs to (owner's "Outlet"), or null. */
+export const companyLogoUrl = (id: string | null | undefined, key: string | null | undefined) => id && key ? `/api/companies/${id}/logo?v=${key.slice(-8)}` : null
+export const clientLogoUrl = (id: string | null | undefined, key: string | null | undefined) => id && key ? `/api/clients/${id}/logo?v=${key.slice(-8)}` : null
 export const brandLogoUrl = (id: string | null | undefined, key: string | null | undefined) => id && key ? `/api/brands/${id}/logo?v=${key.slice(-8)}` : null
 const URL_OF = { cover: coverUrl, logo: logoUrl }
 
@@ -46,6 +48,56 @@ export function coverRoutes(route: RouteFn, storage: Storage) {
     const bytes = key ? await storage.get(key).catch(() => null) : null
     if (!bytes) throw new NotFound()
     return reply.type(sniffType(bytes)).header('cache-control', 'public, max-age=31536000, immutable').send(bytes)
+  })
+
+  // The buyer's (or publisher's) own company logo, and a buyer's client logos (owner's buyer-side fixes)
+  async function image(body: unknown, reply: any) {
+    if (!Buffer.isBuffer(body) || !body.length) throw new MarketError('Choose a photo to upload.')
+    if (body.length > MAX_COVER) { reply.code(413).send({ error: 'The photo is too large. Use one under 3 MB.' }); return null }
+    if (!IMAGE.includes(sniffType(body))) throw new MarketError('Use a JPEG or PNG photo.')
+    return body
+  }
+  route('PUT', '/api/company/logo', ['buyer', 'seller'], async ({ db, at, me }, req, reply) => {
+    const body = await image(req.body, reply); if (!body) return
+    const key = `logo-${randomUUID()}`
+    await db.query(`update companies set logo_key = $2 where id = $1`, [me.actAs.companyId, key])
+    await storage.put(key, body)
+    await audit(db, `${me.role}:${me.actAs.companyId}`, 'company.logo_set', 'company', me.actAs.companyId, null, at)
+    return { logoUrl: companyLogoUrl(me.actAs.companyId, key) }
+  })
+  route('DELETE', '/api/company/logo', ['buyer', 'seller'], async ({ db, at, me }) => {
+    await db.query(`update companies set logo_key = null where id = $1`, [me.actAs.companyId])
+    await audit(db, `${me.role}:${me.actAs.companyId}`, 'company.logo_removed', 'company', me.actAs.companyId, null, at)
+    return { ok: true }
+  })
+  route('GET', '/api/companies/:id/logo', 'public', async ({ db }, req, reply) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) throw new NotFound()
+    const key = (await db.query(`select logo_key from companies where id = $1`, [req.params.id])).rows[0]?.logo_key
+    const bytes = key ? await storage.get(key).catch(() => null) : null
+    if (!bytes) throw new NotFound()
+    return reply.type(sniffType(bytes)).header('cache-control', 'public, max-age=31536000, immutable').send(bytes)
+  })
+  route('PUT', '/api/clients/:id/logo', ['buyer'], async ({ db, at, me }, req, reply) => {
+    const body = await image(req.body, reply); if (!body) return
+    const key = `logo-${randomUUID()}`
+    const r = await db.query(`update clients set logo_key = $3 where id = $1 and buyer_id = $2`, [req.params.id, me.actAs.companyId, key])
+    if (!r.rowCount) throw new NotFound()
+    await storage.put(key, body)
+    await audit(db, `user:${me.userId}`, 'client.logo_set', 'client', req.params.id, null, at)
+    return { logoUrl: clientLogoUrl(req.params.id, key) }
+  })
+  route('DELETE', '/api/clients/:id/logo', ['buyer'], async ({ db, me }, req) => {
+    const r = await db.query(`update clients set logo_key = null where id = $1 and buyer_id = $2`, [req.params.id, me.actAs.companyId])
+    if (!r.rowCount) throw new NotFound()
+    return { ok: true }
+  })
+  // a client's logo is the buyer's own: only their team sees it
+  route('GET', '/api/clients/:id/logo', ['buyer'], async ({ db, me }, req, reply) => {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) throw new NotFound()
+    const key = (await db.query(`select logo_key from clients where id = $1 and buyer_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]?.logo_key
+    const bytes = key ? await storage.get(key).catch(() => null) : null
+    if (!bytes) throw new NotFound()
+    return reply.type(sniffType(bytes)).header('cache-control', 'private, max-age=31536000, immutable').send(bytes)
   })
 
   for (const kind of ['cover', 'logo'] as const) {

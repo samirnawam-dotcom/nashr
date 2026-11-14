@@ -48,7 +48,7 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   await p.selectOption('#card', 'pm_card_4242'); await p.click('button:has-text("Pay")'); await p.waitForTimeout(800)
   out && await p.screenshot({ path: out + '/10-paid.png' })
   const status = await p.locator('main .page-title').first().textContent()
-  if (!/Payment secured/.test(status)) { console.error('Expected Payment secured, got', status); process.exitCode = 1 }
+  if (!/Paid/.test(status)) { console.error('Expected Paid, got', status); process.exitCode = 1 }
   console.log('status now:', status)
 
   // Creative: the buyer uploads, the publisher approves
@@ -72,7 +72,7 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   await p.reload(); await p.click('button:has-text("Accept offer")'); await p.waitForSelector('text=Offer accepted')
   out && await p.screenshot({ path: out + '/12-issue-settled.png', fullPage: true })
   const final = await p.locator('main .page-title').first().textContent()
-  if (!/Released/.test(final)) { console.error('Expected Released after partial refund, got', final); process.exitCode = 1 }
+  if (!/Completed/.test(final)) { console.error('Expected Completed after partial refund, got', final); process.exitCode = 1 }
   console.log('after offer:', final)
   if (errors.length) { console.error('Browser errors:', errors); process.exitCode = 1 }
   await b.close()

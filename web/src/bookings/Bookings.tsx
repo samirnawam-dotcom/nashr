@@ -19,33 +19,40 @@ type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; 
   counter?: { price: number; note: string | null; at: string } | null }
 
 const STATUS: Record<string, [string, string]> = {
-  awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Payment secured', 'lead'],
-  proof_ready: ['Proof ready, review', 'soon'], issue_open: ['Issue reported', 'soon'], disputed: ['Disputed', 'outbid'], released: ['Released', 'lead'],
-  complete: ['Complete', 'lead'], not_selected: ['Not selected', 'muted'], lapsed: ['Lapsed', 'outbid'], cancelled: ['Cancelled', 'muted'], refunded: ['Refunded', 'muted'],
+  // the same deal the publisher sees on their side, in the buyer's words (owner's buyer-side fixes)
+  awaiting_publisher: ['Awaiting publisher', 'soon'], accepted_pay_now: ['Accepted, pay now', 'soon'], payment_secured: ['Paid', 'lead'],
+  proof_ready: ['Ran, check proof', 'soon'], issue_open: ['Issue reported', 'soon'], disputed: ['Disputed', 'outbid'], released: ['Completed', 'lead'],
+  complete: ['Completed', 'lead'], not_selected: ['Not selected', 'muted'], declined: ['Declined', 'muted'], lapsed: ['Not paid in time', 'outbid'], cancelled: ['Cancelled', 'muted'], refunded: ['Refunded', 'muted'],
 }
 export const Status = ({ s }: { s: string }) => <span className={`dot ${STATUS[s]?.[1] ?? ''}`}>{t(STATUS[s]?.[0] ?? s)}</span>
 const when = (iso: string) => `${dayLabel(dubai(iso).date)} · ${time(iso)}`
 
+/** A lost bid ("Not selected") is not a booking; a request the publisher turned down reads "Declined". */
+const shownStatus = (d: Deal) => d.status === 'not_selected' && d.kind !== 'auction' ? 'declined' : d.status
+const isBooking = (d: Deal) => !['awaiting_publisher', 'not_selected'].includes(d.status) || shownStatus(d) === 'declined'
+
 export function BookingsPage() {
-  const [deals, setDeals] = useState<Deal[] | null>(null), [error, setError] = useState(''), [client, setClient] = useState('')
+  const [all, setDeals] = useState<Deal[] | null>(null), [error, setError] = useState(''), [client, setClient] = useState(''), [waiting, setWaiting] = useState(false)
   useEffect(() => { api<Deal[]>('/deals').then(setDeals, e => setError(e.message)) }, [])
+  const pending = (all ?? []).filter(d => d.status === 'awaiting_publisher')
+  const deals = all && (waiting ? pending : all.filter(isBooking))
   const clients = [...new Set((deals ?? []).map(d => d.client).filter(Boolean))] as string[]
   const shown = (deals ?? []).filter(d => !client || d.client === client)
   return (
     <main>
-      <PhotoBand img="/brand/bookings-wide.jpg" title={t("Bookings")} sub={t("Every booking from bid to proof, with your payment held until you approve that the ad ran.")}>
-        <a className="btn" href="/documents">{t("Receipts and invoices")}</a>
-      </PhotoBand>
+      <PhotoBand img="/brand/bookings-wide.jpg" title={t("Bookings")} sub={t('Bookings the publisher accepted, from payment to proof. Your payment is held until you approve that the ad ran.')} />
       {error && <p className="error">{error}</p>}
-      {deals && !deals.length && <p className="muted empty">{t("No bookings yet. Bid on a slot in the calendar, or send a buy-now request.")}</p>}
+      {pending.length > 0 && <p className="small"><button type="button" className="linkish" onClick={() => setWaiting(!waiting)}>{waiting ? t('Back to bookings')
+        : t(pending.length === 1 ? '1 request is waiting for the publisher' : '{n} requests are waiting for the publisher', { n: pending.length })}</button></p>}
+      {deals && !deals.length && <p className="muted empty">{waiting ? t('Nothing is waiting for a publisher.') : t("No bookings yet. Once a publisher accepts your bid or request, it shows here.")}</p>}
       {clients.length > 0 && <div className="toolbar" style={{ marginTop: 20 }}>
         <select className="btn" aria-label={t('Client')} value={client} onChange={e => setClient(e.target.value)}><option value="">{t('All clients')}</option>
           {clients.map(c => <option key={c} value={c}>{c}</option>)}</select></div>}
       {deals && deals.length > 0 && <div className="table-wrap card"><table className="table">
-        <thead><tr><th>{t("Order")}</th><th>{t("Slot")}</th>{clients.length > 0 && <th>{t('Client')}</th>}<th>{t("Airs")}</th><th className="r">{t("Total")}</th><th>{t("Status")}</th></tr></thead>
+        <thead><tr><th>{t("Order")}</th><th>{t("Listing")}</th>{clients.length > 0 && <th>{t('Client')}</th>}<th>{t("Runs")}</th><th className="r">{t("Total")}</th><th>{t("Status")}</th></tr></thead>
         <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
           <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {tm(d.label)}</td>{clients.length > 0 && <td className="small"><bdi>{d.client ?? '—'}</bdi></td>}<td className="num">{slotWhen(d.startsAt, (d as any).channel)}</td>
-          <td className="r num">{money(d.total, d.currency)}</td><td><Status s={d.status} /></td></tr>)}</tbody>
+          <td className="r num">{money(d.total, d.currency)}</td><td><Status s={shownStatus(d)} /></td></tr>)}</tbody>
       </table></div>}
     </main>
   )

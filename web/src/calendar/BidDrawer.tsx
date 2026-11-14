@@ -15,8 +15,8 @@ import { usePlan } from './Plan'
 type Detail = Slot & { yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
 export const LANGUAGE: Record<string, string> = { english: 'English', arabic: 'Arabic', both: 'English or Arabic', hindi: 'Hindi', urdu: 'Urdu', other: 'Other' }
-export const INDUSTRIES = ['Banking', 'Real estate', 'Retail', 'Technology', 'Hospitality', 'Health', 'Automotive', 'Education', 'Government',
-  'Crypto & trading', 'Alcohol & nightlife', 'Lottery & gaming', 'Other']
+export { INDUSTRIES } from '../industries'
+import { INDUSTRIES } from '../industries'
 const LAST_BRIEF = 'nashr:last-brief', LAST_CAMPAIGN = 'nashr:last-campaign', LAST_CLIENT = 'nashr:last-client'
 const seconds = (s: Slot) => Math.round((new Date(s.endsAt!).getTime() - new Date(s.startsAt).getTime()) / 1000)
 const toFils = (aed: string) => Math.round(Number(aed.replace(/,/g, '')) * 100)
@@ -133,10 +133,8 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
 
         {clients.length > 0 && <div className="field"><label htmlFor="client">{t('For client')}</label>
           <select id="client" value={forClient} disabled={!!campaignClient} onChange={e => pickClient(e.target.value)}><option value="">{t('No client')}</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}{c.remaining != null ? ` · ${t('{amount} left', { amount: money(c.remaining) })}` : ''}</option>)}</select>
-          {campaignClient && <span className="small muted">{t('Set by the campaign.')}</span>}
-          {(() => { const c = clients.find(x => x.id === forClient); return c?.budgetStop && c.remaining != null
-            ? <span className="small muted">{t('Bids and bookings over this client\'s budget are refused.')}</span> : null })()}</div>}
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          {campaignClient && <span className="small muted">{t('Set by the campaign.')}</span>}</div>}
         {!s.briefOnFile && <section className="form">
           <h3>{t("Booking brief")}</h3>
           <div className="field"><label htmlFor="adv">{t("Advertiser or brand")}</label><input id="adv" value={brief.advertiser} onChange={e => setBrief({ ...brief, advertiser: e.target.value })} /></div>

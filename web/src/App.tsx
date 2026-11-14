@@ -63,6 +63,7 @@ const load_segments = () => import('./public/Segments'), load_articles = () => i
 const AudiencesPage = L(load_segments, 'AudiencesPage'), AudiencePage = L(load_segments, 'AudiencePage'), IndustryPage = L(load_segments, 'IndustryPage')
 const InsightsPage = L(load_articles, 'InsightsPage'), ArticlePage = L(load_articles, 'ArticlePage')
 const MessagesPage = L(() => import('./messages/Messages'), 'MessagesPage')
+import { BuyerToDo, toDo } from './messages/ToDo'
 const CompanyPage = L(() => import('./buyer/Company'), 'CompanyPage')
 const StatementPage = L(() => import('./seller/Statement'), 'StatementPage')
 const load_Athena = () => import('./Athena')
@@ -103,24 +104,27 @@ const BUYER: Routes = [
   [/^\/campaigns/, () => <CampaignsPage />],
   [/^\/clients\/([\w-]+)$/, id => <ClientPage id={id} />],
   [/^\/clients/, () => <ClientsPage />],
-  [/^\/results/, () => <ResultsPage />],
+  // Reports (owner's buyer-side fixes): one item, three tabs
+  [/^\/results/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><ResultsPage /></SubTabs>],
   [/^\/bookings\/([\w-]+)$/, id => <BookingPage id={id} />],
-  [/^\/bookings/, () => <BookingsPage />],
+  [/^\/(bookings|reports)$/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><BookingsPage /></SubTabs>],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
-  [/^\/documents/, () => <DocumentsPage />],
+  [/^\/documents/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><DocumentsPage /></SubTabs>],
   [/^\/athena/, () => <AthenaPage />],
   [/^\/help/, () => <HelpPage role="buyer" />],
-  [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="buyer" />],
-  [/^\/messages/, () => <MessagesPage role="buyer" />],
+  // Inbox: what to act on, then the messages
+  [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="buyer" top={<BuyerToDo />} />],
+  [/^\/(messages|inbox)$/, () => <MessagesPage role="buyer" top={<BuyerToDo />} />],
   [/^\/company/, () => <CompanyPage />],
 ]
 /** Tabs under a merged menu item (owner's rules): Inbox holds requests and messages; Reports holds transactions and balances. */
 const SubTabs = ({ tabs, children }: { tabs: [string, string][]; children: React.ReactNode }) => {
   const here = location.pathname
-  return <><div className="sub-tabs-wrap"><nav className="sub-tabs" aria-label={t('Sections')}>{tabs.map(([href, l]) => { const on = href === '/reports' ? /^\/(reports|deals)$/.test(here) : here.startsWith(href)
+  return <><div className="sub-tabs-wrap"><nav className="sub-tabs" aria-label={t('Sections')}>{tabs.map(([href, l]) => { const on = href === '/reports' ? /^\/(reports|deals|bookings)$/.test(here) : here.startsWith(href)
     return <a key={href} href={href} className={on ? 'on' : ''} aria-current={on ? 'page' : undefined}>{l}</a> })}</nav></div>{children}</>
 }
 const INBOX_TABS = (): [string, string][] => [['/inbox', t('Requests')], ['/messages', t('Messages')]]
+const BUYER_REPORT_TABS = (): [string, string][] => [['/reports', t('Bookings')], ['/results', t('Results')], ['/documents', t('Receipts and invoices')]]
 const REPORT_TABS = (): [string, string][] => [['/reports', t('Transactions')], ['/earnings', t('Balances')]]
 const SELLER: Routes = [
   [/^\/home/, () => <PortalDashboard />],
@@ -186,17 +190,18 @@ function Moved({ to }: { to: string }) { useEffect(() => { const k = setTimeout(
 const isActive = (path: string, p: string, seller = false) => (p === '/' ? path === '/' : path.startsWith(p)) || (p === '/bookings' && path.startsWith('/documents'))
   || (p === '/deals' && path.startsWith('/documents')) || (p === '/schedule' && path.startsWith('/slots'))
   // the publisher's merged items: Inbox holds requests and messages, Reports holds transactions, balances and documents
-  || (seller && ((p === '/inbox' && path.startsWith('/messages')) || (p === '/reports' && /^\/(deals|earnings|documents)/.test(path))))
+  || ((p === '/inbox' && path.startsWith('/messages')) || (p === '/reports' && /^\/(deals|earnings|documents|bookings|results)/.test(path)))
 
 const NAV: Record<string, string[][]> = {
   admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
-  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/bookings', t('Bookings')], ['/results', t('Results')], ['/messages', t('Messages')], ['/athena', t('Athena')], ['/company', t('Company')], ['/help', t('Help')]],
+  // owner's buyer-side fixes: no section titles; Company and Help are in the menu under the buyer's name
+  buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/inbox', t('Inbox')], ['/reports', t('Reports')]],
   seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/listings', t('Products')], ['/inbox', t('Inbox')], ['/reports', t('Reports')]],
 }
 // The phone's bottom bar: the five places people go most.
-const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/bookings', '/messages', '/directory'], seller: ['/home', '/schedule', '/listings', '/inbox', '/reports'] 
+const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/directory', '/inbox', '/reports'], seller: ['/home', '/schedule', '/listings', '/inbox', '/reports'] 
 }
 
 const ICON: Record<string, string> = {
@@ -223,7 +228,7 @@ const ICON: Record<string, string> = {
   '/settings': 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4',
 }
 // Where the sidebar starts a new group, per role (sentence-case labels; the groups are real sections of the work).
-const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: {}, buyer: { '/campaigns': t('Plan and book'), '/company': t('Your company') } }
+const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: {}, buyer: {} }
 const ROLE: Record<string, string> = { buyer: t('Buyer'), seller: t('Publisher'), admin: t('Nashr operations'), founder: t('Nashr founder') }
 const Badge = ({ n }: { n: number }) => <span className="nav-badge" aria-label={t('{n} unread', { n })}>{n > 99 ? '99+' : n}</span>
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
@@ -268,8 +273,8 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   // The sidebar in two versions (owner's feedback): expanded with labels, or collapsed to icons; remembered on this device
   const [mini, setMini] = useState(() => { try { return localStorage.getItem('nashr:side-min') === '1' } catch { return false } })
   const toggleMini = () => setMini(m => { try { localStorage.setItem('nashr:side-min', m ? '0' : '1') } catch { /* private mode */ } return !m })
-  useEffect(() => { if (me?.role !== 'seller') return
-    const get = () => api<unknown[]>('/seller/inbox').then(r => setRequests(r.length), () => {}); get(); const x = setInterval(get, 60_000); return () => clearInterval(x) }, [me?.role])
+  useEffect(() => { if (me?.role !== 'seller' && me?.role !== 'buyer') return
+    const get = () => me.role === 'buyer' ? api<any[]>('/deals').then(d => setRequests(toDo(d).length), () => {}) : api<unknown[]>('/seller/inbox').then(r => setRequests(r.length), () => {}); get(); const x = setInterval(get, 60_000); return () => clearInterval(x) }, [me?.role])
   // Screens behind sign-in stay out of search results; public pages set their own metadata.
   // remember the language this person uses, so their emails come in it (not while staff act as them)
   useEffect(() => { if (me && me.lang && me.lang !== lang && !me.signedInAs && !me.viewingAs) api('/me/account', { method: 'PUT', body: { lang } }).catch(() => {}) }, [me?.lang])
@@ -321,7 +326,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''} title={mini ? l : undefined}>
-            <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a></Fragment>)}</nav>
+            <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a></Fragment>)}</nav>
         <div className="side-foot">
           <div className="side-me"><NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={mini} onSignOut={signOut}
             links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
@@ -338,7 +343,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d={menu ? 'M6 6l12 12M18 6 6 18' : 'M4 7h16M4 12h16M4 17h16'} /></svg></button>
         <Wordmark href={`${home}`} />
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''}>
-          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}
+          {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a>)}
           <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
@@ -352,7 +357,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         : hit ? <Suspense fallback={<main><p className="muted">{t("Loading…")}</p></main>}>{hit[1](hit[0]![1])}</Suspense> : <main className="nf"><span className="nf-code num" aria-hidden>404</span><h1>{t("Not found")}</h1><p className="muted">{t('This page does not exist, or it has moved.')}</p><a className="btn primary" href={`${home}`}>{t("Back to the start")}</a></main>}
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p, seller) ? 'active' : ''}
-        aria-current={isActive(path, p, seller) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + (seller ? unread : 0) > 0 && <Badge n={requests + (seller ? unread : 0)} />}</a>)}</nav>}
+        aria-current={isActive(path, p, seller) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a>)}</nav>}
     </div>
   )
 }

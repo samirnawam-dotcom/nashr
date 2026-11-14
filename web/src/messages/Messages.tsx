@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { tm } from '../i18n-server'
 import { api } from '../api'
 import { dayLabel, time } from '../format'
@@ -17,7 +17,7 @@ const stamp = (iso: string) => dubai(iso).date === todayInDubai() ? time(iso) : 
  * Every conversation, newest first. On a wide screen the list and the open conversation sit side by side;
  * on a phone the list opens each conversation on its own page (/messages/<booking>).
  */
-export function MessagesPage({ open, role }: { open?: string; role: 'buyer' | 'seller' }) {
+export function MessagesPage({ open, role, top }: { open?: string; role: 'buyer' | 'seller'; top?: ReactNode }) {
   const [list, setList] = useState<Conversation[] | null>(null), [error, setError] = useState(''), [q, setQ] = useState('')
   const load = () => api<Conversation[]>('/messages').then(setList, e => setError(e.message))
   useEffect(() => { load(); const tick = setInterval(() => document.visibilityState === 'visible' && load(), 30_000); return () => clearInterval(tick) }, [])
@@ -28,7 +28,9 @@ export function MessagesPage({ open, role }: { open?: string; role: 'buyer' | 's
 
   return (
     <main className={`messages-page ${open ? 'has-open' : ''}`}>
-      <div className="messages-head"><h1>{t('Messages')}</h1>
+      {top && !open && <div className="messages-head"><h1>{t('Inbox')}</h1><p className="muted">{t('What needs you first, then your conversations with publishers.')}</p></div>}
+      {!open && top}
+      <div className={`messages-head ${top ? 'sub' : ''}`}>{top ? <h2>{t('Messages')}</h2> : <h1>{t('Messages')}</h1>}
         <p className="muted">{role === 'seller' ? t('Conversations with buyers about their bookings.') : t('Conversations with publishers about your bookings.')}</p></div>
       {error && <p className="error">{error}</p>}
       {list && !list.length ? <section className="card pad messages-empty">
