@@ -125,9 +125,20 @@ export function DateNav({ date, onDate, onStep }: { date: string; onDate: (d: st
     <button className="btn" onClick={() => onDate(todayInDubai())}>{t('Today')}</button>
     <button className="btn icon" aria-label={t('Previous')} onClick={() => onStep(-1)}><Chevron dir="back" /></button>
     <button className="btn icon" aria-label={t('Next')} onClick={() => onStep(1)}><Chevron dir="fwd" /></button>
-    <label className="btn cv-jump" title={t('Go to a date')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /></svg>
-      <span className="cv-jump-label">{t('Go to date')}</span><input type="date" aria-label={t('Go to a date')} value={date} onChange={e => e.target.value && onDate(e.target.value)} /></label>
+    <DateJump date={date} onDate={onDate} />
   </div>
+}
+
+/**
+ * "Go to date": the whole button opens the browser's date picker. The date field lies hidden over the button, and on its own
+ * Chrome opens the picker only from the field's small calendar icon, so a click anywhere else did nothing.
+ */
+export function DateJump({ date, onDate }: { date: string; onDate: (d: string) => void }) {
+  const open = (el: HTMLInputElement) => { try { el.showPicker() } catch { el.focus() } }
+  return <label className="btn cv-jump" title={t('Go to a date')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /></svg>
+    <span className="cv-jump-label">{t('Go to date')}</span>
+    <input type="date" aria-label={t('Go to a date')} value={date} onChange={e => e.target.value && onDate(e.target.value)}
+      onClick={e => { e.preventDefault(); open(e.currentTarget) }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e.currentTarget) } }} /></label>
 }
 
 /** View, date and filters in the address: read once, written on every change (Back undoes view and date changes). */

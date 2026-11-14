@@ -15,6 +15,7 @@ import { isAr, ltr, t } from '../i18n'
 import { tm } from '../i18n-server'
 import './calendar.css'
 import { CHANNELS, CHANNEL_NAME, ICON } from '../media'
+import { DateJump } from './ops'
 export { CHANNELS, CHANNEL_NAME }
 
 /*
@@ -193,9 +194,7 @@ export function CalendarPage() {
           <button className="btn" onClick={() => update({ date: todayInDubai() }, true)} title={t('Today (T)')}>{t('Today')}</button>
           <button className="btn icon" aria-label={t('Previous')} title={t('Previous (←)')} onClick={() => step(-1)}><Chevron dir="back" /></button>
           <button className="btn icon" aria-label={t('Next')} title={t('Next (→)')} onClick={() => step(1)}><Chevron dir="fwd" /></button>
-          <label className="btn cv-jump" title={t('Go to a date')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /></svg>
-            <span className="cv-jump-label">{t('Go to date')}</span>
-            <input type="date" aria-label={t('Go to a date')} value={s.date} onChange={e => e.target.value && update({ date: e.target.value }, true)} /></label>
+          <DateJump date={s.date} onDate={d => update({ date: d }, true)} />
         </div>
         {!guest && <button type="button" className={`btn cv-plan ${plan.ids.length ? 'has' : ''}`} onClick={() => setPlanOpen(true)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 5h10M9 12h10M9 19h10M4 5l1 1 2-2M4 12l1 1 2-2M4 19l1 1 2-2" /></svg>

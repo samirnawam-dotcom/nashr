@@ -47,7 +47,8 @@ export function where(q: Query, now: Date) {
   if (q.audiences?.length) w.push(`${AUDIENCES_SQL} && ${add(q.audiences)}::text[]`)
   if (q.mine && q.me) w.push(`exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = ${add(q.me)})`)
   if (q.placement) w.push(`p.id = ${add(q.placement)}`)
-  if (q.outlet) w.push(`o.id = ${add(q.outlet)}`)
+  // an outlet (the brand: every product it has) or one product
+  if (q.outlet) { const x = add(q.outlet); w.push(`(o.id = ${x} or o.product_id = ${x})`) }
   if (q.date) w.push(`${DUBAI}::date = ${add(q.date)}::date`)
   if (q.tmin != null && Number.isFinite(q.tmin)) w.push(`${MINUTE} >= ${add(q.tmin)}`, `not ${ALL_DAY}`)
   if (q.tmax != null && Number.isFinite(q.tmax)) w.push(`${MINUTE} < ${add(q.tmax)}`)

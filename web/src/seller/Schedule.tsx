@@ -47,13 +47,15 @@ export function SchedulePage() {
   const view = (VIEWS.some(v => v[0] === a.view) ? a.view : 'day') as View, lay = a.lay === 'time' ? 'time' : 'prog'
   const [slots, setSlots] = useState<SSlot[] | null>(null), [open, setOpen] = useState<string | null>(null)
   const [adding, setAdding] = useState<false | { date: string; product?: string }>(false), [products, setProducts] = useState<Product[]>([])
-  const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]), [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
+  const [error, setError] = useState(''), [reload, setReload] = useState(0), [qText, setQText] = useState(a.q)
   const latest = useLatest(), narrow = useNarrow(), wide = useWide()
   // Select mode (week by programme): pick several breaks, a whole programme or a whole day, then change them in one step.
   const [picking, setPicking] = useState(false), [picked, setPicked] = useState<string[]>([]), [bulkPrice, setBulkPrice] = useState(''), [note, setNote] = useState(''), [busy, setBusy] = useState(false)
   const [repeat, setRepeat] = useState(false), [repeatWeeks, setRepeatWeeks] = useState('4')
   useEffect(() => { try { localStorage.setItem('nashr:seller-view', view) } catch { /* fine */ } }, [view])
-  useEffect(() => { api<{ outlets: { id: string; name: string }[] }>('/seller/profile').then(p => setOutlets(p.outlets), () => {}); api<Product[]>('/seller/products').then(setProducts, () => {}) }, [])
+  useEffect(() => { api<Product[]>('/seller/products').then(setProducts, () => {}) }, [])
+  // the outlet filter: each live outlet once (as on the Products page), matching every product it has; deleted ones are not offered
+  const outlets = products, mine = new Set(products.find(o => o.id === a.outlet)?.media.map(m => m.id) ?? (a.outlet ? [a.outlet] : []))
   useEffect(() => { const k = setTimeout(() => qText !== a.q && update({ q: qText }), 300); return () => clearTimeout(k) }, [qText])
   const week = weekOf(a.date), grid = monthGrid(a.date)
   const [from, to] = view === 'month' ? [grid[0][0], addDays(grid.at(-1)![6], 1)] : view === 'list' ? [a.date, addDays(a.date, 28)] : view === 'day' ? [a.date, addDays(a.date, 1)] : [week[0], addDays(week[6], 1)]
@@ -68,7 +70,7 @@ export function SchedulePage() {
   // Day, week and month filter what is on screen in the browser, with the same rules the server uses for the list.
   const words = a.q.toLowerCase().split(/\s+/).filter(Boolean)
   const base = (slots ?? []).filter(x => (!sales.length || sales.includes(x.saleType))
-    && (!a.outlet || x.outletId === a.outlet) && words.every(w => `${x.brand} ${x.outlet} ${x.placement}`.toLowerCase().includes(w)))
+    && (!a.outlet || mine.has(x.outletId ?? '')) && words.every(w => `${x.brand} ${x.outlet} ${x.placement}`.toLowerCase().includes(w)))
   const shown = states.length ? base.filter(x => states.includes(bidState(x)[1])) : base
   const step = (n: number) => { if (view === 'month') { const d = new Date(a.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
     update({ date: addDays(a.date, n * (view === 'list' ? 28 : view === 'day' ? 1 : 7)) }, true) }
