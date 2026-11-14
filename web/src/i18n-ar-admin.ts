@@ -95,4 +95,11 @@ export const AR_ADMIN: Record<string, string> = {
   'Marked answered.': 'عُلّم بأنه تم الرد.', 'Mark answered': 'علّمه بأنه تم الرد', 'Reopened.': 'أُعيد فتحه.', 'Estimate {low}–{high}': 'تقدير {low}–{high}', 'No estimate': 'لا تقدير',
   'Edit {name}': 'تعديل {name}', 'Add an outlet not on Nashr': 'أضف منصة غير منضمة إلى نشر', 'Sectors (comma-separated)': 'القطاعات (افصل بينها بفواصل)', 'Tier': 'الفئة', 'Edit': 'تعديل',
   'Estimate from (AED)': 'التقدير من (درهم)', 'Estimate to (AED)': 'التقدير إلى (درهم)',
+  "Nashr registered address on documents": "عنوان نشر المسجّل في المستندات",
+  "as on the trade licence": "كما في الرخصة التجارية",
+  "Two-step sign-in before paying or connecting payouts": "تسجيل الدخول بخطوتين قبل الدفع أو ربط حساب التحويلات",
+  "Yes": "نعم",
+  "No": "لا",
+  "Cancel it (nothing has been paid)": "ألغِها (لم يُدفع شيء)",
+  "Refund part, release the rest": "استرد جزءًا وحرّر الباقي",
 }
