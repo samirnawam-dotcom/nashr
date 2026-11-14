@@ -122,3 +122,4 @@ main.booking { max-width: 1180px; }
 .cmp-table th[scope="row"] { width: 160px; color: var(--slate); font-weight: 500; text-align: start; }
 .cmp-table td { vertical-align: top; }
 @media (max-width: 640px) { .dir-sort { margin-inline-start: 0; } .dp-price { align-items: flex-start; } }
+.switch-t { display: flex; flex-direction: column; line-height: 1.3; }

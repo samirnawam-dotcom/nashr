@@ -1866,4 +1866,5 @@ export const AR_FLOW: Record<string, string> = {
   "Shortcuts: ← → move · T today · D W views · / search": "الاختصارات: ← → للتنقل · T اليوم · D W طرق العرض · / البحث",
   "Sale type:": "نوع البيع:",
   "{n} outlets with dates on sale this week": "{n} من الوسائل لديها تواريخ معروضة هذا الأسبوع",
+  "Choose a file": "اختر ملفًا",
 }

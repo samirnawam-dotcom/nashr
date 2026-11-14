@@ -109,8 +109,8 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         : t('Bidding closes {when}', { when: slotWhen(s.closesAt, s.channel) })}</p>}
 
       {s.details && !!(s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">
-        {s.details.description && <div><dt>{t('What you get')}</dt><dd>{s.details.description}</dd></div>}
-        {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd>{s.details.specs}</dd></div>}
+        {s.details.description && <div><dt>{t('What you get')}</dt><dd dir="auto">{s.details.description}</dd></div>}
+        {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd dir="auto">{s.details.specs}</dd></div>}
         {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
         {s.details.notAccepted?.length ? <div><dt>{t('Does not accept')}</dt><dd>{s.details.notAccepted.map(i => t(i)).join(', ')}</dd></div> : null}
         <div><dt>{t('Creative due')}</dt><dd>{slotWhen(s.creativeDueAt, s.channel)}</dd></div>
@@ -226,6 +226,8 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>
       </>}
+      {/* after booking the last open slot it is no longer on sale: the result still shows */}
+      {!s.available && !guest && (done || error) && <>{done && <p className="ok" role="status">{done}</p>}{error && <p className="error" role="alert">{error}</p>}</>}
     </Shell>
   )
 }

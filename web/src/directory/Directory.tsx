@@ -97,7 +97,7 @@ export function DirectoryPage() {
         <span className="dir-range"><input className="search" inputMode="decimal" aria-label={t('AED from')} placeholder={t('AED from')} value={from} onChange={e => setFrom(e.target.value.replace(/[^\d.,]/g, ''))} />
           <span aria-hidden>–</span><input className="search" inputMode="decimal" aria-label={t('to')} placeholder={t('to')} value={to} onChange={e => setTo(e.target.value.replace(/[^\d.,]/g, ''))} /></span>
         {campaign && campaign.remaining != null && <label className="switch-l"><input type="checkbox" role="switch" checked={fits} onChange={e => setFits(e.target.checked)} />
-          <span>{t('Fits my budget')} <span className="small muted">({t('{amount} left in {name}', { amount: money(campaign.remaining), name: campaign.name })})</span></span></label>}
+          <span className="switch-t">{t('Fits my budget')}<span className="small muted">{t('{amount} left', { amount: money(campaign.remaining) })} · <bdi>{campaign.name}</bdi></span></span></label>}
         {!guest && <label className="check"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} /> {t('Saved')}</label>}
         <label className="check"><input type="checkbox" checked={onlyNashr} onChange={e => setOnlyNashr(e.target.checked)} /> {t('On Nashr only')}</label>
         <div className="seg" role="group" aria-label={t("Market")}><button className={market === 'AE' ? 'on' : ''} onClick={() => setMarket('AE')}>{t("UAE")}</button>
@@ -222,7 +222,7 @@ export function OutletPage({ id }: { id: string }) {
       {o.comingSoon && <p className="warn">{t("Coming soon: this market is not open yet. You can plan it in a campaign; booking opens with the market.")}</p>}
       {(o.description || o.website || quoteOnly) && <div className="cols">
         {(o.description || o.website) && <section className="card pad">
-          {o.description && <p>{o.description}</p>}
+          {o.description && <p dir="auto">{o.description}</p>}
           {o.website && <p className="small"><a href={o.website} target="_blank" rel="noreferrer noopener">{o.website.replace(/^https?:\/\//, '')}</a></p>}
         </section>}
         {quoteOnly && <section className="card pad form">

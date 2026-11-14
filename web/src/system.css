@@ -1064,3 +1064,5 @@ main.nf p { margin: 0 0 8px; }
 /* A pick with "Other": the list, then the buyer's own words under it (industry, creative language) */
 .ed-pick { display: grid; gap: 6px; }
 .ed-pick > select, .ed-pick > input { width: 100%; }
+.nowrap { white-space: nowrap; }
+.file-btn { justify-self: start; }

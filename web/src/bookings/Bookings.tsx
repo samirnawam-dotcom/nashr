@@ -183,8 +183,9 @@ export function BookingPage({ id }: { id: string }) {
           <td className="small num">{full(c.uploadedAt)}</td><td className="r"><a className="small" href={`/api/files/${c.fileId}`}>{t("Download")}</a></td></tr>)}</tbody></table></div>}
         {['accepted_pay_now', 'payment_secured'].includes(d.status) && new Date(d.creativeDueAt) > new Date()
           && !d.creatives.some(c => c.status === 'approved' || c.status === 'pending') && <div className="field">
-          <label htmlFor="file">{d.creatives.length ? t('Upload a new version') : t('Upload your creative')}</label>
-          <input id="file" type="file" disabled={busy} onChange={e => e.target.files?.[0] && sendCreative(e.target.files[0])} /></div>}
+          <span className="label">{d.creatives.length ? t('Upload a new version') : t('Upload your creative')}</span>
+          <label className={`btn file-btn ${busy ? 'disabled' : ''}`}><input id="file" type="file" className="visually-hidden" disabled={busy} onChange={e => e.target.files?.[0] && sendCreative(e.target.files[0])} />
+            {busy ? t('Uploading…') : t('Choose a file')}</label></div>}
       </section>}
 
 

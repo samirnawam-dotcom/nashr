@@ -39,7 +39,7 @@ export function BuyerToDo() {
       : <ul>{items.map(({ d, what, by }) => <li key={d.id}>
         <a href={`/bookings/${d.id}`} className="todo-row">
           <span className={`todo-what ${what}`}>{t(LABEL[what])}</span>
-          <span className="todo-main"><span><b dir="auto">{d.outlet}</b> · {tm(d.label)}</span><span className="small muted">{slotWhen(d.startsAt, d.channel)} · <span className="num">{d.ref}</span>{what === 'pay' ? ` · ${money(d.total, d.currency)}` : ''}</span></span>
+          <span className="todo-main"><span><b dir="auto">{d.outlet}</b> · {tm(d.label)}</span><span className="small muted">{slotWhen(d.startsAt, d.channel)} · <bdi className="num nowrap">{d.ref}</bdi>{what === 'pay' ? ` · ${money(d.total, d.currency)}` : ''}</span></span>
           {by && <span className="todo-by small">{left(by)}</span>}
         </a></li>)}</ul>}
   </section>
