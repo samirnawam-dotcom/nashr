@@ -3,6 +3,7 @@ import { api } from '../api'
 import { dayLabel, money } from '../format'
 import { dubai } from '../calendar/layout'
 import { locale, t } from '../i18n'
+import { tmTitle } from '../i18n-server'
 import '../campaigns/media-plan.css'
 
 type Line = { at: string; ref: string | null; dealId: string | null; what: string | null; kind: 'released' | 'paid' | 'deducted'; amount: number; currency: string }
@@ -50,7 +51,7 @@ export function StatementPage({ month }: { month: string }) {
             <table className="plan-table"><thead><tr><th>{t('Date')}</th><th>{t('Order')}</th><th>{t('What')}</th><th className="r">{t('Amount')}</th></tr></thead>
               <tbody>{s.lines.map((l, i) => <tr key={i}><td className="num">{dayLabel(dubai(l.at).date, { day: 'numeric', month: 'short' })}</td>
                 <td className="num">{l.dealId ? <a href={`/deals/${l.dealId}`}>{l.ref}</a> : '—'}</td>
-                <td>{t(KIND[l.kind])}{l.what && <div className="small muted">{l.what}</div>}</td>
+                <td>{t(KIND[l.kind])}{l.what && <div className="small muted" dir="auto">{tmTitle(l.what)}</div>}</td>
                 <td className="r num">{money(l.amount, l.currency)}</td></tr>)}</tbody>
               <tfoot><tr><td colSpan={3}>{t('Change this month')}</td><td className="r num">{money(s.closing - s.opening)}</td></tr></tfoot></table>}
           {s.deducted !== 0 && <p className="small muted">{t('Deducted this month: {amount}. These are card costs of refunds that were your responsibility.', { amount: money(-s.deducted) })}</p>}

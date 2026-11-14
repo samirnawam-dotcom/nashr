@@ -6,7 +6,7 @@
 .plan-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; border-bottom: 2px solid #0d0c1d; padding-bottom: 20px; }
 .plan-mark { display: inline-flex; align-items: baseline; gap: 8px; }
 .plan-mark b { font: 700 18px var(--display); letter-spacing: -.01em; }
-.plan-mark i { font: 700 20px "Reem Kufi", serif; font-style: normal; color: #b07a08; }
+.plan-mark i { font: 700 20px "Reem Kufi", serif; font-style: normal; color: #6b3cf6; }
 .plan-kicker { margin: 18px 0 2px; font-size: 12px; color: #5e5b72; }
 .plan-head h1 { margin: 0; font: 700 30px/1.1 var(--display); letter-spacing: -.03em; }
 .plan-meta { margin: 6px 0 0; color: #5e5b72; }
@@ -50,3 +50,6 @@
 }
 .plan-mix .plan-note { margin: 8px 0 0; color: #5e5b72; font-size: 11.5px; }
 .statement-month { min-width: 9em; text-align: center; }
+
+/* order numbers, dates and amounts stay on one line */
+.plan-table td.num { white-space: nowrap; }

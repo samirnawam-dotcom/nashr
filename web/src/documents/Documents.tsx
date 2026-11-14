@@ -68,7 +68,7 @@ export function DocumentPage({ id }: { id: string }) {
         <div className="row-flex"><h1>{title}</h1><div className="spacer" /><span className="num">{d.number}</span></div>
         <p className="muted small">{t('Issued {date}', { date: dayLabel(dubai(d.issuedAt).date, { day: 'numeric', month: 'long', year: 'numeric' }) })}{d.dealRef ? ` · ${t('Order {ref}', { ref: d.dealRef })}` : ''}{d.relatedNumber ? ` · ${t('Credits {ref}', { ref: d.relatedNumber })}` : ''}</p>
         <div className="parties">
-          <div><div className="small muted">{t("From")}</div><b>{d.issuer.name}</b>{d.issuer.address && <div className="small addr">{d.issuer.address}</div>}{d.issuer.trn && <div className="small">{t('TRN')} {ltr(d.issuer.trn)}</div>}
+          <div><div className="small muted">{isAr ? 'من' : 'From' /* the document's issuer, not "starting from" as in date filters */}</div><b>{d.issuer.name}</b>{d.issuer.address && <div className="small addr">{d.issuer.address}</div>}{d.issuer.trn && <div className="small">{t('TRN')} {ltr(d.issuer.trn)}</div>}
             {d.onBehalf && !d.note && <div className="small muted">{t("Issued by Nashr on the publisher's behalf")}</div>}</div>
           <div><div className="small muted">{t("To")}</div><b>{d.recipient.name}</b>{d.recipient.address && <div className="small addr">{d.recipient.address}</div>}{d.recipient.trn && <div className="small">{t('TRN')} {ltr(d.recipient.trn)}</div>}
             {d.client && <div className="small muted">{t('For client: {name}', { name: d.client.name })}{d.client.trn ? ` · ${t('TRN')} ` : ''}{d.client.trn && ltr(d.client.trn)}</div>}</div>
@@ -81,7 +81,7 @@ export function DocumentPage({ id }: { id: string }) {
           <div className="total"><dt>{t("Total")}</dt><dd>{money(d.total, d.currency)}</dd></div>
         </dl>
         {d.note && <p className="small muted">{tm(d.note)}</p>}
-        {d.type === 'receipt' && <p className="small muted">{t("Payment received by Nashr on behalf of the publisher. This is not a tax invoice; the publisher's tax invoice is issued separately.")}</p>}
+        {d.type === 'receipt' && <p className="small muted">{d.note ? t("The publisher's tax invoice is issued separately.") : t("Payment received by Nashr on behalf of the publisher. This is not a tax invoice; the publisher's tax invoice is issued separately.")}</p>}
       </article>
     </main>
   )

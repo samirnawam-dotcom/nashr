@@ -253,7 +253,7 @@ const patterns = Object.entries(SERVER_AR).filter(([k]) => k.includes('{}'))
 const UNITS: Record<string, [string, string, string, string]> = { minutes: ['دقيقة واحدة', 'دقيقتين', 'دقائق', 'دقيقة'], hours: ['ساعة واحدة', 'ساعتين', 'ساعات', 'ساعة'] }
 const span = (v: string) => { const m = v.match(/^(\d+) (minutes|hours)$/); if (!m) return null
   const n = Number(m[1]), [one, two, few, many] = UNITS[m[2]]; return n === 1 ? one : n === 2 ? two : n <= 10 ? `${n} ${few}` : `${n} ${many}` }
-const word = (v: string): string => exact.get(v) ?? AR[v] ?? span(v) ?? (/^AED [\d,.]+$/.test(v) ? `${v.slice(4)} درهم` : /^\d{4,}(\.\d+)?$/.test(v) ? Number(v).toLocaleString('en-US') : v.includes(' and ') ? v.split(' and ').map(word).join(' و') : v)
+const word = (v: string): string => exact.get(v) ?? AR[v] ?? span(v) ?? (v.includes(' · ') ? v.split(' · ').map(word).join(' · ') : v.length < 40 && one(v) ? one(v)! : /^AED [\d,.]+$/.test(v) ? `${v.slice(4)} درهم` : /^\d{4,}(\.\d+)?$/.test(v) ? Number(v).toLocaleString('en-US') : v.includes(' and ') ? v.split(' and ').map(word).join(' و') : v)
 
 function one(s: string): string | null {
   const hit = exact.get(s) ?? AR[s]

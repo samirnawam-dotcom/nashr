@@ -1071,3 +1071,12 @@ main.nf p { margin: 0 0 8px; }
 /* legal tables hold sentences, not figures: let them wrap on phones instead of scrolling sideways */
 main.legal .table-wrap.card > .table td, main.legal .table-wrap.card > .table th { white-space: normal; vertical-align: top; min-width: 0; max-width: none; position: static; }
 main.legal .table-wrap.card > .table { min-width: 100%; }
+
+/* Printing a document, statement or plan: a paper margin, no app chrome, the sheet on plain white */
+@media print {
+  @page { margin: 14mm; }
+  .side, .topbar, .tabbar, .no-print, .skip { display: none !important; }
+  body, .shell, main { background: #fff !important; }
+  main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+  .doc { border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
+}

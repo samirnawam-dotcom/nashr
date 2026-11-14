@@ -144,10 +144,11 @@ export const AR_BUYER: Record<string, string> = {
   'Document': 'المستند', 'Number': 'الرقم', 'Date': 'التاريخ', 'Tax invoice': 'فاتورة ضريبية', 'Invoice': 'فاتورة', "Publisher's uploaded invoice": 'الفاتورة التي رفعها الناشر',
   'Issued {date}': 'صدرت في {date}', 'Credits {ref}': 'يُقيّد لصالح {ref}', 'TRN': 'الرقم الضريبي', "Issued by Nashr on the publisher's behalf": 'صادرة من نشر نيابةً عن الناشر', 'To': 'إلى',
   'Description': 'الوصف', 'Amount': 'المبلغ', 'Subtotal': 'المجموع الفرعي', 'VAT {rate}%': 'ضريبة القيمة المضافة {rate}%',
-  "Payment received by Nashr on behalf of the publisher. This is not a tax invoice; the publisher's tax invoice is issued separately.": 'استلمت نشر الدفعة نيابةً عن الناشر. هذا ليس فاتورة ضريبية؛ تصدر الفاتورة الضريبية للناشر بشكل منفصل.',
+  "Payment received by Nashr on behalf of the publisher. This is not a tax invoice; the publisher's tax invoice is issued separately.": 'استلمت نشر الدفعة نيابةً عن الناشر. هذه ليست فاتورة ضريبية؛ تصدر الفاتورة الضريبية للناشر بشكل منفصل.',
 
   // Athena
   'Athena will turn a campaign brief into a suggested set of bookable slots across UAE media, based on real winning prices, audiences and results on Nashr.':
     'ستحوّل أثينا موجز الحملة إلى مجموعة مقترحة من المساحات القابلة للحجز في وسائل الإعلام الإماراتية، استنادًا إلى الأسعار الفائزة الفعلية والجماهير والنتائج على نشر.',
   "We're collecting that data now with every booking. Until then, plan with": 'نجمع هذه البيانات الآن مع كل حجز. وحتى ذلك الحين، خطّط باستخدام', 'Tell me when Athena launches': 'أبلغني عند إطلاق أثينا',
+  "The publisher's tax invoice is issued separately.": "تصدر الفاتورة الضريبية للناشر بشكل منفصل.",
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { tm } from '../i18n-server'
+import { tm, tmTitle } from '../i18n-server'
 import { api } from '../api'
 import { STAGES, type CampaignDetail } from './Campaigns'
 import { dayLabel, money, time, slotWhen } from '../format'
@@ -64,7 +64,7 @@ export function MediaPlanPage({ id }: { id: string }) {
           <h2>{t("The plan")}</h2>
           {!c.plan.length ? <p className="muted">{t("No products in the plan yet.")}</p> :
             <table className="plan-table"><thead><tr><th>{t("Product")}</th><th>{t("Media type")}</th><th>{t("Where it is")}</th><th className="r">{t("Estimated cost")}</th><th className="r">{t("Committed")}</th></tr></thead>
-              <tbody>{c.plan.map(i => <tr key={i.placementId}><td><b>{i.title}</b></td><td>{CHANNEL[i.channel] ?? i.channel}</td><td>{t(STAGES.find(x => x[0] === i.stage)![1])}</td>
+              <tbody>{c.plan.map(i => <tr key={i.placementId}><td><b dir="auto">{tmTitle(i.title)}</b></td><td>{CHANNEL[i.channel] ?? i.channel}</td><td>{t(STAGES.find(x => x[0] === i.stage)![1])}</td>
                 <td className="r num">{money(i.estimated)}</td><td className="r num">{i.committed ? money(i.committed) : '—'}</td></tr>)}</tbody>
               <tfoot><tr><td colSpan={3}>{t("Total")}</td><td className="r num">{money(planned)}</td><td className="r num">{money(c.committed)}</td></tr></tfoot></table>}
         </section>
