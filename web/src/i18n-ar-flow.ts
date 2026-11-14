@@ -1875,4 +1875,8 @@ export const AR_FLOW: Record<string, string> = {
   "One price. Several buyers can make offers at that price; you pick one.": "سعر واحد. يمكن لعدة مشترين التقدّم بهذا السعر؛ وتختار أنت واحدًا.",
   "Buyers can offer lower, higher or the same as the price; you pick one.": "يمكن للمشترين عرض سعر أقل أو أعلى أو مساوٍ؛ وتختار أنت واحدًا.",
   "List it for the dates you choose": "اعرضه للبيع في التواريخ التي تختارها",
+  "This document is in English for now. The Arabic version will be published once it has been reviewed by a UAE lawyer.": "هذه الوثيقة متاحة بالإنجليزية حاليًا. ستُنشر النسخة العربية بعد مراجعتها من محامٍ في الإمارات.",
+  "bid on this slot": "المزايدة على هذه المساحة",
+  "book this slot": "حجز هذه المساحة",
+  "request a quote": "طلب عرض سعر",
 }

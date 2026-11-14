@@ -2,6 +2,7 @@ import { PAGES, breadcrumb, useMeta } from './seo'
 import { useEffect, useState } from 'react'
 import { PhotoBand } from './PhotoBand'
 import { api } from './api'
+import { isAr, t } from './i18n'
 
 /*
  * Terms, privacy and refund policy. DRAFTS written from how Nashr actually works (the timers and fees are the
@@ -15,7 +16,10 @@ const PHOTO: Record<string, string> = { '/terms': '/brand/print-wide.jpg', '/pri
 function Page({ title, path, children }: { title: string; path: string; children: React.ReactNode }) {
   useMeta({ ...PAGES[path], jsonLd: [breadcrumb([['Nashr', '/'], [title, path]])] }, [path])
   return (
-    <main className="legal">
+    // The legal text is English until a lawyer approves an Arabic version: on Arabic pages it keeps its own left-to-right layout,
+    // with a note in Arabic saying so, instead of an unreviewed translation of binding wording.
+    <main className="legal" dir="ltr" lang="en">
+      {isAr && <p className="legal-ar" dir="rtl" lang="ar" role="note">{t('This document is in English for now. The Arabic version will be published once it has been reviewed by a UAE lawyer.')}</p>}
       <PhotoBand img={PHOTO[path] ?? '/brand/print-wide.jpg'} title={title} sub={`Last updated ${UPDATED}`} focus={path === '/privacy' ? '60% 18%' : undefined} />
       <p className="warn" role="note"><b>Draft for legal review.</b> This text describes how Nashr works today. It is not final until approved by a UAE lawyer.</p>
       {children}

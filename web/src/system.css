@@ -1066,3 +1066,8 @@ main.nf p { margin: 0 0 8px; }
 .ed-pick > select, .ed-pick > input { width: 100%; }
 .nowrap { white-space: nowrap; }
 .file-btn { justify-self: start; }
+/* the Arabic note above a legal document that is still in English */
+.legal-ar { margin: 0 0 16px; padding: 12px 16px; border-radius: 12px; background: var(--teal-1); color: var(--signal-ink); font: 500 15px/1.6 var(--arabic); text-align: right; }
+/* legal tables hold sentences, not figures: let them wrap on phones instead of scrolling sideways */
+main.legal .table-wrap.card > .table td, main.legal .table-wrap.card > .table th { white-space: normal; vertical-align: top; min-width: 0; max-width: none; position: static; }
+main.legal .table-wrap.card > .table { min-width: 100%; }

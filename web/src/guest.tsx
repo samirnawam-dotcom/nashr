@@ -14,7 +14,7 @@ export function takePlace() { try { const h = sessionStorage.getItem(NEXT); sess
 export function SignInPrompt({ to, compact }: { to: string; compact?: boolean }) {
   return (
     <div className={`signin-prompt ${compact ? 'compact' : ''}`} role="note">
-      <p><b>{t('Sign in to {action}.', { action: to })}</b> {!compact && t('Nashr is invite-only for UAE brands, agencies and media outlets.')}</p>
+      <p><b>{t('Sign in to {action}.', { action: t(to) })}</b> {!compact && t('Nashr is invite-only for UAE brands, agencies and media outlets.')}</p>
       <div className="row-flex">
         <a className="btn primary" href="/sign-in" onClick={rememberPlace}>{t("Sign in")}</a>
         <a className="btn" href="/request-access" onClick={rememberPlace}>{t("Request access")}</a>
