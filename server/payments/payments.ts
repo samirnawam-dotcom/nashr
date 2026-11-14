@@ -347,7 +347,8 @@ export async function handleProviderEvent(ev: { id: string; type: string; data: 
       // The provider's word on what was paid must match what the buyer owed, or the booking is not secured: staff look into it.
       const amount = ev.data.amount == null ? null : Number(ev.data.amount), currency = ev.data.currency ? String(ev.data.currency).toUpperCase() : null
       if ((amount != null && amount !== Number(op.amount)) || (currency && currency !== op.currency)) {
-        const detail = `A payment for order ${op.ref} came back as ${amount} ${currency ?? ''} instead of ${op.amount} ${op.currency}. The booking was not marked paid. Check it with the payment provider.`
+        const aed = (fils: number | null, cur: string | null) => fils == null ? 'no amount' : `${cur ?? op.currency} ${(fils / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` // amounts are kept in fils
+        const detail = `A payment for order ${op.ref} came back as ${aed(amount, currency)} instead of ${aed(Number(op.amount), op.currency)}. The booking was not marked paid. Check it with the payment provider.`
         await audit(c, 'system:provider', 'payment.amount_mismatch', 'deal', op.deal_id, { ref: op.ref, expected: Number(op.amount), got: amount, currency }, at)
         for (const s of (await c.query(`select distinct company_id from users where role in ('admin', 'founder') and status = 'active'`)).rows)
           await notify(c, s.company_id, 'ops.alert', op.deal_id, { key: 'payment.mismatch', detail }, at)

@@ -41,16 +41,16 @@ export async function findProblems(db: Db, ctx: Ctx): Promise<Problem[]> {
     out.push({ key: 'sweeper.stopped', detail: r.heartbeat ? `The timer job last ran ${ago(at.getTime() - r.heartbeat.getTime())} ago: auctions do not close and deadlines do not pass.` : 'The timer job has not run yet.' })
   if (r.oldest_pending && at.getTime() - r.oldest_pending.getTime() > 15 * 60_000)
     out.push({ key: 'money.stuck', detail: `A payout or refund has been waiting ${ago(at.getTime() - r.oldest_pending.getTime())}. Check Funds.` })
-  if (r.failed_money > 0) out.push({ key: 'money.failed', detail: `${r.failed_money} payout or refund failed and needs a person. Check Funds.` })
+  if (r.failed_money > 0) out.push({ key: 'money.failed', detail: `Payouts or refunds that failed and need a person: ${r.failed_money}. Check Funds.` })
   if (ctx.reconciles && !(await ctx.reconciles())) out.push({ key: 'money.ledger', detail: 'The ledger and the payment provider disagree on the cash Nashr holds. Check Funds.' })
   if (smtpConfig()) {
-    if (r.failed_mail > 0) out.push({ key: 'email.failing', detail: `${r.failed_mail} email could not be sent in the last day. Check Emails.` })
+    if (r.failed_mail > 0) out.push({ key: 'email.failing', detail: `Emails that could not be sent in the last day: ${r.failed_mail}. Check Emails.` })
     else if (r.retrying_mail && at.getTime() - r.retrying_mail.getTime() > 30 * 60_000)
       out.push({ key: 'email.failing', detail: `Emails have been retrying for ${ago(at.getTime() - r.retrying_mail.getTime())}. Check Emails.` })
   }
-  if (r.late_disputes > 0) out.push({ key: 'disputes.late', detail: `${r.late_disputes} dispute is past its decision date. Check Disputes.` })
+  if (r.late_disputes > 0) out.push({ key: 'disputes.late', detail: `Disputes past their decision date: ${r.late_disputes}. Check Disputes.` })
   const recent = errors.filter(e => e.at > at.getTime() - 10 * 60_000)
-  if (recent.length >= 5) out.push({ key: 'errors.spike', detail: `${recent.length} server errors in the last 10 minutes, latest: ${recent[recent.length - 1].what}. Check the logs (journalctl -u nashr).` })
+  if (recent.length >= 5) out.push({ key: 'errors.spike', detail: `Server errors in the last 10 minutes: ${recent.length}, latest: ${recent[recent.length - 1].what}. Check the logs (journalctl -u nashr).` })
   // Backups are watched where the server makes them (the deploy script sets BACKUP_DIR and installs the nightly timer).
   if (process.env.BACKUP_DIR) {
     if (r.backup_ok === false) out.push({ key: 'backup.failed', detail: 'The last backup failed. Check: journalctl -u nashr-backup.' })

@@ -81,5 +81,12 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
 
 /** The page a notification opens, for the person's role. */
 export function noticeHref(n: N, role: string): string | undefined {
+  // Nashr's staff: bookings open on the staff deal page; requests on the page that handles them
+  if (role === 'admin' || role === 'founder') {
+    if (n.kind === 'access.requested') return '/access'
+    if (n.kind === 'quote.requested') return '/directory'
+    if (n.kind.startsWith('ops.') && !n.dealId) return '/admin'
+    if (n.dealId && n.kind !== 'message.new' && n.kind !== 'support.new') return `/deals/${n.dealId}`
+  }
   return n.kind === 'support.new' ? '/support' : n.kind.startsWith('ops.') ? '/admin' : n.kind === 'support.replied' ? '/help' : n.kind === 'message.new' && n.dealId ? `/messages/${n.dealId}` : n.dealId ? (role === 'seller' ? `/deals/${n.dealId}` : `/bookings/${n.dealId}`) : n.kind === 'access.reset_requested' && n.data?.companyId ? `/accounts/${n.data.companyId}` : n.kind === 'interest.received' && n.data?.slotId ? `/slots/${n.data.slotId}` : n.kind.startsWith('bid.') || n.kind.startsWith('interest.') ? '/calendar' : n.kind === 'search.match' ? `/calendar?search=${n.data?.searchId}` : undefined
 }
