@@ -1,0 +1,26 @@
+/* Campaigns (owner's buyer-side fixes): the campaign form, the plan of products and where each one is */
+.cp-form { max-width: 860px; margin-bottom: 24px; }
+.cp-form h2 { margin: 0 0 6px; }
+.cp-sec { margin: 22px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
+.cp-sec:first-of-type { border-top: 0; padding-top: 0; margin-top: 8px; }
+.cp-sec h3 { margin: 0 0 2px; font-size: 16px; }
+.cp-sec p { margin: 0; }
+.cp-creative { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; min-height: 42px; }
+.cp-kpis dd.over { color: var(--red); }
+.cp-kpis .card > span { display: block; margin-top: 2px; }
+.cp-bar { margin: 4px 0 6px; }
+.cp-h { display: flex; align-items: center; gap: 12px; margin-top: 28px; }
+.cp-h .sec-h { margin: 0; }
+.cp-prod { display: inline-flex; align-items: center; gap: 12px; }
+.cp-prod > span { display: flex; flex-direction: column; gap: 2px; }
+
+/* Added → Bid placed → Accepted → Paid → Ran */
+.cp-stage { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; }
+.cp-stage li { position: relative; flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint); white-space: nowrap; }
+.cp-stage li + li::before { content: ""; width: 14px; height: 2px; border-radius: 2px; background: var(--line-2); }
+.cp-stage li span { padding: 3px 8px; border-radius: 999px; }
+.cp-stage li.done { color: var(--slate); }
+.cp-stage li.done + li::before, .cp-stage li.now::before { background: var(--teal-3); }
+.cp-stage li.now span { background: var(--teal-1); color: var(--signal-ink); font-weight: 600; }
+/* narrow screens: only where it is now */
+@media (max-width: 900px) { .cp-stage li:not(.now) { display: none; } .cp-stage li.now::before { display: none; } }

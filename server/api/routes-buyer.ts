@@ -24,7 +24,7 @@ const money = { type: 'integer', minimum: 1 }
 const campaignId = { type: 'string', format: 'uuid' }, clientId = { type: 'string', format: 'uuid' }
 const brief = { type: 'object', additionalProperties: false, properties: {
   advertiser: { type: 'string', maxLength: 200 }, industry: { type: 'string', maxLength: 100 }, message: { type: 'string', maxLength: 2000 },
-  language: { enum: ['arabic', 'english', 'bilingual'] }, landingUrl: { type: 'string', maxLength: 500 }, draftFileKey: { type: 'string', maxLength: 300 },
+  language: { enum: ['arabic', 'english', 'bilingual', 'other'] }, languageOther: { type: 'string', maxLength: 60 }, landingUrl: { type: 'string', maxLength: 500 }, draftFileKey: { type: 'string', maxLength: 300 },
   creativeToFollow: { type: 'boolean' }, notes: { type: 'string', maxLength: 2000 }, disclaimer: { type: 'string', maxLength: 500 } } }
 
 // Before acceptance, VAT is previewed from the publisher's VAT status; acceptance freezes it on the deal.

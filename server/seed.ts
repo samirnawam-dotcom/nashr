@@ -15,7 +15,7 @@ const PASSWORD = 'nashr-demo-2026'
 const BRIEF = { advertiser: 'Demo brand', industry: 'Banking', message: 'Demo campaign', language: 'english', landingUrl: 'https://example.com', creativeToFollow: true }
 
 await migrate()
-await pool.query(`truncate staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
+await pool.query(`truncate staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_lines, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
   prerun_checks, money_ops, ledger_entries, deal_events, deals, bids, slots, placements, outlets, companies, provider_events restart identity cascade`)
 await pool.query(`delete from settings where valid_from > '2000-01-01'`)
 
@@ -128,9 +128,12 @@ for (const [name, nameAr, channel, low, high] of [['Rotana FM', 'روتانا إ
     [name, nameAr, channel, low * 100, high * 100])
 
 // A campaign with a plan, and one buy-now the publisher has accepted (pay it from Bookings).
-const campaign = (await pool.query(`insert into campaigns (buyer_id, name, budget, launch_date, objective, created_at) values ($1, 'Q4 business cards launch', $2, $3, 'Awareness', now()) returning id`,
-  [buyer, AED(150_000), from])).rows[0].id
-await pool.query(`insert into campaign_items (campaign_id, outlet_id, planned_amount) select $1, id, $2 from outlets where name in ('Skyline FM', 'Gulf News', 'Arabian Business')`, [campaign, AED(40_000)])
+// The campaign is the plan (owner's buyer-side fixes): dates, a budget, one brief, and the products it plans to use.
+const campaign = (await pool.query(`insert into campaigns (buyer_id, name, budget, start_date, end_date, launch_date, objective, brief, created_at)
+    values ($1, 'Q4 business cards launch', $2, $3, ($3::date + 42), $3, 'Awareness', $4, now()) returning id`,
+  [buyer, AED(150_000), from, JSON.stringify({ ...BRIEF, creativeToFollow: true })])).rows[0].id
+await pool.query(`insert into campaign_lines (campaign_id, placement_id, added_at) select $1, p.id, now() from placements p join outlets o on o.id = p.outlet_id
+  where not p.archived and o.name in ('Skyline FM', 'Gulf News')`, [campaign])
 const buyNow = (await pool.query(`select s.id from slots s where s.status = 'open' and s.buy_now_price is not null and s.kind = 'single'
   and not exists (select 1 from bids b where b.slot_id = s.id) order by s.starts_at limit 1`)).rows[0]
 if (buyNow) await tx(async c => {

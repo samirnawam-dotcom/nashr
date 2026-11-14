@@ -102,8 +102,7 @@ export function OutletPage({ id }: { id: string }) {
     catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   async function addToCampaign(cid: string) {
-    const c = await api<{ items: { outletId: string; planned: number }[] }>(`/campaigns/${cid}`)
-    if (!c.items.some(i => i.outletId === o!.id)) await api(`/campaigns/${cid}/items`, { method: 'PUT', body: { items: [...c.items.map(i => ({ outletId: i.outletId, planned: i.planned })), { outletId: o!.id, planned: 0 }] } })
+    for (const p of o!.placements) await api(`/campaigns/${cid}/lines`, { method: 'POST', body: { placementId: p.id } })
     setAdded(campaigns.find(x => x.id === cid)!.name)
   }
   const price = o?.price ? (o.price.from === o.price.to ? money(o.price.from, o.price.currency) : `${money(o.price.from, o.price.currency)} to ${money(o.price.to, o.price.currency)}`) : null

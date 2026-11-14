@@ -267,17 +267,37 @@ describe('buyer screens', () => {
     expect((await call(admin, 'GET', '/api/notifications')).json().items[0]).toMatchObject({ kind: 'quote.requested', data: { outlet: 'Arabian Business' } })
   })
 
-  test('campaigns: bookings tagged to a campaign count against its budget; nobody else\'s campaign can be used', async () => {
-    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'Q4 launch', budget: AED(50_000), launchDate: '2026-11-15' })).json().id
-    const other = (await call(buyerB, 'POST', '/api/campaigns', { name: 'Theirs', budget: AED(10_000) })).json().id
+  test('campaigns are the plan: one brief sent with every tagged bid, products costed at their default price, stages, totals against the budget', async () => {
+    const CB = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards with no fees.', language: 'other', languageOther: 'Hindi', creativeToFollow: true }
+    const make = (who: Who, body: object) => call(who, 'POST', '/api/campaigns', { name: 'Q4 launch', startDate: '2026-11-15', endDate: '2026-12-31', brief: CB, ...body })
+    expect((await make(buyerA, { brief: { ...CB, message: '' } })).json().error).toMatch('what the ad will say')
+    expect((await make(buyerA, { brief: { ...CB, languageOther: '' } })).json().error).toMatch('which language')
+    expect((await make(buyerA, { endDate: '2026-11-01' })).json().error).toMatch('end date')
+    expect((await call(buyerA, 'POST', '/api/campaigns', { name: 'No dates', brief: CB })).statusCode).toBe(400)
+    const free = (await make(buyerA, { name: 'No budget' })).json().id // the budget is optional
+    expect((await call(buyerA, 'GET', `/api/campaigns/${free}`)).json()).toMatchObject({ budget: null, remaining: null })
+    const c = (await make(buyerA, { budget: AED(50_000) })).json().id
+    const other = (await make(buyerB, { name: 'Theirs' })).json().id
     expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: BRIEF, campaignId: other })).json().error).toMatch('your active campaigns')
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF, campaignId: c })).json().id
-    const outletX = (await pool.query(`select id from outlets where company_id = $1`, [sellerX.companyId])).rows[0].id
-    expect((await call(buyerA, 'PUT', `/api/campaigns/${c}/items`, { items: [{ outletId: outletX, planned: AED(20_000) }] })).statusCode).toBe(200)
-    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()).toMatchObject({ committed: 0, pending: AED(5_500), planned: AED(20_000) })
+    // the plan lists products, each at its default price (the product's own, else the listing's starting price)
+    const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+    expect((await call(buyerA, 'POST', `/api/campaigns/${c}/lines`, { placementId: placement })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/campaigns/${c}/lines`, { placementId: placement })).statusCode).toBe(200) // once
+    expect((await call(buyerB, 'POST', `/api/campaigns/${c}/lines`, { placementId: placement })).statusCode).toBe(404)
+    let got = (await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()
+    expect(got.plan).toHaveLength(1)
+    expect(got.plan[0]).toMatchObject({ placementId: placement, stage: 'added' })
+    expect(got.estimated).toBe(got.plan[0].estimated)
+    // no brief with the request: the campaign's goes with it, and the publisher sees it
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { campaignId: c })).json().id
+    expect((await pool.query(`select b.brief from deals d join bids b on b.id = d.bid_id where d.id = $1`, [deal])).rows[0].brief).toMatchObject({ message: CB.message, languageOther: 'Hindi' })
+    got = (await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()
+    expect(got).toMatchObject({ committed: 0, pending: AED(5_500), remaining: AED(44_500), plan: [{ stage: 'bid' }] })
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
-    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()).toMatchObject({ committed: AED(5_500), remaining: AED(44_500),
-      items: [{ outlet: 'Skyline FM', planned: AED(20_000), committed: AED(5_500) }], bookings: [{ id: deal }] })
+    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json()).toMatchObject({ committed: AED(5_500), pending: 0, remaining: AED(44_500),
+      plan: [{ stage: 'accepted', committed: AED(5_500) }], bookings: [{ id: deal }] })
+    expect((await call(buyerA, 'DELETE', `/api/campaigns/${c}/lines/${placement}`)).statusCode).toBe(200)
+    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json().plan).toHaveLength(0)
     expect((await call(buyerB, 'GET', `/api/campaigns/${c}`)).statusCode).toBe(404)
     expect((await call(buyerB, 'PUT', `/api/campaigns/${c}`, { budget: 1 })).statusCode).toBe(404)
   })
@@ -709,9 +729,9 @@ describe('brief scenarios closed in phase F', () => {
     expect((await call(buyerA, 'GET', '/api/slots?from=2026-11-15T00:00:00Z&to=2026-11-23T00:00:00Z')).json().some((s: any) => s.outlet === 'Rotana FM')).toBe(false)
     expect((await call(buyerA, 'POST', `/api/slots/${slots[0].id}/bids`, { amount: AED(3_000), brief: BRIEF })).json().error).toMatch('coming soon')
     expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === outlet)).toMatchObject({ market: 'SA', comingSoon: true, onNashr: false })
-    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'GCC', budget: AED(10_000) })).json().id
-    await call(buyerA, 'PUT', `/api/campaigns/${c}/items`, { items: [{ outletId: outlet, planned: AED(3_000) }] })
-    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json().items).toHaveLength(1)
+    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'GCC', budget: AED(10_000), startDate: '2026-12-01', endDate: '2026-12-31', brief: BRIEF })).json().id
+    expect((await call(buyerA, 'POST', `/api/campaigns/${c}/lines`, { placementId: placement })).statusCode).toBe(200) // planned now, booked when the market opens
+    expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json().plan).toHaveLength(1)
     for (const topic of ['KSA', 'Athena', 'KSA']) await call(buyerA, 'POST', '/api/waitlist', { topic })
     expect((await call(buyerA, 'GET', '/api/waitlist')).json().sort()).toEqual(['Athena', 'KSA'])
   })

@@ -6,7 +6,8 @@ import { containsContactDetails } from '../core/contact.js'
 import { notify } from '../core/notify.js'
 import { audit } from '../core/audit.js'
 import { buyerStatus } from './shapes.js'
-import { coverUrl, logoUrl } from './routes-covers.js'
+import { brandLogoUrl, coverUrl, logoUrl } from './routes-covers.js'
+import { briefProblems } from '../fulfilment/brief.js'
 import { outletRating } from './routes-ratings.js'
 
 const BUYER: ['buyer'] = ['buyer']
@@ -131,71 +132,115 @@ export function planRoutes(route: RouteFn) {
     return { ok: true }
   }, { type: 'object', required: ['topic'], properties: { topic: { enum: ['KSA', 'Athena'] } } })
 
-  // Campaigns: a budget and a plan of outlets; bookings tagged to the campaign count against it.
-  const totals = `select c.*, c.launch_date::text launch_text,
+  // Campaigns (owner's buyer-side fixes): the campaign is the plan. Dates, an optional budget, one brief sent with every bid
+  // tagged to it, and a plan of products (a product's own unit or a programme), each costed at its default price.
+  const LIVE = `('awaiting_seller')`, RAN = `('in_review', 'issue_open', 'disputed', 'released', 'paid_out')`
+  const totals = `select c.*, c.start_date::text start_text, c.end_date::text end_text,
       coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${BOOKED}), 0)::bigint committed,
-      coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status = 'awaiting_seller'), 0)::bigint pending,
-      coalesce((select sum(i.planned_amount) from campaign_items i where i.campaign_id = c.id), 0)::bigint planned,
+      coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${LIVE}), 0)::bigint pending,
+      coalesce((select sum(coalesce(p.default_price, o.default_price, p.starting_price)) from campaign_lines l join placements p on p.id = l.placement_id
+        join outlets o on o.id = p.outlet_id where l.campaign_id = c.id), 0)::bigint estimated,
+      (select count(*)::int from campaign_lines l where l.campaign_id = c.id) lines,
       (select name from clients where id = c.client_id) client
     from campaigns c where c.buyer_id = $1`
-  const card = (c: any) => ({ id: c.id, name: c.name, budget: c.budget, launchDate: c.launch_text, objective: c.objective, audience: c.audience,
-    message: c.message, status: c.status, clientId: c.client_id, client: c.client, committed: c.committed, pending: c.pending, planned: c.planned, remaining: c.budget - c.committed })
+  const num = (v: any) => v == null ? null : Number(v)
+  const card = (c: any) => ({ id: c.id, name: c.name, budget: num(c.budget), startDate: c.start_text, endDate: c.end_text, objective: c.objective,
+    brief: c.brief ?? null, status: c.status, clientId: c.client_id, client: c.client, lines: c.lines,
+    estimated: Number(c.estimated), committed: Number(c.committed), pending: Number(c.pending),
+    // what is left to spend: the budget less what publishers accepted and what is waiting for them
+    remaining: c.budget == null ? null : Number(c.budget) - Number(c.committed) - Number(c.pending) })
+  const briefSchema = { type: 'object', additionalProperties: false, properties: {
+    advertiser: { type: 'string', maxLength: 200 }, industry: { type: 'string', maxLength: 100 }, message: { type: 'string', maxLength: 280 },
+    language: { enum: ['arabic', 'english', 'bilingual', 'other'] }, languageOther: { type: 'string', maxLength: 60 }, draftFileKey: { type: 'string', maxLength: 300 },
+    creativeToFollow: { type: 'boolean' }, disclaimer: { type: 'string', maxLength: 500 }, landingUrl: { type: 'string', maxLength: 500 } } }
   const campaignBody = { type: 'object', additionalProperties: false, properties: {
-    name: { type: 'string', minLength: 1, maxLength: 200 }, budget: { type: 'integer', minimum: 1 }, launchDate: { type: 'string', format: 'date' },
-    objective: { type: 'string', maxLength: 500 }, audience: { type: 'string', maxLength: 500 }, message: { type: 'string', maxLength: 2000 },
+    name: { type: 'string', minLength: 1, maxLength: 200 }, budget: { type: ['integer', 'null'], minimum: 1 },
+    startDate: { type: 'string', format: 'date' }, endDate: { type: 'string', format: 'date' },
+    objective: { type: ['string', 'null'], maxLength: 500 }, brief: briefSchema,
     status: { enum: ['active', 'completed'] }, clientId: { type: ['string', 'null'], format: 'uuid' } } }
   const ownClient = async (db: any, id: string | null | undefined, buyerId: string) => {
     if (id && !(await db.query(`select 1 from clients where id = $1 and buyer_id = $2`, [id, buyerId])).rowCount) throw new MarketError('Choose one of your clients.')
+  }
+  function check(b: any) {
+    if (b.name != null && !b.name.trim()) throw new MarketError('Add the campaign name.')
+    if (b.startDate && b.endDate && b.endDate < b.startDate) throw new MarketError('The end date must be on or after the start date.')
+    if (b.brief) {
+      const problem = briefProblems(b.brief, 'campaign')[0]
+      if (problem) throw new MarketError(problem === 'A booking brief is required with your first bid.' ? 'Fill in the campaign brief.' : problem)
+      if (b.brief.landingUrl === '') delete b.brief.landingUrl
+    }
   }
 
   route('GET', '/api/campaigns', BUYER, async ({ db, me }) =>
     (await db.query(`${totals} order by c.status, c.created_at desc`, [me.actAs.companyId])).rows.map(card))
 
   route('POST', '/api/campaigns', BUYER, async ({ db, at, me }, req) => {
-    const b = req.body
+    const b = req.body; check(b)
     await ownClient(db, b.clientId, me.actAs.companyId)
-    const c = (await db.query(`insert into campaigns (buyer_id, name, budget, launch_date, objective, audience, message, created_at, client_id)
-                               values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
-      [me.actAs.companyId, b.name, b.budget, b.launchDate ?? null, b.objective ?? null, b.audience ?? null, b.message ?? null, at, b.clientId ?? null])).rows[0]
+    const c = (await db.query(`insert into campaigns (buyer_id, name, budget, start_date, end_date, launch_date, objective, brief, created_at, client_id)
+                               values ($1, $2, $3, $4, $5, $4, $6, $7, $8, $9) returning id`,
+      [me.actAs.companyId, b.name.trim(), b.budget ?? null, b.startDate, b.endDate, b.objective?.trim() || null, JSON.stringify(b.brief), at, b.clientId ?? null])).rows[0]
+    await audit(db, `user:${me.userId}`, 'campaign.created', 'campaign', c.id, { name: b.name }, at)
     return { id: c.id }
-  }, { ...campaignBody, required: ['name', 'budget'] })
+  }, { ...campaignBody, required: ['name', 'startDate', 'endDate', 'brief'] })
 
   route('PUT', '/api/campaigns/:id', BUYER, async ({ db, me }, req) => {
-    const b = req.body, cols = { name: 'name', budget: 'budget', launchDate: 'launch_date', objective: 'objective', audience: 'audience', message: 'message', status: 'status', clientId: 'client_id' }
+    const b = req.body; check(b)
+    const cols: Record<string, string> = { name: 'name', budget: 'budget', startDate: 'start_date', endDate: 'end_date', objective: 'objective', brief: 'brief', status: 'status', clientId: 'client_id' }
     await ownClient(db, b.clientId, me.actAs.companyId)
     const set = Object.entries(cols).filter(([k]) => k in b)
     if (!set.length) throw new MarketError('Nothing to change.')
-    const r = await db.query(`update campaigns set ${set.map(([, c], i) => `${c} = $${i + 3}`).join(', ')} where id = $1 and buyer_id = $2`,
-      [req.params.id, me.actAs.companyId, ...set.map(([k]) => b[k])])
+    const val = (k: string) => k === 'brief' ? JSON.stringify(b.brief) : typeof b[k] === 'string' && k !== 'status' ? b[k].trim() || null : b[k]
+    const r = await db.query(`update campaigns set ${set.map(([, c], i) => `${c} = $${i + 3}`).join(', ')} where id = $1 and buyer_id = $2 returning id`,
+      [req.params.id, me.actAs.companyId, ...set.map(([k]) => val(k))])
     if (!r.rowCount) throw new NotFound()
+    const d = (await db.query(`select start_date, end_date from campaigns where id = $1`, [req.params.id])).rows[0]
+    if (d.start_date && d.end_date && d.end_date < d.start_date) throw new MarketError('The end date must be on or after the start date.')
     return { ok: true }
   }, campaignBody)
 
-  route('GET', '/api/campaigns/:id', BUYER, async ({ db, me }, req) => {
+  route('GET', '/api/campaigns/:id', BUYER, async ({ db, me, at }, req) => {
     const c = (await db.query(`${totals} and c.id = $2`, [me.actAs.companyId, req.params.id])).rows[0]
     if (!c) throw new NotFound()
-    const items = (await db.query(
-      `select i.outlet_id, i.planned_amount, o.name, o.channel,
-         coalesce((select sum(d.amount) from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
-                   where d.campaign_id = $1 and p.outlet_id = o.id and d.status in ${BOOKED}), 0)::bigint committed
-       from campaign_items i join outlets o on o.id = i.outlet_id where i.campaign_id = $1 order by o.name`, [c.id])).rows
+    // each product in the plan: its estimated cost, and how far it has got (Added, Bid placed, Accepted, Paid, Ran)
+    const lines = (await db.query(
+      `select p.id placement_id, p.kind, p.name, o.id outlet_id, o.channel, o.default_price, p.default_price p_default, p.starting_price,
+         pr.id brand_id, brand_name(o) brand, coalesce(pr.logo_key, null) brand_logo_key, o.logo_key outlet_logo_key, l.added_at,
+         (select count(*)::int from slots s where s.placement_id = p.id and s.status = 'open' and s.closes_at > $2) open_slots,
+         coalesce((select sum(d.amount) from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status in ${BOOKED}), 0)::bigint committed,
+         case when exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status in ${RAN}) then 'ran'
+              when exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status = 'secured') then 'paid'
+              when exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status = 'awaiting_payment') then 'accepted'
+              when exists (select 1 from bids b join slots s on s.id = b.slot_id where s.placement_id = p.id and b.campaign_id = $1 and b.status in ('active', 'selected'))
+                or exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status = 'awaiting_seller') then 'bid'
+              else 'added' end stage
+       from campaign_lines l join placements p on p.id = l.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id
+       where l.campaign_id = $1 order by brand_name(o), p.name`, [c.id, at])).rows
     const deals = (await db.query(
-      `select d.id, d.ref, d.status, d.amount, s.label, s.starts_at, o.name outlet from deals d join slots s on s.id = d.slot_id
+      `select d.id, d.ref, d.status, d.amount, s.label, s.starts_at, brand_name(o) outlet, o.channel, p.name placement from deals d join slots s on s.id = d.slot_id
        join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.campaign_id = $1 order by s.starts_at`, [c.id])).rows
     return { ...card(c),
-      items: items.map(i => ({ outletId: i.outlet_id, outlet: i.name, channel: i.channel, planned: i.planned_amount, committed: i.committed })),
-      bookings: deals.map(d => ({ id: d.id, ref: d.ref, status: buyerStatus[d.status] ?? d.status, price: d.amount, label: d.label, startsAt: d.starts_at, outlet: d.outlet })) }
+      plan: lines.map(l => ({ placementId: l.placement_id, productId: l.outlet_id, brandId: l.brand_id, title: `${l.brand ?? ''} · ${l.name}`.replace(/^ · /, ''),
+        brand: l.brand, name: l.name, kind: l.kind, channel: l.channel, logoUrl: brandLogoUrl(l.brand_id, l.brand_logo_key) ?? logoUrl({ id: l.outlet_id, logo_key: l.outlet_logo_key }),
+        estimated: Number(l.p_default ?? l.default_price ?? l.starting_price), committed: Number(l.committed), stage: l.stage, openSlots: l.open_slots })),
+      bookings: deals.map(d => ({ id: d.id, ref: d.ref, status: buyerStatus[d.status] ?? d.status, price: Number(d.amount), label: d.label, startsAt: d.starts_at,
+        outlet: d.outlet, channel: d.channel, placement: d.placement })) }
   })
 
-  // The plan is replaced as a whole: the screen sends every outlet it shows.
-  route('PUT', '/api/campaigns/:id/items', BUYER, async ({ db, me }, req) => {
+  // Add a product (its own unit or a programme) to the plan, or take it out. Products of a market not open yet can be planned.
+  route('POST', '/api/campaigns/:id/lines', BUYER, async ({ db, at, me }, req) => {
     const c = (await db.query(`select id from campaigns where id = $1 and buyer_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]
     if (!c) throw new NotFound()
-    await db.query(`delete from campaign_items where campaign_id = $1`, [c.id])
-    for (const i of req.body.items)
-      await db.query(`insert into campaign_items (campaign_id, outlet_id, planned_amount) select $1, id, $3 from outlets where id = $2`, // Saudi outlets can be planned, not booked (brief section 6)
-        [c.id, i.outletId, i.planned ?? 0])
+    const p = (await db.query(`select p.id from placements p where p.id = $1 and not p.archived`, [req.body.placementId])).rows[0]
+    if (!p) throw new MarketError('This product is no longer on sale.')
+    await db.query(`insert into campaign_lines (campaign_id, placement_id, added_at) values ($1, $2, $3) on conflict do nothing`, [c.id, p.id, at])
     return { ok: true }
-  }, { type: 'object', required: ['items'], properties: { items: { type: 'array', maxItems: 200, items: { type: 'object', required: ['outletId'],
-       properties: { outletId: { type: 'string', format: 'uuid' }, planned: { type: 'integer', minimum: 0 } } } } } })
+  }, { type: 'object', required: ['placementId'], additionalProperties: false, properties: { placementId: { type: 'string', format: 'uuid' } } })
+
+  route('DELETE', '/api/campaigns/:id/lines/:placement', BUYER, async ({ db, me }, req) => {
+    const r = await db.query(`delete from campaign_lines l using campaigns c where c.id = l.campaign_id and c.id = $1 and c.buyer_id = $2 and l.placement_id = $3`,
+      [req.params.id, me.actAs.companyId, req.params.placement])
+    if (!r.rowCount) throw new NotFound()
+    return { ok: true }
+  })
 }

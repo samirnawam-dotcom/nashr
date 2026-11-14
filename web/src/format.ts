@@ -4,6 +4,9 @@ import { hasTime } from '../../server/shared/media'
 
 const CURRENCY_AR: Record<string, string> = { AED: 'درهم', SAR: 'ريال' }
 /** AED 3,500 in English; 3,500 درهم in Arabic. Digits stay Latin in both. */
+/** A brief's creative language, in words: English, Arabic, Bilingual, or the buyer's own (Other). */
+export const briefLanguage = (b: { language?: string | null; languageOther?: string | null }) =>
+  b.language === 'other' ? (b.languageOther || t('Other')) : b.language ? t(b.language[0].toUpperCase() + b.language.slice(1)) : ''
 export const money = (fils: number | null | undefined, currency = 'AED') => {
   if (fils == null) return '—'
   const n = (fils / 100).toLocaleString('en-US', { maximumFractionDigits: fils % 100 ? 2 : 0, minimumFractionDigits: fils % 100 ? 2 : 0 })

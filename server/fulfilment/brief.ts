@@ -2,7 +2,7 @@ import { containsContactDetails } from '../core/contact.js'
 
 // The booking brief, required with every bid (brief section 10).
 export type Brief = {
-  advertiser: string; industry: string; message: string; language: 'arabic' | 'english' | 'bilingual'
+  advertiser: string; industry: string; message: string; language: 'arabic' | 'english' | 'bilingual' | 'other'; languageOther?: string
   landingUrl?: string; draftFileKey?: string; creativeToFollow?: boolean; notes?: string
   disclaimer?: string   // a regulated advertiser's required wording or licence number (central bank, securities, land department)
 }
@@ -15,7 +15,8 @@ export function briefProblems(b: Partial<Brief> | null | undefined, channel: str
   if (!b.industry?.trim()) out.push('Choose the industry.')
   if (!b.message?.trim()) out.push('Say what the ad will say.')
   else if (b.message.length > 280) out.push('What the ad will say must be 280 characters or fewer.')
-  if (!['arabic', 'english', 'bilingual'].includes(b.language as string)) out.push('Choose the creative language.')
+  if (!['arabic', 'english', 'bilingual', 'other'].includes(b.language as string)) out.push('Choose the creative language.')
+  else if (b.language === 'other' && !b.languageOther?.trim()) out.push('Say which language the creative is in.')
   if (channel === 'digital' && !b.landingUrl) out.push('A landing page link is required for digital placements.')
   if (b.landingUrl && !/^https:\/\/\S+$/.test(b.landingUrl)) out.push('The landing page link must start with https://.')
   if (!b.draftFileKey && !b.creativeToFollow) out.push('Upload a draft of the creative or tick "creative to follow".')

@@ -1,5 +1,5 @@
 import { navigate } from '../nav'
-import { slotWhen } from '../format'
+import { briefLanguage, slotWhen } from '../format'
 import { useEffect, useState } from 'react'
 import { DEAL_STATUS, DealStatus, Loading, date, money, useAct, useLoad, when } from './common'
 import { DOC_TYPE } from '../documents/Documents'
@@ -169,7 +169,7 @@ function ProofItems({ items, checklist }: { items: Record<string, unknown>; chec
 
 /** The booking brief as fields, not data. */
 function Brief({ b }: { b: any }) {
-  const rows: [string, unknown][] = [[t('Advertiser'), b.advertiser], [t('Industry'), b.industry && t(b.industry)], [t('The ad will say'), b.message], [t('Language'), b.language],
+  const rows: [string, unknown][] = [[t('Advertiser'), b.advertiser], [t('Industry'), b.industry && t(b.industry)], [t('The ad will say'), b.message], [t('Language'), briefLanguage(b)],
     [t('Landing page'), b.landingUrl], [t('Required disclaimer'), b.disclaimer], [t('Notes'), b.notes]]
   return <dl className="facts">{rows.filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd dir="auto">{String(v)}</dd></div>)}</dl>
 }
