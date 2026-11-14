@@ -1880,4 +1880,9 @@ export const AR_FLOW: Record<string, string> = {
   "book this slot": "حجز هذه المساحة",
   "request a quote": "طلب عرض سعر",
   "Sign in to see this page. You'll come straight back to it.": "سجّل الدخول لعرض هذه الصفحة، وستعود إليها مباشرة.",
+  "Nashr signed {user} out of every device. Reason: {reason}": "سجّلت نشر خروج {user} من جميع الأجهزة. السبب: {reason}",
+  "{user} reset their password with their authenticator app and was signed out everywhere.": "أعاد {user} تعيين كلمة المرور باستخدام تطبيق المصادقة، وسُجّل خروجه من جميع الأجهزة.",
+  "{user} was removed from your team.": "أُزيل {user} من فريقك.",
+  "Upload your tax invoice for order {order}.": "ارفع فاتورتك الضريبية للطلب {order}.",
+  "This booking was refunded. Upload a credit note for invoice {invoice}.": "استُرد مبلغ هذا الحجز. ارفع إشعارًا دائنًا للفاتورة {invoice}.",
 }

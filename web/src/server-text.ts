@@ -169,6 +169,7 @@ export const SERVER_AR: Record<string, string> = {
   "This campaign is for another client.": "هذه الحملة لعميل آخر.",
   "This would take {} over its budget: {} is left.": "سيتجاوز هذا ميزانية {1}: المتبقي {2}.",
   "The timer job last ran {} ago: auctions do not close and deadlines do not pass.": "آخر تشغيل لمهمة المؤقت كان قبل {1}: المزادات لا تُغلق والمهل لا تنقضي.",
+  "A payment for order {} came back as {} instead of {}. The booking was not marked paid. Check it with the payment provider.": "عادت دفعة الطلب {1} بمبلغ {2} بدلًا من {3}. لم يُعلَّم الحجز مدفوعًا. راجعه مع مزود الدفع.",
   "The timer job has not run yet.": "لم تعمل مهمة المؤقت بعد.",
   "A payout or refund has been waiting {}. Check Funds.": "تحويل أو استرداد ينتظر منذ {1}. راجع الأموال.",
   "{} payout or refund failed and needs a person. Check Funds.": "فشل {1} تحويل أو استرداد ويحتاج إلى متابعة. راجع الأموال.",
@@ -248,7 +249,11 @@ const patterns = Object.entries(SERVER_AR).filter(([k]) => k.includes('{}'))
   .map(([k, v]) => [new RegExp('^' + k.split('{}').map(esc).join('(.+?)') + '$', 's'), v] as const)
 
 /** A value inside a message: a known word or list ("the as-run log and the audio clip") is translated too. */
-const word = (v: string): string => exact.get(v) ?? AR[v] ?? (/^AED [\d,.]+$/.test(v) ? `${v.slice(4)} درهم` : /^\d{4,}(\.\d+)?$/.test(v) ? Number(v).toLocaleString('en-US') : v.includes(' and ') ? v.split(' and ').map(word).join(' و') : v)
+// "12 minutes" / "3 hours" from the server's alerts, with Arabic number agreement (1, 2, 3–10, 11 and up).
+const UNITS: Record<string, [string, string, string, string]> = { minutes: ['دقيقة واحدة', 'دقيقتين', 'دقائق', 'دقيقة'], hours: ['ساعة واحدة', 'ساعتين', 'ساعات', 'ساعة'] }
+const span = (v: string) => { const m = v.match(/^(\d+) (minutes|hours)$/); if (!m) return null
+  const n = Number(m[1]), [one, two, few, many] = UNITS[m[2]]; return n === 1 ? one : n === 2 ? two : n <= 10 ? `${n} ${few}` : `${n} ${many}` }
+const word = (v: string): string => exact.get(v) ?? AR[v] ?? span(v) ?? (/^AED [\d,.]+$/.test(v) ? `${v.slice(4)} درهم` : /^\d{4,}(\.\d+)?$/.test(v) ? Number(v).toLocaleString('en-US') : v.includes(' and ') ? v.split(' and ').map(word).join(' و') : v)
 
 function one(s: string): string | null {
   const hit = exact.get(s) ?? AR[s]

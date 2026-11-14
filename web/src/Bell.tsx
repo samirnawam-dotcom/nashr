@@ -1,3 +1,4 @@
+import { tm } from './i18n-server'
 import { useEffect, useRef, useState } from 'react'
 import { useLive } from './live'
 import { api } from './api'
@@ -8,7 +9,7 @@ import { noticeHref, noticeTexts, type N as Notice } from './notices'
 import './directory/directory.css'
 
 type N = Notice & { id: number; at: string; read: boolean; dealRef: string | null }
-const TEXT = noticeTexts(t, money, iso => dayLabel(dubai(iso).date, { day: 'numeric', month: 'short' }))
+const TEXT = noticeTexts(t, money, iso => dayLabel(dubai(iso).date, { day: 'numeric', month: 'short' }), tm)
 
 export function Bell({ role }: { role: string }) {
   const [data, setData] = useState<{ unread: number; items: N[] }>({ unread: 0, items: [] }), [open, setOpen] = useState(false)

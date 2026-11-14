@@ -2,6 +2,7 @@ import { type Db, pool } from './db.js'
 import { sendMail, smtpConfig } from './smtp.js'
 import { AR } from '../../web/src/i18n-ar.js'
 import { noticeHref, noticeTexts } from '../../web/src/notices.js'
+import { arabicFor } from '../../web/src/server-text.js'
 
 /*
  * Email. Everything goes through the outbox table, inside the same transaction as the change it reports (so a refused step
@@ -21,6 +22,11 @@ const money = (lang: Lang) => (fils: number) => {
 const day = (lang: Lang) => (iso: string) => new Date(iso).toLocaleDateString(lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB', { timeZone: 'Asia/Dubai', day: 'numeric', month: 'short' })
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
+/** A paragraph faces the way its own language reads (the invite mixes both), whatever the email's language. Mail apps ignore
+ * dir="auto" for alignment, so it is spelled out. Returns the opening of the style attribute. */
+const side = (text: string) => { const first = text.match(/[A-Za-z\u0600-\u06FF]/)?.[0] ?? 'a'
+  return /[\u0600-\u06FF]/.test(first) ? 'dir="rtl" style="text-align:right;' : 'dir="ltr" style="text-align:left;' }
+
 /** One email, both versions: a short HTML page that reads well in every mail app (right to left in Arabic), and plain text. */
 export function renderEmail(lang: Lang, e: { title: string; paragraphs: string[]; cta?: { label: string; url: string }; footer: string }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr', align = lang === 'ar' ? 'right' : 'left'
@@ -31,11 +37,11 @@ export function renderEmail(lang: Lang, e: { title: string; paragraphs: string[]
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden" dir="${dir}">
 <tr><td style="background:#1e1650;padding:18px 24px;text-align:${align};color:#ffffff;font-size:18px;font-weight:700">Nashr <span style="color:#c9b8ff">نشر</span></td></tr>
 <tr><td style="padding:24px;text-align:${align};font-size:15px;line-height:1.6">
-<h1 dir="auto" style="margin:0 0 12px;font-size:20px;line-height:1.35">${esc(e.title)}</h1>
-${e.paragraphs.map(p => `<p dir="auto" style="margin:0 0 12px">${esc(p)}</p>`).join('\n')}
+<h1 ${side(e.title)}margin:0 0 12px;font-size:20px;line-height:1.35">${esc(e.title)}</h1>
+${e.paragraphs.map(p => `<p ${side(p)}margin:0 0 12px">${esc(p)}</p>`).join('\n')}
 ${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="display:inline-block;background:#6b3cf6;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:600">${esc(e.cta.label)}</a></p>` : ''}
 </td></tr>
-<tr><td style="padding:16px 24px;border-top:1px solid #e7e5ef;text-align:${align};font-size:12px;color:#5e5b72;line-height:1.5">${esc(e.footer)}</td></tr>
+<tr><td style="padding:16px 24px;border-top:1px solid #e7e5ef;font-size:12px;color:#5e5b72;line-height:1.5">${e.footer.split('\n').map(l => `<div ${side(l)}">${esc(l)}</div>`).join('')}</td></tr>
 </table></td></tr></table></body></html>`
   const text = [e.title, '', ...e.paragraphs, ...(e.cta ? ['', `${e.cta.label}: ${e.cta.url}`] : []), '', '—', e.footer].join('\n')
   return { html, text }
@@ -59,7 +65,7 @@ function choice(kind: string): 'bids' | 'alerts' | 'messages' | null {
 /** What a notice says to one person, in their language: the bell's wording, a short title, and the page it opens. */
 export function noticeMessage(lang: Lang, role: string, kind: string, dealId: string | null, data: any) {
   const t = tr(lang)
-  const said = noticeTexts(t, money(lang), day(lang))[kind]?.({ kind, dealId, data }) ?? t('You have a new notification on Nashr.')
+  const said = noticeTexts(t, money(lang), day(lang), lang === 'ar' ? arabicFor : s => s)[kind]?.({ kind, dealId, data }) ?? t('You have a new notification on Nashr.')
   const title = said.length > 90 ? said.slice(0, 87).replace(/\s+\S*$/, '') + '…' : said
   return { said, title, url: site() + (noticeHref({ kind, dealId, data }, role) ?? '/') }
 }
@@ -76,7 +82,7 @@ export async function queueNoticeEmails(db: Db, companyId: string, kind: string,
     const lang: Lang = p.lang === 'ar' ? 'ar' : 'en', t = tr(lang)
     const { said, title, url } = noticeMessage(lang, p.role, kind, dealId, data)
     const { html, text } = renderEmail(lang, {
-      title, paragraphs: [said, ...(ref ? [t('Order {ref}', { ref })] : [])], cta: { label: t('Open in Nashr'), url },
+      title, paragraphs: [...(said !== title ? [said] : []), ...(ref ? [t('Order {ref}', { ref })] : [])], cta: { label: t('Open in Nashr'), url },
       footer: pick ? t('You get these emails because of your choices on Nashr. Change them under Your account.') : t('Nashr sends this email about your bookings, payments or account. It cannot be switched off.'),
     })
     await queue(db, { to: p.email, userId: p.id, companyId, kind, subject: title, text, html }, at)
@@ -89,8 +95,8 @@ export async function queueInviteEmail(db: Db, a: { userId: string; to: string; 
   const { html, text } = renderEmail(lang, { title: t('You are invited to Nashr'),
     paragraphs: [t('Hello {name},', { name: a.name }), t('{company} has invited you to Nashr, the marketplace for booking advertising across the UAE. Choose a password to join. The link works once.', { company: a.company }),
       tr('ar')('{company} has invited you to Nashr, the marketplace for booking advertising across the UAE. Choose a password to join. The link works once.', { company: a.company })],
-    cta: { label: t('Join Nashr'), url: site() + a.link }, footer: t('If you did not expect this, you can ignore it.') })
-  return queue(db, { to: a.to, userId: a.userId, kind: 'access.invite', subject: t('You are invited to Nashr'), text, html }, at)
+    cta: { label: `${t('Join Nashr')} · ${tr('ar')('Join Nashr')}`, url: site() + a.link }, footer: `${t('If you did not expect this, you can ignore it.')}\n${tr('ar')('If you did not expect this, you can ignore it.')}` })
+  return queue(db, { to: a.to, userId: a.userId, kind: 'access.invite', subject: `${t('You are invited to Nashr')} · ${tr('ar')('You are invited to Nashr')}`, text, html }, at)
 }
 
 /** A password reset link, by email (only when SMTP is set up: otherwise Nashr's team issues it). */
