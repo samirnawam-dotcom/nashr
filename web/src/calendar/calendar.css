@@ -791,3 +791,12 @@ label.side-h { display: block; }
 .cd-rows .cp-stage li:not(.now) { display: none; }
 .cd-rows .cp-stage li.now::before { display: none; }
 .cd-rows .cp-stage { margin-top: 4px; }
+
+/* Owner's buyer-side fixes: a label at the start of each filter row, the price range, Sort by, the closing-soon tag */
+.cv-filters .cv-group > .cv-label { font: 600 13px var(--body); color: var(--slate); margin-inline-end: 4px; white-space: nowrap; }
+.cv-price { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: 10px; flex-wrap: wrap; }
+.cv-price .cal-input { width: 104px; min-width: 0; }
+.cv-fits { margin-inline-start: 6px; }
+.cv-sortby { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--slate); white-space: nowrap; }
+.cv-sortby select { min-width: 170px; }
+.cv-closing { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px; background: var(--amber-1); color: var(--amber); font: 600 11px var(--body); }

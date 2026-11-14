@@ -131,15 +131,23 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     say(listed.map(r => `${r.name}: ${r.n} slots from ${r.first.toISOString().slice(0, 16)}`).join(', '))
     if (!listed.length) throw new Error('nothing was put on sale')
 
+    // a programme's slots, in time order, found the way the calendar's search finds them; ?slot= opens one's bid drawer
+    const slotsOf = (p, prog) => p.evaluate(async ([q, prog]) => { const from = new Date(Date.now() - 86_400_000).toISOString(), to = new Date(Date.now() + 40 * 86_400_000).toISOString()
+      const r = await (await fetch(`/api/slots/list?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&open=1&sort=time&limit=100&q=${encodeURIComponent(q)}`)).json()
+      return r.items.filter(s => s.placement === prog).map(s => s.id) }, [`Palm Radio ${run}`, prog])
+    const openSlot = async (p, id) => { await p.goto(BASE + `/calendar?slot=${id}`); await p.waitForSelector('.drawer h2') }
+
     step = '6 buyer finds it on the calendar'
     await nav(buy, 'Calendar'); await buy.waitForSelector('.cv-head')
-    await buy.click('.cv-views button:has-text("List")'); await buy.fill('.cv-filters input[type=search]', `Palm Radio ${run}`)
-    await buy.waitForSelector(`.cv-table tbody tr:has-text("Morning Drive")`, { timeout: 15000 }); await buy.shot('f6-buyer-finds')
-    say(await buy.locator('.cv-table tbody tr').count(), 'rows')
+    await buy.fill('.cv-filters input[type=search]', `Palm Radio ${run}`)
+    await buy.waitForSelector(`.cv-otable tbody th:has-text("Palm Radio ${run}"), .cv-empty`, { timeout: 15000 })
+    if (await buy.locator('.cv-empty').count()) await buy.click('.cv-empty .btn.primary') // the first dates on sale may be next week
+    await buy.waitForSelector(`.cv-otable tbody th:has-text("Palm Radio ${run}")`, { timeout: 15000 }); await buy.shot('f6-buyer-finds')
+    say(await buy.locator('.cv-otable tbody tr').count(), 'outlet rows')
 
     step = '7 buyer: buy-now request'
     const brief = async p => { await p.fill('#adv', 'Desert Bank'); await p.selectOption('#ind', 'Banking'); await p.fill('#msg', 'Open a business account in ten minutes.') }
-    await buy.click(`.cv-table tbody tr:has-text("Morning Drive") .cv-act >> nth=0`); await buy.waitForSelector('.drawer h2')
+    await openSlot(buy, (await slotsOf(buy, 'Morning Drive'))[0])
     await brief(buy); await buy.shot('f7-drawer')
     await buy.click('.drawer-f .btn:has-text("Request at")'); await buy.waitForSelector('.drawer .ok, .drawer .error')
     const sent = await buy.locator('.drawer .ok, .drawer .error').first().textContent(); if (!/Request sent/.test(sent)) throw new Error(sent)
@@ -179,10 +187,8 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await nav(pub, 'Balances'); await pub.shot('f13-earnings'); say()
 
     step = '14 auction: two buyers bid, bidding closes, publisher picks'
-    await buy.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy.waitForSelector('.cv-table tbody tr:has-text("Morning Drive")')
-    const target = await buy.locator('.cv-table tbody tr:has-text("Morning Drive")').nth(1).getAttribute('data-slot')
-    const open = async p => { await p.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await p.waitForSelector(`tr[data-slot="${target}"]`)
-      await p.click(`tr[data-slot="${target}"] .cv-act`); await p.waitForSelector('.drawer h2') }
+    const target = (await slotsOf(buy, 'Morning Drive')).filter(Boolean)[0]
+    const open = p => openSlot(p, target)
     const result = async p => { await p.waitForSelector('.drawer .ok, .drawer .warn, .drawer .error'); return p.locator('.drawer .ok, .drawer .warn, .drawer .error').first().textContent() }
     // buyer 1 turns on auto-bid with a 3,000 cap
     await open(buy); await brief(buy); await buy.click('.bid-mode button:has-text("Auto-bid")'); await buy.fill('#max', '3000'); await buy.shot('f14-autobid')
@@ -205,8 +211,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     await buy2.waitForSelector('main .page-title:has-text("Paid")'); say(ad.status)
 
     step = '15 quick sale: interest, publisher accepts'
-    await buy.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy.waitForSelector('.cv-table tbody tr:has-text("Evening Drive")')
-    await buy.click('.cv-table tbody tr:has-text("Evening Drive") .cv-act >> nth=0'); await buy.waitForSelector('.drawer h2'); await brief(buy)
+    await openSlot(buy, (await slotsOf(buy, 'Evening Drive'))[0]); await brief(buy)
     await buy.click('.drawer-f .btn.primary'); await buy.waitForSelector('.drawer .ok, .drawer .error'); say(await buy.locator('.drawer .ok, .drawer .error').first().textContent())
     const qn = await bell(pub); say('publisher bell:', JSON.stringify(qn).slice(0, 200))
     await nav(pub, 'Requests'); await pub.shot('f15-inbox')
@@ -219,10 +224,9 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     say()
 
     step = '16 fixed price: book now, each side sees the other, publisher confirms, buyer pays'
-    await buy2.goto(BASE + `/calendar?view=list&q=${encodeURIComponent(`Palm Radio ${run}`)}`); await buy2.waitForSelector('.cv-table tbody tr:has-text("Lunch Hour")')
-    await buy2.click('.cv-table tbody tr:has-text("Lunch Hour") .cv-act >> nth=0'); await buy2.waitForSelector('.drawer h2')
+    await openSlot(buy2, (await slotsOf(buy2, 'Lunch Hour'))[0])
     if (!(await buy2.locator('.drawer-seller:has-text("Palm Radio")').count())) throw new Error('the buyer does not see who sells it')
-    await brief(buy2); await buy2.shot('f16-book'); await buy2.click('.drawer-f .btn.primary:has-text("Book for")')
+    await brief(buy2); await buy2.shot('f16-book'); await buy2.click('.drawer-f .btn.primary:has-text("Book for")'); await buy2.waitForSelector('.drawer .ok, .drawer .error', { timeout: 60000 })
     const booked = await buy2.locator('.drawer .ok, .drawer .error').first().textContent(); if (!/Booked/.test(booked)) throw new Error(booked)
     await nav(pub, 'Requests'); await pub.waitForSelector('.rq-item:has-text("Booked at your fixed price")'); await openTask(pub, 'Booked at your fixed price')
     await pub.waitForSelector('.co-card:has-text("Oasis Retail")'); await pub.shot('f16-buyer-profile')

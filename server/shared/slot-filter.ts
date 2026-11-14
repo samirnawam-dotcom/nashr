@@ -9,6 +9,7 @@ export type SlotFilter = {
   saleTypes?: string[]       // 'auction' | 'quick_sale' | 'fixed'
   sector?: string            // the outlet accepts this sector (case-insensitive)
   maxPrice?: number          // fils, excluding VAT, compared with the current price (top bid, else starting price)
+  minPrice?: number          // the same price, from this amount (owner's buyer-side fixes: "AED from … to …")
   dayparts?: Daypart[]       // Dubai time of day
   q?: string                 // outlet, programme or audience contains this text
   closingWithinHours?: number
@@ -37,6 +38,7 @@ export function matches(f: SlotFilter, s: FilterableSlot, now = Date.now()): boo
   if (f.saleTypes?.length && !f.saleTypes.includes(s.saleType)) return false
   if (f.sector && !(s.sectors ?? []).some(x => x.toLowerCase() === f.sector!.toLowerCase())) return false
   if (f.maxPrice != null && currentPrice(s) > f.maxPrice) return false
+  if (f.minPrice != null && currentPrice(s) < f.minPrice) return false
   if (f.dayparts?.length && !f.dayparts.includes(daypart(s))) return false
   if (f.q?.trim()) {
     const hay = `${s.outlet} ${s.placement ?? ''} ${s.audience ?? ''}`.toLowerCase()
@@ -49,7 +51,7 @@ export function matches(f: SlotFilter, s: FilterableSlot, now = Date.now()): boo
 
 /** How many filters narrow the calendar beyond "everything", for the "Clear filters (3)" button. */
 export const activeCount = (f: SlotFilter, all: { channels: number; saleTypes: number }) =>
-  [f.channels && f.channels.length < all.channels, f.saleTypes && f.saleTypes.length < all.saleTypes, !!f.sector, f.maxPrice != null,
+  [f.channels && f.channels.length < all.channels, f.saleTypes && f.saleTypes.length < all.saleTypes, !!f.sector, f.maxPrice != null || f.minPrice != null,
     !!f.dayparts?.length, !!f.q?.trim(), f.closingWithinHours != null, !!f.audiences?.length].filter(Boolean).length
 
 /** A short sentence for a saved search: "Radio · Banking · under AED 5,000 · morning". */
@@ -59,6 +61,7 @@ export function describe(f: SlotFilter, names: Record<string, string> = {}, tr: 
   const parts = [
     f.channels?.length ? f.channels.map(c => names[c] ?? c).join(tr(', ')) : part('All channels'),
     f.sector, f.q?.trim() && `“${f.q.trim()}”`,
+    f.minPrice != null && part('from {price}').replace('{price}', price(f.minPrice)),
     f.maxPrice != null && part('under {price}').replace('{price}', price(f.maxPrice)),
     f.dayparts?.length && f.dayparts.map(d => part(d === 'allday' ? 'all day' : d)).join(tr(', ')),
     f.saleTypes?.length === 1 && part(f.saleTypes[0] === 'auction' ? 'auctions' : f.saleTypes[0] === 'fixed' ? 'fixed price' : 'quick sales'),

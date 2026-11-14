@@ -18,6 +18,11 @@ const DUBAI = `(s.starts_at at time zone 'Asia/Dubai')`
 const MINUTE = `(extract(hour from ${DUBAI}) * 60 + extract(minute from ${DUBAI}))`
 const ALL_DAY = `(case when s.ends_at is null then ${MINUTE} = 0 else s.ends_at - s.starts_at >= interval '1 day' end)`
 const PRICE = `coalesce(s.top_amount, s.starting_price)`
+/** Popularity, counted by Nashr: each booking and each bid in the last 90 days, on the product (POPULAR) or the outlet row (OUTLET_POPULAR). */
+const POPULAR = `((select count(*) from bids b2 join slots s2 on s2.id = b2.slot_id where s2.placement_id = p.id and b2.created_at > now() - interval '90 days')
+  + (select count(*) from deals d2 join slots s2 on s2.id = d2.slot_id where s2.placement_id = p.id and d2.created_at > now() - interval '90 days'))`
+const OUTLET_POPULAR = `((select count(*) from bids b2 join slots s2 on s2.id = b2.slot_id join placements p2 on p2.id = s2.placement_id where p2.outlet_id = o.id and b2.created_at > now() - interval '90 days')
+  + (select count(*) from deals d2 join slots s2 on s2.id = d2.slot_id join placements p2 on p2.id = s2.placement_id where p2.outlet_id = o.id and d2.created_at > now() - interval '90 days'))`
 /** Who a slot reaches: its placement's audiences, else its outlet's. */
 export const AUDIENCES_SQL = `(case when cardinality(p.audiences) > 0 then p.audiences else o.audiences end)`
 const DAYPART: Record<string, string> = {
@@ -40,6 +45,7 @@ export function where(q: Query, now: Date) {
   if (q.saleTypes?.length) w.push(`s.sale_type = any(${add(q.saleTypes)}::text[])`)
   if (q.sector) w.push(`exists (select 1 from unnest(o.sectors) x where lower(x) = lower(${add(q.sector)}))`)
   if (q.maxPrice != null && Number.isFinite(q.maxPrice)) w.push(`${PRICE} <= ${add(q.maxPrice)}`)
+  if (q.minPrice != null && Number.isFinite(q.minPrice)) w.push(`${PRICE} >= ${add(q.minPrice)}`)
   if (q.dayparts?.length) w.push(`(${q.dayparts.map(d => Object.hasOwn(DAYPART, d) ? DAYPART[d] : 'false').join(' or ')})`)
   for (const word of (q.q ?? '').toLowerCase().split(/\s+/).filter(Boolean))
     w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || coalesce(o.audience, '') || ' ' || coalesce(c.name, '')), ${add(word)}) > 0`)
@@ -68,9 +74,11 @@ export async function slots(db: Db, q: Query, now: Date, limit = 5000) {
   return (await db.query(`select ${SLOT_COLUMNS} ${w.from} ${BID_COUNTS(me)} ${w.where} order by s.starts_at, s.id limit ${limit}`, w.params)).rows
 }
 
-export type Sort = 'time' | 'price_asc' | 'price_desc' | 'closing' | 'bids'
+export type Sort = 'time' | 'price_asc' | 'price_desc' | 'closing' | 'bids' | 'popular'
 const ORDER: Record<Sort, string> = { time: 's.starts_at, o.name, s.id', price_asc: `${PRICE}, s.starts_at, s.id`, price_desc: `${PRICE} desc, s.starts_at, s.id`,
-  closing: 's.closes_at, s.starts_at, s.id', bids: 'bids desc, s.starts_at, s.id' }
+  closing: 's.closes_at, s.starts_at, s.id', bids: 'bids desc, s.starts_at, s.id',
+  // most popular: bookings and bids on that product in the last 90 days, worked out by Nashr (buyers see the order only)
+  popular: `${POPULAR} desc, s.starts_at, s.id` }
 const page = (offset: number, limit: number) => `offset ${Math.max(0, Math.floor(offset) || 0)} limit ${Math.min(100, Math.max(1, Math.floor(limit) || 50))}`
 
 /** One page of matching slots, and how many match in all (the list view). */
@@ -146,16 +154,18 @@ export async function byDay(db: Db, q: Query, now: Date) {
       onSale: r.on_sale, waiting: r.waiting, booked: r.booked, off: r.slots - r.on_sale - r.waiting - r.booked }))
 }
 
-export type OutletSort = 'name' | 'price' | 'slots'
+export type OutletSort = 'name' | 'price' | 'slots' | 'popular' | 'price_desc' | 'closing'
 /** Outlets across a range of days (the "By outlet" view): a page of outlets, each with its count and lowest price per day. */
 export async function byOutlet(db: Db, q: Query, sort: OutletSort, offset: number, limit: number, now: Date) {
   const w = where(q, now)
-  const daily = `select o.id outlet_id, brand_name(o) outlet, o.channel, o.logo_key, pr.id brand_id, pr.logo_key brand_logo_key, ${DUBAI}::date::text date, count(*)::int slots, min(${PRICE}) from_price
+  const daily = `select o.id outlet_id, brand_name(o) outlet, o.channel, o.logo_key, pr.id brand_id, pr.logo_key brand_logo_key, ${DUBAI}::date::text date, count(*)::int slots, min(${PRICE}) from_price,
+      min(s.closes_at) closes_at, max(${OUTLET_POPULAR}) popular
     ${w.from} ${w.where} group by o.id, o.name, o.channel, o.logo_key, pr.id, pr.logo_key, ${DUBAI}::date`
-  const order = sort === 'price' ? 'from_price, outlet' : sort === 'slots' ? 'slots desc, outlet' : 'outlet'
+  const order = sort === 'price' ? 'from_price, outlet' : sort === 'price_desc' ? 'from_price desc, outlet' : sort === 'slots' ? 'slots desc, outlet'
+    : sort === 'closing' ? 'closes_at, outlet' : sort === 'popular' ? 'popular desc, outlet' : 'outlet'
   const rows = (await db.query(`with d as (${daily}),
-      o as (select outlet_id, outlet, channel, logo_key, brand_id, brand_logo_key, sum(slots)::int slots, min(from_price) from_price,
-        json_agg(json_build_object('date', date, 'slots', slots, 'fromPrice', from_price) order by date) days, count(*) over ()::int total
+      o as (select outlet_id, outlet, channel, logo_key, brand_id, brand_logo_key, sum(slots)::int slots, min(from_price) from_price, min(closes_at) closes_at, max(popular) popular,
+        json_agg(json_build_object('date', date, 'slots', slots, 'fromPrice', from_price, 'closesAt', closes_at) order by date) days, count(*) over ()::int total
         from d group by outlet_id, outlet, channel, logo_key, brand_id, brand_logo_key)
     select * from o order by ${order} ${page(offset, limit)}`, w.params)).rows
   return { total: (rows[0]?.total as number) ?? 0, rows }
@@ -182,7 +192,7 @@ export function parseQuery(r: Record<string, string | undefined>, me: string | n
   const to = clampRange(from, rawTo)
   const list = (v?: string) => v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined
   const num = (v?: string) => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
-  return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max),
+  return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max), minPrice: num(r.min),
     dayparts: list(r.dp) as SlotFilter['dayparts'], q: r.q || undefined, closingWithinHours: num(r.soon), audiences: list(r.aud),
     mine: r.mine === '1', open: r.open === '1', placement: r.placement || undefined, date: r.date || undefined, outlet: r.outlet || undefined, campaign: r.campaign || undefined,
     tmin: num(r.tmin), tmax: num(r.tmax), statuses: list(r.st) }

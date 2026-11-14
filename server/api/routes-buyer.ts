@@ -62,7 +62,7 @@ export function buyerRoutes(route: RouteFn) {
   route('GET', '/api/slots/outlets', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const { total, rows } = await byOutlet(db, query(me, req.query), req.query.sort ?? 'name', Number(req.query.offset ?? 0), Number(req.query.limit ?? 50), at)
     return { total, items: rows.map(r => ({ outletId: r.outlet_id, outlet: r.outlet, channel: r.channel, logoUrl: brandOf(r).logoUrl,
-      slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice) })) })) }
+      slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice), closesAt: d.closesAt })) })) }
   })
 
   // One slot for the bid drawer: the server says what the next bid must be, the screen never works it out.

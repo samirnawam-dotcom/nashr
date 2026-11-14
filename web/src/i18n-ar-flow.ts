@@ -1863,4 +1863,7 @@ export const AR_FLOW: Record<string, string> = {
   "Nothing on sale now": "لا شيء معروض للبيع الآن",
   "Most popular": "الأكثر طلبًا",
   "Newest on Nashr": "الأحدث على نشر",
+  "Shortcuts: ← → move · T today · D W views · / search": "الاختصارات: ← → للتنقل · T اليوم · D W طرق العرض · / البحث",
+  "Sale type:": "نوع البيع:",
+  "{n} outlets with dates on sale this week": "{n} من الوسائل لديها تواريخ معروضة هذا الأسبوع",
 }

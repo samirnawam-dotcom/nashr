@@ -25,16 +25,20 @@ export { CHANNELS, CHANNEL_NAME }
  */
 
 type View = 'list' | 'day' | 'week' | 'month' | 'outlets'
-type Sort = 'time' | 'price_asc' | 'price_desc' | 'closing' | 'bids'
-type OSort = 'name' | 'price' | 'slots'
+type Sort = 'time' | 'price_asc' | 'price_desc' | 'closing' | 'bids' | 'popular'
+type OSort = 'popular' | 'price' | 'price_desc' | 'closing' | 'name' | 'slots'
 export type Prog = { outletId: string; outlet: string; channel: string; placementId: string; placement: string; date: string; startsAt: string; endsAt: string
   allDay: boolean; slots: number; open: number; fromPrice: number; bids: number; youLead: boolean; youBid: boolean; closesAt: string | null; saleTypes: string[] }
 type DayTotal = { date: string; slots: number; outlets: number; fromPrice: number; channels: string[] }
-type OutletRow = { outletId: string; outlet: string; channel: string; logoUrl: string | null; slots: number; fromPrice: number; days: { date: string; slots: number; fromPrice: number }[] }
+type OutletRow = { outletId: string; outlet: string; channel: string; logoUrl: string | null; slots: number; fromPrice: number; days: { date: string; slots: number; fromPrice: number; closesAt?: string }[] }
 // product and campaign narrow the calendar to one product ("See dates") or one campaign's products ("Book slots")
-type State = { view: View; date: string; f: SlotFilter; mine: boolean; all: boolean; sort: Sort; osort: OSort; product?: string; item?: string; productName?: string; campaign?: string }
+type State = { view: View; date: string; f: SlotFilter; mine: boolean; all: boolean; sort: Sort; osort: OSort; product?: string; item?: string; productName?: string; campaign?: string; fit?: number }
 
-const VIEWS: [View, string, string][] = [['list', t('List'), 'l'], ['day', t('Day'), 'd'], ['week', t('Week'), 'w'], ['month', t('Month'), 'm'], ['outlets', t('By outlet'), 'o']]
+// owner's buyer-side fixes: Day and Week only; Week is the outlet-rows grid (phones show both as a list)
+const VIEWS: [View, string, string][] = [['day', t('Day'), 'd'], ['week', t('Week'), 'w']]
+/** One "Sort by:" for the whole calendar (the Week rows, and the list on phones). Default: most popular. */
+const CAL_SORTS: [OSort, string, Sort][] = [['popular', 'Most popular', 'popular' as Sort], ['price', 'Price: low to high', 'price_asc'], ['price_desc', 'Price: high to low', 'price_desc'], ['closing', 'Closing soonest', 'closing']]
+const listSort = (o: OSort): Sort => CAL_SORTS.find(x => x[0] === o)?.[2] ?? 'popular' as Sort
 const SORTS: [Sort, string][] = [['time', t('Air time')], ['closing', t('Closing soonest')], ['price_asc', t('Price: low to high')], ['price_desc', t('Price: high to low')], ['bids', t('Most bids')]]
 const LIST_DAYS = 28, PAGE = 50, OUTLET_PAGE = 50, HOUR = 64, MAX_COLS = 3
 
@@ -72,19 +76,21 @@ const isView = (v: string | null): v is View => !!v && VIEWS.some(([k]) => k ===
 function readState(narrow: boolean): State {
   const p = new URLSearchParams(location.search), list = (k: string) => p.get(k)?.split(',').filter(Boolean)
   let saved: View | null = null; try { saved = localStorage.getItem('nashr:cal-view') as View | null } catch { /* private mode */ }
-  const view = isView(p.get('view')) ? p.get('view') as View : isView(saved) ? saved : narrow ? 'list' : 'week'
+  // older addresses (list, month, by outlet) open the Week
+  const old = (v: string | null) => v === 'list' || v === 'month' || v === 'outlets' ? 'week' : v
+  const view = isView(old(p.get('view'))) ? old(p.get('view')) as View : isView(old(saved)) ? old(saved) as View : 'week'
   return { view, date: /^\d{4}-\d{2}-\d{2}$/.test(p.get('date') ?? '') ? p.get('date')! : todayInDubai(),
-    f: { channels: list('ch'), saleTypes: list('sale'), sector: p.get('sector') || undefined, maxPrice: p.get('max') ? Number(p.get('max')) : undefined,
+    f: { channels: list('ch'), saleTypes: list('sale'), sector: p.get('sector') || undefined, maxPrice: p.get('max') ? Number(p.get('max')) : undefined, minPrice: p.get('min') ? Number(p.get('min')) : undefined,
       dayparts: list('dp') as Daypart[] | undefined, q: p.get('q') || undefined, closingWithinHours: p.get('soon') ? Number(p.get('soon')) : undefined, audiences: list('aud') },
-    mine: p.get('mine') === '1', all: p.get('all') === '1', sort: (p.get('sort') as Sort) || 'time', osort: (p.get('osort') as OSort) || 'name',
+    mine: p.get('mine') === '1', all: p.get('all') === '1', sort: (p.get('sort') as Sort) || 'time', osort: (p.get('osort') as OSort) || 'popular', fit: p.get('fit') ? Number(p.get('fit')) : undefined,
     product: p.get('product') || undefined, item: p.get('item') || undefined, productName: p.get('pname') || undefined, campaign: p.get('campaign') || undefined }
 }
 function writeState(s: State, push: boolean) {
   const p = new URLSearchParams(location.search)
   const put = (k: string, v: string | number | undefined | null | false) => v === undefined || v === null || v === '' || v === false ? p.delete(k) : p.set(k, String(v))
   put('view', s.view); put('date', s.date); put('ch', s.f.channels?.join(',')); put('sale', s.f.saleTypes?.join(',')); put('sector', s.f.sector)
-  put('max', s.f.maxPrice); put('dp', s.f.dayparts?.join(',')); put('aud', s.f.audiences?.join(',')); put('q', s.f.q); put('soon', s.f.closingWithinHours); put('mine', s.mine && '1'); put('all', s.all && '1')
-  put('sort', s.sort === 'time' ? null : s.sort); put('osort', s.osort === 'name' ? null : s.osort)
+  put('max', s.f.maxPrice); put('min', s.f.minPrice); put('dp', s.f.dayparts?.join(',')); put('aud', s.f.audiences?.join(',')); put('q', s.f.q); put('soon', s.f.closingWithinHours); put('mine', s.mine && '1'); put('all', s.all && '1')
+  put('sort', s.sort === 'time' ? null : s.sort); put('osort', s.osort === 'popular' ? null : s.osort); put('fit', s.fit)
   put('product', s.product); put('item', s.item); put('pname', (s.product || s.item) && s.productName); put('campaign', s.campaign)
   const url = `${location.pathname}?${p.toString()}`
   if (url !== location.pathname + location.search) history[push ? 'pushState' : 'replaceState'](null, '', url)
@@ -94,7 +100,10 @@ function query(s: State, from: string, to: string, extra: Record<string, string 
   const p = new URLSearchParams({ from: `${from}T00:00:00+04:00`, to: `${to}T00:00:00+04:00` })
   const f = s.f
   if (f.channels?.length) p.set('ch', f.channels.join(',')); if (f.saleTypes?.length) p.set('sale', f.saleTypes.join(','))
-  if (f.sector) p.set('sector', f.sector); if (f.maxPrice != null) p.set('max', String(f.maxPrice)); if (f.dayparts?.length) p.set('dp', f.dayparts.join(','))
+  if (f.sector) p.set('sector', f.sector); if (f.minPrice != null) p.set('min', String(f.minPrice))
+  // "Fits my budget": nothing priced above what is left in the chosen campaign
+  const max = f.maxPrice != null && s.fit != null ? Math.min(f.maxPrice, s.fit) : f.maxPrice ?? s.fit
+  if (max != null) p.set('max', String(max)); if (f.dayparts?.length) p.set('dp', f.dayparts.join(','))
   if (f.q?.trim()) p.set('q', f.q.trim()); if (f.closingWithinHours != null) p.set('soon', String(f.closingWithinHours)); if (f.audiences?.length) p.set('aud', f.audiences.join(','))
   if (s.mine) p.set('mine', '1'); if (!s.all) p.set('open', '1')
   if (s.product) p.set('outlet', s.product); if (s.item) p.set('placement', s.item); if (s.campaign) p.set('campaign', s.campaign)
@@ -128,7 +137,11 @@ export function CalendarPage() {
   useMeta(PAGES['/calendar'])
   const [s, setS] = useState<State>(() => readState(narrow))
   const [qText, setQText] = useState(s.f.q ?? '')
-  const [open, setOpen] = useState<string | null>(null), [panel, setPanel] = useState<Panel | null>(null), [sheet, setSheet] = useState(false)
+  // ?slot=<id> opens that slot's bid drawer (links from bookings, the inbox, campaigns)
+  const [open, setOpenRaw] = useState<string | null>(() => new URLSearchParams(location.search).get('slot'))
+  const setOpen = (id: string | null) => { setOpenRaw(id)
+    if (!id && new URLSearchParams(location.search).has('slot')) { const q = new URLSearchParams(location.search); q.delete('slot'); history.replaceState(null, '', `${location.pathname}?${q}`) } }
+  const [panel, setPanel] = useState<Panel | null>(null), [sheet, setSheet] = useState(false)
   const [totals, setTotals] = useState<DayTotal[] | null>(null), [next, setNext] = useState<string | null>(null)
   const [reload, setReload] = useState(0)
   // Someone bid, booked or relisted: refresh the grid and outlet views quietly (the list updates the rows it shows).
@@ -161,13 +174,13 @@ export function CalendarPage() {
   }, [])
 
   const total = totals?.reduce((n, d) => n + d.slots, 0) ?? null
-  const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: SALE_TYPES.length }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0) + (s.product || s.item ? 1 : 0) + (s.campaign ? 1 : 0)
+  const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: SALE_TYPES.length }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0) + (s.product || s.item ? 1 : 0) + (s.campaign ? 1 : 0) + (s.fit != null ? 1 : 0)
   // "Book slots" on a campaign: it becomes the campaign the bid drawer and the Campaign drawer use
   useEffect(() => { if (s.campaign && !guest) setCurrentCampaign(s.campaign) }, [s.campaign])
-  const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined }, mine: false, all: false, product: undefined, item: undefined, productName: undefined, campaign: undefined }) }
+  const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined, minPrice: undefined }, mine: false, all: false, fit: undefined, product: undefined, item: undefined, productName: undefined, campaign: undefined }) }
   const step = (n: number) => {
     if (s.view === 'month') { const d = new Date(s.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
-    update({ date: addDays(s.date, n * (narrow ? 7 : s.view === 'day' ? 1 : s.view === 'list' ? LIST_DAYS : 7)) }, true) // phones show a week in every view but month
+    update({ date: addDays(s.date, n * (narrow ? 7 : s.view === 'day' ? 1 : s.view === 'list' ? LIST_DAYS : 7)) }, true) // phones show a week
   }
   const goDay = (d: string) => update({ view: 'day', date: d }, true)
 
@@ -189,14 +202,14 @@ export function CalendarPage() {
     : s.view === 'day' && !narrow ? dayLabel(s.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : s.view === 'list' ? t('{from} – {to}', { from: dayLabel(from, { day: 'numeric', month: 'short' }), to: dayLabel(addDays(to, -1), { day: 'numeric', month: 'short', year: 'numeric' }) })
     : t('{from} – {to}', { from: dayLabel(from, { day: 'numeric', month: 'short' }), to: dayLabel(addDays(to, -1), { day: 'numeric', month: 'short', year: 'numeric' }) })
-  const filterProps = { s, update, qText, setQText, guest, active, clear, search }
+  const filterProps = { s, update, qText, setQText, guest, active, clear, search, budget: campaign && campaign.remaining != null ? { name: campaign.name, remaining: campaign.remaining } : null }
 
   return (
     <main className="cv">
       <header className="cv-head">
         <div className="cv-title">
           <h1>{t('Calendar')}</h1>
-          <p className="cv-range"><b>{title}</b>{total != null && <span className="muted">{t(total === 1 ? '1 slot' : '{n} slots', { n: total.toLocaleString('en-US') })}{!s.all ? ` · ${t('open to book')}` : ''}</span>}</p>
+          <p className="cv-range"><b>{title}</b>{total != null && <span className="muted">{s.all ? t(total === 1 ? '1 slot' : '{n} slots', { n: total.toLocaleString('en-US') }) : t('{n} on sale', { n: total.toLocaleString('en-US') })}</span>}</p>
         </div>
         <div className="cv-nav" role="group" aria-label={t('Dates')}>
           <button className="btn" onClick={() => update({ date: todayInDubai() }, true)} title={t('Today (T)')}>{t('Today')}</button>
@@ -207,6 +220,8 @@ export function CalendarPage() {
         {!guest && <button type="button" className={`btn cv-plan ${campaign ? 'has' : ''}`} onClick={() => setPlanOpen(true)} title={campaign?.name}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
           {t('Campaign')}{campaign && campaign.lines > 0 && <span className="cv-plan-n num">{campaign.lines}</span>}</button>}
+        {(s.view === 'week' || narrow) && <label className="cv-sortby"><span>{t('Sort by:')}</span><select className="cal-input" value={s.osort} onChange={e => update({ osort: e.target.value as OSort })}>
+          {CAL_SORTS.map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>}
         <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l, key]) =>
           <button key={v} role="tab" aria-selected={s.view === v} className={s.view === v ? 'on' : ''} title={`${l} (${key.toUpperCase()})`} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
       </header>
@@ -238,15 +253,13 @@ export function CalendarPage() {
           {active > 0 && <button className="btn" onClick={clear}>{t('Clear filters')}</button>}</div>
       </div>}
 
-      {(s.view === 'list' || (narrow && (s.view === 'week' || s.view === 'day'))) && <ListView s={s} from={from} to={to} narrow={narrow} reload={reload} onSort={v => update({ sort: v })} onOpen={setOpen} />}
-      {!narrow && s.view === 'week' && <TimeGrid key="week" s={s} from={from} to={to} reload={reload} live={live} columns="days" onPanel={setPanel} onDay={goDay} />}
+      {narrow && <ListView s={{ ...s, sort: listSort(s.osort) }} from={from} to={to} narrow={narrow} reload={reload} onSort={() => {}} onOpen={setOpen} />}
       {!narrow && s.view === 'day' && <TimeGrid key="day" s={s} from={from} to={to} reload={reload} live={live} columns="channels" onPanel={setPanel} onDay={goDay} />}
-      {s.view === 'month' && <MonthView date={s.date} totals={totals ?? []} narrow={narrow} onDay={d => update({ view: narrow ? 'list' : 'day', date: d }, true)} />}
-      {s.view === 'outlets' && <OutletsView s={s} from={from} to={to} reload={reload} live={live} onSort={v => update({ osort: v })} onPanel={setPanel} />}
+      {!narrow && s.view === 'week' && <OutletsView s={s} from={from} to={to} reload={reload} live={live} onPanel={setPanel} />}
 
       <footer className="cv-foot small muted">
         <span>{t('Dubai time. Prices exclude VAT. You pay only once the publisher accepts, and the money is held until the ad has run.')}</span>
-        {!narrow && <span className="cv-keys">{t('Shortcuts: ← → move · T today · L D W M O views · / search')}</span>}
+        {!narrow && <span className="cv-keys">{t('Shortcuts: ← → move · T today · D W views · / search')}</span>}
       </footer>
 
       {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}
@@ -259,25 +272,35 @@ export function CalendarPage() {
 export const Chevron = ({ dir }: { dir: 'back' | 'fwd' }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden
   className="flip-rtl"><path d={dir === 'back' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} /></svg>
 
+/** The "Closes in 16h" tag: bidding closes within the next 24 hours (the bid drawer's wording). */
+const soon = (iso: string) => { const ms = new Date(iso).getTime() - Date.now(); return ms > 0 && ms <= 24 * 3_600_000 }
+
 // ---- filters ----------------------------------------------------------------------------------------------------------
 type FilterProps = { s: State; update: (p: Partial<State>, push?: boolean) => void; qText: string; setQText: (v: string) => void; guest: boolean; active: number
-  clear: () => void; search: React.RefObject<HTMLInputElement | null>; stacked?: boolean }
+  clear: () => void; search: React.RefObject<HTMLInputElement | null>; stacked?: boolean; budget?: { name: string; remaining: number } | null }
 
 /** One row of filters above the calendar (a sheet on phones): search, channels, sale type, time of day, more, saved searches. */
-function FilterBar({ s, update, qText, setQText, guest, active, clear, search, stacked }: FilterProps) {
+function FilterBar({ s, update, qText, setQText, guest, active, clear, search, stacked, budget }: FilterProps) {
   const toggle = (list: string[] | undefined, v: string, all: readonly string[]) => {
     const cur = new Set(list?.length ? list : []); cur.has(v) ? cur.delete(v) : cur.add(v)
     return cur.size === 0 || cur.size === all.length ? undefined : [...cur]
   }
   const on = (list: string[] | undefined, v: string) => !!list?.includes(v)
-  const more = (s.f.sector ? 1 : 0) + (s.f.maxPrice != null ? 1 : 0) + (s.f.closingWithinHours != null ? 1 : 0) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
+  const more = (s.f.sector ? 1 : 0) + (s.f.closingWithinHours != null ? 1 : 0) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
+  const aed = (v: string) => { const n = v.replace(/[^\d]/g, ''); return n ? Number(n) * 100 : undefined }
+  // owner's buyer-side fixes: "AED from … to …" after the sale type, and "Fits my budget" when a campaign is chosen
+  const price = <div className="cv-price" role="group" aria-label={t('Price')}>
+    <input className="cal-input" inputMode="numeric" aria-label={t('AED from')} placeholder={t('AED from')} value={s.f.minPrice != null ? String(s.f.minPrice / 100) : ''} onChange={e => update({ f: { minPrice: aed(e.target.value) } })} />
+    <span aria-hidden>–</span>
+    <input className="cal-input" inputMode="numeric" aria-label={t('to')} placeholder={t('to')} value={s.f.maxPrice != null ? String(s.f.maxPrice / 100) : ''} onChange={e => update({ f: { maxPrice: aed(e.target.value) } })} />
+    {budget && <label className="switch cv-fits" title={t('{amount} left in {name}', { amount: money(budget.remaining), name: budget.name })}>
+      <input type="checkbox" role="switch" checked={s.fit != null} onChange={e => update({ fit: e.target.checked ? Math.max(0, budget.remaining) : undefined })} />
+      <span className="switch-track" aria-hidden><span /></span>{t('Fits my budget')}</label>}
+  </div>
   const moreFields = <div className="cv-more">
     <label className="field"><span className="small">{t('Sector')}</span>
       <select className="cal-input" value={s.f.sector ?? ''} onChange={e => update({ f: { sector: e.target.value || undefined } })}>
         <option value="">{t('Any sector')}</option>{INDUSTRIES.map(i => <option key={i} value={i}>{t(i)}</option>)}</select></label>
-    <label className="field"><span className="small">{t('Up to (AED, excl. VAT)')}</span>
-      <input className="cal-input" inputMode="numeric" placeholder={t('Any price')} value={s.f.maxPrice != null ? String(s.f.maxPrice / 100) : ''}
-        onChange={e => { const v = e.target.value.replace(/[^\d]/g, ''); update({ f: { maxPrice: v ? Number(v) * 100 : undefined } }) }} /></label>
     <label className="switch"><input type="checkbox" role="switch" checked={s.f.closingWithinHours != null} onChange={e => update({ f: { closingWithinHours: e.target.checked ? 24 : undefined } })} />
       <span className="switch-track" aria-hidden><span /></span>{t('Bidding closes within 24 hours')}</label>
     {!guest && <label className="switch"><input type="checkbox" role="switch" checked={s.mine} onChange={e => update({ mine: e.target.checked })} />
@@ -294,12 +317,14 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
     <section className={`cv-filters ${stacked ? 'stacked' : ''}`} aria-label={t('Filters')}>
       {!stacked && <input ref={search} className="search cv-search" type="search" placeholder={t('Search outlets, programmes, audiences')} aria-label={t('Search')}
         value={qText} onChange={e => setQText(e.target.value)} />}
-      <div className="cv-group" role="group" aria-label={t('Channels')}>{stacked && <span className="cv-label">{t('Channels')}</span>}
+      <div className="cv-group" role="group" aria-label={t('Media type')}><span className="cv-label">{t('Media type:')}</span>
         {CHANNELS.map(c => <button key={c} type="button" className={`chipf ${on(s.f.channels, c) ? 'on' : ''}`} aria-pressed={on(s.f.channels, c)}
           onClick={() => update({ f: { channels: toggle(s.f.channels, c, CHANNELS) } })}><ChannelMark c={c} label /></button>)}</div>
-      <div className="cv-group" role="group" aria-label={t('Sale type')}>{stacked && <span className="cv-label">{t('Sale type')}</span>}
+      <div className="cv-group" role="group" aria-label={t('Sale type')}><span className="cv-label">{t('Sale type:')}</span>
         {SALE_TYPES.map(v => <button key={v} type="button" className={`chipf ${on(s.f.saleTypes, v) ? 'on' : ''}`} aria-pressed={on(s.f.saleTypes, v)}
-          onClick={() => update({ f: { saleTypes: toggle(s.f.saleTypes, v, [...SALE_TYPES]) } })}><SaleIcon k={v} />{saleLabel(v)}</button>)}</div>
+          onClick={() => update({ f: { saleTypes: toggle(s.f.saleTypes, v, [...SALE_TYPES]) } })}><SaleIcon k={v} />{saleLabel(v)}</button>)}
+        {!stacked && price}</div>
+      {stacked && <><span className="cv-label">{t('Price:')}</span>{price}</>}
       {stacked ? <><span className="cv-label">{t('Audience')}</span>{audiences}<span className="cv-label">{t('Time of day')}</span>{dayparts}<span className="cv-label">{t('More filters')}</span>{moreFields}</> : <>
         <Popover label={<>{t('Audience')}{s.f.audiences?.length ? <span className="cv-count">{s.f.audiences.length}</span> : null}</>} on={!!s.f.audiences?.length}>{audiences}</Popover>
         <Popover label={<>{t('Time of day')}{s.f.dayparts?.length ? <span className="cv-count">{s.f.dayparts.length}</span> : null}</>} on={!!s.f.dayparts?.length}>{dayparts}</Popover>
@@ -352,9 +377,6 @@ function ListView({ s, from, to, narrow, reload, onSort, onOpen }: { s: State; f
     <section className="card cv-list" aria-label={t('Slots')}>
       <div className="cv-list-bar">
         <span className="small muted" role="status">{total == null ? t('Loading…') : t('Showing {n} of {total}', { n: items.length.toLocaleString('en-US'), total: total.toLocaleString('en-US') })}</span>
-        <span className="spacer" />
-        <label className="small muted" htmlFor="cv-sort">{t('Sort by')}</label>
-        <select id="cv-sort" className="cal-input cv-sort" value={s.sort} onChange={e => onSort(e.target.value as Sort)}>{SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </div>
       {error && <p className="error pad">{error}</p>}
       {narrow ? <ul className="cv-cards">{rows.map(r => typeof r === 'string'
@@ -506,7 +528,7 @@ function MonthView({ date, totals, narrow, onDay }: { date: string; totals: DayT
 
 // ---- outlets across the week ------------------------------------------------------------------------------------------
 /** Outlets down, days across: each cell the count and lowest price. 50 outlets a page; search and sort narrow thousands. */
-function OutletsView({ s, from, to, reload, live, onSort, onPanel }: { s: State; from: string; to: string; reload: number; live: number; onSort: (v: OSort) => void; onPanel: (p: Panel) => void }) {
+function OutletsView({ s, from, to, reload, live, onPanel }: { s: State; from: string; to: string; reload: number; live: number; onPanel: (p: Panel) => void }) {
   const [data, setData] = useState<{ total: number; items: OutletRow[] } | null>(null), [offset, setOffset] = useState(0), [error, setError] = useState('')
   const latest = useLatest()
   useEffect(() => { setOffset(0) }, [from, to, s.f, s.mine, s.all, s.osort])
@@ -521,22 +543,19 @@ function OutletsView({ s, from, to, reload, live, onSort, onPanel }: { s: State;
   return (
     <section className="card cv-outlets">
       <div className="cv-list-bar">
-        <span className="small muted" role="status">{!data ? t('Loading…') : t('{n} outlets with slots this week', { n: data.total.toLocaleString('en-US') })}</span>
-        <span className="spacer" />
-        <label className="small muted" htmlFor="cv-osort">{t('Sort by')}</label>
-        <select id="cv-osort" className="cal-input cv-sort" value={s.osort} onChange={e => onSort(e.target.value as OSort)}>
-          <option value="name">{t('Name')}</option><option value="price">{t('Lowest price')}</option><option value="slots">{t('Most slots')}</option></select>
+        <span className="small muted" role="status">{!data ? t('Loading…') : t('{n} outlets with dates on sale this week', { n: data.total.toLocaleString('en-US') })}</span>
       </div>
       {error && <p className="error pad">{error}</p>}
       <div className="table-wrap"><table className="table cv-otable">
         <thead><tr><th className="cv-ocol">{t('Outlet')}</th>{days.map(d => <th key={d} className={`num ${d === today ? 'today' : ''}`}>{dayLabel(d, { weekday: 'short', day: 'numeric' })}</th>)}<th className="r">{t('Week')}</th></tr></thead>
         <tbody>{(data?.items ?? []).map(o => <tr key={o.outletId}>
-          <th className="cv-ocol" scope="row"><span className="cv-outlet">{o.logoUrl ? <img src={o.logoUrl} width={24} height={24} alt="" className="cv-logo" loading="lazy" /> : <ChannelMark c={o.channel} />}
+          <th className="cv-ocol" scope="row"><span className="cv-outlet"><OutletMark name={o.outlet} url={o.logoUrl} size={28} />
             <span><b>{o.outlet}</b><span className="small muted">{CHANNEL_NAME[o.channel]}</span></span></span></th>
           {days.map(d => { const x = o.days.find(y => y.date === d)
             return <td key={d} className={`cv-ocell ${d < today ? 'past' : ''}`}>{x ? <button className={`cv-obtn shade-${shade(x.fromPrice)}`}
               onClick={() => onPanel({ title: o.outlet, sub: dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' }), query: { outlet: o.outletId, date: d } })}>
-              <b className="num">{money(x.fromPrice)}</b><span className="small muted">{t(x.slots === 1 ? '1 slot' : '{n} slots', { n: x.slots })}</span></button> : <span className="muted">—</span>}</td> })}
+              <b className="num">{money(x.fromPrice)}</b><span className="small muted">{t('{n} on sale', { n: x.slots })}</span>
+              {x.closesAt && soon(x.closesAt) && <span className="cv-closing">{closesIn(x.closesAt)}</span>}</button> : <span className="muted">—</span>}</td> })}
           <td className="r num small"><b>{o.slots}</b><div className="muted">{t('from {price}', { price: money(o.fromPrice) })}</div></td>
         </tr>)}</tbody></table></div>
       {pages > 1 && <nav className="cv-pager" aria-label={t('Pages')}>
