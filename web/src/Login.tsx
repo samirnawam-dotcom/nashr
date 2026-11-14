@@ -42,7 +42,7 @@ export function Login({ onIn, note }: { onIn: () => void; note?: string }) {
     <AuthShell>
       <form onSubmit={submit}>
         <div className="auth-title"><h1>{t("Sign in")}</h1><p>{t("Welcome back. Bid, book and follow every payment in one place.")}</p></div>
-        {note && <p className="auth-note" role="status">{note}</p>}
+        {note && <p className="auth-note" role="status">{t(note)}</p>}
         <div className="field"><label htmlFor="email">{t("Work email")}</label>
           <input id="email" type="email" autoComplete="username" placeholder="name@company.ae" value={email} onChange={e => setEmail(e.target.value)} required /></div>
         <div className="field"><label htmlFor="pw">{t("Password")}</label>

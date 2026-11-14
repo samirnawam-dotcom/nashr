@@ -9,6 +9,8 @@ import './system.css'
 
 // Find out who is signed in before drawing, so a pre-rendered page (landing, legal) stays on screen instead of flashing.
 applyLang()
+// Installing Nashr from an Arabic page gives the app its Arabic name, description and shortcuts.
+if (isAr) document.querySelector<HTMLLinkElement>('link[rel=manifest]')?.setAttribute('href', '/manifest-ar.webmanifest')
 // The pre-rendered page is English; an Arabic visitor sees nothing until the Arabic page is drawn, never the English flashing.
 const root = document.getElementById('root')!
 if (isAr) root.style.visibility = 'hidden'

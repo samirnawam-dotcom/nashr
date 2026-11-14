@@ -8,7 +8,7 @@ import { navigate } from '../nav'
 import { ChannelMark } from '../calendar/CalendarPage'
 import { Change, KI, Kpi, Ring, Trend } from '../seller/Portal'
 import '../seller/portal.css'
-import { isAr, t } from '../i18n'
+import { isAr, sep, t } from '../i18n'
 import { useLive } from '../live'
 
 type Weeks = { week: string; value: number }[]
@@ -45,7 +45,7 @@ export function BuyerDashboard() {
   return (
     <main className="pt">
       <div className="pt-head">
-        <div><h1>{greeting()}{company ? `, ${company}` : ''}</h1><p className="muted">{t('Your bookings, bids and spend at a glance. Click any card for detail.')}</p></div>
+        <div><h1>{greeting()}{company ? sep + company : ''}</h1><p className="muted">{t('Your bookings, bids and spend at a glance. Click any card for detail.')}</p></div>
         <div className="pt-filters"><a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/calendar">{t("Find slots")}</a></div>
       </div>
 

@@ -32,9 +32,10 @@ export function pushRoutes(route: RouteFn) {
   // A test alert to each of this person's devices, so they can see it works.
   route('POST', '/api/push/test', ANY, async ({ db, me }) => {
     const subs = (await db.query(`select id, endpoint, p256dh, auth from push_subscriptions where user_id = $1`, [me.userId])).rows
+    const ar = (await db.query(`select lang from users where id = $1`, [me.userId])).rows[0]?.lang === 'ar' // the test reads like the real alerts
     if (!subs.length) throw new MarketError('Turn on alerts on this device first.')
     const site = (process.env.SITE_URL ?? '').replace(/\/$/, '')
-    const results = await Promise.all(subs.map(s => pushTo(s, { title: 'Nashr', body: 'Alerts work on this device.', url: site + '/account', tag: 'test' }, { urgent: true }).catch(() => 0)))
+    const results = await Promise.all(subs.map(s => pushTo(s, { title: ar ? 'نشر' : 'Nashr', body: ar ? 'التنبيهات تعمل على هذا الجهاز.' : 'Alerts work on this device.', url: site + '/account', tag: 'test' }, { urgent: true }).catch(() => 0)))
     return { sent: results.filter(r => r >= 200 && r < 300).length, devices: subs.length }
   })
 }

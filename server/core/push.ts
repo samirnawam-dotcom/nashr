@@ -74,7 +74,7 @@ export async function pushNotice(companyId: string, kind: string, dealId: string
   for (const s of subs) {
     if (!wantsNotice(kind, s.email_prefs)) continue
     const m = noticeMessage(s.lang === 'ar' ? 'ar' : 'en', s.role, kind, dealId, data)
-    await pushTo(s, { title: 'Nashr', body: m.said, url: m.url, tag: dealId ?? kind }, { urgent: URGENT.test(kind), post }).catch(() => 0) // one device failing never stops the rest
+    await pushTo(s, { title: s.lang === 'ar' ? 'نشر' : 'Nashr', body: m.said, url: m.url, tag: dealId ?? kind }, { urgent: URGENT.test(kind), post }).catch(() => 0) // one device failing never stops the rest
   }
 }
 

@@ -1879,4 +1879,5 @@ export const AR_FLOW: Record<string, string> = {
   "bid on this slot": "المزايدة على هذه المساحة",
   "book this slot": "حجز هذه المساحة",
   "request a quote": "طلب عرض سعر",
+  "Sign in to see this page. You'll come straight back to it.": "سجّل الدخول لعرض هذه الصفحة، وستعود إليها مباشرة.",
 }
