@@ -64,7 +64,7 @@ export const SERVER_AR: Record<string, string> = {
   "The buyer's bank disputed the payment": "اعترض بنك المشتري على الدفعة",
   // Requests and access
   'Send JSON.': 'أرسل البيانات بصيغة JSON.', 'Please sign in.': 'يرجى تسجيل الدخول.', 'The file is too large.': 'الملف كبير جدًا.', 'Requests must come from Nashr.': 'يجب أن تصدر الطلبات من نشر.',
-  'Some fields are missing or not valid.': 'بعض الحقول ناقصة أو غير صحيحة.', 'Something went wrong on our side.': 'حدث خطأ من جهتنا.', 'Something went wrong.': 'حدث خطأ ما.', 'Upload failed.': 'تعذّر الرفع.',
+  'Some fields are missing or not valid.': 'بعض الحقول ناقصة أو غير صحيحة.', 'Something went wrong on our side.': 'حدث خطأ من جهتنا.', 'Something went wrong.': 'حدث خطأ ما.', 'A security check stopped this request. Reload the page and try again.': 'أوقف فحص أمني هذا الطلب. أعد تحميل الصفحة وحاول مرة أخرى.', 'Nashr is not answering right now. Try again in a minute.': 'نشر لا يستجيب الآن. حاول مرة أخرى بعد دقيقة.', 'Upload failed.': 'تعذّر الرفع.',
   'View only: you are viewing this account as an admin.': 'للعرض فقط: أنت تعرض هذا الحساب بصفة مشرف.', 'You do not have access to this.': 'لا تملك صلاحية الوصول إلى هذا.', 'Not found.': 'غير موجود.',
   'Not signed in.': 'لم تسجّل الدخول.', 'Too many requests. Try again in a minute.': 'طلبات كثيرة جدًا. حاول بعد دقيقة.', 'Too many attempts. Try again in a minute.': 'محاولات كثيرة جدًا. حاول بعد دقيقة.',
   'Signature check failed.': 'فشل التحقق من التوقيع.', 'Enter a valid work email.': 'أدخل بريدًا إلكترونيًا صحيحًا للعمل.',

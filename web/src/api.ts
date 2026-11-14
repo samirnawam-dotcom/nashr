@@ -10,8 +10,18 @@ export async function api<T = any>(path: string, init?: { method?: string; body?
     body: init?.body ? JSON.stringify(init.body) : undefined,
   })
   const data = await r.json().catch(() => ({}))
-  if (!r.ok) throw new ApiError(tm(data.error ?? 'Something went wrong.'), r.status, data.error ?? '')
+  if (!r.ok) throw new ApiError(tm(data.error ?? notOurs(r)), r.status, data.error ?? '')
   return data
+}
+/**
+ * A failed reply with no message of ours did not come from Nashr's API, which always says what went wrong. It came from what sits
+ * in front of it: the network's security check (it stops a background request until the page is loaded again), or the web server
+ * while the API is restarting. Say which, so the person knows what to do.
+ */
+function notOurs(r: Response) {
+  if (r.headers.get('cf-mitigated') || (r.status === 403 && /text\/html/.test(r.headers.get('content-type') ?? ''))) return 'A security check stopped this request. Reload the page and try again.'
+  if (r.status >= 502 && r.status <= 504) return 'Nashr is not answering right now. Try again in a minute.'
+  return 'Something went wrong.'
 }
 
 export type Slot = { brand?: string; title?: string; reach?: number | null; reachUnit?: string | null; notes?: string | null; outletId?: string; logoUrl?: string | null;
