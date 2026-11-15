@@ -18,10 +18,14 @@ group('calendar search', () => {
     expect(matches({ channels: ['tv'] }, slot(), now)).toBe(false)
     expect(matches({ sector: 'banking' }, slot(), now)).toBe(true)
     expect(matches({ sector: 'Pets' }, slot(), now)).toBe(false)
+    // Sectors: a product set to all sectors (no list) always shows; one that lists the sector as not accepted never does
+    expect(matches({ sector: 'Pets' }, slot({ sectors: [] }), now)).toBe(true)
+    expect(matches({ sector: 'banking' }, slot({ sectors: [], blocked: ['Banking'] }), now)).toBe(false)
+    expect(matches({ sector: 'Banking' }, slot({ blocked: ['Banking'] }), now)).toBe(false)
     expect(matches({ maxPrice: 400_000 }, slot(), now)).toBe(true)
     expect(matches({ maxPrice: 400_000 }, slot({ topBid: 410_000 }), now)).toBe(false)
     expect(matches({ dayparts: ['evening'] }, slot(), now)).toBe(false)
-    expect(matches({ q: 'skyline commuters' }, slot(), now)).toBe(true)
+    expect(matches({ q: 'skyline retail' }, slot(), now)).toBe(true) // outlets, programmes, sectors
     expect(matches({ q: 'gulf' }, slot(), now)).toBe(false)
     expect(matches({ closingWithinHours: 24 }, slot(), now)).toBe(true)
     expect(matches({ closingWithinHours: 12 }, slot(), now)).toBe(false)

@@ -16,7 +16,7 @@ import { confirmPreRun } from '../fulfilment/prerun.js'
 import { checklistFor } from '../fulfilment/proof.js'
 import { MarketError } from '../marketplace/market.js'
 import { dealRating } from './routes-ratings.js'
-import { byAudience, byDay, byOutlet, grid, listSlots, parseQuery, programmes, slots as searchSlots } from '../marketplace/search.js'
+import { byAudience, byDay, byOutlet, grid, listSlots, parseQuery, programmes, rows, slots as searchSlots } from '../marketplace/search.js'
 import { logoUrl } from './routes-covers.js'
 
 const BUYER: ['buyer'] = ['buyer']
@@ -65,6 +65,16 @@ export function buyerRoutes(route: RouteFn) {
       slots: r.slots, fromPrice: Number(r.from_price), days: r.days.map((d: any) => ({ date: d.date, slots: d.slots, fromPrice: Number(d.fromPrice), closesAt: d.closesAt })) })) }
   })
 
+  // The calendar's rows (owner's buyer-side fixes, round 2): outlets with their products under them; ?grain=week gives a column per week (Month view).
+  route('GET', '/api/slots/rows', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
+    const grain = req.query.grain === 'week' ? 'week' : 'day'
+    const { total, outlets } = await rows(db, query(me, req.query), grain, req.query.sort ?? 'popular', Number(req.query.offset ?? 0), Number(req.query.limit ?? 30), at)
+    return { total, grain, outlets: outlets.map(o => ({ key: o.key, outlet: o.brand, channels: o.channels, onSale: o.onSale, fromPrice: o.fromPrice,
+      logoUrl: brandOf({ brand: o.brand, brand_id: o.brandId, brand_logo_key: o.brandLogoKey, outlet_id: o.outletId, logo_key: o.logoKey }).logoUrl,
+      products: o.products.map(p => ({ placementId: p.placementId, placement: p.placement, channel: p.channel, onSale: p.onSale, fromPrice: p.fromPrice, saleTypes: p.saleTypes,
+        cells: p.cells.map((c: any) => ({ ...c, youLead: me ? c.youLead : false, outbid: me ? c.outbid : false })) })) })) }
+  })
+
   // One slot for the bid drawer: the server says what the next bid must be, the screen never works it out.
   route('GET', '/api/slots/:id', [...BUYER, 'admin', 'guest'], async ({ db, me, at }, req) => {
     const company = me?.actAs.companyId ?? null
@@ -74,7 +84,7 @@ export function buyerRoutes(route: RouteFn) {
        from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id where s.id = $1 and s.status <> 'blocked' and ${OPEN_MARKET}`, [req.params.id])).rows[0]
     if (!r) throw new NotFound()
     const mine = (await db.query(`select max(max_amount) max, max(max_amount) filter (where max_amount > amount and kind in ('bid', 'auto')) auto_max,
-      bool_or(brief is not null) has_brief, count(*) filter (where kind in ('bid', 'auto', 'interest') and status <> 'withdrawn')::int n
+      bool_or(brief->>'draftFileKey' is not null) has_brief, count(*) filter (where kind in ('bid', 'auto', 'interest') and status <> 'withdrawn')::int n
       from bids where slot_id = $1 and buyer_id = $2`, [r.id, company])).rows[0]
     // this buyer's own booking on the slot, if it is still going ahead (the screen says "You won" from this, not from the top bid)
     const yourDeal = company ? (await db.query(`select id, status, kind from deals where slot_id = $1 and buyer_id = $2
@@ -108,6 +118,30 @@ export function buyerRoutes(route: RouteFn) {
     const toPay = (await db.query(`select count(*)::int n, coalesce(sum(amount), 0)::bigint amount from deals where buyer_id = $1 and status = 'awaiting_payment'`, [b])).rows[0]
     return { leading: { count: leading.n, amount: Number(leading.amount) }, requests: { count: requests.n, amount: Number(requests.amount) },
       toPay: { count: toPay.n, amount: Number(toPay.amount) }, total: Number(leading.amount) + Number(requests.amount) + Number(toPay.amount) }
+  })
+
+  // "My bids" beside the calendar (owner's buyer-side fixes, round 2): every bid still in play, one line each. Outbid first, then by
+  // time left. A paid booking moves to Reports → Bookings and a lost bid leaves, so neither is listed.
+  route('GET', '/api/buyer/my-bids', BUYER, async ({ db, me, at }) => {
+    const b = me.actAs.companyId
+    const cols = `p.name placement, brand_name(o) outlet, o.id outlet_id, o.logo_key, pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, o.channel, s.starts_at, s.label`
+    const joins = `join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id`
+    // open auctions and quick-sale offers: the buyer's own highest bid on each slot
+    const open = (await db.query(`select distinct on (s.id) s.id slot_id, s.sale_type, s.top_buyer_id, s.closes_at, bd.kind, bd.amount, ${cols}
+        from bids bd join slots s on s.id = bd.slot_id ${joins}
+        where bd.buyer_id = $1 and bd.status in ('active', 'outbid') and bd.kind in ('bid', 'auto', 'interest') and s.status = 'open' and s.closes_at > $2
+        order by s.id, bd.amount desc`, [b, at])).rows
+    // requests and won auctions with the publisher, and accepted bookings to pay
+    const deals = (await db.query(`select d.id deal_id, d.status, d.amount, d.next_deadline_at, s.id slot_id, ${cols}
+        from deals d join slots s on s.id = d.slot_id ${joins} where d.buyer_id = $1 and d.status in ('awaiting_seller', 'awaiting_payment')`, [b])).rows
+    const line = (r: any) => ({ slotId: r.slot_id, title: brandOf(r).title, logoUrl: brandOf(r).logoUrl, channel: r.channel, startsAt: r.starts_at, label: r.label })
+    const items = [
+      ...open.map(r => ({ ...line(r), amount: Number(r.amount), endsAt: r.closes_at, dealId: null,
+        status: r.kind === 'interest' ? 'waiting' : r.top_buyer_id === b ? 'lead' : 'outbid' })),
+      ...deals.map(r => ({ ...line(r), amount: Number(r.amount), endsAt: r.next_deadline_at, dealId: r.deal_id, status: r.status === 'awaiting_payment' ? 'pay' : 'waiting' })),
+    ].sort((x, y) => Number(y.status === 'outbid') - Number(x.status === 'outbid') || Number(y.status === 'pay') - Number(x.status === 'pay')
+      || (x.endsAt ? new Date(x.endsAt).getTime() : Infinity) - (y.endsAt ? new Date(y.endsAt).getTime() : Infinity))
+    return { items }
   })
 
   route('POST', '/api/deals/:id/withdraw', BUYER, async ({ db, at, me }, req) =>

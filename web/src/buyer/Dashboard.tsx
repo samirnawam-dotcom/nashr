@@ -46,7 +46,7 @@ export function BuyerDashboard() {
     <main className="pt">
       <div className="pt-head">
         <div><h1>{greeting()}{company ? sep + company : ''}</h1><p className="muted">{t('Your bookings, bids and spend at a glance. Click any card for detail.')}</p></div>
-        <div className="pt-filters"><a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/calendar">{t("Find slots")}</a></div>
+        <div className="pt-filters"><a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/calendar">{t('Check availability')}</a></div>
       </div>
 
       {d.wins.length > 0 && <section className="wins" aria-label={t('Auctions you won')}>{d.wins.map(w => <a key={w.dealId} className="win" href={`/bookings/${w.dealId}`}>

@@ -29,8 +29,9 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   // No campaign: the brief is filled in for this bid (the last one is offered again). With a campaign, its brief goes instead.
   type B = CampaignBrief & { notes?: string; fileName?: string }
   const [brief, setBrief] = useState<B>(() => {
-    const blank: B = { advertiser: '', industry: '', message: '', language: 'english', languageOther: '', landingUrl: '', creativeToFollow: true, notes: '', disclaimer: '' }
-    try { const { draftFileKey: _, ...last } = JSON.parse(localStorage.getItem(LAST_BRIEF) ?? '{}'); return { ...blank, ...last } } catch { return blank }
+    const blank: B = { advertiser: '', industry: '', message: '', language: 'english', languageOther: '', landingUrl: '', notes: '', disclaimer: '' }
+    // the last brief and its creative are offered again (the file is the buyer's own; it shows by name and can be replaced)
+    try { const { fileName, ...last } = JSON.parse(localStorage.getItem(LAST_BRIEF) ?? '{}'); return { ...blank, ...last, fileName: last.draftFileKey ? fileName : undefined } } catch { return blank }
   })
   const [error, setError] = useState(''), [done, setDone] = useState(''), [warn, setWarn] = useState(''), [busy, setBusy] = useState(false), [uploading, setUploading] = useState(false)
   // The campaign comes first (owner's buyer-side fixes): its brief and creative go with the bid unless "Edit for this bid" is chosen.
@@ -54,7 +55,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   }
   async function file(x: File) {
     setUploading(true); setError('')
-    try { const u = await upload(x); setBrief({ ...brief, draftFileKey: `files/${u.id}`, fileName: u.name, creativeToFollow: false }) } catch (e: any) { setError(e.message) } finally { setUploading(false) }
+    try { const u = await upload(x); setBrief({ ...brief, draftFileKey: `files/${u.id}`, fileName: u.name }) } catch (e: any) { setError(e.message) } finally { setUploading(false) }
   }
   /** "+ Add to campaign": the product this slot belongs to goes into the chosen campaign's plan. */
   async function addToCampaign(id = campaignId) {
@@ -82,16 +83,20 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       const { fileName: _, ...own } = brief
       // with a campaign, its brief goes unless edited here; without one, the brief filled in here (once per slot)
       const b = !editHere || (!campaign && s!.briefOnFile) ? {} : { brief: { ...own, languageOther: own.language === 'other' ? own.languageOther?.trim() : undefined, landingUrl: own.landingUrl || undefined,
-        notes: own.notes || undefined, disclaimer: own.disclaimer?.trim() || undefined, draftFileKey: own.draftFileKey || undefined, creativeToFollow: !own.draftFileKey || !!own.creativeToFollow } }
+        notes: own.notes || undefined, disclaimer: own.disclaimer?.trim() || undefined, draftFileKey: own.draftFileKey || undefined, creativeToFollow: undefined } }
       const r = await api<any>(path, { method: 'POST', body: { ...body, ...b, ...(campaignId ? { campaignId } : {}), ...(forClient && !campaignClient ? { clientId: forClient } : {}) } })
       if (r?.beatenByAutoBid) message = () => ''
       if (r?.beatenByAutoBid) setWarn(t("Your bid is in, but another buyer's auto-bid is higher, so you are not leading. The top bid is now {top}. Bid at least {min}, or set a higher maximum.", { top: money(r.topAmount), min: money(r.minNextBid) }))
       message = typeof message === 'string' ? message : message(r)
       try { localStorage.setItem(LAST_CLIENT, clientId) } catch { /* fine */ }
-      if (!campaign && !s!.briefOnFile) try { localStorage.setItem(LAST_BRIEF, JSON.stringify({ ...own, draftFileKey: undefined })) } catch { /* private mode: nothing to remember */ }
+      if (!campaign && !s!.briefOnFile) try { localStorage.setItem(LAST_BRIEF, JSON.stringify({ ...own, fileName: brief.fileName })) } catch { /* private mode: nothing to remember */ }
       if (message) setDone(message); onDone(); await load(); if (campaign) reloadCampaigns()
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
+  /** Brief and creative complete? Nothing is sent without them: a seller never accepts something blind (owner's round 2). */
+  const complete = (b: Partial<B> | null | undefined) => !!b && !!b.advertiser?.trim() && !!b.industry?.trim() && !!b.message?.trim() && b.message.length <= 280
+    && !!b.language && (b.language !== 'other' || !!b.languageOther?.trim()) && !!b.draftFileKey && (s?.channel !== 'digital' || /^https:\/\/\S+$/.test(b.landingUrl ?? ''))
+  const briefReady = !editHere ? complete(campaign?.brief) : !campaign && s?.briefOnFile ? true : complete(brief)
   if (!s) return <Shell onClose={onClose}>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</Shell>
 
   const weekLong = !!s.endsAt && new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime() >= 86_400_000
@@ -158,8 +163,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           <div className="field"><span className="label">{t('Creative')} <span className="req">*</span></span><div className="cp-creative">
             <label className={`btn ${uploading ? 'disabled' : ''}`}><input type="file" className="visually-hidden" disabled={uploading} onChange={e => e.target.files?.[0] && file(e.target.files[0])} />
               {uploading ? t('Uploading…') : brief.draftFileKey ? t('Replace file') : t('Upload a file')}</label>
-            {brief.draftFileKey ? <span className="small"><bdi>{brief.fileName}</bdi> <button type="button" className="linkish" onClick={() => setBrief({ ...brief, draftFileKey: undefined, fileName: undefined, creativeToFollow: true })}>{t('Remove')}</button></span>
-              : <label className="check"><input type="checkbox" checked={!!brief.creativeToFollow} onChange={e => setBrief({ ...brief, creativeToFollow: e.target.checked })} /> {t("Creative to follow")}</label>}</div></div>
+            {brief.draftFileKey && <span className="small"><bdi>{brief.fileName}</bdi> <button type="button" className="linkish" onClick={() => setBrief({ ...brief, draftFileKey: undefined, fileName: undefined })}>{t('Remove')}</button></span>}</div></div>
           <div className="field"><label htmlFor="disc">{t('Required disclaimer or licence number (optional)')}</label>
             <input id="disc" dir="auto" maxLength={500} value={brief.disclaimer ?? ''} onChange={e => setBrief({ ...brief, disclaimer: e.target.value })} placeholder={t('e.g. Licensed by the Central Bank of the UAE')} />
             <span className="small muted">{t('The publisher must include it and confirm it in their proof.')}</span></div>
@@ -210,20 +214,22 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
         {done && <p className="ok" role="status">{done}</p>}
         {warn && <p className="warn" role="status">{warn}</p>}
         <p className="small muted">{t("You'll be asked to pay once the publisher accepts. Nothing is charged now.")}</p>
+        {!briefReady && <p className="bd-need small" role="note">{t('Add your brief and creative first.')}
+          {campaign && !editHere && <> <button type="button" className="linkish" onClick={editForThisBid}>{t('Edit for this bid')}</button></>}</p>}
         <footer className="drawer-f">
           {s.saleType === 'auction'
             ? (auto
-              ? <button className="btn primary" disabled={busy || new Date() >= closes || !(toFils(max) >= (s.youLead ? (s.yourAutoMax ?? s.topBid ?? 0) + 1 : s.minNextBid))}
+              ? <button className="btn primary" disabled={busy || !briefReady || new Date() >= closes || !(toFils(max) >= (s.youLead ? (s.yourAutoMax ?? s.topBid ?? 0) + 1 : s.minNextBid))}
                   onClick={() => send(`/slots/${s.id}/bids`, { amount: s.youLead && s.topBid ? s.topBid : s.minNextBid, maxAmount: toFils(max) },
                     r => r.leading ? t('Auto-bid is on. You lead at {top}; we bid for you up to {max}.', { top: money(r.topAmount), max: money(r.yourMax) }) : '')}>
                   {s.youLead && s.yourAutoMax ? t('Raise maximum to {amount}', { amount: money(toFils(max) || 0) }) : t('Start auto-bid up to {amount}', { amount: money(toFils(max) || 0) })}</button>
-              : <button className="btn primary" disabled={busy || new Date() >= closes} onClick={() => send(`/slots/${s.id}/bids`, { amount: toFils(amount) }, r => r.leading ? t('Your bid is in. You lead at {top}.', { top: money(r.topAmount) }) : '')}>{t('Place bid {amount}', { amount: money(toFils(amount) || 0) })}</button>)
+              : <button className="btn primary" disabled={busy || !briefReady || new Date() >= closes} onClick={() => send(`/slots/${s.id}/bids`, { amount: toFils(amount) }, r => r.leading ? t('Your bid is in. You lead at {top}.', { top: money(r.topAmount) }) : '')}>{t('Place bid {amount}', { amount: money(toFils(amount) || 0) })}</button>)
             : s.saleType === 'fixed'
-              ? <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/book`, {}, r => r.status === 'accepted_pay_now'
+              ? <button className="btn primary" disabled={busy || !briefReady} onClick={() => send(`/slots/${s.id}/book`, {}, r => r.status === 'accepted_pay_now'
                   ? t('Booked and confirmed. Pay from Bookings to secure it.') : t('Booked. The publisher confirms within 24 hours; you pay only then.'))}>{t('Book for {price}', { price: money(s.startingPrice) })}</button>
-            : <button className="btn primary" disabled={busy} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
+            : <button className="btn primary" disabled={busy || !briefReady} onClick={() => send(`/slots/${s.id}/interest`, amount && toFils(amount) !== s.startingPrice ? { amount: toFils(amount) } : {}, t('Interest sent. The publisher accepts one buyer before bidding closes; you will be told either way, and pay only if accepted.'))}>{t("Show interest")}</button>}
           {s.placementId && <button type="button" className="btn plan-add" onClick={() => addToCampaign()}>+ {t('Add to campaign')}</button>}
-          {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
+          {s.buyNowPrice && s.saleType === 'auction' && <button className="btn" disabled={busy || !briefReady} onClick={() => send(`/slots/${s.id}/buy-now`, {}, t('Request sent. The publisher will reply within 24 hours.'))}>{t('Request at {price}', { price: money(s.buyNowPrice) })}</button>}
         </footer>
       </>}
       {/* after booking the last open slot it is no longer on sale: the result still shows */}

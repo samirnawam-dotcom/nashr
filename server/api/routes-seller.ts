@@ -2,6 +2,7 @@ import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { sellerDeal, sellerSlot } from './shapes.js'
 import { companyProfile } from './profiles.js'
+import { briefForSeller } from './brief-view.js'
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import { accept, acceptInterest, chooseBid, counter, decline, MarketError } from '../marketplace/market.js'
 import { cancelBySeller, creativeMissed } from '../payments/payments.js'
@@ -86,7 +87,7 @@ export function sellerRoutes(route: RouteFn) {
   route('GET', '/api/seller/deals/:id', SELLER, async ({ db, me }, req) => {
     const d = await ownDeal(db, req.params.id, me.actAs.companyId)
     return { ...sellerDeal(d, await otherBids(db, d)), rating: await dealRating(db, d.id), separation: await separationConflict(db, d),
-      buyerProfile: await companyProfile(db, d.buyer_id) }
+      buyerProfile: await companyProfile(db, d.buyer_id), briefView: await briefForSeller(db, d.brief, d.client_id ?? null) }
   })
 
   route('POST', '/api/seller/deals/:id/accept', SELLER, async ({ db, at, me }, req) => {

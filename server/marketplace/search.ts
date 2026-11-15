@@ -43,12 +43,15 @@ export function where(q: Query, now: Date) {
   if (q.open) w.push(`s.status = 'open'`, `s.closes_at > ${add(now)}`)
   if (q.channels?.length) w.push(`o.channel = any(${add(q.channels)}::text[])`)
   if (q.saleTypes?.length) w.push(`s.sale_type = any(${add(q.saleTypes)}::text[])`)
-  if (q.sector) w.push(`exists (select 1 from unnest(o.sectors) x where lower(x) = lower(${add(q.sector)}))`)
+  // the product takes ads from this sector: it lists it, or takes all sectors (an empty list); never one it lists as not accepted
+  if (q.sector) { const x = add(q.sector)
+    w.push(`(cardinality(o.sectors) = 0 or exists (select 1 from unnest(o.sectors) y where lower(y) = lower(${x})))`,
+      `not exists (select 1 from unnest(coalesce(o.blocked_industries, '{}')) y where lower(y) = lower(${x}))`) }
   if (q.maxPrice != null && Number.isFinite(q.maxPrice)) w.push(`${PRICE} <= ${add(q.maxPrice)}`)
   if (q.minPrice != null && Number.isFinite(q.minPrice)) w.push(`${PRICE} >= ${add(q.minPrice)}`)
   if (q.dayparts?.length) w.push(`(${q.dayparts.map(d => Object.hasOwn(DAYPART, d) ? DAYPART[d] : 'false').join(' or ')})`)
   for (const word of (q.q ?? '').toLowerCase().split(/\s+/).filter(Boolean))
-    w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || coalesce(o.audience, '') || ' ' || coalesce(c.name, '')), ${add(word)}) > 0`)
+    w.push(`strpos(lower(o.name || ' ' || p.name || ' ' || array_to_string(o.sectors, ' ') || ' ' || coalesce(c.name, '')), ${add(word)}) > 0`)
   if (q.closingWithinHours != null && Number.isFinite(q.closingWithinHours)) w.push(`s.closes_at <= ${add(new Date(now.getTime() + q.closingWithinHours * 3_600_000))}`)
   if (q.audiences?.length) w.push(`${AUDIENCES_SQL} && ${add(q.audiences)}::text[]`)
   if (q.mine && q.me) w.push(`exists (select 1 from bids b where b.slot_id = s.id and b.buyer_id = ${add(q.me)})`)
@@ -64,7 +67,7 @@ export function where(q: Query, now: Date) {
 }
 
 /** A slot row with its bid count and whether this buyer has bid, in one pass rather than a query per row. */
-const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, brand_name(o) outlet, o.channel, o.sectors, o.audience, ${AUDIENCES_SQL} audiences, o.logo_key, pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
+const SLOT_COLUMNS = `s.*, p.name placement, o.id outlet_id, brand_name(o) outlet, o.channel, o.sectors, coalesce(o.blocked_industries, '{}') blocked, o.audience, ${AUDIENCES_SQL} audiences, o.logo_key, pr.id brand_id, pr.name brand, pr.logo_key brand_logo_key, c.name company, coalesce(bc.n, 0)::int bids, coalesce(bc.mine, false) mine,
   (select d.id from deals d where d.slot_id = s.id order by d.created_at desc limit 1) deal_id`
 const BID_COUNTS = (me: string) => `left join lateral (select count(*) n, bool_or(b.buyer_id = ${me}) mine from bids b where b.slot_id = s.id and b.status <> 'withdrawn') bc on true`
 
@@ -202,4 +205,60 @@ export function parseQuery(r: Record<string, string | undefined>, me: string | n
 export function scopedQuery(r: Record<string, string | undefined>, scope: 'seller' | 'admin', company: string | null): Query {
   const from = r.from ?? new Date().toISOString(), to = r.to ?? new Date(Date.now() + 35 * 86_400_000).toISOString()
   return { ...parseQuery(r, null, from, to), open: false, scope, company: company ?? undefined }
+}
+
+export type RowGrain = 'day' | 'week'
+/**
+ * The buyer's calendar (owner's buyer-side fixes, round 2): outlet rows with their products under them, one cell per column.
+ * Day and Week views have a column per day, Month a column per week (Monday first). A cell is one product in one column: the
+ * lowest current price on sale, how many are on sale, bids on them, the soonest close, and where this buyer stands; Day view
+ * cells also carry that day's listings. Outlets are paged in SQL (the order the buyer chose), so 1000+ outlets stay cheap.
+ */
+export async function rows(db: Db, q: Query, grain: RowGrain, sort: OutletSort, offset: number, limit: number, now: Date) {
+  const BRAND = `coalesce(pr.id, o.id)`
+  // 1. the page of outlets, in the chosen order
+  const a = where(q, now), atA = a.add(now)
+  const OPEN_A = `(s.status = 'open' and s.closes_at > ${atA})`
+  const order = sort === 'price' ? 'from_price nulls last, brand' : sort === 'price_desc' ? 'from_price desc nulls last, brand' : sort === 'closing' ? 'closes_at nulls last, brand'
+    : sort === 'slots' ? 'on_sale desc, brand' : sort === 'popular' ? 'popular desc, brand' : 'brand'
+  const page1 = (await db.query(`select ${BRAND} brand_key, coalesce(pr.name, brand_name(o)) brand, count(*) filter (where ${OPEN_A})::int on_sale,
+      min(${PRICE}) filter (where ${OPEN_A}) from_price, min(s.closes_at) filter (where ${OPEN_A}) closes_at, max(${OUTLET_POPULAR}) popular, count(*) over ()::int total
+    ${a.from} ${a.where} group by ${BRAND}, coalesce(pr.name, brand_name(o)) order by ${order} ${page(offset, limit)}`, a.params)).rows
+  if (!page1.length) return { total: 0, outlets: [] }
+  // 2. their products, one row per product and column
+  const w = where(q, now), me = w.add(q.me), at = w.add(now), keys = w.add(page1.map(r => r.brand_key))
+  const OPEN = `(s.status = 'open' and s.closes_at > ${at})`
+  const BUCKET = grain === 'week' ? `date_trunc('week', ${DUBAI})::date::text` : `${DUBAI}::date::text`
+  const cells = (await db.query(`select ${BRAND} brand_key, coalesce(pr.name, brand_name(o)) brand, pr.id brand_id, pr.logo_key brand_logo_key, o.id outlet_id, o.logo_key,
+      o.channel, p.id placement_id, p.name placement, ${POPULAR} popular, ${BUCKET} col,
+      count(*)::int slots, count(*) filter (where ${OPEN})::int on_sale, min(${PRICE}) filter (where ${OPEN}) price,
+      coalesce(sum(bc.n) filter (where ${OPEN}), 0)::int bids, min(s.closes_at) filter (where ${OPEN}) closes_at,
+      coalesce(bool_or(${OPEN} and s.top_buyer_id = ${me}), false) leads,
+      coalesce(bool_or(${OPEN} and bc.mine and s.top_buyer_id is distinct from ${me}), false) outbid,
+      array_agg(distinct s.sale_type) filter (where ${OPEN}) sale_types
+      ${grain === 'day' ? `, json_agg(json_build_object('id', s.id, 'startsAt', s.starts_at, 'endsAt', s.ends_at, 'price', ${PRICE}, 'saleType', s.sale_type, 'label', s.label, 'kind', s.kind)
+          order by s.starts_at, ${PRICE}) filter (where ${OPEN}) items` : ''}
+    ${w.from} ${BID_COUNTS(me)} ${w.where} and ${BRAND} = any(${keys}::uuid[])
+    group by ${BRAND}, coalesce(pr.name, brand_name(o)), pr.id, pr.logo_key, o.id, o.logo_key, o.channel, p.id, p.name, ${BUCKET}`, w.params)).rows
+  const outlets = page1.map(b => {
+    const mine = cells.filter(c => c.brand_key === b.brand_key)
+    const products = new Map<string, any>()
+    for (const c of mine) {
+      const pr = products.get(c.placement_id) ?? { placementId: c.placement_id, placement: c.placement, channel: c.channel, popular: Number(c.popular), onSale: 0, fromPrice: null as number | null,
+        saleTypes: new Set<string>(), cells: [] as any[] }
+      pr.onSale += c.on_sale
+      if (c.price != null) pr.fromPrice = pr.fromPrice == null ? Number(c.price) : Math.min(pr.fromPrice, Number(c.price))
+      for (const x of c.sale_types ?? []) pr.saleTypes.add(x)
+      pr.cells.push({ col: c.col, slots: c.slots, onSale: c.on_sale, price: c.price == null ? null : Number(c.price), bids: c.bids, closesAt: c.closes_at,
+        youLead: c.leads, outbid: c.outbid, ...(grain === 'day' ? { items: (c.items ?? []).map((i: any) => ({ ...i, price: Number(i.price) })) } : {}) })
+      products.set(c.placement_id, pr)
+    }
+    const first = mine[0]
+    const list = [...products.values()].map(p => ({ ...p, saleTypes: [...p.saleTypes] }))
+      .sort((x, y) => sort === 'price' ? (x.fromPrice ?? Infinity) - (y.fromPrice ?? Infinity) : sort === 'price_desc' ? (y.fromPrice ?? -1) - (x.fromPrice ?? -1)
+        : sort === 'popular' ? y.popular - x.popular || x.placement.localeCompare(y.placement) : x.placement.localeCompare(y.placement))
+    return { key: b.brand_key, brand: b.brand, brandId: first?.brand_id ?? null, brandLogoKey: first?.brand_logo_key ?? null, outletId: first?.outlet_id, logoKey: first?.logo_key ?? null,
+      channels: [...new Set(mine.map(c => c.channel))], onSale: b.on_sale, fromPrice: b.from_price == null ? null : Number(b.from_price), products: list }
+  })
+  return { total: page1[0].total as number, outlets }
 }

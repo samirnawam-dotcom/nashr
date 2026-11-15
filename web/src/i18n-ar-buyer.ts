@@ -151,4 +151,9 @@ export const AR_BUYER: Record<string, string> = {
     'ستحوّل أثينا موجز الحملة إلى مجموعة مقترحة من المساحات القابلة للحجز في وسائل الإعلام الإماراتية، استنادًا إلى الأسعار الفائزة الفعلية والجماهير والنتائج على نشر.',
   "We're collecting that data now with every booking. Until then, plan with": 'نجمع هذه البيانات الآن مع كل حجز. وحتى ذلك الحين، خطّط باستخدام', 'Tell me when Athena launches': 'أبلغني عند إطلاق أثينا',
   "The publisher's tax invoice is issued separately.": "تصدر الفاتورة الضريبية للناشر بشكل منفصل.",
+  "Check availability": "تحقّق من التوفّر",
+  "Logo chosen. It is saved with the client.": "تم اختيار الشعار. يُحفظ مع العميل.",
+  "Optional": "اختياري",
+  "Add your brief and creative first.": "أضف الملخص والمادة الإعلانية أولًا.",
+  "Upload the creative.": "ارفع المادة الإعلانية.",
 }

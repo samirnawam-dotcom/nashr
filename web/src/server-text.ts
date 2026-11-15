@@ -174,6 +174,8 @@ export const SERVER_AR: Record<string, string> = {
   "Emails that could not be sent in the last day: {}. Check Emails.": "رسائل تعذّر إرسالها خلال اليوم الماضي: {1}. راجع رسائل البريد.",
   "Disputes past their decision date: {}. Check Disputes.": "نزاعات تجاوزت موعد قرارها: {1}. راجع النزاعات.",
   "Server errors in the last 10 minutes: {}, latest: {}. Check the logs (journalctl -u nashr).": "أخطاء الخادم خلال آخر 10 دقائق: {1}، آخرها: {2}. راجع السجلات (journalctl -u nashr).",
+  "Upload the creative.": "ارفع المادة الإعلانية.",
+  "Upload the creative again: that file was not found.": "ارفع المادة الإعلانية مجددًا: لم يُعثر على ذلك الملف.",
   "The timer job has not run yet.": "لم تعمل مهمة المؤقت بعد.",
   "A payout or refund has been waiting {}. Check Funds.": "تحويل أو استرداد ينتظر منذ {1}. راجع الأموال.",
   "{} payout or refund failed and needs a person. Check Funds.": "فشل {1} تحويل أو استرداد ويحتاج إلى متابعة. راجع الأموال.",

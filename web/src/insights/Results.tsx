@@ -43,7 +43,7 @@ export function ResultsPage() {
       </PhotoBand>
       {error && <p className="error">{error}</p>}
       {!r ? !error && <p className="muted">{t('Loading…')}</p> : !r.items.length ? <div className="card pad empty"><p><b>{t('No paid bookings yet.')}</b></p>
-        <p className="muted">{t('Results appear here once a booking is paid. Each airing, its proof and its reach are added as it runs.')}</p><a className="btn primary" href="/calendar">{t('Find slots')}</a></div> : <>
+        <p className="muted">{t('Results appear here once a booking is paid. Each airing, its proof and its reach are added as it runs.')}</p><a className="btn primary" href="/calendar">{t('Check availability')}</a></div> : <>
         <dl className="kpis">
           <div className="card"><dt>{t('Spend (excl. VAT)')}</dt><dd className="num">{money(r.totals.spend)}</dd><span className="small muted">{r.totals.bookings === 1 ? t('1 booking') : t('{n} bookings', { n: r.totals.bookings })}</span></div>
           <div className="card"><dt>{t('Aired')}</dt><dd className="num">{r.totals.aired} / {r.totals.bookings}</dd><span className="small muted">{t('{n} with proof', { n: r.totals.withProof })}</span></div>

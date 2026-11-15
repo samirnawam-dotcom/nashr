@@ -1,5 +1,6 @@
 import { navigate } from '../nav'
 import { briefLanguage, slotWhen } from '../format'
+import { BriefCard } from './BriefCard'
 import { Decide, type Counter } from './Decide'
 import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
@@ -77,6 +78,12 @@ export function SellerDealPage({ id }: { id: string }) {
   if (!d || !x) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   const latest = x.creatives[x.creatives.length - 1]
   const msg = <>{error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}</>
+  const checks = <>{d.checks && <ul className="checklist" style={{ marginTop: 12 }}>{([
+      [d.checks.categoryAccepted, d.checks.categoryAccepted ? t("Industry is one of your sectors") : t("Industry isn't in your sectors")],
+      ...(d.checks.landingPageMissing ? [[false, t("No landing page link yet")]] : []),
+      ...(d.checks.creativeToFollow ? [[true, t("Creative to follow")]] : []),
+    ] as [boolean, string][]).map(([ok, label]) => <li key={label}><span className="tick" aria-hidden style={ok ? {} : { color: 'var(--amber)' }}>{ok ? '✓' : '!'}</span><span>{t(label)}</span></li>)}</ul>}
+    <p className="small muted">{t("These checks are for your information. The decision is yours.")}</p></>
   return (
     <main className="narrow">
       <p className="small"><a href="/reports">{t("Transactions")}</a> › {t('Order {ref}', { ref: d.ref })}</p>
@@ -92,6 +99,8 @@ export function SellerDealPage({ id }: { id: string }) {
           <div className="total"><dt>{t("You receive")}</dt><dd>{money(d.money.youReceive)}</dd></div>
         </dl>
         {d.status === 'awaiting_seller' && <>
+          {/* a seller never accepts something blind: the full brief and the creative, above Accept and Decline */}
+          {(d as any).briefView && <><h2 className="bc-h">{t('What you are accepting')}</h2><BriefCard b={(d as any).briefView} amount={d.money.bid} />{checks}</>}
           {d.belowReserve && <p className="warn">{t("This is below your reserve price. You can still accept it.")}</p>}
           {d.separation && <p className="warn">{t('Competitive separation: another {industry} advertiser is already booked with this outlet on the same day. You can still accept it.', { industry: t(d.separation.industry) })}</p>}
           {d.nextDeadlineAt && <p className="small muted">{t('Decide by {when} or the request expires.', { when: when(d.nextDeadlineAt) })}</p>}
@@ -104,7 +113,7 @@ export function SellerDealPage({ id }: { id: string }) {
       </div>
 
       {d.buyerProfile && <section className="card pad section"><CompanyCard p={d.buyerProfile} title={t('The buyer')} /></section>}
-      {d.brief && <section className="card pad section">
+      {d.brief && d.status !== 'awaiting_seller' && <section className="card pad section">
         <h2>{t("Booking brief")}</h2>
         <dl className="facts">
           <div><dt>{t("Advertiser")}</dt><dd>{d.brief.advertiser}</dd></div><div><dt>{t("Industry")}</dt><dd>{t(d.brief.industry)}</dd></div>
@@ -113,12 +122,7 @@ export function SellerDealPage({ id }: { id: string }) {
           {d.brief.notes && <div><dt>{t("Notes")}</dt><dd>{d.brief.notes}</dd></div>}
           {d.brief.disclaimer && <div className="must"><dt>{t('Required disclaimer')}</dt><dd><b dir="auto">{d.brief.disclaimer}</b><div className="small muted">{t('Include it in the ad and confirm it when you send proof.')}</div></dd></div>}
         </dl>
-        {d.checks && <ul className="checklist" style={{ marginTop: 12 }}>{([
-          [d.checks.categoryAccepted, d.checks.categoryAccepted ? t("Industry is one of your sectors") : t("Industry isn't in your sectors")],
-          ...(d.checks.landingPageMissing ? [[false, t("No landing page link yet")]] : []),
-          ...(d.checks.creativeToFollow ? [[true, t("Creative to follow")]] : []),
-        ] as [boolean, string][]).map(([ok, label]) => <li key={label}><span className="tick" aria-hidden style={ok ? {} : { color: 'var(--amber)' }}>{ok ? '✓' : '!'}</span><span>{t(label)}</span></li>)}</ul>}
-        <p className="small muted">{t("These checks are for your information. The decision is yours.")}</p>
+        {checks}
       </section>}
 
       {(x.creatives.length > 0 || ['awaiting_payment', 'secured'].includes(d.status)) && <section className="card pad section">

@@ -5,7 +5,7 @@ import { accept, acceptInterest, chooseBid, decline, placeBid, requestBuyNow, sh
 import { intervene } from '../payments/payments.js'
 import { transition } from './deals.js'
 import { sweep } from './sweeper.js'
-import { AED, BRIEF, T, company, radio, reset, slot } from '../test/helpers.js'
+import { AED, BRIEF, briefFor, T, company, radio, reset, slot } from '../test/helpers.js'
 
 const now = T('2026-11-01T08:00:00Z')          // Sunday 1 Nov
 const CLOSE = T('2026-11-04T03:15:00Z')        // Break 2 on Mon 9 Nov closes 5 days before air
@@ -23,14 +23,14 @@ beforeEach(async () => {
 
 const bid = (buyerId: string, amount: number, maxAmount?: number, at = now) =>
   // the two numbers these tests pin; the screen also gets the buyer's maximum and the next minimum bid
-  tx(c => placeBid(c, { slotId: b2.id, buyerId, amount: AED(amount), maxAmount: maxAmount && AED(maxAmount), brief: BRIEF }, at)).then(r => ({ leading: r.leading, topAmount: r.topAmount }))
+  tx(c => placeBid(c, { slotId: b2.id, buyerId, amount: AED(amount), maxAmount: maxAmount && AED(maxAmount), brief: briefFor(buyerId) }, at)).then(r => ({ leading: r.leading, topAmount: r.topAmount }))
 const deal = async () => (await pool.query(`select * from deals where slot_id = $1 order by created_at desc, ref desc limit 1`, [b2.id])).rows[0]
 const slotNow = async () => (await pool.query(`select * from slots where id = $1`, [b2.id])).rows[0]
 
 describe('bidding', () => {
   test('the first bid needs a complete booking brief', async () => {
     await expect(tx(c => placeBid(c, { slotId: b2.id, buyerId: A, amount: AED(4_000) }, now))).rejects.toThrow('booking brief is required')
-    await expect(tx(c => placeBid(c, { slotId: b2.id, buyerId: A, amount: AED(4_000), brief: { ...BRIEF, notes: 'call 0501234567' } }, now)))
+    await expect(tx(c => placeBid(c, { slotId: b2.id, buyerId: A, amount: AED(4_000), brief: { ...briefFor(A), notes: 'call 0501234567' } }, now)))
       .rejects.toThrow('Remove the email or phone number')
   })
 
@@ -59,7 +59,7 @@ describe('bidding', () => {
 
   test('scenario 13: 50 bids at the same moment produce exactly one top bid and unique order', async () => {
     const buyers = await Promise.all(Array.from({ length: 50 }, (_, i) => company(`Buyer ${i}`, 'buyer')))
-    const results = await Promise.allSettled(buyers.map((b, i) => tx(c => placeBid(c, { slotId: b2.id, buyerId: b, amount: AED(3_500 + i * 200), brief: BRIEF }, now))))
+    const results = await Promise.allSettled(buyers.map((b, i) => tx(c => placeBid(c, { slotId: b2.id, buyerId: b, amount: AED(3_500 + i * 200), brief: briefFor(b) }, now))))
     const s = await slotNow()
     const { rows } = await pool.query(`select seq, amount, status from bids where slot_id = $1 order by seq`, [b2.id])
     expect(rows.map(r => r.seq)).toEqual(rows.map((_, i) => i + 1)) // gapless, no duplicates
@@ -117,7 +117,7 @@ describe('after the auction closes (sweeper)', () => {
 
   test('Nashr cancelling a buy-now request leaves the auction running with its bids', async () => {
     await bid(A, 4_000); await bid(C, 4_200)
-    const d = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, now))
+    const d = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: briefFor(B) }, now))
     await tx(c => intervene(c, { dealId: d.id, action: 'cancel', reason: 'Asked by the buyer', actor: 'admin:x' }, now))
     expect(await slotNow()).toMatchObject({ status: 'open', sale_type: 'auction', top_buyer_id: C, top_amount: AED(4_200) })
   })
@@ -173,23 +173,23 @@ describe('after the auction closes (sweeper)', () => {
 describe('buy-now and quick sale', () => {
   test('scenario 21: buy-now request; accepting ends the auction and tells other bidders', async () => {
     await bid(A, 4_000)
-    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, now))
+    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: briefFor(B) }, now))
     expect(r).toMatchObject({ status: 'awaiting_seller', amount: AED(5_500) })
-    await expect(tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, now))).rejects.toThrow('already have')
+    await expect(tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: briefFor(B) }, now))).rejects.toThrow('already have')
     await tx(c => accept(c, r.id, 'seller', h(now, 1)))
     expect((await slotNow()).status).toBe('booked')
     expect((await pool.query(`select status from bids where buyer_id = $1`, [A])).rows[0].status).toBe('not_selected')
   })
 
   test('an accepted buy-now that is not paid is relisted', async () => {
-    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, now))
+    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: briefFor(B) }, now))
     await tx(c => accept(c, r.id, 'seller', h(now, 1)))
     await sweep(h(now, 49))
     expect(await slotNow()).toMatchObject({ status: 'open', sale_type: 'quick_sale' })
   })
 
   test('declined buy-now: the auction carries on', async () => {
-    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, now))
+    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: briefFor(B) }, now))
     await tx(c => decline(c, r.id, 'Prefer the auction', 'seller', h(now, 1)))
     expect((await slotNow()).status).toBe('open')
     expect((await bid(A, 3_600)).leading).toBe(true)
@@ -197,9 +197,9 @@ describe('buy-now and quick sale', () => {
 
   test('scenario 22: two buyers show interest, the seller accepts the second; nothing is charged before payment', async () => {
     await pool.query(`update slots set sale_type = 'quick_sale' where id = $1`, [b2.id])
-    await expect(tx(c => showInterest(c, { slotId: b2.id, buyerId: A, amount: AED(3_000), brief: BRIEF }, now))).rejects.toThrow(/cannot be below AED \d{1,3}(,\d{3})*\./)
-    const first = await tx(c => showInterest(c, { slotId: b2.id, buyerId: A, brief: BRIEF }, now))
-    const second = await tx(c => showInterest(c, { slotId: b2.id, buyerId: B, amount: AED(3_900), brief: BRIEF }, now))
+    await expect(tx(c => showInterest(c, { slotId: b2.id, buyerId: A, amount: AED(3_000), brief: briefFor(A) }, now))).rejects.toThrow(/cannot be below AED \d{1,3}(,\d{3})*\./)
+    const first = await tx(c => showInterest(c, { slotId: b2.id, buyerId: A, brief: briefFor(A) }, now))
+    const second = await tx(c => showInterest(c, { slotId: b2.id, buyerId: B, amount: AED(3_900), brief: briefFor(B) }, now))
     const d = await tx(c => acceptInterest(c, second.id, 'seller', h(now, 2)))
     expect(d).toMatchObject({ status: 'awaiting_payment', buyer_id: B, amount: AED(3_900) })
     expect((await pool.query(`select status from bids where id = $1`, [first.id])).rows[0].status).toBe('not_selected')
@@ -210,7 +210,7 @@ describe('buy-now and quick sale', () => {
 describe('breaks, any break and package on the same airing', () => {
   test('booking the package holds every break; a lapse releases them again', async () => {
     const pkg = await slot(p.placement, '2026-11-09', 'All 4 breaks')
-    await tx(c => placeBid(c, { slotId: pkg.id, buyerId: A, amount: AED(15_000), brief: BRIEF }, now))
+    await tx(c => placeBid(c, { slotId: pkg.id, buyerId: A, amount: AED(15_000), brief: briefFor(A) }, now))
     await sweep(T('2026-11-04T02:30:00Z')) // package (from 06:30) closes 5 days before
     const d = (await pool.query(`select * from deals where slot_id = $1`, [pkg.id])).rows[0]
     await tx(c => accept(c, d.id, 'seller', T('2026-11-04T03:00:00Z')))
@@ -225,8 +225,8 @@ describe('breaks, any break and package on the same airing', () => {
 
   test('airtime is never sold twice: accepting the package ends a waiting request for one of its breaks', async () => {
     const pkg = await slot(p.placement, '2026-11-09', 'All 4 breaks')
-    const req = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: BRIEF }, T('2026-11-04T02:00:00Z'))) // still waiting when the package is accepted
-    await tx(c => placeBid(c, { slotId: pkg.id, buyerId: A, amount: AED(15_000), brief: BRIEF }, now))
+    const req = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: B, brief: briefFor(B) }, T('2026-11-04T02:00:00Z'))) // still waiting when the package is accepted
+    await tx(c => placeBid(c, { slotId: pkg.id, buyerId: A, amount: AED(15_000), brief: briefFor(A) }, now))
     await sweep(T('2026-11-04T02:30:00Z'))
     const d = (await pool.query(`select * from deals where slot_id = $1`, [pkg.id])).rows[0]
     await tx(c => accept(c, d.id, 'seller', T('2026-11-04T03:00:00Z')))
@@ -236,7 +236,7 @@ describe('breaks, any break and package on the same airing', () => {
   })
 
   test('booking a single break holds the package but not the other breaks', async () => {
-    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: A, brief: BRIEF }, now))
+    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: A, brief: briefFor(A) }, now))
     await tx(c => accept(c, r.id, 'seller', h(now, 1)))
     const rows = Object.fromEntries((await pool.query(`select label, status from slots where air_date = '2026-11-09'`)).rows.map(r => [r.label, r.status]))
     expect(rows).toMatchObject({ 'Break 2': 'booked', 'Break 1': 'open', 'Any break': 'open', 'All 4 breaks': 'held' })
@@ -245,12 +245,12 @@ describe('breaks, any break and package on the same airing', () => {
 
 describe('state machine', () => {
   test('blocked transitions are refused', async () => {
-    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: A, brief: BRIEF }, now))
+    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: A, brief: briefFor(A) }, now))
     await expect(tx(c => transition(c, r.id, 'pay', 'buyer', now))).rejects.toThrow('Cannot pay a deal that is awaiting_seller')
   })
 
   test('scenario 11: proof not reviewed in 5 working days is released automatically (UAE weekend skipped)', async () => {
-    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: A, brief: BRIEF }, now))
+    const r = await tx(c => requestBuyNow(c, { slotId: b2.id, buyerId: A, brief: briefFor(A) }, now))
     await tx(c => accept(c, r.id, 'seller', now))
     await tx(c => transition(c, r.id, 'pay', 'buyer', h(now, 1)))
     const proofAt = T('2026-11-09T08:00:00Z') // Monday

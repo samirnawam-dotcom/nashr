@@ -20,12 +20,20 @@ const lockSlot = (db: Db, id: string) => { signalSlot(db, id); return one(db, `s
 async function requireBrief(db: Db, slot: any, buyerId: string, brief: unknown, client?: { name: string; industry: string | null } | null) {
   const outlet = await one(db, `select o.channel, o.blocked_industries, o.blocked_advertisers from placements p join outlets o on o.id = p.outlet_id where p.id = $1`, [slot.placement_id])
   const onFile = (await db.query(`select brief from bids where slot_id = $1 and buyer_id = $2 and brief is not null order by created_at desc limit 1`, [slot.id, buyerId])).rows[0]?.brief
-  if (!(onFile && brief == null)) {
-    const problems = briefProblems(brief as any, outlet.channel)
-    if (problems.length) throw new MarketError(problems.join(' '))
-  }
+  // a brief already on file for this slot counts only if it is complete by today's rules (older ones may have no creative)
+  const used = brief == null && onFile ? onFile : brief
+  const problems = briefProblems(used as any, outlet.channel)
+  if (problems.length) throw new MarketError(problems.join(' '))
+  await ownFile(db, (used as any).draftFileKey, buyerId)
   const unsafe = brandSafetyProblem((brief ?? onFile) as any, outlet) ?? (client ? brandSafetyProblem({ industry: client.industry ?? undefined, advertiser: client.name }, outlet) : null)
   if (unsafe) throw new MarketError(unsafe)
+}
+
+/** A creative attached to a brief must be one of the buyer's own uploads: the publisher is shown it before deciding. */
+export async function ownFile(db: Db, key: unknown, buyerId: string) {
+  const id = typeof key === 'string' && key.startsWith('files/') ? key.slice(6) : ''
+  if (!/^[0-9a-f-]{36}$/i.test(id) || !(await db.query(`select 1 from files where id = $1 and company_id = $2`, [id, buyerId])).rows.length)
+    throw new MarketError('Upload the creative again: that file was not found.')
 }
 
 /** Only open markets can be booked; KSA is "coming soon" at launch (brief section 14, scenario 19). */

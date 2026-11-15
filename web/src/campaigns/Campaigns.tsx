@@ -22,7 +22,7 @@ const dates = (c: Campaign) => c.startDate && c.endDate ? `${dayLabel(c.startDat
 const pct = (n: number, of: number | null) => `${Math.min(100, of ? (n / of) * 100 : 0)}%`
 
 type Form = { name: string; clientId: string; budget: string; startDate: string; endDate: string; objective: string; brief: CampaignBrief & { fileName?: string } }
-const BLANK_BRIEF: Form['brief'] = { advertiser: '', industry: '', message: '', language: 'english', languageOther: '', creativeToFollow: true, disclaimer: '', landingUrl: '' }
+const BLANK_BRIEF: Form['brief'] = { advertiser: '', industry: '', message: '', language: 'english', languageOther: '', disclaimer: '', landingUrl: '' }
 const formOf = (c?: Campaign): Form => c ? { name: c.name, clientId: c.clientId ?? '', budget: c.budget ? String(c.budget / 100) : '', startDate: c.startDate ?? '', endDate: c.endDate ?? '',
   objective: c.objective ?? '', brief: { ...BLANK_BRIEF, ...(c.brief ?? {}), fileName: c.brief?.draftFileKey ? t('File on record') : undefined } }
   : { name: '', clientId: '', budget: '', startDate: '', endDate: '', objective: '', brief: BLANK_BRIEF }
@@ -38,7 +38,7 @@ function missing(f: Form): string | null {
   if (!b.industry.trim()) return t('Choose the industry.')
   if (!b.message.trim()) return t('Say what the ad will say.')
   if (b.language === 'other' && !b.languageOther?.trim()) return t('Say which language the creative is in.')
-  if (!b.draftFileKey && !b.creativeToFollow) return t('Upload the creative or tick "Creative to follow".')
+  if (!b.draftFileKey) return t('Upload the creative.') // it goes with every bid: a seller never accepts something blind
   if (b.landingUrl && !/^https:\/\/\S+$/.test(b.landingUrl)) return t('The landing page link must start with https://.')
   return null
 }
@@ -47,7 +47,7 @@ const bodyOf = (f: Form) => {
   const { fileName: _, ...b } = f.brief
   return { name: f.name.trim(), clientId: f.clientId || null, budget: f.budget ? toFils(f.budget) : null, startDate: f.startDate, endDate: f.endDate, objective: f.objective.trim() || null,
     brief: { ...b, languageOther: b.language === 'other' ? b.languageOther?.trim() : undefined, disclaimer: b.disclaimer?.trim() || undefined, landingUrl: b.landingUrl?.trim() || undefined,
-      draftFileKey: b.draftFileKey || undefined, creativeToFollow: !b.draftFileKey || !!b.creativeToFollow } }
+      draftFileKey: b.draftFileKey || undefined, creativeToFollow: undefined } }
 }
 
 /** The campaign form: the campaign itself (buyer only), then the campaign brief (what publishers see). */
@@ -61,7 +61,7 @@ function CampaignForm({ initial, clients, onSaved, onCancel, id }: { initial: Fo
   }
   async function file(x: File) {
     setUploading(true); setError('')
-    try { const u = await upload(x); setB({ draftFileKey: `files/${u.id}`, fileName: u.name, creativeToFollow: false }) } catch (e: any) { setError(e.message) } finally { setUploading(false) }
+    try { const u = await upload(x); setB({ draftFileKey: `files/${u.id}`, fileName: u.name }) } catch (e: any) { setError(e.message) } finally { setUploading(false) }
   }
   async function save() {
     setTried(true); setError(''); if (problem) return
@@ -102,8 +102,7 @@ function CampaignForm({ initial, clients, onSaved, onCancel, id }: { initial: Fo
         <div className="cp-creative">
           <label className={`btn ${uploading ? 'disabled' : ''}`}><input type="file" className="visually-hidden" disabled={uploading} onChange={e => e.target.files?.[0] && file(e.target.files[0])} />
             {uploading ? t('Uploading…') : b.draftFileKey ? t('Replace file') : t('Upload a file')}</label>
-          {b.draftFileKey && <span className="small"><bdi>{b.fileName}</bdi> <button type="button" className="linkish" onClick={() => setB({ draftFileKey: undefined, fileName: undefined, creativeToFollow: true })}>{t('Remove')}</button></span>}
-          {!b.draftFileKey && <label className="check"><input type="checkbox" checked={!!b.creativeToFollow} onChange={e => setB({ creativeToFollow: e.target.checked })} /> {t('Creative to follow')}</label>}
+          {b.draftFileKey && <span className="small"><bdi>{b.fileName}</bdi> <button type="button" className="linkish" onClick={() => setB({ draftFileKey: undefined, fileName: undefined })}>{t('Remove')}</button></span>}
         </div></div>
     </div>
     <div className="grid2">
@@ -178,7 +177,7 @@ export function CampaignPage({ id }: { id: string }) {
         {!editing && <button className="btn" onClick={() => setEditing(true)}>{t('Edit')}</button>}
         <a className="btn" href={`/campaigns/${c.id}/plan`}>{t("Media plan (PDF)")}</a>
         {c.status === 'active' ? <button className="btn" onClick={() => setStatus('completed')}>{t("Mark completed")}</button> : <button className="btn" onClick={() => setStatus('active')}>{t("Reopen")}</button>}
-        {c.status === 'active' && <a className="btn primary" href={book}>{t("Book slots")}</a>}</div>
+        {c.status === 'active' && <a className="btn primary" href={book}>{t('Check availability')}</a>}</div>
       {editing && <CampaignForm id={c.id} initial={formOf(c)} clients={clients} onSaved={() => { setEditing(false); setNote(t('Campaign saved.')); load() }} onCancel={() => setEditing(false)} />}
       {note && <p className="ok" role="status">{note}</p>}
       <Totals c={c} />

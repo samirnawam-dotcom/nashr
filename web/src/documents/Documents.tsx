@@ -24,7 +24,7 @@ export function DocumentsPage({ seller = false }: { seller?: boolean }) {
   const shown = (rows ?? []).filter(r => (!type || r.type === type) && (!client || r.client === client))
   return (
     <main>
-      <p className="small">{seller ? <a href="/earnings">{t('Earnings')}</a> : <a href="/bookings">{t('Bookings')}</a>} {isAr ? '‹' : '›'} {t("Receipts and invoices")}</p>
+      {seller && <p className="small"><a href="/earnings">{t('Earnings')}</a> {isAr ? '‹' : '›'} {t("Receipts and invoices")}</p>}
       <PhotoBand img="/brand/bookings-wide.jpg" title={t("Receipts and invoices")} sub={seller ? t('Orders, the tax invoices issued in your name, Nashr\'s commission invoices and credit notes.') : t("Payment receipts, tax invoices and credit notes for every booking.")} />
       {error && <p className="error">{error}</p>}
       {rows && !rows.length && <p className="muted empty">{seller ? t('Nothing yet. Each accepted booking adds an order, and each payment a tax invoice in your name.') : t("Nothing yet. You get a receipt from Nashr and a tax invoice from the publisher when you pay.")}</p>}

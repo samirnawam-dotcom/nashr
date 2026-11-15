@@ -7,16 +7,16 @@ export type Daypart = 'morning' | 'afternoon' | 'evening' | 'allday'
 export type SlotFilter = {
   channels?: string[]        // empty or missing: every channel
   saleTypes?: string[]       // 'auction' | 'quick_sale' | 'fixed'
-  sector?: string            // the outlet accepts this sector (case-insensitive)
+  sector?: string            // the product accepts this advertiser sector: listed under Sectors accepted, or set to all sectors; never one it lists as not accepted
   maxPrice?: number          // fils, excluding VAT, compared with the current price (top bid, else starting price)
   minPrice?: number          // the same price, from this amount (owner's buyer-side fixes: "AED from … to …")
   dayparts?: Daypart[]       // Dubai time of day
-  q?: string                 // outlet, programme or audience contains this text
+  q?: string                 // outlet, programme or sector contains this text
   closingWithinHours?: number
   audiences?: string[]       // reaches any of these (a placement's own audiences, else its outlet's)
 }
 export type FilterableSlot = {
-  outlet: string; placement?: string; channel: string; saleType: string; sectors?: string[]; audience?: string | null; audiences?: string[]
+  outlet: string; placement?: string; channel: string; saleType: string; sectors?: string[]; blocked?: string[]; audience?: string | null; audiences?: string[]
   startsAt: string; endsAt: string | null; closesAt: string; startingPrice: number; topBid: number | null
 }
 
@@ -36,12 +36,15 @@ export function daypart(s: FilterableSlot): Daypart {
 export function matches(f: SlotFilter, s: FilterableSlot, now = Date.now()): boolean {
   if (f.channels?.length && !f.channels.includes(s.channel)) return false
   if (f.saleTypes?.length && !f.saleTypes.includes(s.saleType)) return false
-  if (f.sector && !(s.sectors ?? []).some(x => x.toLowerCase() === f.sector!.toLowerCase())) return false
+  if (f.sector) {
+    const is = (x: string) => x.toLowerCase() === f.sector!.toLowerCase()
+    if ((s.blocked ?? []).some(is) || ((s.sectors ?? []).length > 0 && !(s.sectors ?? []).some(is))) return false // no list = all sectors
+  }
   if (f.maxPrice != null && currentPrice(s) > f.maxPrice) return false
   if (f.minPrice != null && currentPrice(s) < f.minPrice) return false
   if (f.dayparts?.length && !f.dayparts.includes(daypart(s))) return false
   if (f.q?.trim()) {
-    const hay = `${s.outlet} ${s.placement ?? ''} ${s.audience ?? ''}`.toLowerCase()
+    const hay = `${s.outlet} ${s.placement ?? ''} ${(s.sectors ?? []).join(' ')}`.toLowerCase()
     if (!f.q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w))) return false
   }
   if (f.closingWithinHours != null && new Date(s.closesAt).getTime() - now > f.closingWithinHours * 3_600_000) return false

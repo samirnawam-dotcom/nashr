@@ -7,7 +7,7 @@ import './directory.css'
 import { SignInPrompt, rememberPlace, useGuest } from '../guest'
 import { PhotoBand } from '../PhotoBand'
 import { Stars } from '../Stars'
-import { isAr, locale, t } from '../i18n'
+import { isAr, locale, sep, t } from '../i18n'
 import { art, CHANNELS, CHANNEL_NAME, ICON } from '../media'
 import { OutletMark } from '../LogoPicker'
 import { ProductSummary, daysText, mediaName, type SummaryProduct } from '../products/Summary'
@@ -120,13 +120,13 @@ export function DirectoryPage() {
               : o.fromPrice != null ? <span className="oc-price"><span className="small muted">{t('From')}</span> <b className="num">{money(o.fromPrice, o.currency)}</b></span>
               : <span className="badge">{t("Request a quote")}</span>}
             {o.rating.count > 0 && <Stars value={o.rating.average!} count={o.rating.count} />}
-            {o.onNashr && !o.comingSoon && <a className="badge on" href={`/calendar?product=${o.id}&pname=${encodeURIComponent(o.name)}`} onClick={e => e.stopPropagation()}>{t('See dates')}</a>}
+            {o.onNashr && !o.comingSoon && <a className="badge on" href={`/calendar?product=${o.id}&pname=${encodeURIComponent(o.name)}`} onClick={e => e.stopPropagation()}>{t('Check availability')}</a>}
           </article>)}</div>
         : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Outlet")}</th><th>{t("Media type")}</th><th>{t("Sectors")}</th><th className="r">{t("Starting price")}</th><th /></tr></thead>
             <tbody>{shown.map(o => <tr key={o.id} onClick={() => navigate(`/directory/${o.slug}`)}>
               <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b><SaveStar b={o} onChange={v => setOne(o.id, v)} /></div></td><td className="small">{channelsText(o.channels)}</td>
               <td className="small">{o.sectors.map(x => t(x)).join(', ')}</td><td className="r num">{o.fromPrice != null ? t('From {amount}', { amount: money(o.fromPrice, o.currency) }) : '—'}</td>
-              <td className="small">{o.comingSoon ? t("Coming soon") : o.onNashr ? <a href={`/calendar?product=${o.id}&pname=${encodeURIComponent(o.name)}`} onClick={e => e.stopPropagation()}>{t("See dates")}</a> : t("Request a quote")}</td></tr>)}</tbody></table></div>}
+              <td className="small">{o.comingSoon ? t("Coming soon") : o.onNashr ? <a href={`/calendar?product=${o.id}&pname=${encodeURIComponent(o.name)}`} onClick={e => e.stopPropagation()}>{t('Check availability')}</a> : t("Request a quote")}</td></tr>)}</tbody></table></div>}
       <CompareBar />
     </main>
   )
@@ -134,7 +134,7 @@ export function DirectoryPage() {
 
 // ---- Compare: tick 2 or 3 products, from any outlet ----------------------------------------------------------------------
 export type CompareItem = { placementId: string; outlet: string; logoUrl: string | null; product: string; channel: string; saleType: string; price: number
-  creativeDays: number | null; audience: string | null; reach: number | null; reachUnit: string | null }
+  creativeDays: number | null; audience: string | null; sectors?: string[]; reach: number | null; reachUnit: string | null }
 const CMP = 'nashr:compare', MAX_COMPARE = 3
 let compared: CompareItem[] = (() => { try { return JSON.parse(sessionStorage.getItem(CMP) ?? '[]') } catch { return [] } })()
 const cmpSubs = new Set<() => void>()
@@ -170,6 +170,7 @@ function CompareBar() {
         <tr><th scope="row">{t('Starting price')}</th>{list.map(x => <td key={x.placementId} className="num">{money(x.price)}</td>)}</tr>
         <tr><th scope="row">{t('Creative due')}</th>{list.map(x => <td key={x.placementId}>{x.creativeDays != null ? t('{n} days before it runs', { n: x.creativeDays }) : '—'}</td>)}</tr>
         <tr><th scope="row">{t('Target audience')}</th>{list.map(x => <td key={x.placementId} dir="auto">{x.audience ?? '—'}</td>)}</tr>
+        <tr><th scope="row">{t('Sectors accepted')}</th>{list.map(x => <td key={x.placementId}>{x.sectors?.length ? x.sectors.map(v => t(v)).join(sep) : t('All sectors')}</td>)}</tr>
         <tr><th scope="row">{t('Reach')}</th>{list.map(x => <td key={x.placementId} className="num">{x.reach ? x.reach.toLocaleString('en-US') + (x.reachUnit ? ` ${t(x.reachUnit)}` : '') : '—'}</td>)}</tr>
         {!guest && <tr><th scope="row"><span className="sr-only">{t('Add to campaign')}</span></th>{list.map(x => <td key={x.placementId}><AddToCampaign placementId={x.placementId} small /></td>)}</tr>}
       </tbody></table></div>
@@ -204,7 +205,7 @@ export function OutletPage({ id }: { id: string }) {
   const groups = [...new Set(o.products.map(p => p.channel))]
   const seeDates = (p: BuyerProduct, s?: Sell) => s ? `/calendar?item=${s.id}&pname=${encodeURIComponent(`${o.name} · ${s.name}`)}` : `/calendar?product=${p.id}&pname=${encodeURIComponent(p.name)}`
   const cmp = (p: BuyerProduct, s: Sell): CompareItem => ({ placementId: s.id, outlet: o.name, logoUrl: o.logoUrl, product: s.kind === 'main' ? p.name : `${p.name} · ${s.name}`, channel: p.channel,
-    saleType: s.saleType, price: s.price, creativeDays: s.creativeDays, audience: p.audience, reach: p.reach, reachUnit: p.reachUnit })
+    saleType: s.saleType, price: s.price, creativeDays: s.creativeDays, audience: p.audience, sectors: p.sectors ?? [], reach: p.reach, reachUnit: p.reachUnit })
   const quoteOnly = !o.onNashr && !o.comingSoon
   return (
     <main className="narrow wide">
@@ -251,13 +252,13 @@ export function OutletPage({ id }: { id: string }) {
                 <span className="dp-price num">{p.defaultPrice != null ? money(p.defaultPrice) : '—'}<small>{t('Starting price')}</small></span>
                 <span className="dp-acts">
                   {one && !guest && <AddToCampaign placementId={one.id} small />}
-                  {p.onSale > 0 && <a className="btn sm" href={seeDates(p, one)}>{t('See dates')}</a>}
+                  {p.onSale > 0 && <a className="btn sm" href={seeDates(p, one)}>{t('Check availability')}</a>}
                   {one && <CompareTick item={cmp(p, one)} />}</span>
               </div>
               {!one && p.sellable.length > 0 && <ul className="dp-items">{p.sellable.map(s => <li key={s.id}>
                 <span><b dir="auto">{s.name}</b><span className="small muted">{[s.days?.length ? daysText(s.days) : '', s.startsAt ? `${s.startsAt}–${s.endsAt ?? ''}` : '', saleLabel(s.saleType), s.openSlots ? t('{n} on sale', { n: s.openSlots }) : ''].filter(Boolean).join(' · ')}</span></span>
                 <span className="num">{money(s.price)}</span>
-                <span className="dp-acts">{!guest && <AddToCampaign placementId={s.id} small />}{s.openSlots > 0 && <a className="btn sm" href={seeDates(p, s)}>{t('See dates')}</a>}<CompareTick item={cmp(p, s)} /></span>
+                <span className="dp-acts">{!guest && <AddToCampaign placementId={s.id} small />}{s.openSlots > 0 && <a className="btn sm" href={seeDates(p, s)}>{t('Check availability')}</a>}<CompareTick item={cmp(p, s)} /></span>
               </li>)}</ul>}
               {isOpen && <ProductSummary m={p} buyer />}
             </article> })}

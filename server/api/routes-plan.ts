@@ -1,7 +1,7 @@
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
 import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
-import { MarketError } from '../marketplace/market.js'
+import { MarketError, ownFile } from '../marketplace/market.js'
 import { containsContactDetails } from '../core/contact.js'
 import { notify } from '../core/notify.js'
 import { audit } from '../core/audit.js'
@@ -255,7 +255,7 @@ export function planRoutes(route: RouteFn) {
     (await db.query(`${totals} order by c.status, c.created_at desc`, [me.actAs.companyId])).rows.map(card))
 
   route('POST', '/api/campaigns', BUYER, async ({ db, at, me }, req) => {
-    const b = req.body; check(b)
+    const b = req.body; check(b); if (b.brief) await ownFile(db, b.brief.draftFileKey, me.actAs.companyId)
     await ownClient(db, b.clientId, me.actAs.companyId)
     const c = (await db.query(`insert into campaigns (buyer_id, name, budget, start_date, end_date, launch_date, objective, brief, created_at, client_id)
                                values ($1, $2, $3, $4, $5, $4, $6, $7, $8, $9) returning id`,
@@ -265,7 +265,7 @@ export function planRoutes(route: RouteFn) {
   }, { ...campaignBody, required: ['name', 'startDate', 'endDate', 'brief'] })
 
   route('PUT', '/api/campaigns/:id', BUYER, async ({ db, me }, req) => {
-    const b = req.body; check(b)
+    const b = req.body; check(b); if (b.brief) await ownFile(db, b.brief.draftFileKey, me.actAs.companyId)
     const cols: Record<string, string> = { name: 'name', budget: 'budget', startDate: 'start_date', endDate: 'end_date', objective: 'objective', brief: 'brief', status: 'status', clientId: 'client_id' }
     await ownClient(db, b.clientId, me.actAs.companyId)
     const set = Object.entries(cols).filter(([k]) => k in b)

@@ -3,7 +3,8 @@ import { containsContactDetails } from '../core/contact.js'
 // The booking brief, required with every bid (brief section 10).
 export type Brief = {
   advertiser: string; industry: string; message: string; language: 'arabic' | 'english' | 'bilingual' | 'other'; languageOther?: string
-  landingUrl?: string; draftFileKey?: string; creativeToFollow?: boolean; notes?: string
+  landingUrl?: string; draftFileKey?: string; notes?: string
+  creativeToFollow?: boolean // older briefs only: a file is now always required
   disclaimer?: string   // a regulated advertiser's required wording or licence number (central bank, securities, land department)
 }
 
@@ -19,7 +20,8 @@ export function briefProblems(b: Partial<Brief> | null | undefined, channel: str
   else if (b.language === 'other' && !b.languageOther?.trim()) out.push('Say which language the creative is in.')
   if (channel === 'digital' && !b.landingUrl) out.push('A landing page link is required for digital placements.')
   if (b.landingUrl && !/^https:\/\/\S+$/.test(b.landingUrl)) out.push('The landing page link must start with https://.')
-  if (!b.draftFileKey && !b.creativeToFollow) out.push('Upload a draft of the creative or tick "creative to follow".')
+  // the creative goes with every bid: a seller never accepts something blind (owner's buyer-side fixes, round 2)
+  if (!b.draftFileKey) out.push('Upload the creative.')
   for (const [k, v] of Object.entries({ advertiser: b.advertiser, message: b.message, notes: b.notes, disclaimer: b.disclaimer }))
     if (containsContactDetails(v)) out.push(`Remove the email or phone number from ${k === 'notes' ? 'the notes' : k}. Talk to the publisher through Nashr messages.`)
   return out

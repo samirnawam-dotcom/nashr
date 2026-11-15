@@ -12,7 +12,6 @@ import { FakeProvider } from './payments/provider.js'
 import { sweep } from './marketplace/sweeper.js'
 
 const H = 3_600_000, DAY = 24 * H
-const BRIEF = { advertiser: 'Demo brand', industry: 'Banking', message: 'Demo campaign', language: 'english', creativeToFollow: true }
 
 /** Thrown when the next step would happen after "now": the booking stays where it is, like a live one. */
 class NotYet extends Error {}
@@ -22,7 +21,8 @@ function rng(seed: number) {
   return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 }
 }
 
-export async function seedHistory(o: { now: Date; demoBuyer: string; rivals: string[]; campaignId?: string; weeks?: number }) {
+export async function seedHistory(o: { now: Date; demoBuyer: string; rivals: string[]; campaignId?: string; weeks?: number; briefOf: (buyerId: string) => object }) {
+  const BRIEF_OF = o.briefOf
   const rand = rng(20261106), weeks = o.weeks ?? 12
   const pick = <T>(xs: T[]) => xs[Math.floor(rand() * xs.length)]
   const provider = new FakeProvider()
@@ -53,21 +53,21 @@ export async function seedHistory(o: { now: Date; demoBuyer: string; rivals: str
       let deal: any, decidedAt: Date
       if (s.sale_type === 'quick_sale') {
         const at = t(starts.getTime() - (130 + rand() * 200) * H)
-        const bid = await tx(c => showInterest(c, { slotId: s.id, buyerId: buyer, brief: BRIEF, campaignId: buyer === o.demoBuyer && rand() < 0.3 ? o.campaignId : undefined }, at))
+        const bid = await tx(c => showInterest(c, { slotId: s.id, buyerId: buyer, brief: BRIEF_OF(buyer), campaignId: buyer === o.demoBuyer && rand() < 0.3 ? o.campaignId : undefined }, at))
         decidedAt = t(at.getTime() + (1 + rand() * 6) * H)
         deal = await tx(c => acceptInterest(c, bid.id, 'seller:seed', decidedAt))
       } else if (s.buy_now_price && rand() < 0.2) {
         const at = t(closes.getTime() - (20 + rand() * 80) * H)
-        deal = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: BRIEF, campaignId: buyer === o.demoBuyer && rand() < 0.3 ? o.campaignId : undefined }, at))
+        deal = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: BRIEF_OF(buyer), campaignId: buyer === o.demoBuyer && rand() < 0.3 ? o.campaignId : undefined }, at))
         decidedAt = t(at.getTime() + (1 + rand() * 8) * H)
         if (rand() < 0.08) { await tx(c => decline(c, deal.id, 'The break is held for a sponsor that week.', 'seller:seed', decidedAt)); continue }
         deal = await tx(c => accept(c, deal.id, 'seller:seed', decidedAt))
       } else {
         const step = Math.round(s.starting_price * (0.02 + rand() * 0.06) / 10_000) * 10_000
         const first = t(closes.getTime() - (40 + rand() * 90) * H)
-        if (rand() < 0.5) await tx(c => placeBid(c, { slotId: s.id, buyerId: pick(o.rivals.filter(r => r !== buyer)), amount: s.starting_price, brief: BRIEF }, first))
+        if (rand() < 0.5) { const rival = pick(o.rivals.filter(r => r !== buyer)); await tx(c => placeBid(c, { slotId: s.id, buyerId: rival, amount: s.starting_price, brief: BRIEF_OF(rival) }, first)) }
         const amount = s.starting_price + step * (1 + Math.floor(rand() * 6))
-        await tx(c => placeBid(c, { slotId: s.id, buyerId: buyer, amount, brief: BRIEF, campaignId: buyer === o.demoBuyer && rand() < 0.3 ? o.campaignId : undefined }, t(first.getTime() + (2 + rand() * 20) * H)))
+        await tx(c => placeBid(c, { slotId: s.id, buyerId: buyer, amount, brief: BRIEF_OF(buyer), campaignId: buyer === o.demoBuyer && rand() < 0.3 ? o.campaignId : undefined }, t(first.getTime() + (2 + rand() * 20) * H)))
         deal = await tx(c => closeAuction(c, s.id, closes))
         if (!deal) continue
         decidedAt = t(closes.getTime() + (1 + rand() * 10) * H)

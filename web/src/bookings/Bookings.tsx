@@ -2,7 +2,7 @@ import { navigate } from '../nav'
 import { Resolution, type Dispute } from '../Resolution'
 import { useEffect, useState } from 'react'
 import { api, upload, type Client, type Rating } from '../api'
-import { dayLabel, money, time, slotWhen } from '../format'
+import { dayLabel, listingName, money, time, slotWhen } from '../format'
 import { dubai } from '../calendar/layout'
 import { DOC_TYPE } from '../documents/Documents'
 import '../directory/directory.css'
@@ -15,7 +15,7 @@ import { Thread } from '../messages/Thread'
 import { CardPay } from '../payments/CardPay'
 import { art } from '../media'
 
-type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null; client?: string | null
+type Deal = { dispute?: Dispute | null; id: string; ref: string; kind?: string; status: string; outlet: string; placement?: string | null; label: string; startsAt: string; currency: string; price: number; vat: number; total: number; nextDeadlineAt: string | null; reason: string | null; client?: string | null
   counter?: { price: number; note: string | null; at: string } | null }
 
 const STATUS: Record<string, [string, string]> = {
@@ -51,7 +51,7 @@ export function BookingsPage() {
       {deals && deals.length > 0 && <div className="table-wrap card"><table className="table">
         <thead><tr><th>{t("Order")}</th><th>{t("Listing")}</th>{clients.length > 0 && <th>{t('Client')}</th>}<th>{t("Runs")}</th><th className="r">{t("Total")}</th><th>{t("Status")}</th></tr></thead>
         <tbody>{shown.map(d => <tr key={d.id} onClick={() => (navigate(`/bookings/${d.id}`))}>
-          <td className="num">{d.ref}</td><td><b>{d.outlet}</b> · {tm(d.label)}</td>{clients.length > 0 && <td className="small"><bdi>{d.client ?? '—'}</bdi></td>}<td className="num">{slotWhen(d.startsAt, (d as any).channel)}</td>
+          <td className="num">{d.ref}</td><td dir="auto">{listingName(d.outlet, d.placement, d.label, tm)}</td>{clients.length > 0 && <td className="small"><bdi>{d.client ?? '—'}</bdi></td>}<td className="num">{slotWhen(d.startsAt, (d as any).channel)}</td>
           <td className="r num">{money(d.total, d.currency)}</td><td><Status s={shownStatus(d)} /></td></tr>)}</tbody>
       </table></div>}
     </main>

@@ -18,7 +18,7 @@ export const brandOf = (r: any) => { const brand = r.brand ?? r.outlet
     logoUrl: r.brand_logo_key ? `/api/brands/${r.brand_id}/logo?v=${String(r.brand_logo_key).slice(-8)}` : r.logo_key ? `/api/outlets/${r.outlet_id}/logo?v=${r.logo_key.slice(5, 13)}` : null } }
 
 export const buyerSlot = (r: any, me: string | null) => ({
-  id: r.id, outletId: r.outlet_id, outlet: r.outlet, ...brandOf(r), channel: r.channel, sectors: r.sectors ?? [], audience: r.audience ?? null, audiences: r.audiences ?? [], placement: r.placement, label: r.label, kind: r.kind, saleType: r.sale_type,
+  id: r.id, outletId: r.outlet_id, outlet: r.outlet, ...brandOf(r), channel: r.channel, sectors: r.sectors ?? [], blocked: r.blocked ?? [], audience: r.audience ?? null, audiences: r.audiences ?? [], placement: r.placement, label: r.label, kind: r.kind, saleType: r.sale_type,
   startsAt: r.starts_at, endsAt: r.ends_at, closesAt: r.closes_at, currency: r.currency,
   startingPrice: r.starting_price, buyNowPrice: r.buy_now_price, topBid: r.top_amount, bids: r.bids,
   available: r.status === 'open', youLead: me != null && r.top_buyer_id === me, youBid: !!r.mine,
@@ -27,7 +27,7 @@ export const buyerSlot = (r: any, me: string | null) => ({
 export const buyerDeal = (d: any) => {
   const s = split(d.amount, { commissionBp: 0, mediaVatBp: d.vat_bp, feeVatBp: 0 })
   return {
-    id: d.id, ref: d.ref, kind: d.kind, status: buyerStatus[d.status] ?? d.status, outlet: d.outlet, channel: d.channel ?? null, label: d.label, startsAt: d.starts_at,
+    id: d.id, ref: d.ref, kind: d.kind, status: buyerStatus[d.status] ?? d.status, outlet: d.outlet, placement: d.placement ?? null, channel: d.channel ?? null, label: d.label, startsAt: d.starts_at,
     currency: d.currency, price: d.amount, vat: s.mediaVat, total: s.buyerPays, nextDeadlineAt: d.next_deadline_at, reason: d.status_note ?? null, client: d.client ?? null, creative: d.creative_status ?? null,
     counter: d.counter_amount != null ? { price: Number(d.counter_amount), note: d.counter_note ?? null, at: d.countered_at } : null,
   }

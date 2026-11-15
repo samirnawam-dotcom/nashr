@@ -63,7 +63,7 @@ export function CampaignDrawer({ onClose, onSeeDates }: { onClose: () => void; o
             : <ul className="cd-rows">{c.plan.map(l => <li key={l.placementId}>
               <span className="cd-prod"><OutletMark name={l.brand ?? l.name} url={l.logoUrl} size={30} />
                 <span><b dir="auto">{l.title}</b><span className="small muted">{t(MEDIA_LABEL[l.channel] ?? 'Other')} · {money(l.estimated)}</span><Stage s={l.stage} /></span></span>
-              <span className="cd-acts">{l.openSlots > 0 && <button type="button" className="btn sm" onClick={() => onSeeDates(l.placementId, l.title)}>{t('See dates')}</button>}
+              <span className="cd-acts">{l.openSlots > 0 && <button type="button" className="btn sm" onClick={() => onSeeDates(l.placementId, l.title)}>{t('Check availability')}</button>}
                 {l.stage === 'added' && <button type="button" className="btn sm" onClick={() => remove(l.placementId)} aria-label={t('Remove {name}', { name: l.title })}>✕</button>}</span>
             </li>)}</ul>}
           <footer className="drawer-f"><a className="btn" href={`/campaigns/${c.id}`}>{t('Open the campaign')}</a></footer>

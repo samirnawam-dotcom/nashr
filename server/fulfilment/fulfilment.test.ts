@@ -9,7 +9,7 @@ import { allowExtraRound, reviewCreative, uploadCreative } from './creative.js'
 import { submitProof } from './proof.js'
 import { offerFix, reportIssue, respondToOffer } from './issues.js'
 import { confirmPreRun } from './prerun.js'
-import { AED, BRIEF, T, company, radio, reset, slot } from '../test/helpers.js'
+import { AED, BRIEF, briefFor, T, company, radio, reset, slot } from '../test/helpers.js'
 
 const now = T('2026-11-01T08:00:00Z')
 const h = (t: Date, n: number) => new Date(t.getTime() + n * 3_600_000)
@@ -25,7 +25,7 @@ beforeEach(async () => {
   await generateSlots(pool, p.placement, '2026-11-09', 1, now)
   buyer = await company('Northwind Fintech', 'buyer')
   const s = await slot(p.placement, '2026-11-09', 'Break 2')
-  const d = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: BRIEF }, now))
+  const d = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: briefFor(buyer) }, now))
   await tx(c => accept(c, d.id, 'seller', now))
   id = d.id
 })

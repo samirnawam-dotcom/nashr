@@ -27,3 +27,9 @@ export function closesIn(iso: string, now = Date.now()) {
 export const slotWhen = (iso: string, channel: string | null | undefined, opts: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }) =>
   channel == null || hasTime(channel) ? `${dayLabel(dubai(iso).date, opts)} · ${time(iso)}` : dayLabel(dubai(iso).date, opts)
 export { hasTime }
+
+/** "Skyline FM · Morning Markets · Break 3": the outlet, the product or programme, then the listing; a part that repeats the one before is left out. */
+export function listingName(outlet: string, placement: string | null | undefined, label: string, tr: (s: string) => string = s => s) {
+  const parts = [outlet, placement, label].filter((x): x is string => !!x)
+  return parts.filter((x, i) => i === 0 || x !== parts[i - 1]).map((x, i) => i === 0 ? x : tr(x)).join(' · ')
+}

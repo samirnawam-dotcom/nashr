@@ -42,6 +42,9 @@ export function sharedRoutes(route: RouteFn, storage: Storage) {
     const staff = ['admin', 'founder'].includes(me.actAs.role)
     const f = (await db.query(
       `select f.* from files f where f.id = $1 and ($3 or f.company_id = $2 or exists (
+         -- the creative a buyer attached to a bid, read by the publisher of that slot before deciding (owner: never accept blind)
+         select 1 from bids b join slots s on s.id = b.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+         where o.company_id = $2 and b.buyer_id = f.company_id and b.brief->>'draftFileKey' = 'files/' || f.id) or exists (
          select 1 from deals d where $2 in (d.buyer_id, d.seller_id) and (
            -- either side's files attached to its statement in a dispute: the case is open both ways
            exists (select 1 from dispute_statements s where s.deal_id = d.id and s.company_id = f.company_id and s.files::text like '%files/' || f.id || '%') or

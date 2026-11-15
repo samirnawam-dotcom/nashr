@@ -41,18 +41,24 @@ function ClientForm({ form, setForm, busy, error, onSave, onCancel, saveLabel }:
 
 export function ClientsPage() {
   const [list, setList] = useState<Client[] | null>(null), [error, setError] = useState(''), [form, setForm] = useState<Form | null>(null), [busy, setBusy] = useState(false)
+  const [logo, setLogo] = useState<Blob | null>(null) // optional; uploaded once the client exists
   useEffect(() => { api<Client[]>('/clients').then(setList, e => setError(e.message)) }, [])
   async function create() {
     setBusy(true); setError('')
-    try { const { id } = await api<{ id: string }>('/clients', { method: 'POST', body: bodyOf(form!) }); navigate(`/clients/${id}`) }
+    try {
+      const { id } = await api<{ id: string }>('/clients', { method: 'POST', body: bodyOf(form!) })
+      if (logo) await fetch(`/api/clients/${id}/logo`, { method: 'PUT', credentials: 'same-origin', body: logo, headers: { 'content-type': 'image/png' } }).catch(() => null) // the client is saved either way; the logo can be added again on its page
+      navigate(`/clients/${id}`)
+    }
     catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
   return (
     <main>
       <PhotoBand img="/brand/desk-wide.jpg" title={t('Clients')} sub={t("Optional: book for each client and send it its own receipts and report. Picking a client is never required.")}>
-        <button className="btn primary" onClick={() => setForm(blank)}>{t('Add a client')}</button>
+        {!form && <button className="btn primary" onClick={() => { setLogo(null); setForm(blank) }}>{t('Add a client')}</button>}
       </PhotoBand>
-      {form && <ClientForm form={form} setForm={setForm} busy={busy} error={error} onSave={create} onCancel={() => setForm(null)} saveLabel={t('Add client')} />}
+      {form && <><section className="card pad" style={{ maxWidth: 620, marginBottom: 12 }}><LogoPicker name={form.name || t('Client')} url={null} endpoint="" onBlob={setLogo} chosen={t('Logo chosen. It is saved with the client.')} /><span className="small muted">{t('Optional')}</span></section>
+        <ClientForm form={form} setForm={setForm} busy={busy} error={error} onSave={create} onCancel={() => setForm(null)} saveLabel={t('Add client')} /></>}
       {!form && error && <p className="error">{error}</p>}
       {list && !list.length && !form && <p className="muted empty">{t('No clients yet. Add one, then choose it when you bid or book, so its spend, receipts and report stay together.')}</p>}
       {list && list.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t('Client')}</th><th className="r">{t('Bookings')}</th>
@@ -89,7 +95,7 @@ export function ClientPage({ id }: { id: string }) {
         {!form && <button className="btn" onClick={() => setForm({ name: c.name, industry: c.industry ?? '', trn: c.trn ?? '', billingEmail: c.billingEmail ?? '', address: c.address ?? '' })}>{t('Edit')}</button>}
         {c.status === 'active' ? <button className="btn" disabled={busy} onClick={() => save({ status: 'archived' }, t('Archived. Its bookings and documents stay.'))}>{t('Archive')}</button>
           : <button className="btn" disabled={busy} onClick={() => save({ status: 'active' }, t('Active again.'))}>{t('Make active')}</button>}
-        {c.status === 'active' && <a className="btn primary" href="/calendar">{t('Book slots')}</a>}</div>
+        {c.status === 'active' && <a className="btn primary" href="/calendar">{t('Check availability')}</a>}</div>
       {form && <><section className="card pad" style={{ maxWidth: 620, marginBottom: 12 }}><LogoPicker name={c.name} url={c.logoUrl} endpoint={`/clients/${c.id}/logo`} saved={t('Logo saved.')} /></section>
         <ClientForm form={form} setForm={setForm} busy={busy} error={error} onSave={() => save(bodyOf(form), t('Saved.'))} onCancel={() => setForm(null)} saveLabel={t('Save')} /></>}
       {!form && error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}

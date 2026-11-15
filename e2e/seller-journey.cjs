@@ -11,7 +11,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   const slots = await (await buyer.get(BASE + '/api/slots')).json()
   const target = slots.find(s => s.available && s.buyNowPrice && s.kind === 'single' && !s.youBid && s.outlet === 'Skyline FM')
   const req = await buyer.post(`${BASE}/api/slots/${target.id}/buy-now`, { data: { brief: { advertiser: 'Northwind Business Cards', industry: 'Banking',
-    message: 'Business cards for growing companies.', language: 'english', creativeToFollow: true } } })
+    message: 'Business cards for growing companies.', language: 'english', draftFileKey: (await (await buyer.post(`${BASE}/api/files`, { data: Buffer.from('ID3 draft spot'), headers: { 'content-type': 'application/octet-stream', 'x-file-name': 'draft-spot.mp3' } })).json()).key } } })
   const dealId = (await req.json()).id
 
   const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errors = []
@@ -20,7 +20,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   await p.goto(BASE + '/#/sign-in'); await p.fill('#email', 'sales@skyline.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.pt-kpis'); await shot('s1-dashboard')
   await p.click('.side .nav >> text=Inbox'); await p.waitForSelector('.rq-item'); await shot('s2-inbox')
-  await p.goto(BASE + `/deals/${dealId}`); await p.waitForSelector('text=Booking brief'); await shot('s3-decide')
+  await p.goto(BASE + `/deals/${dealId}`); await p.waitForSelector('.brief-card'); await shot('s3-decide') // the brief and creative, above Accept
   await p.click('button:has-text("Accept")'); await p.waitForSelector('text=Accepted. The buyer')
   // The buyer pays and sends creative
   await twoStepViaApi(buyer, BASE) // paying needs two-step sign-in

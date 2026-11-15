@@ -92,9 +92,12 @@ export function coverRoutes(route: RouteFn, storage: Storage) {
     return { ok: true }
   })
   // a client's logo is the buyer's own: only their team sees it
-  route('GET', '/api/clients/:id/logo', ['buyer'], async ({ db, me }, req, reply) => {
+  // the buyer's own clients; a publisher sees the logo of a client that bid or booked on one of its slots (shown with the brief)
+  route('GET', '/api/clients/:id/logo', ['buyer', 'seller', 'admin'], async ({ db, me }, req, reply) => {
     if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) throw new NotFound()
-    const key = (await db.query(`select logo_key from clients where id = $1 and buyer_id = $2`, [req.params.id, me.actAs.companyId])).rows[0]?.logo_key
+    const key = (await db.query(`select c.logo_key from clients c where c.id = $1 and ($3 or c.buyer_id = $2 or exists (
+        select 1 from bids b join slots s on s.id = b.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+        where b.client_id = c.id and o.company_id = $2))`, [req.params.id, me.actAs.companyId, ['admin', 'founder'].includes(me.actAs.role)])).rows[0]?.logo_key
     const bytes = key ? await storage.get(key).catch(() => null) : null
     if (!bytes) throw new NotFound()
     return reply.type(sniffType(bytes)).header('cache-control', 'private, max-age=31536000, immutable').send(bytes)

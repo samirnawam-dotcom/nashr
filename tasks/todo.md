@@ -227,3 +227,20 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Calendar: labelled filter rows, Day and Week only, logos, "on sale", Sort by, price range, fits my budget, "Closes in" tag
 - [ ] Owner to confirm: Audiences and Athena left out of the buyer sidebar (not in the new list); the public Audiences pages stay
 - [ ] Older campaign plans of outlets not on Nashr (quote-only) have no products to carry over
+
+## Phase Q: owner's "Buyer side fixes, round 2" (15 Nov 2026)
+- [x] Calendar: Day, Week and Month in one layout (outlet rows with logo, name, media type and a fold arrow, no prices; product rows "Outlet · Programme" with sale type and "from" price); Week is the default; the Day time grid is gone
+- [x] Cells: the price and one status (on sale, bids, "Closes in" within 24 hours, You lead, Outbid, Closed); a cell with several listings opens a short list to pick from; Day cells list the day's listings ("06:45 · 3,500 · Auction"; time only for radio and TV); Week/Month total column per product
+- [x] Filters: Audience replaced by Sectors (the seller's Sectors accepted list): products set to all sectors always show, products that list it as not accepted never do; search reads "Search outlets, programmes, sectors"; the saved-search alert rule matches
+- [x] My bids side bar on the Calendar: foldable to a thin bar with the count; You lead / Outbid / Waiting for seller / Accepted, pay now; outbid lines first in red with Bid again; paid and lost bids leave; on phones it folds above the table
+- [x] Clients: optional logo on the add form; "Add a client" hidden while the form is open
+- [x] Reports: Bookings listing names the product ("Skyline FM · Morning Markets · Break 3"); breadcrumb removed from Receipts and invoices
+- [x] One button name: every button that opens the Calendar for a product says "Check availability"
+- [x] Brief and creative required on every bid, request and offer ("Creative to follow" removed; the button stays greyed with "Add your brief and creative first."); the creative must be the buyer's own upload (checked on the server)
+- [x] The seller sees the brief and creative before accepting, on the booking and on each acceptable bid: advertiser (client name and logo), industry, the ad text, language, creative preview and Download, disclaimer, the amount; never budget, campaign, dates or objective
+- [x] Compare: "Sectors accepted" added to the table
+- Decisions made while building (flag to the owner if they disagree):
+  - Cells show the number only ("3,500"); the table says once that prices are in AED before VAT. Full "AED 12,000" did not fit seven columns beside My bids, especially in Arabic.
+  - "Accepted, pay now" lines in My bids open the booking to pay, not the bid drawer (the slot is no longer on sale).
+  - The bid drawer offers the last creative again with the last brief, so a buyer does not upload the same file for every bid.
+  - Bids sent before the creative rule keep working; the seller sees "No creative was attached to this bid".

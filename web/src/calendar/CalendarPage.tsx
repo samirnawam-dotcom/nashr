@@ -2,20 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { api, type Slot } from '../api'
 import { closesIn, dayLabel, hasTime, money, time } from '../format'
 import { OutletMark } from '../LogoPicker'
-import { addDays, dubai, layoutDay, monthGrid, todayInDubai, weekOf } from './layout'
+import { addDays, dubai, monthGrid, todayInDubai, weekOf } from './layout'
 import { BidDrawer, INDUSTRIES } from './BidDrawer'
+/** The seller's Sectors accepted pick-list (the product form uses the same list). */
+const SECTORS = INDUSTRIES.filter(x => x !== 'Other')
 import { useLive } from '../live'
 import { rememberPlace, useGuest } from '../guest'
 import { PAGES, useMeta } from '../seo'
 import { SavedSearches } from './SavedSearches'
 import { CampaignDrawer, setCurrentCampaign, useCampaigns, useCurrentCampaign } from './CampaignDrawer'
 import { activeCount, DAYPARTS, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
-import { AUDIENCES } from '../../../server/shared/audiences'
-import { isAr, ltr, t } from '../i18n'
+import { isAr, sep, t } from '../i18n'
 import { tm } from '../i18n-server'
 import './calendar.css'
 import { CHANNELS, CHANNEL_NAME, ICON } from '../media'
 import { DateJump } from './ops'
+import { MyBids } from './MyBids'
 export { CHANNELS, CHANNEL_NAME }
 
 /*
@@ -27,20 +29,16 @@ export { CHANNELS, CHANNEL_NAME }
 type View = 'list' | 'day' | 'week' | 'month' | 'outlets'
 type Sort = 'time' | 'price_asc' | 'price_desc' | 'closing' | 'bids' | 'popular'
 type OSort = 'popular' | 'price' | 'price_desc' | 'closing' | 'name' | 'slots'
-export type Prog = { outletId: string; outlet: string; channel: string; placementId: string; placement: string; date: string; startsAt: string; endsAt: string
-  allDay: boolean; slots: number; open: number; fromPrice: number; bids: number; youLead: boolean; youBid: boolean; closesAt: string | null; saleTypes: string[] }
 type DayTotal = { date: string; slots: number; outlets: number; fromPrice: number; channels: string[] }
-type OutletRow = { outletId: string; outlet: string; channel: string; logoUrl: string | null; slots: number; fromPrice: number; days: { date: string; slots: number; fromPrice: number; closesAt?: string }[] }
-// product and campaign narrow the calendar to one product ("See dates") or one campaign's products ("Book slots")
+// product and campaign narrow the calendar to one product or one campaign's products ("Check availability")
 type State = { view: View; date: string; f: SlotFilter; mine: boolean; all: boolean; sort: Sort; osort: OSort; product?: string; item?: string; productName?: string; campaign?: string; fit?: number }
 
-// owner's buyer-side fixes: Day and Week only; Week is the outlet-rows grid (phones show both as a list)
-const VIEWS: [View, string, string][] = [['day', t('Day'), 'd'], ['week', t('Week'), 'w']]
+// owner's buyer-side fixes, round 2: Day, Week and Month, one layout (outlet rows with their products); Week is the default
+const VIEWS: [View, string, string][] = [['day', t('Day'), 'd'], ['week', t('Week'), 'w'], ['month', t('Month'), 'm']]
 /** One "Sort by:" for the whole calendar (the Week rows, and the list on phones). Default: most popular. */
 const CAL_SORTS: [OSort, string, Sort][] = [['popular', 'Most popular', 'popular' as Sort], ['price', 'Price: low to high', 'price_asc'], ['price_desc', 'Price: high to low', 'price_desc'], ['closing', 'Closing soonest', 'closing']]
-const listSort = (o: OSort): Sort => CAL_SORTS.find(x => x[0] === o)?.[2] ?? 'popular' as Sort
 const SORTS: [Sort, string][] = [['time', t('Air time')], ['closing', t('Closing soonest')], ['price_asc', t('Price: low to high')], ['price_desc', t('Price: high to low')], ['bids', t('Most bids')]]
-const LIST_DAYS = 28, PAGE = 50, OUTLET_PAGE = 50, HOUR = 64, MAX_COLS = 3
+const LIST_DAYS = 28, PAGE = 50, ROW_PAGE = 30
 
 export const Gavel = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10M16 16l6-6M8 8l6-6M9 7l8 8M21 11l-8-8" /></svg>
 export const Bolt = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></svg>
@@ -68,16 +66,14 @@ export function status(s: Slot) {
   if (soon) return <span className="on-air">{soon}</span>
   return <span className="muted">{s.saleType === 'quick_sale' ? (s.bids ? t('{n} interested', { n: s.bids }) : t('Open to offers')) : s.bids ? t('{n} bids', { n: s.bids }) : t('Starting price')}</span>
 }
-const progStatus = (g: Prog) => g.youLead ? <span className="dot lead">{t('You lead')}</span> : g.youBid ? <span className="dot outbid">{t('You bid')}</span>
-  : g.closesAt && closesIn(g.closesAt) ? <span className="on-air">{closesIn(g.closesAt)}</span> : null
 
 // ---- the address is the state -----------------------------------------------------------------------------------------
 const isView = (v: string | null): v is View => !!v && VIEWS.some(([k]) => k === v)
 function readState(narrow: boolean): State {
   const p = new URLSearchParams(location.search), list = (k: string) => p.get(k)?.split(',').filter(Boolean)
   let saved: View | null = null; try { saved = localStorage.getItem('nashr:cal-view') as View | null } catch { /* private mode */ }
-  // older addresses (list, month, by outlet) open the Week
-  const old = (v: string | null) => v === 'list' || v === 'month' || v === 'outlets' ? 'week' : v
+  // older addresses (list, by outlet) open the Week
+  const old = (v: string | null) => v === 'list' || v === 'outlets' ? 'week' : v
   const view = isView(old(p.get('view'))) ? old(p.get('view')) as View : isView(old(saved)) ? old(saved) as View : 'week'
   return { view, date: /^\d{4}-\d{2}-\d{2}$/.test(p.get('date') ?? '') ? p.get('date')! : todayInDubai(),
     f: { channels: list('ch'), saleTypes: list('sale'), sector: p.get('sector') || undefined, maxPrice: p.get('max') ? Number(p.get('max')) : undefined, minPrice: p.get('min') ? Number(p.get('min')) : undefined,
@@ -113,7 +109,7 @@ function query(s: State, from: string, to: string, extra: Record<string, string 
 /** The days a view covers. */
 function span(view: View, date: string, narrow: boolean): [string, string] {
   if (view === 'day') return [date, addDays(date, 1)]
-  if (view === 'week' || view === 'outlets' || (narrow && view !== 'month')) { const w = weekOf(date); return [w[0], addDays(w[6], 1)] }
+  if (view === 'week' || view === 'outlets') { const w = weekOf(date); return [w[0], addDays(w[6], 1)] }
   if (view === 'month') { const g = monthGrid(date); return [g[0][0], addDays(g.at(-1)![6], 1)] }
   return [date, addDays(date, LIST_DAYS)]
 }
@@ -175,14 +171,13 @@ export function CalendarPage() {
 
   const total = totals?.reduce((n, d) => n + d.slots, 0) ?? null
   const active = activeCount(s.f, { channels: CHANNELS.length, saleTypes: SALE_TYPES.length }) + (s.mine ? 1 : 0) + (s.all ? 1 : 0) + (s.product || s.item ? 1 : 0) + (s.campaign ? 1 : 0) + (s.fit != null ? 1 : 0)
-  // "Book slots" on a campaign: it becomes the campaign the bid drawer and the Campaign drawer use
+  // "Check availability" on a campaign: it becomes the campaign the bid drawer and the Campaign drawer use
   useEffect(() => { if (s.campaign && !guest) setCurrentCampaign(s.campaign) }, [s.campaign])
   const clear = () => { setQText(''); update({ f: { channels: undefined, saleTypes: undefined, sector: undefined, maxPrice: undefined, dayparts: undefined, q: undefined, closingWithinHours: undefined, audiences: undefined, minPrice: undefined }, mine: false, all: false, fit: undefined, product: undefined, item: undefined, productName: undefined, campaign: undefined }) }
   const step = (n: number) => {
     if (s.view === 'month') { const d = new Date(s.date + 'T12:00:00Z'); d.setUTCMonth(d.getUTCMonth() + n, 1); return update({ date: d.toISOString().slice(0, 10) }, true) }
-    update({ date: addDays(s.date, n * (narrow ? 7 : s.view === 'day' ? 1 : s.view === 'list' ? LIST_DAYS : 7)) }, true) // phones show a week
+    update({ date: addDays(s.date, n * (s.view === 'day' ? 1 : s.view === 'list' ? LIST_DAYS : 7)) }, true)
   }
-  const goDay = (d: string) => update({ view: 'day', date: d }, true)
 
   // Keyboard: ← → move, T today, L D W M O views, / search. Not while typing.
   const search = useRef<HTMLInputElement>(null)
@@ -220,7 +215,7 @@ export function CalendarPage() {
         {!guest && <button type="button" className={`btn cv-plan ${campaign ? 'has' : ''}`} onClick={() => setPlanOpen(true)} title={campaign?.name}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
           {t('Campaign')}{campaign && campaign.lines > 0 && <span className="cv-plan-n num">{campaign.lines}</span>}</button>}
-        {(s.view === 'week' || narrow) && <label className="cv-sortby"><span>{t('Sort by:')}</span><select className="cal-input" value={s.osort} onChange={e => update({ osort: e.target.value as OSort })}>
+        {<label className="cv-sortby"><span>{t('Sort by:')}</span><select className="cal-input" value={s.osort} onChange={e => update({ osort: e.target.value as OSort })}>
           {CAL_SORTS.map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>}
         <div className="seg cv-views" role="tablist" aria-label={t('View')}>{VIEWS.map(([v, l, key]) =>
           <button key={v} role="tab" aria-selected={s.view === v} className={s.view === v ? 'on' : ''} title={`${l} (${key.toUpperCase()})`} onClick={() => update({ view: v }, true)}>{l}</button>)}</div>
@@ -230,7 +225,7 @@ export function CalendarPage() {
         <span className="cv-guest-t"><b>{t('You are browsing as a guest.')}</b> {t('Every slot and price is open to read. Sign in to bid or book.')}</span>
         <a className="btn primary sm" href="/sign-in" onClick={rememberPlace}>{t('Sign in')}</a><a className="btn sm" href="/request-access" onClick={rememberPlace}>{t('Request access')}</a></div>}
       {narrow ? <div className="cv-mobilebar">
-        <input ref={search} className="search" type="search" placeholder={t('Search outlets, programmes, audiences')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />
+        <input ref={search} className="search" type="search" placeholder={t('Search outlets, programmes, sectors')} aria-label={t('Search')} value={qText} onChange={e => setQText(e.target.value)} />
         <button className={`btn ${active ? 'primary' : ''}`} onClick={() => setSheet(true)}>{active ? t('Filters ({n})', { n: active }) : t('Filters')}</button>
       </div> : <FilterBar {...filterProps} />}
       {narrow && sheet && <div className="scrim" onClick={() => setSheet(false)}><div className="cv-sheet" role="dialog" aria-label={t('Filters')} onClick={e => e.stopPropagation()}>
@@ -253,13 +248,15 @@ export function CalendarPage() {
           {active > 0 && <button className="btn" onClick={clear}>{t('Clear filters')}</button>}</div>
       </div>}
 
-      {narrow && <ListView s={{ ...s, sort: listSort(s.osort) }} from={from} to={to} narrow={narrow} reload={reload} onSort={() => {}} onOpen={setOpen} />}
-      {!narrow && s.view === 'day' && <TimeGrid key="day" s={s} from={from} to={to} reload={reload} live={live} columns="channels" onPanel={setPanel} onDay={goDay} />}
-      {!narrow && s.view === 'week' && <OutletsView s={s} from={from} to={to} reload={reload} live={live} onPanel={setPanel} />}
+      <div className={`cv-body ${guest ? '' : 'with-bids'}`}>
+        {!guest && narrow && <MyBids onOpen={setOpen} reload={reload} narrow />}
+        <RowsView s={s} view={s.view} from={from} to={to} reload={reload} live={live} onOpen={setOpen} onPick={setPanel} />
+        {!guest && !narrow && <MyBids onOpen={setOpen} reload={reload} narrow={false} />}
+      </div>
 
       <footer className="cv-foot small muted">
         <span>{t('Dubai time. Prices exclude VAT. You pay only once the publisher accepts, and the money is held until the ad has run.')}</span>
-        {!narrow && <span className="cv-keys">{t('Shortcuts: ← → move · T today · D W views · / search')}</span>}
+        {!narrow && <span className="cv-keys">{t('Shortcuts: ← → move · T today · D W M views · / search')}</span>}
       </footer>
 
       {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}
@@ -286,7 +283,7 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
     return cur.size === 0 || cur.size === all.length ? undefined : [...cur]
   }
   const on = (list: string[] | undefined, v: string) => !!list?.includes(v)
-  const more = (s.f.sector ? 1 : 0) + (s.f.closingWithinHours != null ? 1 : 0) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
+  const more = (s.f.closingWithinHours != null ? 1 : 0) + (s.mine ? 1 : 0) + (s.all ? 1 : 0)
   const aed = (v: string) => { const n = v.replace(/[^\d]/g, ''); return n ? Number(n) * 100 : undefined }
   // owner's buyer-side fixes: "AED from … to …" after the sale type, and "Fits my budget" when a campaign is chosen
   const price = <div className="cv-price" role="group" aria-label={t('Price')}>
@@ -298,9 +295,6 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
       <span className="switch-track" aria-hidden><span /></span>{t('Fits my budget')}</label>}
   </div>
   const moreFields = <div className="cv-more">
-    <label className="field"><span className="small">{t('Sector')}</span>
-      <select className="cal-input" value={s.f.sector ?? ''} onChange={e => update({ f: { sector: e.target.value || undefined } })}>
-        <option value="">{t('Any sector')}</option>{INDUSTRIES.map(i => <option key={i} value={i}>{t(i)}</option>)}</select></label>
     <label className="switch"><input type="checkbox" role="switch" checked={s.f.closingWithinHours != null} onChange={e => update({ f: { closingWithinHours: e.target.checked ? 24 : undefined } })} />
       <span className="switch-track" aria-hidden><span /></span>{t('Bidding closes within 24 hours')}</label>
     {!guest && <label className="switch"><input type="checkbox" role="switch" checked={s.mine} onChange={e => update({ mine: e.target.checked })} />
@@ -310,12 +304,15 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
   </div>
   const dayparts = <div className="cv-checks">{DAYPARTS.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={on(s.f.dayparts, v)}
     onChange={() => update({ f: { dayparts: toggle(s.f.dayparts, v, DAYPARTS.map(d => d[0])) as Daypart[] | undefined } })} />{t(l)}</label>)}</div>
-  const audiences = <div className="cv-checks">{AUDIENCES.map(([v, l]) => <label key={v} className="check"><input type="checkbox" checked={on(s.f.audiences, v)}
-    onChange={() => update({ f: { audiences: toggle(s.f.audiences, v, AUDIENCES.map(a => a[0])) } })} />{t(l)}</label>)}</div>
+  // Sectors (owner's buyer-side fixes, round 2): the advertiser industries a product takes ads from, the seller's own pick-list.
+  // Products set to all sectors always show; a product that lists the sector as not accepted never does.
+  const sectors = <div className="cv-checks" role="radiogroup" aria-label={t('Sectors')}>
+    <label className="check"><input type="radio" name="cv-sector" checked={!s.f.sector} onChange={() => update({ f: { sector: undefined } })} />{t('Any sector')}</label>
+    {SECTORS.map(v => <label key={v} className="check"><input type="radio" name="cv-sector" checked={s.f.sector === v} onChange={() => update({ f: { sector: v } })} />{t(v)}</label>)}</div>
   const filter = { ...s.f }
   return (
     <section className={`cv-filters ${stacked ? 'stacked' : ''}`} aria-label={t('Filters')}>
-      {!stacked && <input ref={search} className="search cv-search" type="search" placeholder={t('Search outlets, programmes, audiences')} aria-label={t('Search')}
+      {!stacked && <input ref={search} className="search cv-search" type="search" placeholder={t('Search outlets, programmes, sectors')} aria-label={t('Search')}
         value={qText} onChange={e => setQText(e.target.value)} />}
       <div className="cv-group" role="group" aria-label={t('Media type')}><span className="cv-label">{t('Media type:')}</span>
         {CHANNELS.map(c => <button key={c} type="button" className={`chipf ${on(s.f.channels, c) ? 'on' : ''}`} aria-pressed={on(s.f.channels, c)}
@@ -325,8 +322,8 @@ function FilterBar({ s, update, qText, setQText, guest, active, clear, search, s
           onClick={() => update({ f: { saleTypes: toggle(s.f.saleTypes, v, [...SALE_TYPES]) } })}><SaleIcon k={v} />{saleLabel(v)}</button>)}
         {!stacked && price}</div>
       {stacked && <><span className="cv-label">{t('Price:')}</span>{price}</>}
-      {stacked ? <><span className="cv-label">{t('Audience')}</span>{audiences}<span className="cv-label">{t('Time of day')}</span>{dayparts}<span className="cv-label">{t('More filters')}</span>{moreFields}</> : <>
-        <Popover label={<>{t('Audience')}{s.f.audiences?.length ? <span className="cv-count">{s.f.audiences.length}</span> : null}</>} on={!!s.f.audiences?.length}>{audiences}</Popover>
+      {stacked ? <><span className="cv-label">{t('Sectors')}</span>{sectors}<span className="cv-label">{t('Time of day')}</span>{dayparts}<span className="cv-label">{t('More filters')}</span>{moreFields}</> : <>
+        <Popover label={<>{t('Sectors')}{s.f.sector ? <span className="cv-count">1</span> : null}</>} on={!!s.f.sector}>{sectors}</Popover>
         <Popover label={<>{t('Time of day')}{s.f.dayparts?.length ? <span className="cv-count">{s.f.dayparts.length}</span> : null}</>} on={!!s.f.dayparts?.length}>{dayparts}</Popover>
         <Popover label={<>{t('More filters')}{more ? <span className="cv-count">{more}</span> : null}</>} on={more > 0}>{moreFields}</Popover>
       </>}
@@ -357,211 +354,99 @@ export function Popover({ label, children, on, align, wide }: { label: React.Rea
   </div>
 }
 
-// ---- list -------------------------------------------------------------------------------------------------------------
-/** Every matching slot, sortable, 50 at a time: the way to compare prices across hundreds of outlets. */
-function ListView({ s, from, to, narrow, reload, onSort, onOpen }: { s: State; from: string; to: string; narrow: boolean; reload: number; onSort: (v: Sort) => void; onOpen: (id: string) => void }) {
-  const [items, setItems] = useState<Slot[]>([]), [total, setTotal] = useState<number | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const latest = useLatest()
-  const load = (offset: number) => { setBusy(true)
-    latest(api<{ total: number; items: Slot[] }>(`/slots/list?${query(s, from, to, { sort: s.sort, offset, limit: PAGE })}`),
-      r => { setItems(cur => offset ? [...cur, ...r.items] : r.items); setTotal(r.total); setBusy(false); setError('') }, e => { setError(e.message); setBusy(false) }) }
-  useEffect(() => { setItems([]); setTotal(null); load(0) }, [from, to, s.f, s.mine, s.all, s.sort, reload])
-  // A slot on screen changed: fetch just those rows again and swap them in place.
-  useLive('slot', (_, all) => { const ids = new Set(all.map(d => d.id)); items.filter(x => ids.has(x.id)).forEach(x =>
-    api<Slot>(`/slots/${x.id}`).then(n => setItems(cur => cur.map(c => c.id === n.id ? { ...c, ...n } : c)), () => {})) }, 300)
-  const grouped = s.sort === 'time'
-  const rows: (Slot | string)[] = []
-  items.forEach((x, i) => { const d = dubai(x.startsAt).date; if (grouped && (i === 0 || dubai(items[i - 1].startsAt).date !== d)) rows.push(d); rows.push(x) })
-  const today = todayInDubai()
-  return (
-    <section className="card cv-list" aria-label={t('Slots')}>
-      <div className="cv-list-bar">
-        <span className="small muted" role="status">{total == null ? t('Loading…') : t('Showing {n} of {total}', { n: items.length.toLocaleString('en-US'), total: total.toLocaleString('en-US') })}</span>
-      </div>
-      {error && <p className="error pad">{error}</p>}
-      {narrow ? <ul className="cv-cards">{rows.map(r => typeof r === 'string'
-        ? <li key={r} className={`cv-day ${r === today ? 'today' : ''}`}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'short' })}</li>
-        : <li key={r.id}><button className={`cv-card ch-b-${r.channel}`} onClick={() => onOpen(r.id)}>
-          <span className="cv-card-top"><span className="num cv-when">{grouped ? clock(r) : [dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' }), clock(r)].filter(Boolean).join(' · ')}</span>
-            <b className="num">{money(r.topBid ?? r.startingPrice)}</b></span>
-          <span className="cv-card-name"><OutletMark name={r.brand ?? r.outlet} url={r.logoUrl} size={22} /><b>{r.brand ?? r.outlet}</b></span>
-          <span className="small muted">{r.placement}{r.label !== r.placement ? ` · ${tm(r.label)}` : ''} · {CHANNEL_NAME[r.channel] ?? r.channel}</span>
-          <span className="cv-card-meta small"><SaleType t={r.saleType} />{status(r)}</span>
-        </button></li>)}</ul>
-      : <div className="table-wrap"><table className="table cv-table">
-        <thead><tr><th>{t('Airs')}</th><th>{t('Outlet')}</th><th>{t('Slot')}</th><th>{t('Sale')}</th><th className="r">{t('Price')}</th><th className="r">{t('Bids')}</th><th>{t('Status')}</th><th /></tr></thead>
-        <tbody>{rows.map(r => typeof r === 'string'
-          ? <tr key={r} className="cv-dayrow"><th colSpan={8} className={r === today ? 'today' : ''}>{dayLabel(r, { weekday: 'long', day: 'numeric', month: 'long' })}</th></tr>
-          : <tr key={r.id} data-slot={r.id} className={r.available ? '' : 'cv-taken'} onClick={() => onOpen(r.id)}>
-            <td className="num nowrap">{grouped ? '' : <span className="muted">{dayLabel(dubai(r.startsAt).date, { day: 'numeric', month: 'short' })}{clock(r) ? ' · ' : ''}</span>}
-              {clock(r) ? ltr(clock(r)) : ''}</td>
-            <td><span className="cv-outlet"><OutletMark name={r.brand ?? r.outlet} url={r.logoUrl} size={26} /><span><b>{r.brand ?? r.outlet}</b><span className="small muted">{CHANNEL_NAME[r.channel] ?? r.channel}</span></span></span></td>
-            <td><span className="cv-slot">{r.placement}</span>{r.label !== r.placement && <span className="small muted"> · {tm(r.label)}</span>}</td>
-            <td><SaleType t={r.saleType} /></td>
-            <td className="r num"><b>{money(r.topBid ?? r.startingPrice)}</b>{r.topBid ? <div className="small muted">{t('top bid')}</div> : null}</td>
-            <td className="r num">{r.bids || '—'}</td>
-            <td className="small">{status(r)}</td>
-            <td className="r"><button className="btn cv-act" onClick={e => { e.stopPropagation(); onOpen(r.id) }} disabled={!r.available}>{r.saleType === 'auction' ? t('Bid') : t('Make an offer')}</button></td>
-          </tr>)}</tbody></table></div>}
-      {total != null && items.length < total && <div className="cv-more-row"><button className="btn" disabled={busy} onClick={() => load(items.length)}>
-        {busy ? t('Loading…') : t('Show {n} more', { n: Math.min(PAGE, total - items.length) })}</button></div>}
-    </section>
-  )
-}
+/** The listings behind a cell, to pick one: a product over one day (or a week, in the Month view). */
+type Panel = { title: string; sub: string; query?: Record<string, string>; list?: Record<string, string>; from?: string; days?: number }
 
-// ---- week and day grids -----------------------------------------------------------------------------------------------
-type Panel = { title: string; sub: string; query?: Record<string, string>; list?: Record<string, string> }
-type Fold = { date: string; channel: string | null; allDay: boolean; startsAt: string; endsAt: string; startMin: number; endMin: number
-  programmes: number; slots: number; fromPrice: number; channels: string[] }
-const mins = (iso: string) => dubai(iso).minutes
-/** Where a programme block ends: its last break or its end time, at least half an hour after it starts; past midnight runs on. */
-const progEnd = (g: Prog) => mins(g.startsAt) + Math.max(30, (Date.parse(g.endsAt) - Date.parse(g.startsAt)) / 60_000)
+// ---- the rows: outlets with their products under them (owner's buyer-side fixes, round 2) ------------------------------
+type Cell = { col: string; slots: number; onSale: number; price: number | null; bids: number; closesAt: string | null; youLead: boolean; outbid: boolean
+  items?: { id: string; startsAt: string; endsAt: string | null; price: number; saleType: Slot['saleType']; label: string; kind: string }[] }
+type ProductRow = { placementId: string; placement: string; channel: string; onSale: number; fromPrice: number | null; saleTypes: string[]; cells: Cell[] }
+type OutletRows = { key: string; outlet: string; channels: string[]; logoUrl: string | null; onSale: number; fromPrice: number | null; products: ProductRow[] }
+
+/** A cell's price: the number only, exact (the table says once that prices are in AED before VAT), so it fits a narrow column in any language. */
+const cellPrice = (fils: number) => (fils / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })
+
+/** One short status per cell, in the owner's words: You lead · Outbid · Closes in 16h · 4 bids · 3 on sale · Closed. */
+function cellStatus(c: Cell) {
+  if (!c.onSale) return <span className="muted">{t('Closed')}</span>
+  if (c.youLead) return <span className="dot lead">{t('You lead')}</span>
+  if (c.outbid) return <span className="dot outbid">{t('Outbid')}</span>
+  if (c.closesAt && soon(c.closesAt)) return <span className="cv-closing">{closesIn(c.closesAt)}</span>
+  if (c.bids) return <span className="muted">{c.bids === 1 ? t('1 bid') : t('{n} bids', { n: c.bids })}</span>
+  return <span className="muted">{t('{n} on sale', { n: c.onSale })}</span>
+}
 
 /**
- * A time grid: days across (week) or channels across (day). The server folds busy times (marketplace/search.ts grid): where more
- * than two programmes air at once, the grid shows one summary of them, which opens the matching slots as a sortable list.
- * So the grid reads the same with five outlets or five thousand.
+ * Day, Week and Month share one layout: an outlet row (logo, name, media type, an arrow to fold it; no prices), then one row per
+ * product with its sale type and "from" price. Only the columns change: Day = one day, Week = 7 days, Month = one column per week.
+ * A cell is one product in one column; clicking it opens the bid drawer, or a short list to pick from when several are on sale.
  */
-function TimeGrid({ s, from, to, reload, live, columns, onPanel, onDay }: { s: State; from: string; to: string; reload: number; live: number; columns: 'days' | 'channels'
-  onPanel: (p: Panel) => void; onDay: (d: string) => void }) {
-  const [data, setData] = useState<{ blocks: Prog[]; folds: Fold[] } | null>(null), [error, setError] = useState('')
-  const latest = useLatest()
-  useEffect(() => { setData(null); latest(api<{ blocks: Prog[]; folds: Fold[] }>(`/slots/grid?${query(s, from, to, { by: columns === 'days' ? 'day' : 'channel' })}`), d => { setData(d); setError('') }, e => setError(e.message)) },
-    [from, to, s.f, s.mine, s.all, reload, columns])
-  useEffect(() => { if (live) latest(api<{ blocks: Prog[]; folds: Fold[] }>(`/slots/grid?${query(s, from, to, { by: columns === 'days' ? 'day' : 'channel' })}`), setData, () => {}) }, [live])
-  const days = columns === 'days' ? weekOf(from) : [from]
-  const cols = columns === 'days' ? days.map(d => ({ key: d, label: <><span className="small muted">{dayLabel(d, { weekday: 'short' })}</span><b>{dayLabel(d, { day: 'numeric' })}</b></>, date: d, channel: undefined as string | undefined }))
-    : CHANNELS.filter(c => !s.f.channels?.length || s.f.channels.includes(c)).map(c => ({ key: c, label: <ChannelMark c={c} label />, date: from, channel: c as string | undefined }))
-  const blocks = data?.blocks ?? [], folds = data?.folds ?? []
-  const inCol = (x: { date: string; channel: string | null }, c: { date: string; channel?: string }) => x.date === c.date && (!c.channel || x.channel === c.channel)
-  const timedB = blocks.filter(g => !g.allDay), timedF = folds.filter(f => !f.allDay)
-  // The hours worth showing: the earliest start to the latest end on screen, at least 8 hours.
-  const starts = [...timedB.map(g => mins(g.startsAt)), ...timedF.map(f => f.startMin)], ends = [...timedB.map(progEnd), ...timedF.map(f => f.endMin)]
-  const lo = starts.length ? Math.max(0, Math.floor(Math.min(...starts) / 60) - 1) : 6, hi = ends.length ? Math.min(24, Math.ceil(Math.max(...ends) / 60)) : 22
-  const start = Math.min(lo, Math.max(0, hi - 8)), end = Math.max(hi, start + 8)
-  const today = todayInDubai(), nowMin = mins(new Date().toISOString())
-  const y = (m: number) => ((m - start * 60) / 60) * HOUR
-  const open = (g: Prog) => onPanel({ title: `${g.outlet} · ${g.placement}`, sub: dayLabel(g.date, { weekday: 'long', day: 'numeric', month: 'long' }), query: { placement: g.placementId, date: g.date } })
-  const openFold = (f: Fold) => onPanel({ title: t('{n} programmes', { n: f.programmes.toLocaleString('en-US') }),
-    sub: `${dayLabel(f.date, { weekday: 'long', day: 'numeric', month: 'short' })} · ${f.allDay ? t('All day') : ltr(`${hhmm(f.startMin)}–${hhmm(f.endMin, true)}`)}${f.channel ? ` · ${CHANNEL_NAME[f.channel]}` : ''}`,
-    list: { date: f.date, ...(f.allDay ? { dp: 'allday' } : { tmin: String(f.startMin), tmax: String(f.endMin) }), ...(f.channel ? { ch: f.channel } : {}) } })
-  const width = columns === 'days' ? 130 : 170
-  const gridCols = { gridTemplateColumns: `64px repeat(${cols.length}, minmax(${width}px, 1fr))` }
-  if (error) return <p className="error">{error}</p>
+function RowsView({ s, view, from, to, reload, live, onOpen, onPick }: { s: State; view: View; from: string; to: string; reload: number; live: number
+  onOpen: (id: string) => void; onPick: (p: Panel) => void }) {
+  const [data, setData] = useState<{ total: number; outlets: OutletRows[] } | null>(null), [offset, setOffset] = useState(0), [error, setError] = useState('')
+  const [folded, setFolded] = useState<Set<string>>(() => new Set())
+  const latest = useLatest(), grain = view === 'month' ? 'week' : 'day'
+  useEffect(() => { setOffset(0) }, [from, to, s.f, s.mine, s.osort, view])
+  // every listing, closed ones included, so a cell can say "Closed"; the server keeps buyers to the open market
+  useEffect(() => { latest(api<{ total: number; outlets: OutletRows[] }>(`/slots/rows?${query({ ...s, all: true }, from, to, { grain, sort: s.osort, offset, limit: ROW_PAGE })}`),
+    d => { setData(d); setError('') }, e => setError(e.message)) }, [from, to, s.f, s.mine, s.osort, s.product, s.item, s.campaign, s.fit, offset, reload, live, grain])
+  const today = todayInDubai()
+  const cols = view === 'day' ? [from] : view === 'week' ? weekOf(from) : monthGrid(s.date).map(w => w[0])
+  const colLabel = (c: string) => view === 'month'
+    ? t('{from} – {to}', { from: dayLabel(c, { day: 'numeric', month: 'short' }), to: dayLabel(addDays(c, 6), { day: 'numeric', month: 'short' }) })
+    : dayLabel(c, view === 'day' ? { weekday: 'long', day: 'numeric', month: 'long' } : { weekday: 'short', day: 'numeric' })
+  const isNow = (c: string) => view === 'month' ? today >= c && today < addDays(c, 7) : c === today
+  const fold = (k: string) => setFolded(f => { const n = new Set(f); n.has(k) ? n.delete(k) : n.add(k); return n })
+  const pages = data ? Math.ceil(data.total / ROW_PAGE) : 0, pageNo = Math.floor(offset / ROW_PAGE) + 1
+  const total = view !== 'day' // the right-hand column: per product, what is on sale in the whole range
+  const pick = (o: OutletRows, p: ProductRow, c: Cell) => {
+    if (!c.onSale) return
+    if (c.items?.length === 1) return onOpen(c.items[0].id)
+    onPick({ title: `${o.outlet} · ${p.placement}`, sub: colLabel(c.col), query: { placement: p.placementId }, from: c.col, days: view === 'month' ? 7 : 1 })
+  }
   return (
-    <section className="card cv-grid" aria-busy={!data}>
-      <div className="cv-scroll-x"><div className="cv-grid-inner" style={{ minWidth: 64 + cols.length * width }}>
-        <div className="cv-grid-head" style={gridCols}><div />{cols.map(c => <div key={c.key} className={`cv-colh ${c.date === today && columns === 'days' ? 'today' : ''} ${c.date < today ? 'past' : ''}`}>
-          {columns === 'days' ? <button className="cv-colh-btn" onClick={() => onDay(c.date)} title={t('Open this day')}>{c.label}</button> : c.label}</div>)}</div>
-        {blocks.some(g => g.allDay) || folds.some(f => f.allDay) ? <div className="cv-allday" style={gridCols}><div className="small muted cv-gutter">{t('All day')}</div>
-          {cols.map(c => { const list = blocks.filter(g => g.allDay && inCol(g, c)), more = folds.find(f => f.allDay && inCol(f, c))
-            return <div key={c.key} className="cv-allday-cell">{list.map(g => <Block key={g.placementId + g.date} g={g} compact onClick={() => open(g)} />)}
-              {more && <button className="cv-moreb" onClick={() => openFold(more)}>{t('+{n} more from {price}', { n: more.programmes.toLocaleString('en-US'), price: money(more.fromPrice) })}</button>}</div> })}</div> : null}
-        <div className="cv-grid-body" style={gridCols}>
-          <div className="cv-hours" style={{ height: (end - start) * HOUR }}>{Array.from({ length: end - start }, (_, i) =>
-            <span key={i} style={{ top: i * HOUR }}>{ltr(`${String(start + i).padStart(2, '0')}:00`)}</span>)}</div>
-          {cols.map(c => { const list = timedB.filter(g => inCol(g, c)), fs = timedF.filter(f => inCol(f, c))
-            const lay = layoutDay(list.map(g => ({ id: g.placementId + g.date, start: mins(g.startsAt), end: progEnd(g) })))
-            return <div key={c.key} className={`cv-col ${c.date < today ? 'past' : ''} ${c.date === today ? 'today' : ''} ${columns === 'days' && dubai(c.date + 'T08:00:00Z').weekday >= 6 ? 'weekend' : ''}`}
-              style={{ height: (end - start) * HOUR, backgroundSize: `100% ${HOUR}px` }}>
-              {c.date === today && nowMin >= start * 60 && nowMin <= end * 60 && <div className="cv-now" style={{ top: y(nowMin) }} aria-hidden />}
-              {list.map(g => { const l = lay.get(g.placementId + g.date)!, top = y(mins(g.startsAt)), h = Math.max(y(progEnd(g)) - top - 3, 30)
-                return <Block key={g.placementId + g.date} g={g} tight={h < 54 || l.cols > 1 && h < 70} onClick={() => open(g)}
-                  style={{ top, height: h, insetInlineStart: `calc(${(l.col / l.cols) * 100}% + 2px)`, width: `calc(${100 / l.cols}% - 4px)` }} /> })}
-              {fs.map(f => { const top = y(f.startMin), h = Math.max(y(f.endMin) - top - 3, 30)
-                return <button key={`${f.startMin}-${f.channel}`} className="cv-fold" style={{ top, height: h, insetInlineStart: 2, width: 'calc(100% - 4px)' }} onClick={() => openFold(f)}
-                  title={t('{n} programmes', { n: f.programmes })}>
-                  <span className="cv-fold-n"><b className="num">{f.programmes.toLocaleString('en-US')}</b> {t('programmes')}{h < 46 && <span className="small"> · {t('from {price}', { price: money(f.fromPrice) })}</span>}</span>
-                  {h >= 52 && <span className="small num">{ltr(`${hhmm(f.startMin)}–${hhmm(f.endMin, true)}`)}</span>}
-                  {h >= 46 && <span className="small">{t('from {price}', { price: money(f.fromPrice) })}</span>}
-                  {h >= 76 && <span className="cv-fold-ch">{CHANNELS.filter(x => f.channels.includes(x)).map(x => <ChannelMark key={x} c={x} />)}</span>}
-                </button> })}
-            </div> })}
-        </div>
-      </div></div>
-      {!data && <div className="cv-loading" aria-hidden />}
-    </section>
-  )
-}
-/** A time of day from minutes; an end time rounds up to the next five minutes so a run reads 06:00–08:45, not 08:41. */
-const hhmm = (m: number, up = false) => { const r = up ? Math.ceil(m / 5) * 5 : Math.round(m); return `${String(Math.floor(r / 60) % 24).padStart(2, '0')}:${String(r % 60).padStart(2, '0')}` }
-
-/** A programme in the grid: its channel colour on the edge, the outlet, the time, the count and the lowest price. */
-function Block({ g, onClick, style, compact, tight }: { g: Prog; onClick: () => void; style?: React.CSSProperties; compact?: boolean; tight?: boolean }) {
-  const st = progStatus(g)
-  // A short programme gets one line: the outlet and the price; the rest is in the tooltip and the panel.
-  if (tight) return <button className={`cv-block tight ch-b-${g.channel} ${g.open ? '' : 'taken'}`} style={style} onClick={onClick}
-    title={`${g.outlet} · ${g.placement} · ${time(g.startsAt)} · ${t('{n} slots', { n: g.slots })} · ${t('from {price}', { price: money(g.fromPrice) })}`}>
-    <span className="cv-b1"><ChannelMark c={g.channel} /><b>{g.outlet}</b><span className="num cv-tprice">{money(g.fromPrice)}</span></span></button>
-  return <button className={`cv-block ch-b-${g.channel} ${compact ? 'compact' : ''} ${g.open ? '' : 'taken'}`} style={style} onClick={onClick}
-    title={`${g.outlet} · ${g.placement} · ${t('{n} slots', { n: g.slots })} · ${t('from {price}', { price: money(g.fromPrice) })}`}>
-    <span className="cv-b1"><ChannelMark c={g.channel} /><b>{g.outlet}</b></span>
-    {!compact && <span className="cv-b2 num">{g.allDay ? t('All day') : (Date.parse(g.endsAt) - Date.parse(g.startsAt)) < 120_000 ? ltr(time(g.startsAt)) : ltr(`${time(g.startsAt)}–${time(g.endsAt)}`)}</span>}
-    <span className="cv-b3"><span className="num">{money(g.fromPrice)}</span>{g.slots > 1 && <span className="muted"> · {t('{n} slots', { n: g.slots })}</span>}</span>
-    {!compact && st && <span className="cv-b4">{st}</span>}
-  </button>
-}
-
-// ---- month ------------------------------------------------------------------------------------------------------------
-/** A month of daily totals: how many slots, from what price, which channels; busier days are deeper in colour. */
-function MonthView({ date, totals, narrow, onDay }: { date: string; totals: DayTotal[]; narrow: boolean; onDay: (d: string) => void }) {
-  const weeks = monthGrid(date), month = date.slice(0, 7), today = todayInDubai(), by = new Map(totals.map(d => [d.date, d]))
-  const max = Math.max(1, ...totals.map(d => d.slots))
-  const level = (n: number) => n === 0 ? 0 : n / max > .66 ? 3 : n / max > .33 ? 2 : 1
-  return (
-    <section className="card cv-month" aria-label={t('Month')}>
-      {[t('Mon'), t('Tue'), t('Wed'), t('Thu'), t('Fri'), t('Sat'), t('Sun')].map(d => <div key={d} className="cv-month-h small muted">{d}</div>)}
-      {weeks.flat().map(d => { const x = by.get(d), out = d.slice(0, 7) !== month, past = d < today
-        return <button key={d} className={`cv-mcell lvl-${x ? level(x.slots) : 0} ${out ? 'out' : ''} ${past ? 'past' : ''} ${d === today ? 'today' : ''}`} disabled={!x}
-          onClick={() => onDay(d)} aria-label={x ? `${dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' })}: ${t('{n} slots', { n: x.slots })}, ${t('from {price}', { price: money(x.fromPrice) })}` : dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' })}>
-          <span className="cv-mdate">{Number(d.slice(8))}</span>
-          {x && <>
-            <span className="cv-mcount"><b className="num">{x.slots.toLocaleString('en-US')}</b>{!narrow && <span className="small muted"> {t(x.slots === 1 ? 'slot' : 'slots')}</span>}</span>
-            {!narrow && <span className="small muted num">{t('from {price}', { price: money(x.fromPrice) })}</span>}
-            {!narrow && <span className="cv-mch">{CHANNELS.filter(c => x.channels.includes(c)).map(c => <ChannelMark key={c} c={c} />)}</span>}
-            {!narrow && <span className="small muted">{t(x.outlets === 1 ? '1 outlet' : '{n} outlets', { n: x.outlets })}</span>}
-          </>}
-        </button> })}
-    </section>
-  )
-}
-
-// ---- outlets across the week ------------------------------------------------------------------------------------------
-/** Outlets down, days across: each cell the count and lowest price. 50 outlets a page; search and sort narrow thousands. */
-function OutletsView({ s, from, to, reload, live, onPanel }: { s: State; from: string; to: string; reload: number; live: number; onPanel: (p: Panel) => void }) {
-  const [data, setData] = useState<{ total: number; items: OutletRow[] } | null>(null), [offset, setOffset] = useState(0), [error, setError] = useState('')
-  const latest = useLatest()
-  useEffect(() => { setOffset(0) }, [from, to, s.f, s.mine, s.all, s.osort])
-  useEffect(() => { latest(api<{ total: number; items: OutletRow[] }>(`/slots/outlets?${query(s, from, to, { sort: s.osort, offset, limit: OUTLET_PAGE })}`), d => { setData(d); setError('') }, e => setError(e.message)) },
-    [from, to, s.f, s.mine, s.all, s.osort, offset, reload, live])
-  const days = weekOf(from), today = todayInDubai()
-  const prices = (data?.items ?? []).flatMap(o => o.days.map(d => d.fromPrice))
-  const lo = Math.min(...prices), hi = Math.max(...prices)
-  // Cheaper cells read lighter: a quiet guide for comparing price across a row or a column.
-  const shade = (p: number) => hi > lo ? Math.round(((p - lo) / (hi - lo)) * 3) : 0
-  const pages = data ? Math.ceil(data.total / OUTLET_PAGE) : 0, pageNo = Math.floor(offset / OUTLET_PAGE) + 1
-  return (
-    <section className="card cv-outlets">
+    <section className={`card cv-rows rv-${view}`}>
       <div className="cv-list-bar">
-        <span className="small muted" role="status">{!data ? t('Loading…') : t('{n} outlets with dates on sale this week', { n: data.total.toLocaleString('en-US') })}</span>
+        <span className="small muted" role="status">{!data ? t('Loading…') : data.total === 1 ? t('1 outlet') : t('{n} outlets', { n: data.total.toLocaleString('en-US') })}</span>
+        <span className="spacer" /><span className="small muted">{t('Prices in AED, before VAT')}</span>
       </div>
       {error && <p className="error pad">{error}</p>}
-      <div className="table-wrap"><table className="table cv-otable">
-        <thead><tr><th className="cv-ocol">{t('Outlet')}</th>{days.map(d => <th key={d} className={`num ${d === today ? 'today' : ''}`}>{dayLabel(d, { weekday: 'short', day: 'numeric' })}</th>)}<th className="r">{t('Week')}</th></tr></thead>
-        <tbody>{(data?.items ?? []).map(o => <tr key={o.outletId}>
-          <th className="cv-ocol" scope="row"><span className="cv-outlet"><OutletMark name={o.outlet} url={o.logoUrl} size={28} />
-            <span><b>{o.outlet}</b><span className="small muted">{CHANNEL_NAME[o.channel]}</span></span></span></th>
-          {days.map(d => { const x = o.days.find(y => y.date === d)
-            return <td key={d} className={`cv-ocell ${d < today ? 'past' : ''}`}>{x ? <button className={`cv-obtn shade-${shade(x.fromPrice)}`}
-              onClick={() => onPanel({ title: o.outlet, sub: dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' }), query: { outlet: o.outletId, date: d } })}>
-              <b className="num">{money(x.fromPrice)}</b><span className="small muted">{t('{n} on sale', { n: x.slots })}</span>
-              {x.closesAt && soon(x.closesAt) && <span className="cv-closing">{closesIn(x.closesAt)}</span>}</button> : <span className="muted">—</span>}</td> })}
-          <td className="r num small"><b>{o.slots}</b><div className="muted">{t('from {price}', { price: money(o.fromPrice) })}</div></td>
-        </tr>)}</tbody></table></div>
+      <div className="table-wrap"><table className="table cv-rtable" style={{ minWidth: (view === 'day' ? 260 + 320 : 176 + cols.length * 76) + (total ? 100 : 0) }}>
+        <colgroup><col className="c-p" />{cols.map(c => <col key={c} className="c-d" />)}{total && <col className="c-t" />}</colgroup>
+        <thead><tr><th className="cv-pcol">{t('Outlet')}</th>
+          {cols.map(c => <th key={c} className={`num ${isNow(c) ? 'today' : ''}`}>{colLabel(c)}</th>)}
+          {total && <th className="r cv-tot">{view === 'month' ? t('Month') : t('Week')}</th>}</tr></thead>
+        {(data?.outlets ?? []).map(o => { const open = !folded.has(o.key)
+          return <tbody key={o.key} className="cv-outlet-group">
+            <tr className="cv-orow"><th scope="rowgroup" colSpan={cols.length + 1 + (total ? 1 : 0)}>
+              <button type="button" className="cv-fold" aria-expanded={open} onClick={() => fold(o.key)}>
+                <svg className={`cv-arrow ${open ? 'open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden><path d="M9 6l6 6-6 6" /></svg>
+                <OutletMark name={o.outlet} url={o.logoUrl} size={30} />
+                <span className="cv-oname"><b dir="auto">{o.outlet}</b><span className="small muted">{o.channels.map(c => CHANNEL_NAME[c] ?? c).join(sep)}</span></span>
+                {!open && <span className="small muted">{o.products.length === 1 ? t('1 product') : t('{n} products', { n: o.products.length })}</span>}
+              </button></th></tr>
+            {open && o.products.map(p => <tr key={p.placementId} className="cv-prow">
+              <th scope="row" className="cv-pcol"><span className="cv-pname"><b dir="auto">{o.outlet} · {p.placement}</b>
+                <span className="small muted">{p.saleTypes.map(saleLabel).join(sep)}{p.fromPrice != null && <>{p.saleTypes.length ? ' · ' : ''}{t('from {price}', { price: money(p.fromPrice) })}</>}</span></span></th>
+              {cols.map(c => { const x = p.cells.find(y => y.col === c), past = view !== 'month' && c < today
+                if (!x) return <td key={c} className={`cv-rcell empty ${past ? 'past' : ''}`}><span className="muted">—</span></td>
+                return <td key={c} className={`cv-rcell ${past ? 'past' : ''}`}>
+                  {view === 'day' && x.items?.length ? <ul className="cv-items">{x.items.map(i => <li key={i.id}><button type="button" onClick={() => onOpen(i.id)}>
+                    {hasTime(p.channel) && i.kind === 'single' && <span className="num">{time(i.startsAt)} · </span>}
+                    {i.kind !== 'single' && <span>{tm(i.label)} · </span>}<b className="num">{money(i.price)}</b> · {saleLabel(i.saleType)}</button></li>)}
+                    <li className="cv-istat">{cellStatus(x)}</li></ul>
+                  : <button type="button" className={`cv-cell ${x.onSale ? '' : 'closed'} ${x.outbid ? 'outbid' : x.youLead ? 'lead' : ''}`} disabled={!x.onSale} onClick={() => pick(o, p, x)}>
+                    {x.price != null ? <b className="num" title={money(x.price)}>{cellPrice(x.price)}</b> : <b className="muted">—</b>}{cellStatus(x)}</button>}</td> })}
+              {total && <td className="r num small cv-tot">{p.onSale ? <><b>{t('{n} on sale', { n: p.onSale })}</b>{p.fromPrice != null && <div className="muted">{t('from {price}', { price: money(p.fromPrice) })}</div>}</>
+                : <span className="muted">{t('Closed')}</span>}</td>}
+            </tr>)}
+          </tbody> })}
+      </table></div>
+      {data && !data.outlets.length && <p className="muted pad">{t('Nothing here in this period.')}</p>}
       {pages > 1 && <nav className="cv-pager" aria-label={t('Pages')}>
-        <button className="btn" disabled={offset === 0} onClick={() => setOffset(offset - OUTLET_PAGE)}><Chevron dir="back" /> {t('Previous')}</button>
+        <button className="btn" disabled={offset === 0} onClick={() => setOffset(offset - ROW_PAGE)}><Chevron dir="back" /> {t('Previous')}</button>
         <span className="small muted">{t('Page {n} of {total}', { n: pageNo, total: pages })}</span>
-        <button className="btn" disabled={pageNo >= pages} onClick={() => setOffset(offset + OUTLET_PAGE)}>{t('Next')} <Chevron dir="fwd" /></button></nav>}
+        <button className="btn" disabled={pageNo >= pages} onClick={() => setOffset(offset + ROW_PAGE)}>{t('Next')} <Chevron dir="fwd" /></button></nav>}
     </section>
   )
 }
@@ -572,7 +457,7 @@ function SlotsPanel({ p, s, onClose, onOpen }: { p: Panel; s: State; onClose: ()
   const latest = useLatest()
   // One programme or an outlet's day: every slot, taken ones included. A folded time: the matching open slots, sorted and paged.
   const load = (offset: number) => {
-    if (p.query) { const d = p.query.date; return latest(api<Slot[]>(`/slots?${query({ ...s, all: true }, d, addDays(d, 1), p.query)}`), x => { setSlots(x); setTotal(x.length) }, () => setSlots([])) }
+    if (p.query) { const d = p.from ?? p.query.date; return latest(api<Slot[]>(`/slots?${query({ ...s, all: true }, d, addDays(d, p.days ?? 1), p.query)}`), x => { setSlots(x); setTotal(x.length) }, () => setSlots([])) }
     if (!p.list) return
     const d = p.list.date; setBusy(true)
     latest(api<{ total: number; items: Slot[] }>(`/slots/list?${query(s, d, addDays(d, 1), { ...p.list, sort, offset, limit: PAGE })}`),

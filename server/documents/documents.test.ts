@@ -7,7 +7,7 @@ import { FakeProvider } from '../payments/provider.js'
 import { approve, cancelByBuyer, confirmPayment, runMoneyOps } from '../payments/payments.js'
 import { submitProof } from '../fulfilment/proof.js'
 import { payoutStatement, uploadMediaInvoice } from './documents.js'
-import { AED, BRIEF, T, company, radio, reset, slot } from '../test/helpers.js'
+import { AED, BRIEF, briefFor, T, company, radio, reset, slot } from '../test/helpers.js'
 
 const now = T('2026-11-01T08:00:00Z')
 const h = (t: Date, n: number) => new Date(t.getTime() + n * 3_600_000)
@@ -27,7 +27,7 @@ beforeEach(async () => {
 
 async function paidDeal(label = 'Break 2', placement = p.placement) {
   const s = await slot(placement, '2026-11-09', label)
-  const d = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: BRIEF }, now))
+  const d = await tx(c => requestBuyNow(c, { slotId: s.id, buyerId: buyer, brief: briefFor(buyer) }, now))
   await tx(c => accept(c, d.id, 'seller', now))
   await confirmPayment(provider, { dealId: d.id, buyerId: buyer, paymentMethod: 'pm_card_4242' }, h(now, 1))
   return d.id as string

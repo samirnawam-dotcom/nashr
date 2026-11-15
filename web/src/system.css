@@ -1080,3 +1080,19 @@ main.legal .table-wrap.card > .table { min-width: 100%; }
   main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
   .doc { border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important; }
 }
+
+/* The brief a publisher sees before accepting (owner's buyer-side fixes, round 2) */
+.bc-h { font-size: 15px; margin: 18px 0 8px; }
+.brief-card { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--surface); display: grid; gap: 10px; margin: 0 0 10px; }
+.brief-card.compact { padding: 10px 12px; margin-top: 8px; font-size: 13.5px; }
+.bc-who { display: flex; align-items: center; gap: 10px; }
+.bc-who > div { min-width: 0; flex: 1; }
+.bc-amount { font-weight: 650; font-size: 16px; }
+.brief-card .facts { margin: 0; }
+.bc-creative { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.bc-creative .label { flex-basis: 100%; font-size: 12.5px; color: var(--slate); }
+.bc-img { max-width: min(100%, 320px); max-height: 220px; border-radius: 8px; border: 1px solid var(--line); object-fit: contain; background: var(--surface-2); }
+.brief-card.compact .bc-img { max-width: 200px; max-height: 140px; }
+.bc-media { width: min(100%, 360px); }
+/* the bid drawer: nothing is sent until the brief and creative are complete */
+.bd-need { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--amber-1); color: var(--amber); }

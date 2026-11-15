@@ -6,7 +6,7 @@ import { FakeProvider } from '../payments/provider.js'
 import { acceptInvite, approveAccess, inviteStaff, requestAccess } from '../auth/access.js'
 import { totp } from '../auth/crypto.js'
 import { createPlacement, generateSlots } from '../catalog/placements.js'
-import { AED, BRIEF, T, reset } from '../test/helpers.js'
+import { AED, BRIEF, briefFor, T, reset } from '../test/helpers.js'
 import { DiskStorage } from '../files/storage.js'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -128,7 +128,7 @@ describe('invite-only access (scenario 14)', () => {
 
 describe('who can see what (SPEC 5.5, scenario 15)', () => {
   test('every route refuses the wrong role, and other companies\' records look like they do not exist', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     const cases: [Who | null, string, string, number][] = [
       [null, 'GET', '/api/slots', 200],                          // visitors can browse before they sign in
       [null, 'POST', `/api/slots/${slotX}/bids`, 401],           // but must sign in to act
@@ -157,7 +157,7 @@ describe('who can see what (SPEC 5.5, scenario 15)', () => {
   })
 
   test('visitors browse the calendar, a slot, the directory and an outlet with no per-buyer fields', async () => {
-    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(4_200), brief: BRIEF })
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(4_200), brief: briefFor(buyerB.companyId) })
     const slots = (await call(null, 'GET', '/api/slots?from=2026-11-01&to=2026-12-01')).json()
     expect(slots.length).toBeGreaterThan(0)
     for (const s of slots) expect(s).toMatchObject({ youLead: false, youBid: false })   // an unbid slot must not read as "you lead"
@@ -172,9 +172,9 @@ describe('who can see what (SPEC 5.5, scenario 15)', () => {
   })
 
   test('buyers never see reserve prices, commission, other bidders or contact details; sellers see the company, never contacts', async () => {
-    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerB.companyId) })
     const slots = (await call(buyerA, 'GET', '/api/slots?from=2026-11-01&to=2026-12-01')).body
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
     const mine = (await call(buyerA, 'GET', `/api/deals/${deal.id}`)).body
     for (const body of [slots, mine]) expect(body).not.toMatch(/reserve|commission|"fee"|youReceive|@|\+971|Al Futtaim|top_buyer/i)
     expect(JSON.parse(mine)).toMatchObject({ status: 'awaiting_publisher', price: AED(5_500), vat: AED(275), total: AED(5_775) })
@@ -187,7 +187,7 @@ describe('who can see what (SPEC 5.5, scenario 15)', () => {
 
 describe('admin', () => {
   test('view an account read-only; every page is logged; changes are blocked', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     expect((await call(admin, 'POST', `/api/admin/view-as/${sellerX.companyId}`)).json()).toEqual({ viewing: 'Skyline FM', viewOnly: true })
     expect((await call(admin, 'GET', '/api/me')).json()).toMatchObject({ role: 'seller', company: { name: 'Skyline FM' } })
     expect((await call(admin, 'GET', `/api/seller/deals/${deal}`)).statusCode).toBe(200)
@@ -199,7 +199,7 @@ describe('admin', () => {
   })
 
   test('sign in as a publisher user: acts as them for an hour, logged under the admin, own steps blocked, told on the bell', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     const seller = (await pool.query(`select id from users where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
     expect((await call(admin, 'POST', `/api/admin/users/${seller}/sign-in-as`, { reason: 'x' })).json().error).toMatch('why')
     expect((await call(admin, 'POST', `/api/admin/users/${(await pool.query(`select id from users where email = 'ops@nashr.ae'`)).rows[0].id}/sign-in-as`, { reason: 'Testing the staff guard' })).json().error).toMatch('buyer or publisher')
@@ -233,7 +233,7 @@ test('a booking end to end through the API: request, accept, pay; fees frozen fr
   await call(founder, 'PUT', `/api/admin/settings/commission:${sellerX.companyId}`, { value: 1000 })
   now = T('2026-11-01T09:00:00Z')
   expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, {})).json().error).toMatch('booking brief is required')
-  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
   expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)).json()).toMatchObject({ status: 'awaiting_payment', money: { commissionBp: 1000 } })
   expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_0002' })).json()).toMatchObject({ status: 'failed' })
   expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json()).toMatchObject({ status: 'succeeded' })
@@ -250,7 +250,7 @@ describe('buyer screens', () => {
     const off = (await pool.query(`insert into outlets (name, channel, est_low, est_high) values ('Arabian Business', 'magazine', $1, $2) returning id`, [AED(8_000), AED(12_000)])).rows[0].id
     const outletX = (await pool.query(`select o.id from outlets o where company_id = $1`, [sellerX.companyId])).rows[0].id
     // three completed sales on Nashr make a typical price
-    const bid = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    const bid = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
     const bidId = (await pool.query(`select bid_id from deals where id = $1`, [bid.id])).rows[0].bid_id
     for (const amount of [AED(4_000), AED(5_000), AED(6_000)])
       await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'auction', 'paid_out', $5, 'AED', now())`,
@@ -285,7 +285,7 @@ describe('buyer screens', () => {
   })
 
   test('campaigns are the plan: one brief sent with every tagged bid, products costed at their default price, stages, totals against the budget', async () => {
-    const CB = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards with no fees.', language: 'other', languageOther: 'Hindi', creativeToFollow: true }
+    const CB = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards with no fees.', language: 'other', languageOther: 'Hindi', draftFileKey: `files/${buyerA.companyId}` }
     const make = (who: Who, body: object) => call(who, 'POST', '/api/campaigns', { name: 'Q4 launch', startDate: '2026-11-15', endDate: '2026-12-31', brief: CB, ...body })
     expect((await make(buyerA, { brief: { ...CB, message: '' } })).json().error).toMatch('what the ad will say')
     expect((await make(buyerA, { brief: { ...CB, languageOther: '' } })).json().error).toMatch('which language')
@@ -294,8 +294,8 @@ describe('buyer screens', () => {
     const free = (await make(buyerA, { name: 'No budget' })).json().id // the budget is optional
     expect((await call(buyerA, 'GET', `/api/campaigns/${free}`)).json()).toMatchObject({ budget: null, remaining: null })
     const c = (await make(buyerA, { budget: AED(50_000) })).json().id
-    const other = (await make(buyerB, { name: 'Theirs' })).json().id
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: BRIEF, campaignId: other })).json().error).toMatch('your active campaigns')
+    const other = (await make(buyerB, { name: 'Theirs', brief: { ...CB, draftFileKey: `files/${buyerB.companyId}` } })).json().id
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: briefFor(buyerA.companyId), campaignId: other })).json().error).toMatch('your active campaigns')
     // the plan lists products, each at its default price (the product's own, else the listing's starting price)
     const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
     expect((await call(buyerA, 'POST', `/api/campaigns/${c}/lines`, { placementId: placement })).statusCode).toBe(200)
@@ -319,8 +319,32 @@ describe('buyer screens', () => {
     expect((await call(buyerB, 'PUT', `/api/campaigns/${c}`, { budget: 1 })).statusCode).toBe(404)
   })
 
+  test('every bid carries its brief and creative; the publisher sees them all before deciding, nobody else does', async () => {
+    const base = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards with no fees.', language: 'english' }
+    // no creative, or "creative to follow": refused (a seller never accepts something blind)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: base })).json().error).toMatch('Upload the creative.')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...base, creativeToFollow: true } })).json().error).toMatch('Upload the creative.')
+    // someone else's file cannot be attached
+    const theirs = (await upload(buyerB, 'their file', 'image/png')).json()
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...base, draftFileKey: theirs.key } })).json().error).toMatch('not found')
+    // the buyer's own creative, for a client with a name: the publisher sees the whole brief and the file
+    const mine = (await upload(buyerA, 'ID3 draft spot', 'audio/mpeg')).json()
+    const client = (await call(buyerA, 'POST', '/api/clients', { name: 'Gulf Bank', industry: 'Banking' })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { clientId: client, brief: { ...base, language: 'bilingual', disclaimer: 'Licensed by the CBUAE', draftFileKey: mine.key } })).json().id
+    const view = (await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).json()
+    expect(view.status).toBe('awaiting_seller')
+    expect(view.briefView).toMatchObject({ advertiser: 'Northwind', industry: 'Banking', message: 'Business cards with no fees.', language: 'bilingual', disclaimer: 'Licensed by the CBUAE',
+      client: { name: 'Gulf Bank' }, creative: { fileId: mine.id, type: 'audio/mpeg' } })
+    expect(JSON.stringify(view.briefView)).not.toMatch(/budget|objective|campaign/i)
+    expect((await call(sellerX, 'GET', `/api/files/${mine.id}`)).body).toBe('ID3 draft spot') // before accepting
+    for (const who of [sellerY, buyerB]) expect((await call(who, 'GET', `/api/files/${mine.id}`)).statusCode).toBe(404)
+    // the same brief on the slot page, where the publisher chooses or accepts bids
+    const slotPage = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
+    expect(slotPage.bids[0].brief).toMatchObject({ client: { name: 'Gulf Bank' }, creative: { fileId: mine.id } })
+  })
+
   test('creative upload: private file, seen by the publisher on the deal, nobody else; booking page and documents', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     const f = (await upload(buyerA, 'ID3 fake audio', 'audio/mpeg')).json()
     expect((await call(buyerB, 'POST', `/api/deals/${deal}/creative`, { fileId: f.id })).statusCode).toBe(404)
@@ -378,11 +402,11 @@ describe('seller screens', () => {
   test('inbox, slot panel, block; deal page through proof; earnings and statement', async () => {
     expect((await call(sellerX, 'POST', `/api/seller/slots/${slotY}/block`, { blocked: true })).statusCode).toBe(400) // not theirs
     expect((await call(sellerY, 'POST', `/api/seller/slots/${slotY}/block`, { blocked: true })).statusCode).toBe(200)
-    expect((await call(buyerA, 'POST', `/api/slots/${slotY}/bids`, { amount: AED(3_500), brief: BRIEF })).statusCode).toBe(400)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotY}/bids`, { amount: AED(3_500), brief: briefFor(buyerA.companyId) })).statusCode).toBe(400)
     expect((await call(sellerY, 'POST', `/api/seller/slots/${slotY}/block`, { blocked: false })).statusCode).toBe(200)
 
-    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerB.companyId) })
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     expect((await call(sellerX, 'GET', '/api/seller/inbox')).json()).toEqual([expect.objectContaining({ type: 'decide', dealId: deal, buyer: 'Northwind Fintech' })])
     const panel = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
     expect(panel).toMatchObject({ reservePrice: AED(4_000), bids: [{ kind: 'buy_now', company: 'Northwind Fintech' }, { kind: 'bid', company: 'Al Futtaim' }] })
@@ -416,7 +440,7 @@ describe('seller screens', () => {
 
 describe('admin screens', () => {
   async function paidDeal() {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
     return deal
@@ -484,10 +508,10 @@ describe('admin screens', () => {
     await pool.query(`insert into settings (key, value, valid_from, changed_by) values ('terms_version', '"2026-12-01"', '2000-01-03', 'test')`)
     expect((await call(buyerA, 'GET', '/api/me')).json().terms).toEqual({ version: '2026-12-01', accepted: false })
     expect((await call(buyerA, 'GET', '/api/slots')).statusCode).toBe(200)                    // can still look
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().error).toMatch('updated terms')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().error).toMatch('updated terms')
     expect((await call(buyerA, 'POST', '/api/me/accept-terms', { version: '2026-11-09' })).json().error).toMatch('changed')
     expect((await call(buyerA, 'POST', '/api/me/accept-terms', { version: '2026-12-01' })).statusCode).toBe(200)
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).statusCode).toBe(200)
   })
 
   test('accounts: suspend signs the user out; staff invites; payouts retry; settings history; directory outlets', async () => {
@@ -522,7 +546,7 @@ describe('admin screens', () => {
 
 describe('publisher ratings', () => {
   async function releasedDeal(buyer: Who, slot: string, seller: Who) {
-    const deal = (await call(buyer, 'POST', `/api/slots/${slot}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyer, 'POST', `/api/slots/${slot}/buy-now`, { brief: briefFor(buyer.companyId) })).json().id
     await call(seller, 'POST', `/api/seller/deals/${deal}/accept`)
     await call(buyer, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
     return deal
@@ -649,7 +673,7 @@ describe('brief scenarios closed in phase F', () => {
   const hoursBefore = (iso: string, h: number) => new Date(new Date(iso).getTime() - h * 3_600_000).toISOString()
 
   test('scenarios 2 and 20: a bid below the reserve is flagged to the seller only; a decline shows the buyer the reason', async () => {
-    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerB.companyId) })
     expect(JSON.stringify((await call(buyerB, 'GET', `/api/slots/${slotX}`)).json())).not.toMatch(/reserve/i)
     await jump('2026-11-04T04:00:00Z'); await sweep(now) // bidding closed
     const [task] = (await call(sellerX, 'GET', '/api/seller/inbox')).json()
@@ -659,7 +683,7 @@ describe('brief scenarios closed in phase F', () => {
   })
 
   test('scenarios 3 and 5: reminders before the deadline; a declined card shows "payment pending" to the seller, then lapses with a reason', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     const due = await deadline(deal)
     await jump(hoursBefore(due, 11)); await sweep(now); await sweep(now)
     expect((await kinds(sellerX)).filter((k: string) => k === 'reminder.decide')).toHaveLength(1) // once, however often the sweeper runs
@@ -674,8 +698,8 @@ describe('brief scenarios closed in phase F', () => {
 
   test('scenarios 11, 17 and 25: review reminders on day 3 and day 1, auto-release; the money always adds up; cancellation is previewed exactly', async () => {
     // one booking runs to auto-release, another is cancelled by the buyer outside the free window
-    const run = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
-    const cancel = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: BRIEF })).json().id
+    const run = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
+    const cancel = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: briefFor(buyerB.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${run}/accept`); await call(sellerY, 'POST', `/api/seller/deals/${cancel}/accept`)
     await call(buyerA, 'POST', `/api/deals/${run}/pay`, { paymentMethod: 'pm_card_4242' }); await call(buyerB, 'POST', `/api/deals/${cancel}/pay`, { paymentMethod: 'pm_card_4242' })
 
@@ -744,9 +768,9 @@ describe('brief scenarios closed in phase F', () => {
     expect((await addWorkingDays(pool, thu, 1, 'SA')).toISOString().slice(0, 10)).toBe('2026-11-22')
     expect((await addWorkingDays(pool, thu, 1, 'AE')).toISOString().slice(0, 10)).toBe('2026-11-20')
     expect((await call(buyerA, 'GET', '/api/slots?from=2026-11-15T00:00:00Z&to=2026-11-23T00:00:00Z')).json().some((s: any) => s.outlet === 'Rotana FM')).toBe(false)
-    expect((await call(buyerA, 'POST', `/api/slots/${slots[0].id}/bids`, { amount: AED(3_000), brief: BRIEF })).json().error).toMatch('coming soon')
+    expect((await call(buyerA, 'POST', `/api/slots/${slots[0].id}/bids`, { amount: AED(3_000), brief: briefFor(buyerA.companyId) })).json().error).toMatch('coming soon')
     expect((await call(buyerA, 'GET', '/api/directory')).json().find((o: any) => o.id === outlet)).toMatchObject({ market: 'SA', comingSoon: true, onNashr: false })
-    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'GCC', budget: AED(10_000), startDate: '2026-12-01', endDate: '2026-12-31', brief: BRIEF })).json().id
+    const c = (await call(buyerA, 'POST', '/api/campaigns', { name: 'GCC', budget: AED(10_000), startDate: '2026-12-01', endDate: '2026-12-31', brief: briefFor(buyerA.companyId) })).json().id
     expect((await call(buyerA, 'POST', `/api/campaigns/${c}/lines`, { placementId: placement })).statusCode).toBe(200) // planned now, booked when the market opens
     expect((await call(buyerA, 'GET', `/api/campaigns/${c}`)).json().plan).toHaveLength(1)
     for (const topic of ['KSA', 'Athena', 'KSA']) await call(buyerA, 'POST', '/api/waitlist', { topic })
@@ -766,8 +790,8 @@ test('health: green when the sweeper ran and money flows; red, without details, 
 
 describe('security review fixes', () => {
   test('a body cannot redirect an action to someone else\'s deal (IDOR)', async () => {
-    const victim = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: BRIEF })).json().id
-    const mine = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const victim = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: briefFor(buyerB.companyId) })).json().id
+    const mine = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerY, 'POST', `/api/seller/deals/${victim}/accept`); await call(sellerX, 'POST', `/api/seller/deals/${mine}/accept`)
     const f = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('ID3 x'), headers: { cookie: buyerB.cookie, 'content-type': 'audio/mpeg' } })).json()
     await call(buyerB, 'POST', `/api/deals/${victim}/creative`, { fileId: f.id })
@@ -779,7 +803,7 @@ describe('security review fixes', () => {
   })
 
   test('CSRF: forms and foreign origins cannot write; raw bytes only reach uploads, only when signed in', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     const form = await app.inject({ method: 'POST', url: `/api/seller/deals/${deal}/accept`, payload: 'x=1', headers: { cookie: sellerX.cookie, 'content-type': 'text/plain' } })
     expect(form.statusCode).toBe(415)
     const foreign = await app.inject({ method: 'POST', url: `/api/seller/deals/${deal}/accept`, headers: { cookie: sellerX.cookie, origin: 'https://evil.example', host: 'nashr.ae' } })
@@ -794,7 +818,7 @@ describe('security review fixes', () => {
   })
 
   test('a party cannot attach the other side\'s file to proof or an issue and then read it', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
     const up = async (who: Who, text: string) => (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from(text), headers: { cookie: who.cookie, 'content-type': 'audio/mpeg' } })).json().id
@@ -826,7 +850,7 @@ describe('security review fixes', () => {
     expect((await pool.query(`select type from files where id = $1`, [fake.id])).rows[0].type).toBe('application/octet-stream')
     const pdf = (await up(Buffer.from('%PDF-1.7 ...'), 'application/octet-stream')).json()
     expect((await pool.query(`select type from files where id = $1`, [pdf.id])).rows[0].type).toBe('application/pdf')
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     expect((await call(buyerA, 'POST', `/api/deals/${deal}/creative`, { fileId: fake.id })).json()).toMatchObject({ status: 'technical_issue' })
   })
@@ -844,7 +868,7 @@ describe('security review fixes', () => {
   })
 
   test('a payment waiting for the bank cannot be started again; an authenticator code signs in once', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_3155' })).json().status).toBe('requires_action')
     expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().error).toMatch('waiting for you to confirm')
@@ -903,7 +927,7 @@ describe('Stripe (task B5) against an in-memory Stripe', () => {
     const scall = (who: Who | null, method: any, url: string, payload?: unknown) => sapp.inject({ method, url, payload: payload as any, headers: who ? { cookie: who.cookie } : {} })
     expect((await scall(null, 'GET', '/api/config')).json()).toEqual({ stripePublishableKey: 'pk_test_x' })
 
-    const deal = (await scall(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await scall(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await scall(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     expect((await scall(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_0002' })).json()).toMatchObject({ status: 'failed', failure: 'Your card was declined.' })
     const pay = (await scall(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_3155' })).json()
@@ -949,7 +973,7 @@ describe('Stripe (task B5) against an in-memory Stripe', () => {
 
 describe('messages between buyer and publisher', () => {
   test('both sides talk once the booking is paid, until the deal is finished; contact details are refused, off-platform wording is flagged, outsiders see nothing', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
     const url = `/api/deals/${deal.id}/messages`
     // Owner rule (no side agreements): nothing before payment, not even after the publisher accepts
     expect((await call(buyerA, 'POST', url, { body: 'Hello?' })).json().error).toMatch('once the booking is paid')
@@ -991,21 +1015,21 @@ describe('buyer and publisher tools', () => {
     app.inject({ method: 'PUT', url, payload: bytes, headers: { cookie: who.cookie, 'content-type': type } })
 
   test('a buyer withdraws an unanswered buy-now request; only that, and only its own', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json()
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
     expect((await call(buyerB, 'POST', `/api/deals/${deal.id}/withdraw`)).statusCode).toBe(404)
     expect((await call(buyerA, 'POST', `/api/deals/${deal.id}/withdraw`)).json().status).toBe('cancelled')
     expect((await pool.query(`select b.status from bids b join deals d on d.bid_id = b.id where d.id = $1`, [deal.id])).rows[0].status).toBe('withdrawn')
     expect((await call(buyerA, 'POST', `/api/deals/${deal.id}/withdraw`)).json().error).toMatch('Only a buy-now request')
     // the slot is still on sale, and the buyer may ask again
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).statusCode).toBe(200)
   })
 
   test("a buyer keeps its TRN for tax invoices; sees its team; what it's committed to if everything wins", async () => {
     expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '12345' })).statusCode).toBe(400)
     expect((await call(buyerA, 'PUT', '/api/buyer/company', { trn: '100200300400500' })).statusCode).toBe(200)
     expect((await call(buyerA, 'GET', '/api/buyer/company')).json()).toMatchObject({ name: 'Northwind Fintech', trn: '100200300400500', team: [{ email: 'sara@northwind.ae' }] })
-    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
-    await call(buyerA, 'POST', `/api/slots/${slotY}/buy-now`, { brief: BRIEF })
+    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerA.companyId) })
+    await call(buyerA, 'POST', `/api/slots/${slotY}/buy-now`, { brief: briefFor(buyerA.companyId) })
     expect((await call(buyerA, 'GET', '/api/buyer/exposure')).json()).toMatchObject({ leading: { count: 1, amount: AED(3_600) },
       requests: { count: 1, amount: AED(5_500) }, total: AED(9_100) })
   })
@@ -1013,7 +1037,7 @@ describe('buyer and publisher tools', () => {
   test('a publisher edits a placement: unbid future slots take the new terms, a slot with a bid keeps its own', async () => {
     const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
     await tx(c => generateSlots(c, placement, '2026-11-16', 5, now))
-    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerA.companyId) })
     const edit = { name: 'Morning Markets', startingPrice: AED(3_900), buyNowPrice: AED(6_000), reservePrice: AED(4_500), autoAccept: true, creativeLeadHours: 48, closeLeadHours: 120 }
     expect((await call(sellerY, 'PUT', `/api/seller/placements/${placement}`, edit)).statusCode).toBe(404)
     expect((await call(sellerX, 'PUT', `/api/seller/placements/${placement}`, { ...edit, closeLeadHours: 48 })).json().error).toMatch('Bidding must close')
@@ -1062,8 +1086,9 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
       await tx(c => generateSlots(c, placement, '2026-11-09', 7, now))
     }
     await add('Evening TV', 'tv', '19:00', '20:00', 9_000, 'auction', '{Automotive}')
+    await pool.query(`update outlets set blocked_industries = '{Banking}' where name = 'Evening TV'`) // never shown for Banking
     await add('Daily Paper', 'newspaper', undefined, undefined, 12_000, 'quick_sale', '{Real estate,Banking}')
-    await add('Lunch Podcast', 'podcast', '13:00', '13:30', 1_200, 'quick_sale', '{Retail}')
+    await add('Lunch Podcast', 'podcast', '13:00', '13:30', 1_200, 'quick_sale', '{}') // all sectors: always shown
   }
   const range = 'from=2026-11-09T00:00:00%2B04:00&to=2026-11-16T00:00:00%2B04:00'
 
@@ -1074,7 +1099,7 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     const cases: [string, any][] = [
       ['ch=tv,newspaper', { channels: ['tv', 'newspaper'] }], ['sale=quick_sale', { saleTypes: ['quick_sale'] }], ['sector=banking', { sector: 'banking' }],
       [`max=${AED(5_000)}`, { maxPrice: AED(5_000) }], ['dp=morning', { dayparts: ['morning'] }], ['dp=allday,evening', { dayparts: ['allday', 'evening'] }],
-      ['dp=afternoon', { dayparts: ['afternoon'] }], ['q=business%20markets', { q: 'business markets' }], ['q=paper', { q: 'paper' }],
+      ['dp=afternoon', { dayparts: ['afternoon'] }], ['q=retail%20markets', { q: 'retail markets' }], ['sector=automotive', { sector: 'automotive' }], ['q=paper', { q: 'paper' }],
       [`ch=radio,podcast&sale=quick_sale&max=${AED(2_000)}`, { channels: ['radio', 'podcast'], saleTypes: ['quick_sale'], maxPrice: AED(2_000) }],
     ]
     for (const [qs, f] of cases) {
@@ -1153,9 +1178,9 @@ describe('quick sale: interest reaches the publisher, who accepts one buyer', ()
 
   test('the publisher is told, sees it in the inbox with the brief, accepts one buyer; the other is told', async () => {
     await pool.query(`update slots set sale_type = 'quick_sale' where id = $1`, [slotX])
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { brief: BRIEF })).statusCode).toBe(200)
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { amount: AED(3_800), brief: BRIEF })).statusCode).toBe(200) // a new offer replaces the first
-    expect((await call(buyerB, 'POST', `/api/slots/${slotX}/interest`, { brief: BRIEF })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { brief: briefFor(buyerA.companyId) })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { amount: AED(3_800), brief: briefFor(buyerA.companyId) })).statusCode).toBe(200) // a new offer replaces the first
+    expect((await call(buyerB, 'POST', `/api/slots/${slotX}/interest`, { brief: briefFor(buyerB.companyId) })).statusCode).toBe(200)
     expect(await kinds(sellerX)).toContain('interest.received')
     const tasks = (await call(sellerX, 'GET', '/api/seller/inbox')).json()
     expect(tasks).toEqual([expect.objectContaining({ type: 'interest', slotId: slotX, interested: 2, amount: AED(3_800), buyer: null })])
@@ -1175,7 +1200,7 @@ describe('quick sale: interest reaches the publisher, who accepts one buyer', ()
 
   test('unanswered interest lapses when bidding closes, and the buyer is told', async () => {
     await pool.query(`update slots set sale_type = 'quick_sale' where id = $1`, [slotX])
-    await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { brief: BRIEF })
+    await call(buyerA, 'POST', `/api/slots/${slotX}/interest`, { brief: briefFor(buyerA.companyId) })
     now = T('2026-11-04T04:00:00Z'); await sweep(now)
     buyerA.cookie = await signIn('sara@northwind.ae')
     expect(await kinds(buyerA)).toContain('interest.expired')
@@ -1191,10 +1216,10 @@ describe('auto-bid: the system bids up to the cap, and says so', () => {
 
   test('a maximum holds the lead in steps up to the cap; the challenger is told at once; passing the cap is announced', async () => {
     // A sets auto-bid with a cap of 6,000, bidding 3,500: the cap covers the 4,000 reserve, so the price starts there
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), maxAmount: AED(6_000), brief: BRIEF })).json())
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), maxAmount: AED(6_000), brief: briefFor(buyerA.companyId) })).json())
       .toMatchObject({ leading: true, topAmount: AED(4_000), yourMax: AED(6_000) })
     // B bids 4,200: A's auto-bid answers at once, one step above B
-    const b1 = (await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_200), brief: BRIEF })).json()
+    const b1 = (await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_200), brief: briefFor(buyerB.companyId) })).json()
     expect(b1).toMatchObject({ leading: false, beatenByAutoBid: true, topAmount: AED(4_326) })
     expect((await notes(buyerA)).map((n: any) => n.kind)).toContain('bid.auto_raised')
     expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json()).toMatchObject({ youLead: true, topBid: AED(4_326), yourAutoMax: AED(6_000) })
@@ -1254,9 +1279,9 @@ describe('add placement as Omar described it', () => {
     const twin = (await pool.query(`insert into slots (placement_id, air_date, kind, label, starts_at, ends_at, sale_type, starting_price, buy_now_price, auto_accept, currency, closes_at, creative_due_at, listed_at)
       select placement_id, air_date, kind, 'Break 9', starts_at + interval '1 hour', ends_at + interval '1 hour', sale_type, starting_price, buy_now_price, false, currency, closes_at, creative_due_at, listed_at
       from slots where id = $1 returning id`, [slotX])).rows[0].id
-    const first = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const first = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${first}/accept`)
-    const second = (await call(buyerB, 'POST', `/api/slots/${twin}/buy-now`, { brief: BRIEF })).json().id
+    const second = (await call(buyerB, 'POST', `/api/slots/${twin}/buy-now`, { brief: briefFor(buyerB.companyId) })).json().id
     expect((await call(sellerX, 'GET', `/api/seller/deals/${second}`)).json().separation).toEqual({ industry: BRIEF.industry, count: 1 })
   })
 })
@@ -1271,23 +1296,23 @@ describe('fixed price, book now', () => {
 
   test('the first buyer takes it off sale; the publisher confirms; a decline puts it back on sale', async () => {
     const slot = await fixedSlot()
-    const d = (await call(buyerA, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json()
+    const d = (await call(buyerA, 'POST', `/api/slots/${slot}/book`, { brief: briefFor(buyerA.companyId) })).json()
     expect(d).toMatchObject({ status: 'awaiting_publisher' })
-    expect((await call(buyerB, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json().error).toMatch('just booked')
+    expect((await call(buyerB, 'POST', `/api/slots/${slot}/book`, { brief: briefFor(buyerB.companyId) })).json().error).toMatch('just booked')
     expect((await call(buyerB, 'GET', `/api/slots/${slot}`)).json().available).toBe(false)
     expect((await call(sellerX, 'GET', '/api/seller/inbox')).json()).toEqual(expect.arrayContaining([expect.objectContaining({ type: 'decide', kind: 'fixed', amount: AED(2_500) })]))
     await call(sellerX, 'POST', `/api/seller/deals/${d.id}/decline`, { reason: 'Programme moved' })
     expect((await call(buyerB, 'GET', `/api/slots/${slot}`)).json()).toMatchObject({ available: true, saleType: 'fixed' })
-    expect((await call(buyerB, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json()).toMatchObject({ status: 'awaiting_publisher' })
+    expect((await call(buyerB, 'POST', `/api/slots/${slot}/book`, { brief: briefFor(buyerB.companyId) })).json()).toMatchObject({ status: 'awaiting_publisher' })
   })
 
   test('with automatic confirmation the buyer is asked to pay at once; auctions-only prices are refused', async () => {
     const slot = await fixedSlot(true)
-    expect((await call(buyerA, 'POST', `/api/slots/${slot}/book`, { brief: BRIEF })).json()).toMatchObject({ status: 'accepted_pay_now' })
+    expect((await call(buyerA, 'POST', `/api/slots/${slot}/book`, { brief: briefFor(buyerA.companyId) })).json()).toMatchObject({ status: 'accepted_pay_now' })
     const outletId = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
     expect((await call(sellerX, 'POST', '/api/seller/placements', { outletId, name: 'Bad', saleType: 'fixed', days: [1], startingPrice: AED(100), reservePrice: AED(200),
       creativeLeadHours: 48, closeLeadHours: 144 })).json().error).toMatch('auctions only')
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/book`, { brief: BRIEF })).json().error).toMatch('fixed price')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/book`, { brief: briefFor(buyerA.companyId) })).json().error).toMatch('fixed price')
   })
 })
 
@@ -1296,7 +1321,7 @@ describe('business profiles both ways, never contact details', () => {
     expect((await call(buyerA, 'PUT', '/api/company/profile', { industry: 'Banking', about: 'Call us on 050 123 4567' })).json().error).toMatch('Emails and phone numbers')
     expect((await call(buyerA, 'PUT', '/api/company/profile', { industry: 'Banking', website: 'https://northwind.ae', about: 'Business banking for growing companies.' })).json())
       .toMatchObject({ name: 'Northwind Fintech', type: 'brand', industry: 'Banking', verified: true })
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     const seen = (await call(sellerX, 'GET', `/api/seller/deals/${deal}`)).json().buyerProfile
     expect(seen).toMatchObject({ name: 'Northwind Fintech', industry: 'Banking', about: 'Business banking for growing companies.', record: { completed: 0 } })
     const bidder = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json().bids[0].profile
@@ -1334,14 +1359,14 @@ describe('brand safety and regulated disclaimers', () => {
     const outletX = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
     await call(sellerX, 'PUT', `/api/seller/outlets/${outletX}`, { blockedIndustries: ['Crypto & trading'], blockedAdvertisers: ['Rival Bank'] })
     expect((await call(buyerA, 'GET', `/api/slots/${slotX}`)).json().details.notAccepted).toEqual(['Crypto & trading'])
-    const crypto = { ...BRIEF, industry: 'Crypto & trading' }
+    const crypto = { ...briefFor(buyerA.companyId), industry: 'Crypto & trading' }
     expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: crypto })).json().error).toMatch('does not accept Crypto & trading')
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...BRIEF, advertiser: 'RIVAL-bank UAE' } })).json().error).toMatch('does not run ads for this advertiser')
-    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: BRIEF })).statusCode).toBe(200)
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...briefFor(buyerA.companyId), advertiser: 'RIVAL-bank UAE' } })).json().error).toMatch('does not run ads for this advertiser')
+    expect((await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_500), brief: briefFor(buyerA.companyId) })).statusCode).toBe(200)
   })
 
   test('a required disclaimer reaches the publisher and must be confirmed in the proof', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...BRIEF, disclaimer: 'Licensed by the Central Bank of the UAE' } })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: { ...briefFor(buyerA.companyId), disclaimer: 'Licensed by the Central Bank of the UAE' } })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
     const detail = (await call(sellerX, 'GET', `/api/seller/deals/${deal}/detail`)).json()
@@ -1357,7 +1382,7 @@ describe('results, sales insights and public proof', () => {
   test('a buyer sees spend, airings, proof and reach; a publisher sees sell-through; public figures stay hidden until meaningful', async () => {
     const outletX = (await pool.query(`select id from outlets where company_id = $1 limit 1`, [sellerX.companyId])).rows[0].id
     await call(sellerX, 'PUT', `/api/seller/outlets/${outletX}`, { reach: 200_000 })
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })
     let r = (await call(buyerA, 'GET', '/api/buyer/results')).json()
@@ -1406,7 +1431,7 @@ describe('account self-service', () => {
 
 describe('Nashr steps in: interventions, voided bids, chargebacks', () => {
   const paidDeal = async () => {
-    const d = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const d = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${d}/accept`)
     await call(buyerA, 'POST', `/api/deals/${d}/pay`, { paymentMethod: 'pm_card_4242' })
     return d as string
@@ -1431,15 +1456,15 @@ describe('Nashr steps in: interventions, voided bids, chargebacks', () => {
     expect((await pool.query(`select count(*)::int n from money_ops where deal_id = $1 and kind = 'transfer'`, [d])).rows[0].n).toBe(1)
     const slot2 = (await pool.query(`select id from slots where status = 'open' and id <> $1 and placement_id = (select placement_id from slots where id = $1) and kind = 'single' limit 1`, [slotX])).rows[0]?.id
     if (slot2) {
-      const r = (await call(buyerB, 'POST', `/api/slots/${slot2}/buy-now`, { brief: BRIEF })).json().id
+      const r = (await call(buyerB, 'POST', `/api/slots/${slot2}/buy-now`, { brief: briefFor(buyerB.companyId) })).json().id
       await call(sellerX, 'POST', `/api/seller/deals/${r}/accept`)
       expect((await call(admin, 'POST', `/api/admin/deals/${r}/intervene`, { action: 'cancel', reason: 'Buyer asked Nashr to cancel' })).json()).toEqual({ status: 'cancelled' })
     }
   })
 
   test('voiding a bid works the auction out again from the bids that remain', async () => {
-    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(5_000), brief: BRIEF })
-    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_200), brief: BRIEF })
+    await call(buyerA, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), maxAmount: AED(5_000), brief: briefFor(buyerA.companyId) })
+    await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(4_200), brief: briefFor(buyerB.companyId) })
     let s = (await call(admin, 'GET', `/api/admin/slots/${slotX}`)).json()
     expect(s.topAmount).toBe(AED(4_326))
     const bBid = s.bids.find((b: any) => b.buyer === 'Al Futtaim').id
@@ -1495,7 +1520,7 @@ describe('help and Contact Nashr', () => {
   })
 
   test('a question reaches staff; the answer reaches the company; nobody else sees it', async () => {
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     expect((await call(buyerA, 'POST', '/api/support', { topic: 'booking', message: 'short' })).json().error).toMatch('more')
     expect((await call(buyerB, 'POST', '/api/support', { topic: 'booking', dealId: deal, message: 'Not my booking but asking anyway' })).statusCode).toBe(404) // another company's booking looks like no booking
     const r = (await call(buyerA, 'POST', '/api/support', { topic: 'booking', dealId: deal, message: 'Can the publisher move this to the evening break?' })).json()
@@ -1540,7 +1565,7 @@ describe('two-step sign-in for buyers and publishers', () => {
 
   test('with the founder\'s setting on, paying and connecting payouts need it; Nashr can turn it off for a lost phone', async () => {
     await pool.query(`insert into settings (key, value, valid_from, changed_by) values ('two_step_for_money', 'true', '2000-01-03', 'test')`)
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     expect((await call(buyerA, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().error).toMatch('two-step')
     expect((await call(sellerX, 'POST', '/api/seller/payouts/connect', {})).json().error).toMatch('two-step')
@@ -1633,7 +1658,7 @@ describe('self-serve teams', () => {
     expect((await pool.query(`select status from outbox where to_email = 'omar@northwind.ae' and kind = 'access.invite'`)).rows[0].status).toBe('held') // emailed once SMTP is set up
     await call(null, 'POST', '/api/auth/invite', { token: added.inviteLink.split('#')[1], password: PASS, acceptTerms: true })
     const omar = { cookie: await signIn('omar@northwind.ae'), companyId: buyerA.companyId } as any
-    const deal = (await call(omar, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id            // anyone can book
+    const deal = (await call(omar, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(omar.companyId) })).json().id            // anyone can book
     await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
     expect((await call(omar, 'POST', `/api/deals/${deal}/pay`, { paymentMethod: 'pm_card_4242' })).json().error).toMatch('right to pay')
     expect((await call(omar, 'POST', '/api/team', { name: 'X', email: 'x@northwind.ae' })).json().error).toMatch('team managers')
@@ -1651,7 +1676,7 @@ describe('self-serve teams', () => {
     const added = (await call(sellerX, 'POST', '/api/team', { name: 'Huda', email: 'huda@skyline.ae', canDecide: false })).json()
     await call(null, 'POST', '/api/auth/invite', { token: added.inviteLink.split('#')[1], password: PASS, acceptTerms: true })
     const huda = { cookie: await signIn('huda@skyline.ae'), companyId: sellerX.companyId } as any
-    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+    const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
     expect((await call(huda, 'POST', `/api/seller/deals/${deal}/accept`)).json().error).toMatch('decide on bookings')
     expect((await call(huda, 'GET', `/api/seller/deals/${deal}`)).statusCode).toBe(200)                     // can still see it
   })
@@ -1659,7 +1684,7 @@ describe('self-serve teams', () => {
 
 
 test('the publisher dashboard: what needs a decision, sales and net after commission, transactions; publishers only', async () => {
-  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
   let p = (await call(sellerX, 'GET', '/api/seller/portal')).json()
   expect(p.kpis.awaiting.value).toBe(1)
   expect(p.actions[0]).toMatchObject({ type: 'decide', dealId: deal })
@@ -1679,7 +1704,7 @@ test('the publisher dashboard: what needs a decision, sales and net after commis
 
 test('a new price for several slots at once: open slots nobody has bid on take it; one with a bid keeps its own; bad prices are refused', async () => {
   const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
-  await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+  await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerB.companyId) })
   const ids = (await pool.query(`select id from slots where placement_id = $1 and kind = 'single'`, [placement])).rows.map(r => r.id)
   const r = await call(sellerX, 'POST', '/api/seller/slots/bulk', { ids, action: 'price', startingPrice: AED(3_000) })
   expect(r.statusCode).toBe(200)
@@ -1692,7 +1717,7 @@ test('a new price for several slots at once: open slots nobody has bid on take i
 })
 
 test('counter offers: the publisher names another price; the buyer agrees (accepted at that price) or keeps their offer', async () => {
-  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
   const first = (await call(buyerA, 'GET', `/api/deals/${deal}`)).json().price
   expect((await call(sellerX, 'POST', `/api/seller/deals/${deal}/counter`, { amount: first })).json().error).toMatch('different price')
   expect((await call(sellerY, 'POST', `/api/seller/deals/${deal}/counter`, { amount: AED(6_000) })).statusCode).toBe(404)
@@ -1715,11 +1740,11 @@ test('counter offers: the publisher names another price; the buyer agrees (accep
 })
 
 test("the calendar side panel: a slot's bids, and its booking's creative under Assets; only the publisher sees it", async () => {
-  await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: BRIEF })
+  await call(buyerB, 'POST', `/api/slots/${slotX}/bids`, { amount: AED(3_600), brief: briefFor(buyerB.companyId) })
   let p = (await call(sellerX, 'GET', `/api/seller/slots/${slotX}`)).json()
   expect(p.bids).toHaveLength(1)
   expect(p.assets).toEqual([])
-  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: BRIEF })).json().id
+  const deal = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json().id
   await call(sellerX, 'POST', `/api/seller/deals/${deal}/accept`)
   const f = (await app.inject({ method: 'POST', url: '/api/files', payload: Buffer.from('ID3 fake audio'), headers: { cookie: buyerA.cookie, 'content-type': 'audio/mpeg', 'x-file-name': 'spot.mp3' } })).json()
   await call(buyerA, 'POST', `/api/deals/${deal}/creative`, { fileId: f.id })

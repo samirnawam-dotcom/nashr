@@ -109,4 +109,8 @@ export const AR_SELLER: Record<string, string> = {
   'The winner did not go ahead. Choose another bid, or let it relist as a quick sale.': 'لم يُكمل الفائز. اختر مزايدة أخرى، أو دعها تُعرض من جديد بيعًا سريعًا.',
   "Reserve (buyers don't see it)": 'السعر الأدنى (لا يراه المشترون)', 'Creative due': 'موعد تسليم المادة', 'Bids and requests': 'المزايدات والطلبات', 'None yet.': 'لا شيء بعد.', 'Choose': 'اختيار',
   'Take off sale': 'إيقاف البيع', 'Put back on sale': 'إعادة العرض للبيع',
+  "What you are accepting": "ما الذي توافق عليه",
+  "The creative": "المادة الإعلانية",
+  "No creative was attached to this bid (sent before creatives were required).": "لم تُرفق مادة إعلانية بهذا العرض (أُرسل قبل أن تصبح المادة الإعلانية مطلوبة).",
+  "No creative attached": "لا توجد مادة إعلانية مرفقة",
 }

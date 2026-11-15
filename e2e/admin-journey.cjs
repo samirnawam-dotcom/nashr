@@ -19,7 +19,8 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   // A dispute: booked, paid, aired, issue reported, the buyer turns down the publisher's offer
   const buyer = await login(b, 'demo@northwind.ae'), seller = await login(b, 'sales@skyline.ae')
   const slot = (await (await buyer.get(BASE + '/api/slots')).json()).find(s => s.available && s.buyNowPrice && s.kind === 'single' && !s.youBid && s.outlet === 'Skyline FM')
-  const brief = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards for growing companies.', language: 'english', creativeToFollow: true }
+  // every bid carries its creative (the publisher sees it before accepting)
+  const brief = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards for growing companies.', language: 'english', draftFileKey: (await (await buyer.post(`${BASE}/api/files`, { data: Buffer.from('ID3 draft spot'), headers: { 'content-type': 'application/octet-stream', 'x-file-name': 'draft-spot.mp3' } })).json()).key }
   const dealId = (await (await buyer.post(`${BASE}/api/slots/${slot.id}/buy-now`, { data: { brief } })).json()).id
   await seller.post(`${BASE}/api/seller/deals/${dealId}/accept`)
   await twoStepViaApi(buyer, BASE) // paying needs two-step sign-in

@@ -22,7 +22,7 @@ const ok = (cond, what) => { if (!cond) throw new Error('FAILED: ' + what); cons
   const sellerCtx = await b.newContext(); await sellerCtx.route('https://js.stripe.com/v3/', r => r.fulfill({ contentType: 'application/javascript', body: STRIPE_JS }))
   await login(sellerCtx, 'sales@skyline.ae')
   const slot = (await (await ctx.request.get(BASE + '/api/slots')).json()).find(s => s.available && s.buyNowPrice && s.kind === 'single' && !s.youBid && s.outlet === 'Skyline FM')
-  const brief = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards for growing companies.', language: 'english', creativeToFollow: true }
+  const brief = { advertiser: 'Northwind', industry: 'Banking', message: 'Business cards for growing companies.', language: 'english', draftFileKey: (await (await ctx.request.post(`${BASE}/api/files`, { data: Buffer.from('ID3 draft spot'), headers: { 'content-type': 'application/octet-stream', 'x-file-name': 'draft-spot.mp3' } })).json()).key }
   const dealId = (await (await ctx.request.post(`${BASE}/api/slots/${slot.id}/buy-now`, { data: { brief } })).json()).id
   await sellerCtx.request.post(`${BASE}/api/seller/deals/${dealId}/accept`)
 

@@ -140,13 +140,15 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '6 buyer finds it on the calendar'
     await nav(buy, 'Calendar'); await buy.waitForSelector('.cv-head')
     await buy.fill('.cv-filters input[type=search]', `Palm Radio ${run}`)
-    await buy.waitForSelector(`.cv-otable tbody th:has-text("Palm Radio ${run}"), .cv-empty`, { timeout: 15000 })
+    await buy.waitForSelector(`.cv-rtable .cv-orow:has-text("Palm Radio ${run}"), .cv-empty`, { timeout: 15000 })
     if (await buy.locator('.cv-empty').count()) await buy.click('.cv-empty .btn.primary') // the first dates on sale may be next week
-    await buy.waitForSelector(`.cv-otable tbody th:has-text("Palm Radio ${run}")`, { timeout: 15000 }); await buy.shot('f6-buyer-finds')
-    say(await buy.locator('.cv-otable tbody tr').count(), 'outlet rows')
+    await buy.waitForSelector(`.cv-rtable .cv-orow:has-text("Palm Radio ${run}")`, { timeout: 15000 }); await buy.shot('f6-buyer-finds')
+    say(await buy.locator('.cv-rtable .cv-orow').count(), 'outlet rows')
 
     step = '7 buyer: buy-now request'
-    const brief = async p => { await p.fill('#adv', 'Desert Bank'); await p.selectOption('#ind', 'Banking'); await p.fill('#msg', 'Open a business account in ten minutes.') }
+    const brief = async p => { await p.fill('#adv', 'Desert Bank'); await p.selectOption('#ind', 'Banking'); await p.fill('#msg', 'Open a business account in ten minutes.')
+      // the creative goes with the bid: the publisher sees it before accepting
+      await p.setInputFiles('.drawer .cp-creative input[type=file]', { name: 'draft-spot.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3 draft spot') }); await p.waitForSelector('.drawer .cp-creative bdi') }
     await openSlot(buy, (await slotsOf(buy, 'Morning Drive'))[0])
     await brief(buy); await buy.shot('f7-drawer')
     await buy.click('.drawer-f .btn:has-text("Request at")'); await buy.waitForSelector('.drawer .ok, .drawer .error')
@@ -156,7 +158,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     step = '8 publisher receives it'
     const pn = await bell(pub); say('bell:', pn.items?.map?.(n => n.kind).join(',') ?? JSON.stringify(pn).slice(0, 120))
     await nav(pub, 'Requests'); await pub.waitForSelector('.rq-item'); await pub.shot('f8-inbox')
-    await openTask(pub); await pub.waitForSelector('text=Booking brief'); await pub.shot('f8-request')
+    await openTask(pub); await pub.waitForSelector('.brief-card .bc-creative a'); await pub.shot('f8-request')
 
     step = '9 publisher accepts on screen'
     await pub.click('button:has-text("Accept")'); await pub.waitForSelector('text=Accepted. The buyer'); const dealUrl = pub.url(); say(dealUrl)
@@ -216,7 +218,7 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
     const qn = await bell(pub); say('publisher bell:', JSON.stringify(qn).slice(0, 200))
     await nav(pub, 'Requests'); await pub.shot('f15-inbox')
     await pub.waitForSelector('.rq-item:has-text("Buyer interested")', { timeout: 10000 }).catch(() => { throw new Error('the publisher has no task for the interest') })
-    await openTask(pub, 'Buyer interested'); await pub.waitForSelector('.brief-mini'); await pub.shot('f15-slot')
+    await openTask(pub, 'Buyer interested'); await pub.waitForSelector('.brief-card'); await pub.shot('f15-slot')
     await pub.click('td button:has-text("Accept")'); await pub.waitForURL(/\/deals\//); await pub.waitForSelector('text=Booking brief'); await pub.shot('f15-deal')
     const qb = await bell(buy); if (!JSON.stringify(qb).includes('deal.awaiting_payment')) throw new Error('the buyer was not told')
     await buy.goto(BASE + '/bookings'); await buy.click('.table tbody tr >> nth=0'); await buy.waitForSelector('.sum')

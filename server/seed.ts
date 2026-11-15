@@ -7,12 +7,12 @@ import { createPlacement, generateSlots } from './catalog/placements.js'
 import { accept, placeBid, requestBuyNow, showInterest } from './marketplace/market.js'
 import { localDay } from './core/market.js'
 import { seedHistory } from './seed-history.js'
+import { demoBriefs } from './demo-creative.js'
 
 if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed demo data in production.')
 
 const AED = (n: number) => n * 100
 const PASSWORD = 'nashr-demo-2026'
-const BRIEF = { advertiser: 'Demo brand', industry: 'Banking', message: 'Demo campaign', language: 'english', landingUrl: 'https://example.com', creativeToFollow: true }
 
 await migrate()
 await pool.query(`truncate saved_outlets, staff_alerts, ops_runs, reminders, waitlist, files, quote_requests, campaign_lines, campaign_items, campaigns, sessions, invites, users, access_requests, notifications, documents, document_series, creatives, proofs, issues,
@@ -33,6 +33,7 @@ const outlet = async (companyId: string, name: string, nameAr: string, channel: 
 const buyer = await company('Northwind Fintech', 'buyer')
 const rivals = [await company('Al Futtaim Group', 'buyer'), await company('Emirates NBD', 'buyer'), await company('Etihad Holidays', 'buyer')]
 await user(buyer, 'demo@northwind.ae', 'Sara Al Mansoori', 'buyer')
+const briefOf = await demoBriefs([buyer, ...rivals], { landingUrl: 'https://example.com' })
 
 const skyline = await company('Skyline FM', 'publisher'); await user(skyline, 'sales@skyline.ae', 'Tariq', 'seller')
 const dubaiOne = await company('Dubai One TV', 'publisher')
@@ -107,11 +108,11 @@ const slots = (await pool.query(`select id, sale_type, starting_price from slots
 for (const [i, s] of slots.entries()) {
   if (i % 3) continue
   await tx(async c => {
-    if (s.sale_type === 'quick_sale') return showInterest(c, { slotId: s.id, buyerId: rivals[i % 3], brief: BRIEF }, now)
+    if (s.sale_type === 'quick_sale') return showInterest(c, { slotId: s.id, buyerId: rivals[i % 3], brief: briefOf(rivals[i % 3]) }, now)
     if (s.sale_type === 'fixed') return // a fixed-price slot is booked outright, not bid on
-    await placeBid(c, { slotId: s.id, buyerId: rivals[i % 3], amount: s.starting_price, brief: BRIEF }, now)
-    if (i % 2 === 0) await placeBid(c, { slotId: s.id, buyerId: buyer, amount: Math.ceil(s.starting_price * 1.03 / 100) * 100, brief: BRIEF }, now)
-    if (i % 4 === 0) await placeBid(c, { slotId: s.id, buyerId: rivals[(i + 1) % 3], amount: Math.ceil(s.starting_price * 1.07 / 100) * 100, brief: BRIEF }, now)
+    await placeBid(c, { slotId: s.id, buyerId: rivals[i % 3], amount: s.starting_price, brief: briefOf(rivals[i % 3]) }, now)
+    if (i % 2 === 0) await placeBid(c, { slotId: s.id, buyerId: buyer, amount: Math.ceil(s.starting_price * 1.03 / 100) * 100, brief: briefOf(buyer) }, now)
+    if (i % 4 === 0) await placeBid(c, { slotId: s.id, buyerId: rivals[(i + 1) % 3], amount: Math.ceil(s.starting_price * 1.07 / 100) * 100, brief: briefOf(rivals[(i + 1) % 3]) }, now)
   })
 }
 
@@ -131,18 +132,18 @@ for (const [name, nameAr, channel, low, high] of [['Rotana FM', 'روتانا إ
 // The campaign is the plan (owner's buyer-side fixes): dates, a budget, one brief, and the products it plans to use.
 const campaign = (await pool.query(`insert into campaigns (buyer_id, name, budget, start_date, end_date, launch_date, objective, brief, created_at)
     values ($1, 'Q4 business cards launch', $2, $3, ($3::date + 42), $3, 'Awareness', $4, now()) returning id`,
-  [buyer, AED(150_000), from, JSON.stringify({ ...BRIEF, creativeToFollow: true })])).rows[0].id
+  [buyer, AED(150_000), from, JSON.stringify(briefOf(buyer))])).rows[0].id
 await pool.query(`insert into campaign_lines (campaign_id, placement_id, added_at) select $1, p.id, now() from placements p join outlets o on o.id = p.outlet_id
   where not p.archived and o.name in ('Skyline FM', 'Gulf News')`, [campaign])
 const buyNow = (await pool.query(`select s.id from slots s where s.status = 'open' and s.buy_now_price is not null and s.kind = 'single'
   and not exists (select 1 from bids b where b.slot_id = s.id) order by s.starts_at limit 1`)).rows[0]
 if (buyNow) await tx(async c => {
-  const deal = await requestBuyNow(c, { slotId: buyNow.id, buyerId: buyer, brief: BRIEF, campaignId: campaign }, now)
+  const deal = await requestBuyNow(c, { slotId: buyNow.id, buyerId: buyer, brief: briefOf(buyer), campaignId: campaign }, now)
   await accept(c, deal.id, 'seller:seed', now)
 })
 
 // Twelve weeks of past activity, so every dashboard has a history to show.
-const booked = await seedHistory({ now, demoBuyer: buyer, rivals, campaignId: campaign })
+const booked = await seedHistory({ now, demoBuyer: buyer, rivals, campaignId: campaign, briefOf })
 
 // A couple of conversations on paid bookings, so the Messages pages show how buyer and publisher talk (only after payment).
 const paid = `select d.id, d.buyer_id, d.seller_id from deals d where d.status in ('secured', 'in_review') and`

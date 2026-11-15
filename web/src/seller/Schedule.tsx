@@ -1,3 +1,4 @@
+import { BriefCard } from './BriefCard'
 import { navigate } from '../nav'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
@@ -301,7 +302,7 @@ function MonthGrid({ date, grid, slots, onDay }: { date: string; grid: string[][
 
 type Panel = SSlot & { audience: string | null; reach: number | null; reachUnit: string | null; notes: string | null; creativeDueAt: string; choiceDeadlineAt: string | null
   bids: { id: string; kind: string; amount: number; status: string; at: string; company: string; choosable: boolean; acceptable?: boolean; profile?: CompanyProfile | null
-    brief: { advertiser: string | null; industry: string | null; message: string | null; language: string | null; notes: string | null } | null }[]
+    brief: import('./BriefCard').BriefView | null }[]
   placementId?: string; channel: string
   deals: { id: string; ref: string; status: string; amount: number; kind: string; buyer?: string }[]
   assets?: { dealId: string; ref: string; creatives: { version: number; status: string; fileId: string; fileType: string; uploadedAt: string }[]
@@ -383,8 +384,7 @@ export function SlotPanel({ id, onChange, onClose }: { id: string; onChange?: ()
       {!s.bids.length ? <p className="muted small">{s.status === 'open' ? t('No bids yet. Buyers see this slot on the calendar now.') : t("None yet.")}</p>
         : <div className="table-wrap"><table className="table"><tbody>{s.bids.map(b => <tr key={b.id}>
         <td>{b.profile ? <CompanyCard p={b.profile} compact /> : b.company}<div className="small muted">{t(KIND[b.kind])} · {t(b.status.replace('_', ' '))}</div>
-          {b.acceptable && b.brief && <div className="small brief-mini">{b.brief.advertiser && <div><b>{b.brief.advertiser}</b>{b.brief.industry ? `${sep}${t(b.brief.industry)}` : ''}</div>}
-            {b.brief.message && <div className="muted">“{b.brief.message}”</div>}{b.brief.notes && <div className="muted">{b.brief.notes}</div>}</div>}</td>
+          {(b.acceptable || b.choosable) && b.brief && <BriefCard b={b.brief} compact />}</td>
         <td className="r num">{money(b.amount)}</td>
         <td className="r">{b.choosable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/choose`, { bidId: b.id })}>{t("Choose")}</button>}
           {b.acceptable && <button className="btn primary" disabled={busy} onClick={() => act(`/seller/slots/${s.id}/accept-interest`, { bidId: b.id })}>{t("Accept")}</button>}</td></tr>)}</tbody></table></div>}
