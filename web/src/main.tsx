@@ -6,6 +6,12 @@ import { applyLang, isAr } from './i18n'
 import './styles.css'
 import './calendar/calendar.css'
 import './system.css'
+// brand fonts, self-hosted with font-display: swap (brand guide: Source Sans 3 for English, Readex Pro for Arabic; 400 and 600)
+import '@fontsource/source-sans-3/400.css'
+import '@fontsource/source-sans-3/600.css'
+import '@fontsource/readex-pro/400.css'
+import '@fontsource/readex-pro/600.css'
+import './brand.css'
 
 // Find out who is signed in before drawing, so a pre-rendered page (landing, legal) stays on screen instead of flashing.
 applyLang()

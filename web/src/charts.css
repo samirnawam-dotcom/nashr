@@ -1,5 +1,5 @@
 /* Dashboards: figures and charts. Point = brand teal, context = quiet gray, grid = hairline, text never in the data colour. */
-:root { --mark: var(--teal); --mark-context: #c9c1ec; --mark-track: var(--teal-2); --grid: #ecebf3; }
+:root { --mark: var(--teal); --mark-context: #c4c2bd; --mark-track: var(--teal-2); --grid: #ecebe8; }
 
 .dash { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 .dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; }
@@ -20,7 +20,7 @@
 .dash-lead { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; }
 @media (min-width: 900px) { .dash-lead { grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); align-items: start; } }
 .hero-fig { display: grid; gap: 6px; align-content: start; }
-.hero-value { font: 700 52px/1.05 var(--display); letter-spacing: -.03em; color: var(--ink); }
+.hero-value { font: 600 52px/1.05 var(--display); letter-spacing: -.03em; color: var(--ink); }
 @media (max-width: 600px) { .hero-value { font-size: 42px; } }
 
 /* Figure tiles */
@@ -33,7 +33,7 @@ a.stat:hover { border-color: var(--teal-3); }
 .stat .spark { position: absolute; right: 12px; bottom: 12px; width: 84px; height: 26px; }
 .spark path { fill: none; stroke: var(--mark-context); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .spark circle { fill: var(--mark); stroke: var(--surface); stroke-width: 2; }
-.delta { font-size: 13px; font-weight: 500; }
+.delta { font-size: 13px; font-weight: 400; }
 .delta.good { color: var(--green); } .delta.bad { color: var(--red); } .delta.neutral { color: var(--slate); font-weight: 400; }
 .delta .muted { font-weight: 400; color: var(--slate); }
 
@@ -43,7 +43,7 @@ a.stat:hover { border-color: var(--teal-3); }
 .chart-plot { position: relative; width: 100%; }
 .chart svg { display: block; overflow: visible; }
 .chart .grid { stroke: var(--grid); stroke-width: 1; }
-.chart .axis { stroke: #d6d1ec; stroke-width: 1; }
+.chart .axis { stroke: #d6d4cf; stroke-width: 1; }
 .chart .tick { fill: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
 .col path { fill: var(--mark-context); transition: fill .12s; }
 .col.now path { fill: var(--mark); }
@@ -53,7 +53,7 @@ a.stat:hover { border-color: var(--teal-3); }
 .tip { position: absolute; top: 0; transform: translate(-50%, -8px); background: var(--ink); color: #fff; border-radius: 8px; padding: 6px 10px; display: grid;
   font-size: 12px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(23, 33, 43, .18); }
 .tip b { font: 600 14px var(--display); }
-.tip span { color: #d6d1ec; }
+.tip span { color: #d6d4cf; }
 .chart-table summary { font-size: 12px; color: var(--slate); cursor: pointer; width: max-content; }
 .chart-table .table { margin-top: 8px; font-size: 13px; }
 
@@ -71,8 +71,8 @@ a.ranked-row:hover .ranked-bar { background: var(--studio-2); }
 /* Meter */
 .meter-block { display: grid; gap: 6px; }
 .meter-head { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
-.meter { height: 8px; border-radius: 999px; background: var(--mark-track); overflow: hidden; }
-.meter span { display: block; height: 100%; border-radius: 999px; background: var(--mark); }
+.meter { height: 8px; border-radius: 4px; background: var(--mark-track); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 4px; background: var(--mark); }
 .meter.warn span { background: var(--signal); }
 
 /* Lists inside panels */
@@ -85,13 +85,13 @@ a.ranked-row:hover .ranked-bar { background: var(--studio-2); }
 .dash-list .what span { font-size: 13px; color: var(--slate); }
 .dash-list .when { font-size: 13px; color: var(--slate); text-align: right; white-space: nowrap; }
 .dash-list .when.soon { color: var(--amber); font-weight: 600; }
-.chip-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font: 700 12px var(--display); }
+.chip-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font: 600 12px var(--display); }
 .chip-ico.urgent { background: var(--signal-1); color: var(--signal-ink); }
 .chip-ico.good { background: var(--green-1); color: var(--green); }
-.pill-state { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.pill-state { font-size: 12px; font-weight: 600; border-radius: 4px; padding: 2px 9px; white-space: nowrap; }
 .pill-state.is-lead { background: var(--green-1); color: var(--green); }
 .pill-state.is-outbid { background: var(--red-1); color: var(--red); }
 .dash-empty { color: var(--slate); font-size: 14px; padding: 8px 0; }
 .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; margin: 0; font-size: 14px; }
-.kv dt { color: var(--slate); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
-.kv .total { font-weight: 700; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; }
+.kv dt { color: var(--slate); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 400; }
+.kv .total { font-weight: 600; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; }

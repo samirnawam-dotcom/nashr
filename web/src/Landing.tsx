@@ -7,9 +7,10 @@ import { api } from './api'
 import { AUDIENCES } from '../../server/shared/audiences'
 import { INDUSTRY_PAGES } from './public/industries'
 import { CHANNEL_NAME, ICON } from './media'
+import { LogoImage } from './Logo'
 
 /**
- * The home page, as the owner drew it: a deep violet hero ("Media moves differently here."), proof in Nashr's own live
+ * The home page, in the brand guide's look: a light editorial hero ("Media moves differently here."), proof in Nashr's own live
  * numbers, every format, a moving row of the outlets you can book, how a booking works with the money held, and Athena
  * as a teaser. Figures are real or plainly marked as examples; client results wait until there are verified ones.
  */
@@ -206,7 +207,7 @@ export function Landing() {
 
       <footer className="lp-foot">
         <div className="wrap foot-grid">
-          <div className="foot-brand"><span className="mark"><b>Nashr</b><i lang="ar">نشر</i></span><p>{t("The UAE media marketplace. Prices in AED, times in Dubai time.")}</p></div>
+          <div className="foot-brand"><LogoImage tone="reversed" height={28} /><p>{t("The UAE media marketplace. Prices in AED, times in Dubai time.")}</p></div>
           <nav aria-label={t("Product")}><b>{t("Product")}</b><a href="/calendar">{t("Calendar")}</a><a href="/directory">{t("Directory")}</a><a href="/audiences">{t('Audiences')}</a><a href="/insights">{t('Insights')}</a><button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></nav>
           <nav aria-label={t("Account")}><b>{t("Account")}</b><a href="/request-access">{t("Request access")}</a><a href="/sign-in">{t("Sign in")}</a></nav>
           <nav aria-label={t("Legal")}><b>{t("Legal")}</b><a href="/terms">{t("Terms")}</a><a href="/privacy">{t("Privacy")}</a><a href="/refunds">{t("Refunds")}</a></nav>

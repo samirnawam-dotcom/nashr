@@ -52,9 +52,9 @@ export function Trend({ data, label }: { data: { date: string; value: number }[]
   const line = data.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join(' ')
   const ticks = [0, .25, .5, .75, 1].map(f => top * f), labels = data.filter((_, i) => i % Math.ceil(data.length / 6) === 0 || i === data.length - 1)
   return <svg className="pt-trend" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label ?? t('Net earnings over the period, added up: {amount}', { amount: money(data.at(-1)?.value ?? 0) })}>
-    <defs><linearGradient id="ptfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--teal)" stopOpacity=".22" /><stop offset="1" stopColor="var(--teal)" stopOpacity="0" /></linearGradient></defs>
+    
     {ticks.map(v => <g key={v}><line x1={L} x2={W - 8} y1={y(v)} y2={y(v)} className="pt-grid" /><text x={L - 8} y={y(v) + 4} textAnchor="end" className="pt-axis">{short(v)}</text></g>)}
-    {data.length > 1 && <><path d={`${line} L${x(data.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill="url(#ptfill)" /><path d={line} className="pt-line" />
+    {data.length > 1 && <><path d={`${line} L${x(data.length - 1)},${y(0)} L${x(0)},${y(0)} Z`} fill="rgba(11, 11, 12, .06)" /><path d={line} className="pt-line" />
       <circle cx={x(data.length - 1)} cy={y(data.at(-1)!.value)} r="4" className="pt-dot" /></>}
     {labels.map(d => { const i = data.indexOf(d); return <text key={d.date} x={x(i)} y={H - 4} textAnchor="middle" className="pt-axis">{dayLabel(d.date, { day: 'numeric', month: 'short' })}</text> })}
   </svg>
@@ -62,7 +62,7 @@ export function Trend({ data, label }: { data: { date: string; value: number }[]
 
 /** A share as a ring (earnings by outlet, budget by media type), each part listed with its share and opening its detail. */
 export function Ring({ parts, total, caption, empty }: { parts: { label: string; value: number; href?: string }[]; total: number; caption?: string; empty?: string }) {
-  const R = 52, C = 2 * Math.PI * R, shades = ['var(--teal)', '#9b7dff', '#3a15b8', '#c9b8ff', '#e4dcff']
+  const R = 52, C = 2 * Math.PI * R, shades = ['#0B0B0C', '#55534F', '#9C9A96', '#C9C7C2', '#E4E3E0']
   let at = 0
   return <div className="pt-ring">
     <svg viewBox="0 0 140 140" role="img" aria-label={caption ?? t('Net earnings by outlet')}>

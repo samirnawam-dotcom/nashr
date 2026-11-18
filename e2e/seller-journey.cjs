@@ -54,7 +54,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
   await p.click('button:has-text("Save listing")'); await p.waitForSelector('.lst .ok'); await shot('s8-listed')
   if (!/Listed:|Nothing new/.test(await p.locator('.lst .ok').textContent())) throw new Error('listing failed')
   await p.click('.side .nav >> text=Reports'); await p.click('.sub-tabs a:has-text("Balances")'); await p.waitForSelector('.kpis'); await shot('s9-earnings')
-  await p.click('.side .name-btn'); await p.click('.name-pop a:has-text("Your business")'); await p.waitForSelector('text=Payout account'); await shot('s10-profile')
+  await p.click('.wtop .name-btn'); await p.click('.name-pop a:has-text("Your business")'); await p.waitForSelector('text=Payout account'); await shot('s10-profile')
   const sp = p.context().request
   const d = await (await sp.get(`${BASE}/api/seller/deals/${dealId}`)).json()
   if (d.status !== 'secured') fail(`Expected secured, got ${d.status}`)

@@ -30,18 +30,18 @@ const side = (text: string) => { const first = text.match(/[A-Za-z\u0600-\u06FF]
 /** One email, both versions: a short HTML page that reads well in every mail app (right to left in Arabic), and plain text. */
 export function renderEmail(lang: Lang, e: { title: string; paragraphs: string[]; cta?: { label: string; url: string }; footer: string }) {
   const dir = lang === 'ar' ? 'rtl' : 'ltr', align = lang === 'ar' ? 'right' : 'left'
-  const font = lang === 'ar' ? "'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif" : "'IBM Plex Sans', Arial, Helvetica, sans-serif"
+  const font = lang === 'ar' ? "'Readex Pro', Tahoma, Arial, sans-serif" : "'Source Sans 3', 'Segoe UI', Arial, Helvetica, sans-serif"
   const html = `<!doctype html><html lang="${lang}" dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(e.title)}</title></head>
-<body style="margin:0;padding:0;background:#f5f5f8;font-family:${font};color:#0d0c1d">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f8;padding:24px 12px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden" dir="${dir}">
-<tr><td style="background:#1e1650;padding:18px 24px;text-align:${align};color:#ffffff;font-size:18px;font-weight:700">Nashr <span style="color:#c9b8ff">نشر</span></td></tr>
+<body style="margin:0;padding:0;background:#f4f4f2;font-family:${font};color:#0b0b0c">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f2;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #e4e3e0" dir="${dir}">
+<tr><td style="background:#ffffff;padding:20px 24px 16px;text-align:${align};border-bottom:1px solid #e4e3e0"><img src="${site()}/brand/logo/nashr-logo-primary-email.png" width="148" height="24" alt="Nashr نشر" style="display:inline-block;border:0;height:24px;width:148px;color:#0b0b0c;font-size:18px;font-weight:600"></td></tr>
 <tr><td style="padding:24px;text-align:${align};font-size:15px;line-height:1.6">
 <h1 ${side(e.title)}margin:0 0 12px;font-size:20px;line-height:1.35">${esc(e.title)}</h1>
 ${e.paragraphs.map(p => `<p ${side(p)}margin:0 0 12px">${esc(p)}</p>`).join('\n')}
-${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="display:inline-block;background:#6b3cf6;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:600">${esc(e.cta.label)}</a></p>` : ''}
+${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="display:inline-block;background:#0b0b0c;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:600">${esc(e.cta.label)}</a></p>` : ''}
 </td></tr>
-<tr><td style="padding:16px 24px;border-top:1px solid #e7e5ef;font-size:12px;color:#5e5b72;line-height:1.5">${e.footer.split('\n').map(l => `<div ${side(l)}">${esc(l)}</div>`).join('')}</td></tr>
+<tr><td style="padding:16px 24px;border-top:1px solid #e4e3e0;font-size:13px;color:#55534f;line-height:1.5">${e.footer.split('\n').map(l => `<div ${side(l)}">${esc(l)}</div>`).join('')}</td></tr>
 </table></td></tr></table></body></html>`
   const text = [e.title, '', ...e.paragraphs, ...(e.cta ? ['', `${e.cta.label}: ${e.cta.url}`] : []), '', '—', e.footer].join('\n')
   return { html, text }

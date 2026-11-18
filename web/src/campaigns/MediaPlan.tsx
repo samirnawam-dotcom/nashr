@@ -3,6 +3,7 @@ import { tm, tmTitle } from '../i18n-server'
 import { api } from '../api'
 import { STAGES, type CampaignDetail } from './Campaigns'
 import { dayLabel, money, time, slotWhen } from '../format'
+import { LogoImage } from '../Logo'
 import { dubai } from '../calendar/layout'
 import { Status } from '../bookings/Bookings'
 import './media-plan.css'
@@ -40,7 +41,7 @@ export function MediaPlanPage({ id }: { id: string }) {
 
       <article className="plan-sheet">
         <header className="plan-head">
-          <div><span className="plan-mark"><b>Nashr</b><i lang="ar">نشر</i></span><p className="plan-kicker">{t("Media plan")}</p>
+          <div><span className="plan-mark"><LogoImage height={24} /></span><p className="plan-kicker">{t("Media plan")}</p>
             <h1>{c.name}</h1>
             <p className="plan-meta">{[company, c.objective, c.startDate && c.endDate && `${dayLabel(c.startDate)} – ${dayLabel(c.endDate)}`].filter(Boolean).join(' · ')}</p></div>
           <p className="plan-date">{t('Prepared {date}', { date: today() })}</p>

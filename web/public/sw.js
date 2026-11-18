@@ -2,7 +2,7 @@
  * Nashr's service worker: alerts that arrive while the app is closed (web push), opening the right page when one is tapped,
  * and a simple page when there is no connection. It never caches the API or anyone's data.
  */
-const OFFLINE = '/offline.html', CACHE = 'nashr-v2' // a new name when the offline page changes, so installed apps fetch it again
+const OFFLINE = '/offline.html', CACHE = 'nashr-v3' // a new name when the offline page changes, so installed apps fetch it again
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll([OFFLINE, '/icon-192.png']))); self.skipWaiting() })
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())) })

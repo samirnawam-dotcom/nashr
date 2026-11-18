@@ -1,0 +1,243 @@
+/*
+ * Nashr brand (brand guide for developers, 18 Nov 2026). Loaded after every other stylesheet, so its tokens and rules win.
+ * Black, white and one red: red (#C8102E) is only ever the logo dot (it lives in the logo files, never in CSS rules here).
+ * One primary (black) button per screen; everything else is a ghost button. 1 px lines separate things, not shadows.
+ * Type: Source Sans 3 for English and numbers, Readex Pro for Arabic, weights 400 and 600 only.
+ */
+:root {
+  /* the guide's roles (light theme) */
+  --surface: #FFFFFF; --surface-raised: #FFFFFF; --surface-muted: #F4F4F2;
+  --text: #0B0B0C; --text-muted: #55534F; --text-subtle: #6E6C68;
+  --line: #E4E3E0; --line-strong: #CFCDC8;
+  --action: #0B0B0C; --action-hover: #2A2A2E; --on-action: #FFFFFF;
+  --selection: #F4F4F5; --brand-red: #C8102E;
+  --success: #12703F; --success-soft: #E8F3EC;
+  --warning: #9A5300; --warning-soft: #FFF2DC;
+  --danger: #B4232C; --danger-soft: #FDECEC;
+  --font-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-arabic: "Readex Pro", "Source Sans 3", system-ui, sans-serif;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-xl: 12px;
+  --shadow-pop: 0 16px 40px rgba(11, 11, 12, .14);
+
+  /* the older token names every stylesheet already uses, mapped onto the guide */
+  --ink: var(--text); --slate: var(--text-muted); --faint: var(--text-subtle);
+  --bg: var(--surface); --surface-2: var(--surface-muted); --surface-3: #ECEBE8;
+  --line-2: var(--line-strong); --line-3: #9C9A96;
+  --teal: var(--action); --teal-hover: var(--action-hover); --teal-press: var(--action);
+  --teal-1: var(--surface-muted); --teal-2: #ECEBE8; --teal-3: var(--line-strong); --teal-4: #9C9A96;
+  --signal: var(--action); --signal-ink: var(--text); --signal-1: var(--surface-muted);
+  --studio: var(--text); --studio-2: #1C1C1F; --night: var(--text); --night-2: #151517; --night-3: #1C1C1F; --night-line: rgba(255, 255, 255, .12);
+  --on-studio: #FFFFFF; --on-studio-dim: #B9B7B2;
+  --green: var(--success); --green-1: var(--success-soft); --amber: var(--warning); --amber-1: var(--warning-soft); --red: var(--danger); --red-1: var(--danger-soft);
+  --display: var(--font-sans); --body: var(--font-sans); --arabic: var(--font-arabic); --kufi: var(--font-arabic);
+  --shadow-1: none; --shadow-2: none; --shadow-3: var(--shadow-pop);
+  --ring: 0 0 0 3px rgba(11, 11, 12, .12);
+  --radius: var(--radius-md); --radius-lg: 10px; --radius-xl: 12px;
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
+}
+:root[lang="ar"] { --display: var(--font-arabic); --body: var(--font-arabic); }
+
+/* ---- type: two weights, sentence case, nothing a user must read below 13 px ---- */
+html body { background: var(--surface); color: var(--text); font: 400 14px/20px var(--font-sans); font-feature-settings: normal; }
+:root[lang="ar"] body, [dir="rtl"] { font-family: var(--font-arabic); }
+:root[lang="ar"] body { font-size: 15px; line-height: 26px; }
+h1, h2, h3, h4, .page-title, .hero-value, .stat-value { font-family: var(--display); font-weight: 600 !important; font-style: normal; }
+main h1, .page-title h1, .photo-band h1, .photo-head h1 { font-size: 32px; line-height: 38px; letter-spacing: -.02em; }
+main h2 { font-size: 20px; line-height: 26px; letter-spacing: 0; }
+main h3 { font-size: 16px; line-height: 22px; }
+:root[lang="ar"] :is(h1, h2, h3, h4) { font-weight: 600 !important; letter-spacing: 0; }
+b, strong, th { font-weight: 600; }
+.muted, .small.muted { color: var(--text-muted); }
+.small { font-size: 13px; line-height: 18px; }
+.num, td.num, .table td.r, dd.num { font-variant-numeric: tabular-nums; }
+code, kbd, .mono, pre.json { font-family: var(--font-sans); font-variant-numeric: tabular-nums; } /* no monospace anywhere */
+
+/* ---- links: black, underlined on hover; never red or blue ---- */
+a { color: var(--text); text-decoration: none; }
+main a:not(.btn):not([class*="card"]):not(.row):hover, .linkish:hover { text-decoration: underline; text-underline-offset: 3px; }
+p a:not(.btn), .small a:not(.btn), .muted a:not(.btn), li a:not(.btn), td a:not(.btn) { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+p a:not(.btn):hover, .small a:not(.btn):hover, li a:not(.btn):hover, td a:not(.btn):hover { text-decoration-color: currentColor; }
+.linkish { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+
+/* ---- focus: 2 px black outline, 2 px offset, on everything that can be used ---- */
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--text) !important; outline-offset: 2px !important; box-shadow: none !important; }
+
+/* ---- buttons: one black primary per screen, the rest ghost; 6 px corners, no pills, no gradients ---- */
+html .btn, html a.btn, html select.btn, html label.btn {
+  min-height: 38px; padding: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text);
+  font: 600 14px/20px var(--display); letter-spacing: 0; box-shadow: none; text-decoration: none; transform: none; }
+html .btn:hover, html a.btn:hover { background: var(--surface-muted); border-color: var(--line-strong); color: var(--text); text-decoration: none; }
+html .btn:active { background: #ECEBE8; transform: none; }
+html :is(.btn.primary, a.btn.primary, .btn.signal, a.btn.signal) { background: var(--action); border-color: var(--action); color: var(--on-action); box-shadow: none; }
+html :is(.btn.primary, a.btn.primary, .btn.signal, a.btn.signal):hover { background: var(--action-hover); border-color: var(--action-hover); color: var(--on-action); }
+html .btn.danger { color: var(--danger); border-color: var(--line-strong); }
+html .btn.danger:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--line-strong); }
+html .btn.sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-md); }
+html .btn.lg { min-height: 44px; padding: 0 20px; font-size: 15px; border-radius: var(--radius-md); }
+html .btn:disabled, html .btn[aria-disabled="true"] { opacity: .4; cursor: not-allowed; }
+html .btn.icon { padding: 0; width: 38px; }
+
+/* ---- inputs: 1 px #CFCDC8, 6 px corners; focus is a black border with a soft 3 px ring ---- */
+html :is(.field input, .field select, .field textarea, .search, input.search, .cal-input, main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), main select, main textarea, .drawer input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .drawer select, .drawer textarea) {
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background-color: var(--surface); color: var(--text); box-shadow: none; font-family: inherit; }
+html :is(.field input, .field select, .field textarea, .search, .cal-input, main input, main select, main textarea, .drawer input, .drawer select, .drawer textarea):hover { border-color: #9C9A96; }
+html :is(.field input, .field select, .field textarea, .search, .cal-input, main input, main select, main textarea, .drawer input, .drawer select, .drawer textarea):focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 3px rgba(11, 11, 12, .1) !important; }
+html :is(input, textarea)::placeholder { color: var(--text-subtle); opacity: 1; }
+label, .field > label, .field .label, .lbl { color: var(--text); font-weight: 600; }
+.field .small.muted, .help { color: var(--text-muted); }
+.error, p.error, .field .error { color: var(--danger); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--text); }
+.switch input:checked + .switch-track { background: var(--text) !important; border-color: var(--text) !important; }
+
+/* ---- cards and panels: white, 1 px line, 10 px corners, no shadow ---- */
+html :is(.card, .kpis > div, .pt-kpi, .stat, .panel, .profile-card, .outlet-card, .brief-card) { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: none; }
+html :is(.card, .kpis > div):hover { box-shadow: none; }
+.card.pad, .pad { padding: 20px; }
+.note, .callout, .warn, p.warn { border-radius: var(--radius-md); box-shadow: none; }
+p.warn, .warn { background: var(--warning-soft); color: var(--warning); border: 0; }
+.ok, p.ok { color: var(--success); }
+
+/* ---- tables: grey uppercase header on Bone, ~56 px rows, numbers right-aligned in tabular figures ---- */
+html .table { font-size: 14px; }
+html .table thead th { background: var(--surface-muted); color: var(--text-muted); font: 600 12px/16px var(--font-sans); text-transform: uppercase; letter-spacing: .06em; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+:root[lang="ar"] .table th { text-transform: none; letter-spacing: 0; font-family: var(--font-arabic); font-size: 12.5px; }
+html .table td { padding: 17px 16px; border-bottom: 1px solid var(--line); }
+html .table tbody tr:hover td { background: var(--selection); }
+html .table tr.selected td, html .table tr[aria-selected="true"] td { background: var(--selection); }
+html .table tr.selected td:first-child, html .table tr[aria-selected="true"] td:first-child { box-shadow: inset 3px 0 0 var(--text); }
+:root[dir="rtl"] .table tr.selected td:first-child { box-shadow: inset -3px 0 0 var(--text); }
+html .table :is(td.r, th.r, .num) { font-variant-numeric: tabular-nums; }
+.table-wrap.card { overflow: auto; }
+
+/* ---- status: 4 px corners, a small dot, the word; status colours are for data only ---- */
+html .dot, html .pill-state, html .badge, html .tag, html .chip, html .stage, html .st {
+  border-radius: var(--radius-sm); font: 600 11.5px/16px var(--font-sans); letter-spacing: 0; box-shadow: none; }
+html .dot { padding: 2px 8px 2px 7px; background: var(--surface-muted); color: var(--text-muted); }
+html .dot::before { background: currentColor; }
+html .dot.lead, html .dot.ok, html .is-lead, html .pill-state.is-lead { background: var(--success-soft); color: var(--success); }
+html .dot.soon, html .dot.pay, html .dot.warn { background: var(--warning-soft); color: var(--warning); }
+html .dot.outbid, html .dot.bad, html .dot.danger { background: var(--danger-soft); color: var(--danger); }
+html .tag { background: var(--surface-muted); color: var(--text-muted); border: 0; padding: 2px 7px; }
+html .nav-badge, html .bell .n, html .cv-plan-n, html .mb-alert { background: var(--text); color: var(--on-action); border-radius: var(--radius-sm); box-shadow: none; }
+html .cv-closing { background: var(--warning-soft); color: var(--warning); border-radius: var(--radius-sm); }
+
+/* ---- filter chips and segmented controls: 6 px corners, selected is black ---- */
+html .chipf { border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: 400 14px/20px var(--font-sans); box-shadow: none; }
+html .chipf:hover { background: var(--surface-muted); }
+html .chipf.on, html .chipf[aria-pressed="true"] { background: var(--action); border-color: var(--action); color: var(--on-action); }
+html .chipf.on .ch, html .chipf[aria-pressed="true"] .ch { color: inherit; }
+html .seg { padding: 0; gap: 0; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface); box-shadow: none; overflow: hidden; }
+html .seg button { border-radius: 0; padding: 8px 14px; color: var(--text-muted); font: 600 13px/18px var(--font-sans); }
+html .seg button + button { border-inline-start: 1px solid var(--line-strong); }
+html .seg button.on, html .seg button[aria-selected="true"], html .seg button[aria-checked="true"] { background: var(--action); color: var(--on-action); box-shadow: none; }
+html .ch { color: var(--text-muted); background: none; }
+html .ch svg { stroke-width: 1.7; }
+
+/* ---- stepper (Build, Review, Bid, Book): joined tabs, current underlined 2 px black ---- */
+html .tracker li.now b { box-shadow: inset 0 -2px 0 var(--text); }
+html .tracker-dot { background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); box-shadow: none; }
+html .tracker li.done .tracker-dot { background: var(--text); color: var(--on-action); border-color: var(--text); }
+html .tracker li::before { background: var(--line); }
+
+/* ---- pop-ups, drawers, menus: white, 12 px corners, the one allowed shadow, dark overlay ---- */
+html .scrim { background: rgba(11, 11, 12, .45); backdrop-filter: none; -webkit-backdrop-filter: none; }
+html .drawer { border-radius: var(--radius-xl) 0 0 var(--radius-xl); box-shadow: var(--shadow-pop); border-left: 1px solid var(--line); background: var(--surface); }
+:root[dir="rtl"] .drawer { border-radius: 0 var(--radius-xl) var(--radius-xl) 0; border-left: 0; border-right: 1px solid var(--line); }
+html .drawer-h, html .drawer-f { border-color: var(--line); background: var(--surface); }
+html :is(.pop-panel, .name-pop, .bell-pop, .cmp-modal, .modal, .sheet, .cv-sheet, dialog) { border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-pop); background: var(--surface); }
+html .toast { background: var(--text); color: var(--on-action); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); }
+
+/* ---- photos: black and white only, text over them sits on a straight black veil of at least 40% ---- */
+img[src*="/brand/"]:not(.logo-img-brand), video, .photo-band > img, .photo-head img, .dash-photo, .profile-cover img, .cover img { filter: grayscale(1) contrast(1.05); }
+html .photo-band { border-radius: var(--radius-lg); background: var(--text); box-shadow: none; }
+html .photo-band::after, html .photo-head::after, :root[dir="rtl"] .photo-band::after, :root[dir="rtl"] .photo-head::after { background: rgba(11, 11, 12, .62) !important; }
+html .photo-band p, html .photo-head p { color: #E4E3E0; }
+html .photo-band-actions .btn:not(.primary):not(.signal) { background: transparent; border-color: rgba(255, 255, 255, .45); color: #fff; }
+html .photo-band-actions .btn:not(.primary):not(.signal):hover { background: rgba(255, 255, 255, .1); color: #fff; }
+html .photo-band :is(.btn.primary, .btn.signal) { background: #fff; border-color: #fff; color: var(--text); }
+html .photo-band :is(.btn.primary, .btn.signal):hover { background: #E4E3E0; border-color: #E4E3E0; }
+
+/* ---- workspace shell: 56 px top bar, 216 px left sidebar, 24 px content padding ---- */
+html .shell { display: grid; grid-template-columns: 216px minmax(0, 1fr); grid-template-rows: 56px auto; grid-template-areas: "top top" "side main"; min-height: 100vh; background: var(--surface); }
+html .shell.min { grid-template-columns: 64px minmax(0, 1fr); }
+.wtop { grid-area: top; position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 16px 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+:root[dir="rtl"] .wtop { padding: 0 20px 0 16px; }
+.wtop .spacer { flex: 1; }
+.wtop .logo { display: inline-flex; align-items: center; padding: 0; }
+.wtop .bell > .btn { width: 38px; min-height: 38px; padding: 0; border-color: transparent; background: none; color: var(--text-muted); }
+.wtop .bell > .btn:hover { background: var(--surface-muted); color: var(--text); }
+.wtop .bell .n { top: 2px; inset-inline-end: 0; }
+.wtop .bell-pop { position: absolute; top: calc(100% + 8px); bottom: auto; inset-inline-end: 0; inset-inline-start: auto; left: auto; width: 360px; max-height: 70vh; overflow: auto; z-index: 50; }
+.wtop .name-menu { flex: none; position: relative; }
+.wtop .name-btn { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 4px; border: 1px solid transparent; border-radius: var(--radius-md); background: none; color: var(--text); font: inherit; cursor: pointer; }
+.wtop .name-btn:hover { background: var(--surface-muted); }
+.wtop .name-btn .who { display: grid; text-align: start; line-height: 1.25; max-width: 220px; }
+.wtop .name-btn .who b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wtop .name-btn .who span { font-size: 12px; color: var(--text-muted); }
+.wtop .name-chev { transform: rotate(180deg); color: var(--text-muted); }
+.wtop .name-pop { position: absolute; top: calc(100% + 8px); bottom: auto; inset-inline-end: 0; inset-inline-start: auto; left: auto; min-width: 240px; z-index: 50; }
+html .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: var(--on-action); font: 600 12px/32px var(--font-sans); text-align: center; flex: none; }
+html .side { grid-area: side; position: sticky; top: 56px; height: calc(100vh - 56px); padding: 16px 12px; gap: 2px; background: var(--surface); color: var(--text); border-right: 1px solid var(--line); border-left: 0; box-shadow: none; }
+html[dir="rtl"] .side { border-right: 0; border-left: 1px solid var(--line); }
+html .side .side-top { display: none; }
+html .side-nav a { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 0 12px; border-radius: var(--radius-md); color: var(--text-muted); font: 400 14px/20px var(--display); background: none; box-shadow: none; position: relative; }
+html .side-nav a:hover { background: var(--surface-muted); color: var(--text); }
+html .side-nav a.active, html .side-nav a[aria-current="page"] { background: var(--surface-muted); color: var(--text); font-weight: 600; }
+html .side-nav a.active::before { content: ""; position: absolute; inset-inline-start: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; background: var(--text); }
+:root[dir="rtl"] .side-nav a.active::before { border-radius: 2px 0 0 2px; }
+html .side-nav a svg { color: inherit; flex: none; }
+html .side-group { color: var(--text-subtle); font: 600 12px/16px var(--font-sans); text-transform: uppercase; letter-spacing: .06em; padding: 16px 12px 6px; }
+:root[lang="ar"] .side-group { text-transform: none; letter-spacing: 0; }
+html .side-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+html .side-toggle { display: flex; align-items: center; gap: 12px; width: 100%; height: 36px; padding: 0 12px; border: 0; border-radius: var(--radius-md); background: none; color: var(--text-muted); font: 400 13px/18px var(--font-sans); cursor: pointer; }
+html .side-toggle:hover { background: var(--surface-muted); color: var(--text); }
+html .shell.min .side { padding: 16px 8px; }
+html .shell.min .side-nav a { justify-content: center; padding: 0; }
+html .shell.min .side-nav a.active::before { inset-inline-start: -8px; }
+html .shell.min .side-toggle { justify-content: center; padding: 0; }
+html .shell-main { grid-area: main; min-width: 0; }
+html .shell-main > main { padding: 24px; }
+html .viewbar { background: var(--surface-muted); color: var(--text); border-bottom: 1px solid var(--line); }
+html .viewbar.acting { background: var(--text); color: var(--on-action); }
+@media (max-width: 900px) {
+  html .shell, html .shell.min { display: block; }
+  .wtop, html .side { display: none; }
+  html .shell-main > main { padding: 16px 16px 96px; }
+}
+
+/* ---- phones and visitors: a white header with the logo; the bottom tab bar ---- */
+html .topbar { background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: none; color: var(--text); }
+html .topbar .nav a { color: var(--text-muted); font: 400 14px/20px var(--display); }
+html .topbar .nav a:hover { color: var(--text); }
+html .topbar .nav a.active, html .topbar .nav a[aria-current="page"] { color: var(--text); font-weight: 600; border-color: var(--text); }
+html .topbar .btn:not(.signal):not(.primary) { background: transparent; border-color: var(--line-strong); color: var(--text); }
+html .topbar .btn:not(.signal):not(.primary):hover { background: var(--surface-muted); color: var(--text); }
+html .topbar .menu-btn { color: var(--text); }
+html .topbar .signin, html .guest-actions .signin { color: var(--text); font-weight: 600; }
+html .topbar :is(.lang-switch, .lang, .topbar-lang, .on-dark) { color: var(--text); }
+html .topbar .bell > .btn { color: var(--text-muted); background: none; border-color: transparent; }
+html .tabbar { background: var(--surface); border-top: 1px solid var(--line); box-shadow: none; }
+html .tabbar a { color: var(--text-muted); }
+html .tabbar a.active, html .tabbar a[aria-current="page"] { color: var(--text); font-weight: 600; }
+html .tabbar a.active::before { background: var(--text); }
+
+/* ---- charts and KPI tiles: ink and greys, no gradients ---- */
+html .kpis > div, html .pt-kpi { padding: 16px 20px; }
+html :is(.kpis dd, .pt-kpi .v, .hero-value) { font-family: var(--display); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+html :is(.pt-kpi.hero, .pt-kpis .hero, .kpi-hero) { background: var(--text); color: var(--on-action); border-color: var(--text); }
+html :is(.pt-kpi.hero, .pt-kpis .hero, .kpi-hero) :is(span, dt, .muted, small) { color: #B9B7B2; }
+
+/* ---- empty states and loading: calm, no decoration ---- */
+html .empty { color: var(--text-muted); }
+::selection { background: #E4E3E0; color: var(--text); }
+
+/* Latin names and figures inside Arabic pages stay in Source Sans 3 */
+:root[lang="ar"] :is(.logo .latin, [lang="en"], .num) { font-family: var(--font-sans); }
+
+/* media types are told apart by their outline icon and name, not by colour */
+:root { --ch-radio: #55534F; --ch-tv: #55534F; --ch-print: #55534F; --ch-digital: #55534F; --ch-podcast: #55534F;
+  --ch-newspaper: #55534F; --ch-magazine: #55534F; --ch-newsletter: #55534F; --ch-social: #55534F; }
+/* an outbid line in My bids: the word in danger red and a thin bar, no tinted fill */
+html .mb-line.outbid { background: none; }
+/* phones: the page's own call to action stands in for the header's, so the header fits in one row */
+@media (max-width: 480px) { html .guest-actions .btn.signal { display: none; } }

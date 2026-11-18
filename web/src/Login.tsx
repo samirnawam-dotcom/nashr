@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from './api'
 import { PAGES, useMeta } from './seo'
 import { LangSwitch, t } from './i18n'
+import { Logo } from './Logo'
 
 /** Sign-in, request access and invites share one layout: the studio hero (the brand's one bold moment) and the form. */
 export function AuthShell({ children }: { children: React.ReactNode }) {
@@ -9,7 +10,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="auth">
       <section className="auth-hero" aria-label={t("About Nashr")}>
-        <a className="logo" href="/" aria-label={t("Nashr home")}><span className="latin">Nashr</span><span className="arabic" lang="ar" aria-hidden>نشر</span></a>
+        <Logo href="/" tone="reversed" height={26} />
         <div className="auth-pitch">
           <h2>{t("Book UAE airtime and pages in one place.")}</h2>
           <p>{t("Bid on radio breaks, TV spots, print pages, homepages and podcasts. Your money is held until the publisher proves the ad ran.")}</p>

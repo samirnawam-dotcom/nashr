@@ -17,6 +17,7 @@ import { time } from './format'
 import { useUnread } from './messages/unread'
 import { resetLive } from './live'
 import './messages/messages.css'
+import { Logo } from './Logo'
 
 
 // Screens behind sign-in load only when opened, so visitors download just the public pages (faster landing page).
@@ -231,11 +232,10 @@ const ICON: Record<string, string> = {
 const GROUP: Record<string, Record<string, string>> = { admin: { '/funds': t('Money'), '/directory': t('System') }, seller: {}, buyer: {} }
 const ROLE: Record<string, string> = { buyer: t('Buyer'), seller: t('Publisher'), admin: t('Nashr operations'), founder: t('Nashr founder') }
 const Badge = ({ n }: { n: number }) => <span className="nav-badge" aria-label={t('{n} unread', { n })}>{n > 99 ? '99+' : n}</span>
-const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
+const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
 
-/** The bilingual wordmark (placeholder until the brand files arrive): Latin in Geist, Arabic in Kufi. */
-export const Wordmark = ({ href }: { href?: string }) => (
-  <a className="logo" href={href ?? '/'} aria-label={t("Nashr home")}><span className="latin">Nashr</span><span className="arabic" lang="ar">نشر</span></a>)
+/** The logo in a header: the brand file, black with the red dot on light pages, white on dark ones. */
+export const Wordmark = ({ href, tone = 'primary', height = 24 }: { href?: string; tone?: 'primary' | 'reversed'; height?: number }) => <Logo href={href ?? '/'} tone={tone} height={height} />
 
 /** The menu under the account's name (owner's rules): its settings, help, the language and signing out, out of the main list. */
 function NameMenu({ name, sub, initials, links, mini, onSignOut }: { name: string; sub: string; initials: string; links: [string, string][]; mini: boolean; onSignOut: () => void }) {
@@ -319,18 +319,23 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
   const hit = routesFor(me.role).map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
   return (
     <div className={`shell ${mini ? 'min' : ''}`}>
+      {/* brand guide: a 56 px top bar (logo, alerts, the account) over a 216 px sidebar of the main places */}
+      <header className="wtop">
+        <Wordmark href={`${home}`} />
+        <div className="spacer" />
+        <Bell role={me.role} />
+        <NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={false} onSignOut={signOut}
+          links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
+      </header>
       <aside className="side" aria-label={t('Menu')}>
-        <div className="side-top"><Wordmark href={`${home}`} />
-          <button type="button" className="side-toggle" onClick={toggleMini} aria-expanded={!mini} aria-label={mini ? t('Expand the menu') : t('Collapse the menu')} title={mini ? t('Expand the menu') : t('Collapse the menu')}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={mini ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} /></svg></button></div>
         <nav className="nav side-nav" aria-label={t("Main")}>{nav.map(([p, l]) => <Fragment key={p}>
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''} title={mini ? l : undefined}>
             <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a></Fragment>)}</nav>
         <div className="side-foot">
-          <div className="side-me"><NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={mini} onSignOut={signOut}
-            links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
-            <Bell role={me.role} /></div>
+          <button type="button" className="side-toggle" onClick={toggleMini} aria-expanded={!mini} aria-label={mini ? t('Expand the menu') : t('Collapse the menu')} title={mini ? t('Expand the menu') : t('Collapse the menu')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={mini ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} /></svg>
+            <span className="side-l">{t('Collapse the menu')}</span></button>
         </div>
       </aside>
       <div className="shell-main">

@@ -244,3 +244,19 @@ Decisions made while building (flag to owner if they disagree):
   - "Accepted, pay now" lines in My bids open the booking to pay, not the bid drawer (the slot is no longer on sale).
   - The bid drawer offers the last creative again with the last brief, so a buyer does not upload the same file for every bid.
   - Bids sent before the creative rule keep working; the seller sees "No creative was attached to this bid".
+
+## Phase R: brand guide for developers (18 Nov 2026)
+- [x] Logo files in web/public/brand/logo (primary, reversed, English, mark, app icons 32/180, OG image), traced from the guide's
+      artwork because the SVG masters were not supplied: replace them with the official files when we have them (same names).
+- [x] Fonts self-hosted: Source Sans 3 (English, figures) and Readex Pro (Arabic), 400 and 600 only, font-display swap.
+- [x] Tokens and components (web/src/brand.css): Ink/Paper/Bone/Graphite/Stone/Mist, red only in the logo dot, one black button,
+      ghost buttons, 4/6/10/12 corners, no pills, no gradients, shadow only on menus and pop-ups, 2 px black focus ring,
+      status colours with words, Bone table heads, outline icons at 1.7.
+- [x] Workspace shell: 56 px top bar (logo, bell, name menu), 216 px light sidebar with a black bar on the current page.
+- [x] Home page: light editorial hero, product on a black-and-white photo under a 55 % veil, figures in one hairline row,
+      Ink Athena band, closing band on a black-and-white press photo, Ink footer with the reversed logo.
+- [x] Charts in Ink and greys; media types told apart by icon and name, not colour.
+- [x] Emails: white header with the logo image, black button (replaces the earlier purple button), Mist hairlines.
+- [x] Offline page and phone app colours; service worker cache renamed so installed apps pick it up.
+- Not changed: server PDFs keep Helvetica and IBM Plex Sans Arabic, because the PDF writer embeds static TrueType files and the
+  brand fonts ship as web fonts. Swap in static Source Sans 3 and Readex Pro TTFs to finish this.

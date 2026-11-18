@@ -4,8 +4,8 @@
   "description": "احجز إعلانات الإذاعة والتلفزيون والصحف والمواقع والبودكاست في الإمارات من مكان واحد.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e1650",
-  "theme_color": "#1e1650",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0B0B0C",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -24,11 +24,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ],
   "id": "/",
