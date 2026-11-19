@@ -20,7 +20,7 @@ export function Bell({ role }: { role: string }) {
     const top = d.items[0]; if (announce && top && d.unread && top.id !== seen.current) setToast(top); seen.current = top?.id ?? null }, () => {})
   useEffect(() => { load(); const timer = setInterval(load, 60_000); return () => clearInterval(timer) }, [])
   useLive('notification', () => load(true))
-  useEffect(() => { if (!toast) return; const x = setTimeout(() => setToast(null), 6000); return () => clearTimeout(x) }, [toast])
+  useEffect(() => { if (!toast) return; const x = setTimeout(() => setToast(null), 3000); return () => clearTimeout(x) }, [toast])
   useEffect(() => {
     const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
     addEventListener('mousedown', away); return () => removeEventListener('mousedown', away)

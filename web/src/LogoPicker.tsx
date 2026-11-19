@@ -10,7 +10,7 @@ export const initials = (name: string) => name.split(/\s+/).filter(w => /\w/.tes
 /** An outlet's logo, or its initials on the brand colour when there is none: the same mark everywhere it appears. */
 export const OutletMark = ({ name, url, size = 40 }: { name: string; url?: string | null; size?: number }) => url
   ? <img className="logo-img" src={url} width={size} height={size} alt="" loading="lazy" decoding="async" />
-  : <span className="logo-img initials" style={{ width: size, height: size, fontSize: Math.round(size * .36) }} aria-hidden>{initials(name)}</span>
+  : <span className="logo-img initials" style={{ width: size, height: size, fontSize: Math.max(13, Math.round(size * .36)) }} aria-hidden>{initials(name)}</span>
 
 /**
  * The logo on an outlet's profile, directory card, bookings and admin. Centre-cropped to a square and resized to 512×512 in the

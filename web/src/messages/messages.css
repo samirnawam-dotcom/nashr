@@ -9,20 +9,20 @@
 .msgs { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .msg-li { display: grid; }
 .msg-day { display: flex; justify-content: center; margin: 14px 0 8px; }
-.msg-day span { font-size: 12px; color: var(--faint); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 10px; }
+.msg-day span { font-size: 13px; color: var(--faint); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 10px; }
 .msg { max-width: min(78%, 560px); display: grid; gap: 2px; margin-top: 8px; }
 .msg.cont { margin-top: 2px; }
 .msg.theirs { justify-self: start; }
 .msg.mine { justify-self: end; text-align: start; }
-.msg-who { font-size: 12px; font-weight: 600; color: var(--slate); padding: 0 4px; }
+.msg-who { font-size: 13px; font-weight: 600; color: var(--slate); padding: 0 4px; }
 .msg.mine .msg-who { justify-self: end; }
-.msg-body { margin: 0; padding: 9px 13px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; font-size: 14.5px; }
+.msg-body { margin: 0; padding: 9px 13px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; font-size: 14.5px; }
 .msg.theirs .msg-body { background: var(--surface); border: 1px solid var(--line); border-start-start-radius: 4px; }
 .msg.mine .msg-body { background: var(--teal); color: #fff; border-start-end-radius: 4px; }
 .msg.cont.theirs .msg-body { border-start-start-radius: 14px; }
 .msg.cont.mine .msg-body { border-start-end-radius: 14px; }
 .msg.flagged .msg-body { box-shadow: 0 0 0 2px var(--signal); }
-.msg-meta { font-size: 11.5px; color: var(--faint); padding: 0 4px; }
+.msg-meta { font-size: 13px; color: var(--faint); padding: 0 4px; }
 .msg.mine .msg-meta { justify-self: end; }
 .msg-meta b { color: var(--amber); font-weight: 600; }
 
@@ -60,7 +60,7 @@
 .conv-what, .conv-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conv-last { color: var(--slate); }
 .conv.unread .conv-with, .conv.unread .conv-last { color: var(--ink); font-weight: 600; }
-.conv-badge { align-self: center; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 4px; background: var(--teal); color: #fff; font-size: 12px; font-weight: 600; display: grid; place-items: center; }
+.conv-badge { align-self: center; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 4px; background: var(--teal); color: #fff; font-size: 13px; font-weight: 600; display: grid; place-items: center; }
 .conv-open { display: grid; gap: 12px; min-width: 0; }
 .conv-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .conv-bar .small { flex: 1; min-width: 0; }
@@ -79,8 +79,8 @@
   .msg { max-width: 88%; }
 }
 /* The unread count next to "Messages" in the navigation */
-.nav-badge { margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--signal); color: #ffffff; font-size: 11.5px; font-weight: 600; display: inline-grid; place-items: center; }
-.tabbar .nav-badge { position: absolute; top: 4px; margin: 0; inset-inline-start: calc(50% + 6px); min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
+.nav-badge { margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--signal); color: #ffffff; font-size: 13px; font-weight: 600; display: inline-grid; place-items: center; }
+.tabbar .nav-badge { position: absolute; top: 4px; margin: 0; inset-inline-start: calc(50% + 6px); min-width: 16px; height: 16px; font-size: 13px; padding: 0 4px; }
 .tabbar a { position: relative; }
 .staff-thread { max-height: 560px; border-radius: var(--radius); }
 /* Before payment: a quiet notice where the conversation will be. */

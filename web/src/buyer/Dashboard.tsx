@@ -55,7 +55,7 @@ export function BuyerDashboard() {
           <span>{w.status === 'awaiting_payment'
             ? t('The publisher confirmed. Pay {amount} by {when} to secure it.', { amount: money(w.amount), when: w.dueAt ? when(w.dueAt) : '' })
             : t('{amount} with VAT. The publisher confirms by {when}; you pay only then.', { amount: money(w.amount), when: w.dueAt ? when(w.dueAt) : '' })}</span></span>
-        <span className={`btn ${w.status === 'awaiting_payment' ? 'primary' : ''}`}>{w.status === 'awaiting_payment' ? t('Pay now') : t('View booking')}</span></a>)}</section>}
+        <span className="btn">{w.status === 'awaiting_payment' ? t('Pay now') : t('View booking')}</span></a>)}</section>}
 
       <section className="pt-kpis">
         <Kpi main href="/results" icon={KI.trend} label={t('Paid, last 30 days')} value={money(d.spend.last30)}><Change v={pct(d.spend.last30, d.spend.prev30)} /></Kpi>
@@ -84,7 +84,7 @@ export function BuyerDashboard() {
             <a className="pt-what" href={`/bookings/${task.dealId}`}><b>{TASK[task.type][1]}</b><span className="small">{tm(task.label)}</span></a>
             <span className="pt-money">{task.amount != null && <b className="num">{money(task.amount)}</b>}</span>
             <span className="pt-due">{task.dueAt && <span className={`pt-chip ${soon(task.dueAt) ? 'warn' : ''}`}>{t('Due {date}', { date: dayLabel(dubai(task.dueAt).date, { day: 'numeric', month: 'short' }) })}</span>}</span>
-            <span className="pt-btns"><a className="btn primary" href={`/bookings/${task.dealId}`}>{t(TASK_BTN[task.type] ?? 'Open')}</a></span></li>)}</ul>}
+            <span className="pt-btns"><a className="btn" href={`/bookings/${task.dealId}`}>{t(TASK_BTN[task.type] ?? 'Open')}</a></span></li>)}</ul>}
       </section>
 
       <section className="pt-row">

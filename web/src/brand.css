@@ -21,10 +21,10 @@
 
   /* the older token names every stylesheet already uses, mapped onto the guide */
   --ink: var(--text); --slate: var(--text-muted); --faint: var(--text-subtle);
-  --bg: var(--surface); --surface-2: var(--surface-muted); --surface-3: #ECEBE8;
+  --bg: var(--surface); --surface-2: var(--surface-muted); --surface-3: #E4E3E0;
   --line-2: var(--line-strong); --line-3: #9C9A96;
   --teal: var(--action); --teal-hover: var(--action-hover); --teal-press: var(--action);
-  --teal-1: var(--surface-muted); --teal-2: #ECEBE8; --teal-3: var(--line-strong); --teal-4: #9C9A96;
+  --teal-1: var(--surface-muted); --teal-2: #E4E3E0; --teal-3: var(--line-strong); --teal-4: #9C9A96;
   --signal: var(--action); --signal-ink: var(--text); --signal-1: var(--surface-muted);
   --studio: var(--text); --studio-2: #1C1C1F; --night: var(--text); --night-2: #151517; --night-3: #1C1C1F; --night-line: rgba(255, 255, 255, .12);
   --on-studio: #FFFFFF; --on-studio-dim: #B9B7B2;
@@ -67,7 +67,7 @@ html .btn, html a.btn, html select.btn, html label.btn {
   min-height: 38px; padding: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text);
   font: 600 14px/20px var(--display); letter-spacing: 0; box-shadow: none; text-decoration: none; transform: none; }
 html .btn:hover, html a.btn:hover { background: var(--surface-muted); border-color: var(--line-strong); color: var(--text); text-decoration: none; }
-html .btn:active { background: #ECEBE8; transform: none; }
+html .btn:active { background: #E4E3E0; transform: none; }
 html :is(.btn.primary, a.btn.primary, .btn.signal, a.btn.signal) { background: var(--action); border-color: var(--action); color: var(--on-action); box-shadow: none; }
 html :is(.btn.primary, a.btn.primary, .btn.signal, a.btn.signal):hover { background: var(--action-hover); border-color: var(--action-hover); color: var(--on-action); }
 html .btn.danger { color: var(--danger); border-color: var(--line-strong); }
@@ -100,7 +100,7 @@ p.warn, .warn { background: var(--warning-soft); color: var(--warning); border: 
 /* ---- tables: grey uppercase header on Bone, ~56 px rows, numbers right-aligned in tabular figures ---- */
 html .table { font-size: 14px; }
 html .table thead th { background: var(--surface-muted); color: var(--text-muted); font: 600 12px/16px var(--font-sans); text-transform: uppercase; letter-spacing: .06em; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-:root[lang="ar"] .table th { text-transform: none; letter-spacing: 0; font-family: var(--font-arabic); font-size: 12.5px; }
+:root[lang="ar"] .table th { text-transform: none; letter-spacing: 0; font-family: var(--font-arabic); font-size: 13px; }
 html .table td { padding: 17px 16px; border-bottom: 1px solid var(--line); }
 html .table tbody tr:hover td { background: var(--selection); }
 html .table tr.selected td, html .table tr[aria-selected="true"] td { background: var(--selection); }
@@ -173,10 +173,10 @@ html .shell.min { grid-template-columns: 64px minmax(0, 1fr); }
 .wtop .name-btn:hover { background: var(--surface-muted); }
 .wtop .name-btn .who { display: grid; text-align: start; line-height: 1.25; max-width: 220px; }
 .wtop .name-btn .who b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wtop .name-btn .who span { font-size: 12px; color: var(--text-muted); }
+.wtop .name-btn .who span { font-size: 13px; line-height: 16px; color: var(--text-muted); }
 .wtop .name-chev { transform: rotate(180deg); color: var(--text-muted); }
 .wtop .name-pop { position: absolute; top: calc(100% + 8px); bottom: auto; inset-inline-end: 0; inset-inline-start: auto; left: auto; min-width: 240px; z-index: 50; }
-html .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: var(--on-action); font: 600 12px/32px var(--font-sans); text-align: center; flex: none; }
+html .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: var(--on-action); font: 600 13px/32px var(--font-sans); text-align: center; flex: none; }
 html .side { grid-area: side; position: sticky; top: 56px; height: calc(100vh - 56px); padding: 16px 12px; gap: 2px; background: var(--surface); color: var(--text); border-right: 1px solid var(--line); border-left: 0; box-shadow: none; }
 html[dir="rtl"] .side { border-right: 0; border-left: 1px solid var(--line); }
 html .side .side-top { display: none; }
@@ -240,4 +240,42 @@ html .empty { color: var(--text-muted); }
 /* an outbid line in My bids: the word in danger red and a thin bar, no tinted fill */
 html .mb-line.outbid { background: none; }
 /* phones: the page's own call to action stands in for the header's, so the header fits in one row */
-@media (max-width: 480px) { html .guest-actions .btn.signal { display: none; } }
+@media (max-width: 480px) { html .guest-actions .btn[href="/request-access"] { display: none; } }
+
+/* ==================================================================== brand guide, second pass (measured against the guide) */
+/* type scale: workspace page titles H1 32/38 −2 %; website hero Display XL 64/66 −3 %; section titles Display 48/52 −2.5 % */
+html :is(.page-title, main h1, .wmain h1) { font-size: 32px; line-height: 38px; letter-spacing: -.02em; }
+html .lp .hero h1 { font-size: clamp(40px, 5vw, 64px); line-height: 1.03; letter-spacing: -.03em; }
+html .lp :is(.block h2, .athena h2, .closing h2) { font-size: clamp(30px, 3.4vw, 48px); line-height: 1.08; letter-spacing: -.025em; }
+html .lp .lede, html .lp .intro { font-size: 18px; line-height: 28px; }
+:root[lang="ar"] .lp .hero h1 { font-size: clamp(36px, 4.4vw, 48px); line-height: 1.33; letter-spacing: 0; }
+:root[lang="ar"] .lp :is(.block h2, .athena h2, .closing h2) { line-height: 1.33; letter-spacing: 0; }
+:root[lang="ar"] body { line-height: 28px; }
+/* website: max width 1200, side padding 32 (20 on phones) */
+html .lp .wrap { padding-inline: 32px; }
+@media (max-width: 640px) { html .lp .wrap { padding-inline: 20px; } }
+/* buttons: 14–15 px semibold, 10 × 16 padding, 6 px corners */
+html .btn:not(.sm):not(.icon) { min-height: 40px; padding-inline: 16px; }
+/* inputs: 1 px #CFCDC8, 6 px corners, 10 × 12 padding; focus is a black border with a soft 3 px ring */
+html :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea) { border: 1px solid var(--line-strong); border-radius: var(--radius-md); padding: 10px 12px; }
+html select { border: 1px solid var(--line-strong); border-radius: var(--radius-md); padding: 10px 34px 10px 12px; }
+:root[dir="rtl"] select { padding: 10px 12px 10px 34px; }
+html :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea):focus-visible { outline: none !important; border-color: var(--text) !important; box-shadow: 0 0 0 3px rgba(11, 11, 12, .12) !important; }
+/* text links: black, underlined on hover */
+html main :is(p, li, td, dd, .muted, .small) a:not(.btn) { color: var(--text); text-decoration: none; }
+html main :is(p, li, td, dd, .muted, .small) a:not(.btn):hover { text-decoration: underline; text-underline-offset: 3px; }
+/* toast: black, white text, bottom centre (gone after about 3 seconds) */
+html .bell-toast-wrap { inset-inline: 0; inset-block-end: 24px; margin-inline: auto; width: max-content; max-width: min(420px, calc(100vw - 32px)); }
+html .bell-toast { background: var(--text); color: var(--on-action); border: 0; border-radius: var(--radius-md); box-shadow: var(--shadow-pop); }
+html .bell-toast :is(b, span, small, .muted, .small) { color: var(--on-action); }
+@media (max-width: 720px) { html .bell-toast-wrap { inset-block-end: 80px; } }
+/* no decorative shadows: lines separate things */
+html :is(.avatar, .logo-img.initials, .topbar .nav, .topbar .nav a, .btn) { box-shadow: none; }
+/* the guide's dark theme variables (switch with data-theme="dark" on the page) */
+[data-theme="dark"] { --surface: #0B0B0C; --surface-raised: #151517; --surface-muted: #1C1C1F; --text: #FFFFFF; --text-muted: #B9B7B2; --text-subtle: #8C8A85;
+  --line: #2A2A2D; --line-strong: #3D3C3A; --action: #FFFFFF; --action-hover: #E4E3E0; --on-action: #0B0B0C; --selection: #1F1F22;
+  --success: #3DDC97; --success-soft: #10291C; --warning: #F2B45A; --warning-soft: #2A2010; --danger: #F08A8F; --danger-soft: #2C1214; }
+/* initials in avatars at 13 px; the alert count is a badge at 11.5 px */
+html .avatar { font-size: 13px; }
+html :is(.bell .n, .bell-n, .icon-btn .n) { font-size: 11.5px; }
+html select.btn:not(.sm):not(.icon) { padding-inline: 12px 34px; }

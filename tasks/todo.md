@@ -260,3 +260,10 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Offline page and phone app colours; service worker cache renamed so installed apps pick it up.
 - Not changed: server PDFs keep Helvetica and IBM Plex Sans Arabic, because the PDF writer embeds static TrueType files and the
   brand fonts ship as web fonts. Swap in static Source Sans 3 and Readex Pro TTFs to finish this.
+- [x] Second pass, measured against the guide on 26 pages (buyer, publisher, staff, visitor): text 13 px or more (badges 11.5),
+      H1 32/38, website hero 64 and section titles 48, website side padding 32/20, buttons 40 px, inputs with a black focus
+      border and soft ring, links underlined on hover, corners 4/6/10/12 only, palette colours only, one black button per
+      screen, black toast at the bottom centre for 3 seconds, the guide's dark-theme variables.
+- Still open: the dark theme has its variables but no switch and older pages still hard-code light colours; the demand
+      calendar in the guide is week columns with cheap/normal/busy/peak/sold shading, while the owner's round 2 document asked
+      for Day/Week/Month rows with prices, which is what we have; the PDF fonts (above).

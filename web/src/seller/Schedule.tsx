@@ -151,7 +151,7 @@ export function SchedulePage() {
         <div className="cc-main">
           {view !== 'list' && !slots && <p className="muted">{t('Loading…')}</p>}
           {view !== 'list' && slots && !shown.length && <div className="cv-empty"><p><b>{slots.length ? t('No slots match these filters.') : view === 'day' ? t('Nothing listed on this day.') : t('Nothing listed in this period.')}</b></p>
-            <div className="row-flex">{!slots.length && <button className="btn primary" onClick={() => setAdding({ date: a.date })}>+ {t('Add to calendar')}</button>}<button className="btn" onClick={() => step(1)}>{t('Show the next one')}</button></div></div>}
+            <div className="row-flex">{!slots.length && <button className="btn" onClick={() => setAdding({ date: a.date })}>+ {t('Add to calendar')}</button>}<button className="btn" onClick={() => step(1)}>{t('Show the next one')}</button></div></div>}
           {view === 'day' && shown.length > 0 && <DayList slots={shown} open={open} onOpen={openSlot} />}
           {view === 'week' && shown.length > 0 && lay === 'prog' && <Lanes days={week} slots={shown} open={open} onOpen={openSlot} onAdd={d => setAdding({ date: d })} onDay={toDay} picked={picking ? picked : null} onPick={pick} />}
           {view === 'week' && shown.length > 0 && lay === 'time' && <WeekGrid days={week} slots={shown} open={open} onOpen={openSlot} onAdd={d => setAdding({ date: d })} />}

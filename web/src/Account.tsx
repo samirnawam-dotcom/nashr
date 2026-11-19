@@ -143,7 +143,7 @@ export function MyAccountPage() {
       <div className="grid2"><div className="field"><label htmlFor="pn">{t('New password')}</label><input id="pn" type="password" autoComplete="new-password" minLength={12} value={pw.next} onChange={e => setPw({ ...pw, next: e.target.value })} required /></div>
         <div className="field"><label htmlFor="pa">{t('Repeat password')}</label><input id="pa" type="password" autoComplete="new-password" value={pw.again} onChange={e => setPw({ ...pw, again: e.target.value })} required /></div></div>
       <span className="small muted">{t('At least 12 characters. Changing it signs you out on every other device.')}</span>
-      <button className="btn primary" style={{ justifySelf: 'start' }} disabled={busy}>{t('Change password')}</button></form>
+      <button className="btn" style={{ justifySelf: 'start' }} disabled={busy}>{t('Change password')}</button></form>
     <TwoStep a={a.twoStep} role={a.role} onChange={on => setA({ ...a, twoStep: { ...a.twoStep, on } })} />
     <section className="card pad section form"><h2>{t('Emails')}</h2>
       <p className="small muted">{t('Emails about payments, bookings you must act on and deadlines always go, so nothing is missed.')}</p>

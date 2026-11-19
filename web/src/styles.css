@@ -10,8 +10,8 @@
   --signal: #0b0b0c; --signal-ink: #0b0b0c; --signal-1: #fdf3dc;
   --green: #1d7a46; --green-1: #e7f4ec; --amber: #8f5200; --amber-1: #fbf0dd; --red: #a8291f; --red-1: #fbebe9;
   --radius: 8px; --radius-lg: 14px; --focus: 0 0 0 3px var(--surface), 0 0 0 5px var(--teal);
-  --display: "Geist", system-ui, sans-serif; --body: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
-  --kufi: "Reem Kufi", "IBM Plex Sans Arabic", serif;
+  --display: "Source Sans 3", system-ui, sans-serif; --body: "Source Sans 3", "Readex Pro", system-ui, sans-serif;
+  --kufi: "Readex Pro", "Readex Pro", serif;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
@@ -31,7 +31,7 @@ h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.2; }
 .nav a { color: var(--on-studio-dim); text-decoration: none; padding: 21px 0; border-bottom: 3px solid transparent; white-space: nowrap; }
 .nav a:hover { color: var(--on-studio); }
 .nav a.active { color: #fff; border-color: var(--signal); font-weight: 400; }
-.nav .soon { font-size: 11px; font-weight: 400; color: var(--studio); background: var(--on-studio-dim); border-radius: 4px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px; }
+.nav .soon { font-size: 13px; font-weight: 400; color: var(--studio); background: var(--on-studio-dim); border-radius: 4px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px; }
 .topbar .btn { background: transparent; color: var(--on-studio); border-color: rgba(255, 255, 255, .28); }
 .topbar .btn:hover { background: var(--studio-2); }
 .topbar .who { font-size: 13px; color: var(--on-studio-dim); }
@@ -60,7 +60,7 @@ main { padding: 32px; max-width: 1440px; margin: 0 auto; }
 .dot.lead { background: var(--green-1); } .dot.soon { background: var(--amber-1); } .dot.outbid { background: var(--red-1); }
 .dot.muted { color: var(--slate); }
 .lead { color: var(--green); } .outbid { color: var(--red); } .soon { color: var(--amber); }
-.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--slate); }
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--slate); }
 a { color: var(--teal); }
 
 .topbar.staff { gap: 20px; } .topbar.staff .nav { gap: 16px; font-size: 14px; }
@@ -76,7 +76,7 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 .kufi { font-family: var(--kufi); font-weight: 400; }
 
 /* "On air": the one bright signal. Live bidding, closing soon, you lead. */
-.on-air { display: inline-flex; align-items: center; gap: 6px; color: var(--signal-ink); background: var(--signal-1); border-radius: 4px; padding: 2px 10px 2px 8px; font-size: 12px; font-weight: 600; }
+.on-air { display: inline-flex; align-items: center; gap: 6px; color: var(--signal-ink); background: var(--signal-1); border-radius: 4px; padding: 2px 10px 2px 8px; font-size: 13px; font-weight: 600; }
 .on-air::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px rgba(11, 11, 12, .25); }
 
 /* Sign-in and access pages: the studio hero on the left, the form on the right */
@@ -117,7 +117,7 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 @media (max-width: 760px) {
   .tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
     background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
-  .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 8px 4px 10px; font-size: 12px; color: var(--slate); text-decoration: none; border-top: 3px solid transparent; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 8px 4px 10px; font-size: 13px; color: var(--slate); text-decoration: none; border-top: 3px solid transparent; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tabbar a.active { color: var(--teal); border-top-color: var(--signal); font-weight: 400; }
   body { padding-bottom: 72px; }
 }

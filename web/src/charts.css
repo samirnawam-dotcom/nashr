@@ -1,5 +1,5 @@
 /* Dashboards: figures and charts. Point = brand teal, context = quiet gray, grid = hairline, text never in the data colour. */
-:root { --mark: var(--teal); --mark-context: #c4c2bd; --mark-track: var(--teal-2); --grid: #ecebe8; }
+:root { --mark: var(--teal); --mark-context: #c4c2bd; --mark-track: var(--teal-2); --grid: #e4e3e0; }
 
 .dash { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 .dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; }
@@ -44,17 +44,17 @@ a.stat:hover { border-color: var(--teal-3); }
 .chart svg { display: block; overflow: visible; }
 .chart .grid { stroke: var(--grid); stroke-width: 1; }
 .chart .axis { stroke: #d6d4cf; stroke-width: 1; }
-.chart .tick { fill: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .tick { fill: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; }
 .col path { fill: var(--mark-context); transition: fill .12s; }
 .col.now path { fill: var(--mark); }
 .col.hot path { fill: var(--teal-4); } .col.now.hot path { fill: var(--studio-2); }
 .col .hit { fill: transparent; }
 .col:focus { outline: none; } .col:focus-visible path { stroke: var(--ink); stroke-width: 2; }
 .tip { position: absolute; top: 0; transform: translate(-50%, -8px); background: var(--ink); color: #fff; border-radius: 8px; padding: 6px 10px; display: grid;
-  font-size: 12px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(23, 33, 43, .18); }
+  font-size: 13px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(23, 33, 43, .18); }
 .tip b { font: 600 14px var(--display); }
 .tip span { color: #d6d4cf; }
-.chart-table summary { font-size: 12px; color: var(--slate); cursor: pointer; width: max-content; }
+.chart-table summary { font-size: 13px; color: var(--slate); cursor: pointer; width: max-content; }
 .chart-table .table { margin-top: 8px; font-size: 13px; }
 
 /* Ranked bars and funnel */
@@ -85,7 +85,7 @@ a.ranked-row:hover .ranked-bar { background: var(--studio-2); }
 .dash-list .what span { font-size: 13px; color: var(--slate); }
 .dash-list .when { font-size: 13px; color: var(--slate); text-align: right; white-space: nowrap; }
 .dash-list .when.soon { color: var(--amber); font-weight: 600; }
-.chip-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font: 600 12px var(--display); }
+.chip-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font: 600 13px var(--display); }
 .chip-ico.urgent { background: var(--signal-1); color: var(--signal-ink); }
 .chip-ico.good { background: var(--green-1); color: var(--green); }
 .pill-state { font-size: 12px; font-weight: 600; border-radius: 4px; padding: 2px 9px; white-space: nowrap; }

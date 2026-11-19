@@ -68,7 +68,7 @@ export function Landing() {
               {BOARD.map(([ch, name, cells]) => <div className="board-row" key={name}>
                 <span className="board-who"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={ICON[ch] ?? ICON.digital} /></svg></i>
                   <span><b className="name">{name}</b><small>{CHANNEL_NAME[ch]}</small></span></span>
-                {cells.map(([price, st], i) => price ? <span key={i} className={`board-pill p-${st}`}><b className="num">{price}</b><small>{st === 'lead' ? t('Leading') : st === 'bid' ? t('Bidding') : st === 'won' ? t('Accepted') : t('On sale')}</small></span> : <span key={i} className="board-gap" />)}
+                {cells.map(([price, st], i) => price ? <span key={i} className={`board-pill p-${st}`}><b className="num">{price}</b><small>{st === 'lead' ? t('Leading') : st === 'bid' ? t('Bidding') : st === 'won' ? t('Booked') : t('On sale')}</small></span> : <span key={i} className="board-gap" />)}
               </div>)}
             </div>
             <div className="ticket">

@@ -380,7 +380,7 @@ function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; set
       <div className="guest-actions">
         <LangSwitch />
         <a className="signin" href="/sign-in" onClick={rememberPlace}>{t("Sign in")}</a>
-        <a className="btn signal" href="/request-access">{t("Request access")}</a>
+        <a className="btn" href="/request-access">{t("Request access")}</a>
       </div>
     </header>
   )

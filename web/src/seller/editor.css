@@ -5,7 +5,7 @@
 .ed-steps li::before { content: ""; height: 4px; border-radius: 4px; background: var(--surface-3); }
 .ed-steps li.done::before { background: var(--teal); }
 .ed-steps li.now { color: var(--ink); font-weight: 600; } .ed-steps li.now::before { background: var(--teal); }
-.ed-prod, .ed-form { display: grid; gap: 14px; border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+.ed-prod, .ed-form { display: grid; gap: 14px; border-radius: 10px; border: 1px solid var(--line); box-shadow: var(--shadow-1); }
 .ed-prod h2, .ed-media h2 { font: 600 18px var(--display); margin: 0; }
 .ed .field { margin: 0; min-width: 0; }
 .ed .grid2 { gap: 14px 16px; align-items: start; }
@@ -45,7 +45,7 @@
 .ed-switch { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 14px; border-radius: 12px; background: var(--teal-1); cursor: pointer; }
 .ed-switch > span { display: grid; gap: 2px; }
 .ed-switch input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--teal); }
-.ed-mcard { display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow-1); }
+.ed-mcard { display: grid; gap: 10px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line); box-shadow: var(--shadow-1); }
 .ed-mrow { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
 .ed-progs { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .ed-prow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface); }
@@ -56,16 +56,16 @@
 @media (max-width: 760px) { .ed-type, .ed-3 { grid-template-columns: minmax(0, 1fr); } }
 
 /* Owner's fixes round 2: the outlet header, product rows grouped by media type, and the four-tab summary */
-.ed-outlet { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 16px 18px; border-radius: 16px; }
-.ed-outlet .logo-img { border-radius: 14px; }
+.ed-outlet { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 16px 18px; border-radius: 10px; }
+.ed-outlet .logo-img { border-radius: 10px; }
 .ed-ot { display: grid; gap: 2px; min-width: 0; }
-.ed-ot h2 { font: 600 12.5px var(--body); color: var(--faint); letter-spacing: 0; margin: 0; }
+.ed-ot h2 { font: 600 13px var(--body); color: var(--faint); letter-spacing: 0; margin: 0; }
 .ed-ot b { font: 600 18px/1.2 var(--display); letter-spacing: -.02em; }
 .ed-ot .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-after { margin: -4px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--teal-1); color: var(--teal-press); font-weight: 400; }
 .pr-group { display: grid; gap: 8px; margin-top: 14px; }
 .pr-gh { display: flex; align-items: center; gap: 8px; margin: 0; font: 600 15px var(--display); color: var(--ink); } .pr-gh svg { color: var(--teal); } .pr-gh .num { color: var(--faint); font-weight: 400; }
-.pr-row { border-radius: 16px; overflow: hidden; }
+.pr-row { border-radius: 10px; overflow: hidden; }
 .pr-row.open { border-color: var(--teal-3); box-shadow: var(--shadow-2); }
 .pr-main { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 14px; align-items: center; padding: 10px 14px 10px 8px; }
 .pr-open { display: grid; grid-template-columns: 22px 96px minmax(0, 1fr); gap: 12px; align-items: center; min-width: 0; padding: 4px; border: 0; border-radius: 12px; background: none; text-align: start; font: inherit; color: var(--ink); cursor: pointer; }
@@ -75,7 +75,7 @@
 .pr-what { display: grid; gap: 2px; min-width: 0; }
 .pr-what b { font: 600 15.5px/1.25 var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pr-what .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pr-price { display: grid; justify-items: end; font: 600 15.5px var(--display); white-space: nowrap; } .pr-price small { font: 400 12px var(--body); color: var(--slate); }
+.pr-price { display: grid; justify-items: end; font: 600 15.5px var(--display); white-space: nowrap; } .pr-price small { font: 400 13px var(--body); color: var(--slate); }
 .pr-acts { display: flex; gap: 6px; }
 .pr-row .ed-progs, .pr-row .ed-listnow { padding: 14px 18px; border-top: 1px solid var(--line); }
 @media (max-width: 900px) {

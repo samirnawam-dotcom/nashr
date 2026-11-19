@@ -8,7 +8,7 @@
 .logo-img { border-radius: var(--radius); object-fit: cover; flex: none; }
 .logo-img.initials { display: grid; place-items: center; background: var(--teal-1); color: var(--teal); font: 600 14px var(--display); border: 1px solid var(--teal-2); }
 .price-tag { display: inline-flex; flex-direction: column; gap: 2px; }
-.level { font-size: 12px; color: var(--slate); }
+.level { font-size: 13px; color: var(--slate); }
 .level.typical { color: var(--green); } .level.estimate { color: var(--amber); }
 .badge { justify-self: start; font-size: 12px; padding: 2px 8px; border-radius: 4px; background: var(--bg); color: var(--slate); border: 1px solid var(--line); }
 .badge.on { background: var(--teal-1); color: var(--teal); border-color: var(--teal-2); }
@@ -60,7 +60,7 @@ main.booking { max-width: 1180px; }
 @media (max-width: 900px) {
   .booking-cols { grid-template-columns: 1fr; }
   .booking-side { position: static; order: -1; }
-  .tracker { padding: 14px 8px; } .tracker li { font-size: 12px; } .tracker li .small { display: none; }
+  .tracker { padding: 14px 8px; } .tracker li { font-size: 13px; } .tracker li .small { display: none; }
 }
 
 }
@@ -104,7 +104,7 @@ main.booking { max-width: 1180px; }
 .dp-what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .dp-desc { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .dp-price { display: flex; flex-direction: column; align-items: flex-end; font-weight: 600; }
-.dp-price small { font: 400 12px var(--body); color: var(--faint); }
+.dp-price small { font: 400 13px var(--body); color: var(--faint); }
 .dp-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .dp-items { list-style: none; margin: 0; padding: 0 16px 12px; display: grid; gap: 6px; }
 .dp-items li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
@@ -114,7 +114,7 @@ main.booking { max-width: 1180px; }
 .cmp-tick { display: inline-flex; align-items: center; gap: 6px; }
 
 /* Compare: a bar at the bottom, then a side-by-side table */
-.cmp-bar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; gap: 10px; margin: 18px 0 0; padding: 10px 12px 10px 16px; border-radius: 14px;
+.cmp-bar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; gap: 10px; margin: 18px 0 0; padding: 10px 12px 10px 16px; border-radius: 10px;
   background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow-3); }
 .cmp-bar > .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .cmp-modal { position: fixed; inset: 6vh 50% auto auto; transform: translateX(50%); width: min(980px, calc(100vw - 32px)); max-height: 88vh; overflow: auto; padding: 18px 20px; }

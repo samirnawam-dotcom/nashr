@@ -133,7 +133,7 @@ export function AccessPage() {
       <PhotoBand img="/brand/dash-buyer.jpg" title={t("Access requests")} sub={t("Nashr is invite-only. Approving creates the company and an invite link (valid 7 days).")} />
       {msg}
       {!data.length ? <p className="muted empty">{t("No requests.")}</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Person")}</th><th>{t("Company")}</th><th>{t("Received")}</th><th>{t("Status")}</th><th style={{ width: 360 }} /></tr></thead>
-        <tbody>{data.map(r => <tr key={r.id}>
+        <tbody>{data.map((r, k) => <tr key={r.id}>
           <td><b>{r.name}</b><div className="small muted">{r.role} · <bdi>{r.email}</bdi> · <bdi>{r.phone}</bdi></div></td>
           <td>{r.company}<div className="small muted">{t(TYPE[r.company_type] ?? r.company_type)}</div></td><td className="small num">{date(r.created_at)}</td>
           <td className="small">{t(ACCESS_STATUS[r.status] ?? r.status)}{r.reason && <div className="muted">{r.reason}</div>}</td>
@@ -141,7 +141,7 @@ export function AccessPage() {
             : r.status === 'approved' && r.invite_pending ? <div className="small"><span className="muted">{t('Not signed up yet.')}</span>{' '}
               <button className="btn" disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/invite`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return t('New invite link for {email}. The old link no longer works.', { email: r.email }) })}>{t('New invite link')}</button></div>
             : ['pending', 'info'].includes(r.status) && <div className="form" style={{ gap: 6 }}>
-            <div className="row-flex"><button className="btn primary" disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/approve`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return t('{name} approved.', { name: r.company }) })}>{t("Approve")}</button>
+            <div className="row-flex"><button className={`btn ${k ? '' : 'primary'}`} disabled={busy} onClick={() => act('POST', `/admin/access-requests/${r.id}/approve`, {}, x => { setLinks({ ...links, [r.id]: x.inviteLink }); return t('{name} approved.', { name: r.company }) })}>{t("Approve")}</button>
               <input className="search" style={{ minWidth: 0, flex: 1 }} aria-label={t('Reason for {name}', { name: r.name })} placeholder={t("Reason (for reject or more info)")} value={reason[r.id] ?? ''} onChange={e => setReason({ ...reason, [r.id]: e.target.value })} /></div>
             <div className="row-flex"><button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'info', reason: reason[r.id] }, t("Asked for more information."))}>{t("Ask for info")}</button>
               <button className="btn" disabled={busy || !reason[r.id]} onClick={() => act('POST', `/admin/access-requests/${r.id}/decide`, { decision: 'rejected', reason: reason[r.id] }, t("Rejected."))}>{t("Reject")}</button></div>

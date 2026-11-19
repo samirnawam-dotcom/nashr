@@ -59,8 +59,8 @@ export function MyBids({ onOpen, reload, narrow }: { onOpen: (slotId: string) =>
                 <span className="mb-meta"><span className={`dot ${cls}`}>{t(label)}</span><span className="num">{money(i.amount)}</span></span>
                 {i.endsAt && <span className="small muted">{left(i.endsAt, now)}</span>}</span>
             </button>
-            {i.status === 'outbid' && <button type="button" className="btn sm primary mb-again" onClick={() => onOpen(i.slotId)}>{t('Bid again')}</button>}
-            {i.status === 'pay' && i.dealId && <a className="btn sm primary mb-again" href={`/bookings/${i.dealId}`}>{t('Pay now')}</a>}
+            {i.status === 'outbid' && <button type="button" className="btn sm mb-again" onClick={() => onOpen(i.slotId)}>{t('Bid again')}</button>}
+            {i.status === 'pay' && i.dealId && <a className="btn sm mb-again" href={`/bookings/${i.dealId}`}>{t('Pay now')}</a>}
           </li> })}</ul>}
     </aside>
   )

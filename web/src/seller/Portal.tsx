@@ -62,7 +62,7 @@ export function Trend({ data, label }: { data: { date: string; value: number }[]
 
 /** A share as a ring (earnings by outlet, budget by media type), each part listed with its share and opening its detail. */
 export function Ring({ parts, total, caption, empty }: { parts: { label: string; value: number; href?: string }[]; total: number; caption?: string; empty?: string }) {
-  const R = 52, C = 2 * Math.PI * R, shades = ['#0B0B0C', '#55534F', '#9C9A96', '#C9C7C2', '#E4E3E0']
+  const R = 52, C = 2 * Math.PI * R, shades = ['#0B0B0C', '#55534F', '#9C9A96', '#CFCDC8', '#E4E3E0']
   let at = 0
   return <div className="pt-ring">
     <svg viewBox="0 0 140 140" role="img" aria-label={caption ?? t('Net earnings by outlet')}>
@@ -136,7 +136,7 @@ export function PortalDashboard() {
       <div className="pt-card-h"><h2>{t('Needs your action')}</h2>{d.actionsTotal > d.actions.length && <a href="/inbox">{t('All {n} items', { n: d.actionsTotal })} ›</a>}</div>
       {note && <p className="ok" role="status">{note}</p>}
       {!d.actions.length ? <p className="muted">{t('Nothing waiting on you. New bookings and requests appear here.')}</p>
-        : <ul className="pt-actions">{d.actions.map(a => <li key={`${a.type}-${a.dealId ?? a.slotId}`}>
+        : <ul className="pt-actions">{d.actions.map((a, k) => <li key={`${a.type}-${a.dealId ?? a.slotId}`}>
           <span className="pt-av" aria-hidden>{initials(a.buyer ?? a.outlet)}</span>
           <span className="pt-what"><b>{a.buyer ?? t(ACTION[a.type]?.label ?? a.type)}</b>
             <span className="small">{a.outlet} · {tm(a.label)} · {dayLabel(dubai(a.startsAt).date)}</span>
@@ -145,8 +145,8 @@ export function PortalDashboard() {
             {a.net != null && <span className="small muted">{t("You'd net {amount}", { amount: money(a.net) })}</span>}</span>
           <span className="pt-due">{a.dueAt && <span className="pt-chip">{t('Due {date}', { date: dayLabel(dubai(a.dueAt).date, { day: 'numeric', month: 'short' }) })}</span>}</span>
           <span className="pt-btns">{a.type === 'decide' ? <><button className="btn" onClick={() => open(a)}>{t('Decline')}</button>
-              <button className="btn primary" disabled={busy === a.dealId} onClick={() => accept(a)}>{t('Accept')}</button></>
-            : <button className="btn primary" onClick={() => open(a)}>{t(ACTION[a.type]?.button ?? 'Open')}</button>}</span>
+              <button className={`btn ${k ? '' : 'primary'}`} disabled={busy === a.dealId} onClick={() => accept(a)}>{t('Accept')}</button></>
+            : <button className={`btn ${k ? '' : 'primary'}`} onClick={() => open(a)}>{t(ACTION[a.type]?.button ?? 'Open')}</button>}</span>
         </li>)}</ul>}
     </section>
 
