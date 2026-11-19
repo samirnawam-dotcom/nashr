@@ -79,7 +79,7 @@ export function Landing() {
                 <li className="done">{t("Bid")}</li><li className="done">{t("Accepted")}</li><li className="now">{t("Paid, held")}</li><li>{t("On air")}</li><li>{t("Released")}</li>
               </ol>
             </div>
-            <div className="ticket small held"><span className="held-ic" aria-hidden>✓</span><div><b>{t("Held until proof")}</b><span>{t("The publisher is paid when you approve the as-run log.")}</span></div></div>
+            <div className="ticket small held"><span className="held-ic" aria-hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg></span><div><b>{t("Held until proof")}</b><span>{t("The publisher is paid when you approve the as-run log.")}</span></div></div>
             <figcaption>{t("Example week and booking")}</figcaption>
           </figure>
         </div>

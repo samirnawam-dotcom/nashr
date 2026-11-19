@@ -256,7 +256,7 @@ export function CalendarPage() {
 
       <footer className="cv-foot small muted">
         <span>{t('Dubai time. Prices exclude VAT. You pay only once the publisher accepts, and the money is held until the ad has run.')}</span>
-        {!narrow && <span className="cv-keys">{t('Shortcuts: ← → move · T today · D W M views · / search')}</span>}
+        {!narrow && <span className="cv-keys">{t('Shortcuts: arrow keys move · T today · D W M views · / search')}</span>}
       </footer>
 
       {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}

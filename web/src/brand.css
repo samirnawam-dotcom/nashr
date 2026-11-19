@@ -14,7 +14,7 @@
   --success: #12703F; --success-soft: #E8F3EC;
   --warning: #9A5300; --warning-soft: #FFF2DC;
   --danger: #B4232C; --danger-soft: #FDECEC;
-  --font-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Source Sans 3", "Readex Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-arabic: "Readex Pro", "Source Sans 3", system-ui, sans-serif;
   --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-xl: 12px;
   --shadow-pop: 0 16px 40px rgba(11, 11, 12, .14);
@@ -50,7 +50,7 @@ b, strong, th { font-weight: 600; }
 .muted, .small.muted { color: var(--text-muted); }
 .small { font-size: 13px; line-height: 18px; }
 .num, td.num, .table td.r, dd.num { font-variant-numeric: tabular-nums; }
-code, kbd, .mono, pre.json { font-family: var(--font-sans); font-variant-numeric: tabular-nums; } /* no monospace anywhere */
+html :is(code, kbd, samp, pre, .mono) { font-family: var(--font-sans); font-variant-numeric: tabular-nums; } /* no monospace anywhere */
 
 /* ---- links: black, underlined on hover; never red or blue ---- */
 a { color: var(--text); text-decoration: none; }

@@ -53,7 +53,7 @@ export const AR_CALENDAR: Record<string, string> = {
   "Sectors": "القطاعات",
   "Any sector": "أي قطاع",
   "Search outlets, programmes, sectors": "ابحث عن المنافذ والبرامج والقطاعات",
-  "Shortcuts: ← → move · T today · D W M views · / search": "اختصارات: ← → للتنقل · T اليوم · D W M طرق العرض · / بحث",
+  "Shortcuts: arrow keys move · T today · D W M views · / search": "اختصارات: مفاتيح الأسهم للتنقل · T اليوم · D W M طرق العرض · / بحث",
   "Nothing here in this period.": "لا شيء هنا في هذه الفترة.",
   "Prices in AED, before VAT": "الأسعار بالدرهم، قبل ضريبة القيمة المضافة",
 }
