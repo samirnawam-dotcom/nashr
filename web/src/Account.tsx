@@ -4,6 +4,7 @@ import { api } from './api'
 import { AuthShell } from './Login'
 import { PhotoBand } from './PhotoBand'
 import { t } from './i18n'
+import { ThemeChoice } from './ThemeSwitch'
 
 /** Forgotten password: always the same answer, so nobody can find out who has an account. Nashr's team sends the link. */
 export function ForgotPassword() {
@@ -145,6 +146,9 @@ export function MyAccountPage() {
       <span className="small muted">{t('At least 12 characters. Changing it signs you out on every other device.')}</span>
       <button className="btn" style={{ justifySelf: 'start' }} disabled={busy}>{t('Change password')}</button></form>
     <TwoStep a={a.twoStep} role={a.role} onChange={on => setA({ ...a, twoStep: { ...a.twoStep, on } })} />
+    <section className="card pad section form"><h2>{t('Theme')}</h2>
+      <p className="muted">{t('Light, dark, or the same as your phone or computer. Kept in this browser.')}</p>
+      <ThemeChoice /></section>
     <section className="card pad section form"><h2>{t('Emails')}</h2>
       <p className="small muted">{t('Emails about payments, bookings you must act on and deadlines always go, so nothing is missed.')}</p>
       {EMAILS.map(([k, label, help]) => <label key={k} className="switch"><input type="checkbox" role="switch" checked={a.emails[k]} onChange={e => { const emails = { ...a.emails, [k]: e.target.checked }; setA({ ...a, emails }); save({ emails }, t('Email choices saved.')) }} />

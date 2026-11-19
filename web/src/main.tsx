@@ -12,6 +12,7 @@ import '@fontsource/source-sans-3/600.css'
 import '@fontsource/readex-pro/400.css'
 import '@fontsource/readex-pro/600.css'
 import './brand.css'
+import './theme' // applies light or dark before the app renders
 
 // Find out who is signed in before drawing, so a pre-rendered page (landing, legal) stays on screen instead of flashing.
 applyLang()

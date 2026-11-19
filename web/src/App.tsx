@@ -13,6 +13,7 @@ import { TermsGate } from './TermsGate'
 import { GuestContext, rememberPlace, takePlace } from './guest'
 import { PAGES, applyMeta } from './seo'
 import { LangSwitch, lang, t } from './i18n'
+import { ThemeChoice, ThemeToggle } from './ThemeSwitch'
 import { time } from './format'
 import { useUnread } from './messages/unread'
 import { resetLive } from './live'
@@ -235,7 +236,7 @@ const Badge = ({ n }: { n: number }) => <span className="nav-badge" aria-label={
 const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON[path] ?? 'M4 12h16'} /></svg>
 
 /** The logo in a header: the brand file, black with the red dot on light pages, white on dark ones. */
-export const Wordmark = ({ href, tone = 'primary', height = 24 }: { href?: string; tone?: 'primary' | 'reversed'; height?: number }) => <Logo href={href ?? '/'} tone={tone} height={height} />
+export const Wordmark = ({ href, tone = 'auto', height = 24 }: { href?: string; tone?: 'auto' | 'primary' | 'reversed'; height?: number }) => <Logo href={href ?? '/'} tone={tone} height={height} />
 
 /** The menu under the account's name (owner's rules): its settings, help, the language and signing out, out of the main list. */
 function NameMenu({ name, sub, initials, links, mini, onSignOut }: { name: string; sub: string; initials: string; links: [string, string][]; mini: boolean; onSignOut: () => void }) {
@@ -255,6 +256,7 @@ function NameMenu({ name, sub, initials, links, mini, onSignOut }: { name: strin
       <div className="name-pop-h"><b>{name}</b><span className="small muted">{sub}</span></div>
       {links.map(([href, l]) => <a key={href} role="menuitem" href={href} onClick={() => setOpen(false)}>{l}</a>)}
       <div className="name-pop-lang"><span className="small muted">{t('Language')}</span><LangSwitch /></div>
+      <div className="name-pop-lang"><span className="small muted">{t('Theme')}</span><ThemeChoice /></div>
       <button type="button" role="menuitem" className="name-out" onClick={onSignOut}>{t('Sign out')}</button>
     </div>}
   </div>
@@ -323,6 +325,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
       <header className="wtop">
         <Wordmark href={`${home}`} />
         <div className="spacer" />
+        <ThemeToggle />
         <Bell role={me.role} />
         <NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={false} onSignOut={signOut}
           links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
@@ -352,6 +355,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
           <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
+        <ThemeToggle />
         <LangSwitch className="on-dark topbar-lang" />
         <Bell role={me.role} />
         <a className="avatar" href="/account" aria-label={t('Your account')}>{initials}</a>
@@ -378,6 +382,7 @@ function GuestHeader({ path, menu, setMenu }: { path: string; menu: boolean; set
         <a href="/sign-in" className="nav-signout" onClick={rememberPlace}>{t("Sign in")}</a></nav>
       <div className="spacer" />
       <div className="guest-actions">
+        <ThemeToggle />
         <LangSwitch />
         <a className="signin" href="/sign-in" onClick={rememberPlace}>{t("Sign in")}</a>
         <a className="btn" href="/request-access">{t("Request access")}</a>

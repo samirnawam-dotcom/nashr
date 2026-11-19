@@ -34,7 +34,7 @@
 .doc { max-width: 820px; background: #fff; padding: 48px; }
 .doc table { width: 100%; border-collapse: collapse; margin: 24px 0; } .doc th, .doc td { text-align: left; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .doc .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
-@media print { .topbar, .no-print { display: none !important; } main { padding: 0; } .doc { border: 0; padding: 0; } body { background: #fff; } }
+@media print { .topbar, .no-print { display: none !important; } main { padding: 0; } .doc { border: 0; padding: 0; } body { background: var(--surface-raised); } }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .table td.num, .table td.r.num { white-space: nowrap; }
 .section > p { margin: 0 0 12px; }
@@ -49,7 +49,7 @@ main.booking { max-width: 1180px; }
 .tracker li:first-child::before { display: none; }
 .tracker li.done::before, .tracker li.now::before { background: var(--teal); }
 .tracker-dot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--line); background: var(--surface); font: 600 13px var(--display); position: relative; }
-.tracker li.done .tracker-dot { background: var(--teal); border-color: var(--teal); color: #fff; }
+.tracker li.done .tracker-dot { background: var(--teal); border-color: var(--teal); color: var(--on-action); }
 .tracker li.now .tracker-dot { border-color: var(--signal); color: var(--signal-ink); box-shadow: 0 0 0 4px var(--signal-1); }
 .tracker li.done b, .tracker li.now b { color: var(--ink); }
 .tracker.stopped { opacity: .6; }

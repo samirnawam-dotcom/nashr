@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { isAr, t } from '../i18n'
 import { tm } from '../i18n-server'
+import { useTheme } from '../theme'
 
 /*
  * Paying for a booking. With Stripe connected (its publishable key comes from /api/config), the card is typed into Stripe's own
@@ -30,11 +31,19 @@ function loadStripe(key: string) {
 const TEST_CARDS = [['pm_card_4242', t('Visa •••• 4242')], ['pm_card_3155', t('Visa •••• 3155 (bank asks to confirm)')], ['pm_card_0002', t('Visa •••• 0002 (declined)')]]
 type PayResult = { status: 'succeeded' | 'requires_action' | 'failed'; failure?: string; clientSecret?: string }
 
+/** Stripe draws the card field in its own frame, so it gets the theme's colours by value (text, subtle text, danger). */
+function cardStyle(font: string) {
+  const v = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim()
+  return { base: { fontSize: '16px', color: v('--text'), fontFamily: font, '::placeholder': { color: v('--text-subtle') } }, invalid: { color: v('--danger') } }
+}
+
 export function CardPay({ dealId, label, onDone }: { dealId: string; label: string; onDone: () => Promise<unknown> | void }) {
   const [key, setKey] = useState<string | null | undefined>(undefined)
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [note, setNote] = useState(''), [ready, setReady] = useState(false), [complete, setComplete] = useState(false)
   const [testCard, setTestCard] = useState(TEST_CARDS[0][0])
   const box = useRef<HTMLDivElement>(null), stripe = useRef<StripeJs | null>(null), card = useRef<any>(null)
+  const theme = useTheme()
+  useEffect(() => { card.current?.update({ style: cardStyle(getComputedStyle(document.body).fontFamily) }) }, [theme]) // switched mid-payment
   useEffect(() => { publishableKey().then(setKey) }, [])
   useEffect(() => {
     if (!key || !box.current) return
@@ -44,7 +53,7 @@ export function CardPay({ dealId, label, onDone }: { dealId: string; label: stri
       stripe.current = s
       const font = getComputedStyle(document.body).fontFamily
       card.current = s.elements({ locale: isAr ? 'ar' : 'en' }).create('card', { hidePostalCode: true,
-        style: { base: { fontSize: '16px', color: '#0f2322', fontFamily: font, '::placeholder': { color: '#6b7a78' } }, invalid: { color: '#b0281c' } } })
+        style: cardStyle(font) })
       card.current.mount(box.current)
       card.current.on('change', (e: any) => { setComplete(!!e.complete); setError(e.error?.message ?? '') })
       setReady(true)

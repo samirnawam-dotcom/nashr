@@ -38,17 +38,17 @@ h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.2; }
 .menu-btn { display: none; }
 .nav-signout { display: none; }
 .spacer { flex: 1; }
-.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--signal); color: var(--studio); display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--signal); color: var(--on-action); display: grid; place-items: center; font-weight: 600; font-size: 13px; }
 main { padding: 32px; max-width: 1440px; margin: 0 auto; }
 
 /* Controls */
 .btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 8px 14px; color: var(--ink); }
 .btn:hover { background: var(--bg); }
-.btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: var(--on-action); }
 .btn.primary:disabled, .btn:disabled { opacity: .5; cursor: default; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
 .seg button { border: 0; background: none; padding: 7px 14px; color: var(--slate); }
-.seg button.on { background: var(--ink); color: #fff; }
+.seg button.on { background: var(--ink); color: var(--on-action); }
 .field { display: grid; gap: 6px; }
 .field label { font-size: 13px; color: var(--slate); }
 .field input, .field select, .field textarea { border: 1px solid var(--line); border-radius: var(--radius); padding: 9px 12px; background: var(--surface); }
@@ -77,7 +77,7 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 
 /* "On air": the one bright signal. Live bidding, closing soon, you lead. */
 .on-air { display: inline-flex; align-items: center; gap: 6px; color: var(--signal-ink); background: var(--signal-1); border-radius: 4px; padding: 2px 10px 2px 8px; font-size: 13px; font-weight: 600; }
-.on-air::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px rgba(11, 11, 12, .25); }
+.on-air::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 25%, transparent); }
 
 /* Sign-in and access pages: the studio hero on the left, the form on the right */
 .auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr); background: var(--surface); }
@@ -129,7 +129,7 @@ h1 { font-size: 30px; letter-spacing: -.015em; }
 .signin-prompt.compact { padding: 10px 12px; }
 .guest-actions { display: flex; gap: 10px; align-items: center; }
 .guest-actions a.signin { color: var(--on-studio); text-decoration: none; font-weight: 400; }
-.guest-actions .btn.signal { background: var(--signal); border-color: var(--signal); color: var(--studio); font-weight: 600; }
+.guest-actions .btn.signal { background: var(--signal); border-color: var(--signal); color: var(--on-action); font-weight: 600; }
 .guest-actions .btn.signal:hover { background: #f0b53a; }
 @media (max-width: 900px) { .guest-actions a.signin { display: none; } .guest-actions .btn.signal { padding: 7px 12px; } }
 .signin-prompt .btn { white-space: nowrap; }

@@ -1885,4 +1885,10 @@ export const AR_FLOW: Record<string, string> = {
   "{user} was removed from your team.": "أُزيل {user} من فريقك.",
   "Upload your tax invoice for order {order}.": "ارفع فاتورتك الضريبية للطلب {order}.",
   "This booking was refunded. Upload a credit note for invoice {invoice}.": "استُرد مبلغ هذا الحجز. ارفع إشعارًا دائنًا للفاتورة {invoice}.",
+  "Theme": "المظهر",
+  "Light": "فاتح",
+  "Dark": "داكن",
+  "Switch to the dark theme": "التبديل إلى المظهر الداكن",
+  "Switch to the light theme": "التبديل إلى المظهر الفاتح",
+  "Light, dark, or the same as your phone or computer. Kept in this browser.": "فاتح أو داكن، أو مثل هاتفك أو حاسوبك. يُحفظ في هذا المتصفح.",
 }

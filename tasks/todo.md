@@ -264,6 +264,14 @@ Decisions made while building (flag to owner if they disagree):
       H1 32/38, website hero 64 and section titles 48, website side padding 32/20, buttons 40 px, inputs with a black focus
       border and soft ring, links underlined on hover, corners 4/6/10/12 only, palette colours only, one black button per
       screen, black toast at the bottom centre for 3 seconds, the guide's dark-theme variables.
-- Still open: the dark theme has its variables but no switch and older pages still hard-code light colours; the demand
+- Still open: the demand
       calendar in the guide is week columns with cheap/normal/busy/peak/sold shading, while the owner's round 2 document asked
       for Day/Week/Month rows with prices, which is what we have; the PDF fonts (above).
+- [x] Dark theme with a switch (19 Nov 2026): Light, Dark or Device (follows the phone or computer), kept in this browser.
+      Switch: moon/sun button in the headers and sign-in page, Light/Dark/Device in the account menu and on the account page
+      (on phones, signed-in people use the account page). /theme-init.js sets it before the first paint (no white flash; a
+      file because the security policy blocks inline scripts). Colours moved onto the guide's tokens; the always-black bands
+      (photos, Athena, footer, sign-in panel) stay black; the media plan and payout statement stay ink on paper, as does printing.
+      The logo switches to the reversed file in dark. Stripe's card field takes the theme's colours. Checked: text contrast
+      at least 4.5:1 (3:1 for large text) on 31 pages in light and dark, English and Arabic; screenshots of drawers and menus.
+- [x] Production security policy (plain nginx path) now allows our own fonts (font-src 'self'); it only allowed Google's.

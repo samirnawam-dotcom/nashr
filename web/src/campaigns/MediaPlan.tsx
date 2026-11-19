@@ -41,7 +41,7 @@ export function MediaPlanPage({ id }: { id: string }) {
 
       <article className="plan-sheet">
         <header className="plan-head">
-          <div><span className="plan-mark"><LogoImage height={24} /></span><p className="plan-kicker">{t("Media plan")}</p>
+          <div><span className="plan-mark"><LogoImage tone="primary" height={24} /></span><p className="plan-kicker">{t("Media plan")}</p>
             <h1>{c.name}</h1>
             <p className="plan-meta">{[company, c.objective, c.startDate && c.endDate && `${dayLabel(c.startDate)} – ${dayLabel(c.endDate)}`].filter(Boolean).join(' · ')}</p></div>
           <p className="plan-date">{t('Prepared {date}', { date: today() })}</p>

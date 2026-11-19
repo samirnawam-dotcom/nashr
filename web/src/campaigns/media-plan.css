@@ -17,13 +17,13 @@
 .plan-kpis span { font-size: 13px; color: #55534f; }
 .plan-kpis b { font: 600 19px var(--body, "Source Sans 3", sans-serif); letter-spacing: -.01em; }
 .plan-sheet h2 { font: 600 15px var(--display); margin: 0 0 10px; }
-.mix-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; background: #fff; }
+.mix-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; background: var(--surface-raised); }
 .mix-bar i { display: block; height: 100%; }
 .plan-mix ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 10px 0 0; padding: 0; }
 .plan-mix li { display: inline-flex; align-items: center; gap: 6px; }
 .plan-mix li i { width: 10px; height: 10px; border-radius: 3px; }
 .plan-mix li span { color: #55534f; }
-.mix-radio { background: #0b0b0c; } .mix-tv { background: #2f8f86; } .mix-print { background: #0b0b0c; } .mix-digital { background: #7aa8a2; } .mix-podcast { background: #0b0b0c; }
+.mix-radio { background: var(--action); } .mix-tv { background: #2f8f86; } .mix-print { background: #0b0b0c; } .mix-digital { background: #7aa8a2; } .mix-podcast { background: var(--action); }
 .plan-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .plan-table th { text-align: left; font-weight: 400; font-size: 13px; color: #55534f; border-bottom: 1px solid #0b0b0c; padding: 6px 8px 6px 0; }
 .plan-table td { border-bottom: 1px solid #e3e9e7; padding: 8px 8px 8px 0; vertical-align: top; }
@@ -40,7 +40,7 @@
 }
 @page { size: A4; margin: 14mm; }
 @media print {
-  body { background: #fff !important; }
+  body { background: var(--surface-raised) !important; }
   .no-print, .side, .topbar, .tabs, .bottom-tabs, nav, .viewbar { display: none !important; }
   .shell { display: block !important; }
   .shell-main, main, .plan-page { padding: 0 !important; margin: 0 !important; max-width: none !important; }

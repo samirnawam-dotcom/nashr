@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from './api'
 import { PAGES, useMeta } from './seo'
+import { ThemeToggle } from './ThemeSwitch'
 import { LangSwitch, t } from './i18n'
 import { Logo } from './Logo'
 
@@ -21,7 +22,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           {[t("Bid"), t("Accepted"), t("Paid, held"), t("On air"), t("Released")].map((x, i) => <li key={x} className={i < 2 ? 'done' : i === 2 ? 'now' : ''}>{x}</li>)}</ol>
       </section>
       <section className="auth-form">
-        <header className="auth-top"><a href="/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 6l-6 6 6 6" /></svg>{t('Back to home')}</a><LangSwitch className="auth-lang" /></header>
+        <header className="auth-top"><a href="/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 6l-6 6 6 6" /></svg>{t('Back to home')}</a><span className="auth-top-r"><ThemeToggle /><LangSwitch className="auth-lang" /></span></header>
         {children}
         <footer className="auth-foot"><a href="/calendar">{t("Browse the calendar")}</a><nav aria-label={t("Legal")}><a href="/terms">{t("Terms")}</a><a href="/privacy">{t("Privacy")}</a><a href="/refunds">{t("Refunds")}</a></nav></footer>
       </section>

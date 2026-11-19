@@ -21,17 +21,17 @@
 
   /* the older token names every stylesheet already uses, mapped onto the guide */
   --ink: var(--text); --slate: var(--text-muted); --faint: var(--text-subtle);
-  --bg: var(--surface); --surface-2: var(--surface-muted); --surface-3: #E4E3E0;
+  --bg: var(--surface); --surface-2: var(--surface-muted); --surface-3: var(--line);
   --line-2: var(--line-strong); --line-3: #9C9A96;
   --teal: var(--action); --teal-hover: var(--action-hover); --teal-press: var(--action);
-  --teal-1: var(--surface-muted); --teal-2: #E4E3E0; --teal-3: var(--line-strong); --teal-4: #9C9A96;
+  --teal-1: var(--surface-muted); --teal-2: var(--line); --teal-3: var(--line-strong); --teal-4: #9C9A96;
   --signal: var(--action); --signal-ink: var(--text); --signal-1: var(--surface-muted);
-  --studio: var(--text); --studio-2: #1C1C1F; --night: var(--text); --night-2: #151517; --night-3: #1C1C1F; --night-line: rgba(255, 255, 255, .12);
+  --studio: #0B0B0C; --studio-2: #1C1C1F; --night: #0B0B0C; --night-2: #151517; --night-3: #1C1C1F; --night-line: rgba(255, 255, 255, .12);
   --on-studio: #FFFFFF; --on-studio-dim: #B9B7B2;
   --green: var(--success); --green-1: var(--success-soft); --amber: var(--warning); --amber-1: var(--warning-soft); --red: var(--danger); --red-1: var(--danger-soft);
   --display: var(--font-sans); --body: var(--font-sans); --arabic: var(--font-arabic); --kufi: var(--font-arabic);
   --shadow-1: none; --shadow-2: none; --shadow-3: var(--shadow-pop);
-  --ring: 0 0 0 3px rgba(11, 11, 12, .12);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--text) 14%, transparent);
   --radius: var(--radius-md); --radius-lg: 10px; --radius-xl: 12px;
   --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--text);
 }
@@ -67,7 +67,7 @@ html .btn, html a.btn, html select.btn, html label.btn {
   min-height: 38px; padding: 0 16px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: transparent; color: var(--text);
   font: 600 14px/20px var(--display); letter-spacing: 0; box-shadow: none; text-decoration: none; transform: none; }
 html .btn:hover, html a.btn:hover { background: var(--surface-muted); border-color: var(--line-strong); color: var(--text); text-decoration: none; }
-html .btn:active { background: #E4E3E0; transform: none; }
+html .btn:active { background: var(--line); transform: none; }
 html :is(.btn.primary, a.btn.primary, .btn.signal, a.btn.signal) { background: var(--action); border-color: var(--action); color: var(--on-action); box-shadow: none; }
 html :is(.btn.primary, a.btn.primary, .btn.signal, a.btn.signal):hover { background: var(--action-hover); border-color: var(--action-hover); color: var(--on-action); }
 html .btn.danger { color: var(--danger); border-color: var(--line-strong); }
@@ -225,18 +225,18 @@ html .tabbar a.active::before { background: var(--text); }
 html .kpis > div, html .pt-kpi { padding: 16px 20px; }
 html :is(.kpis dd, .pt-kpi .v, .hero-value) { font-family: var(--display); font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 html :is(.pt-kpi.hero, .pt-kpis .hero, .kpi-hero) { background: var(--text); color: var(--on-action); border-color: var(--text); }
-html :is(.pt-kpi.hero, .pt-kpis .hero, .kpi-hero) :is(span, dt, .muted, small) { color: #B9B7B2; }
+html :is(.pt-kpi.hero, .pt-kpis .hero, .kpi-hero) :is(span, dt, .muted, small) { color: color-mix(in srgb, var(--on-action) 72%, var(--text)); }
 
 /* ---- empty states and loading: calm, no decoration ---- */
 html .empty { color: var(--text-muted); }
-::selection { background: #E4E3E0; color: var(--text); }
+::selection { background: var(--line-strong); color: var(--text); }
 
 /* Latin names and figures inside Arabic pages stay in Source Sans 3 */
 :root[lang="ar"] :is(.logo .latin, [lang="en"], .num) { font-family: var(--font-sans); }
 
 /* media types are told apart by their outline icon and name, not by colour */
-:root { --ch-radio: #55534F; --ch-tv: #55534F; --ch-print: #55534F; --ch-digital: #55534F; --ch-podcast: #55534F;
-  --ch-newspaper: #55534F; --ch-magazine: #55534F; --ch-newsletter: #55534F; --ch-social: #55534F; }
+:root { --ch-radio: var(--text-muted); --ch-tv: var(--text-muted); --ch-print: var(--text-muted); --ch-digital: var(--text-muted); --ch-podcast: var(--text-muted);
+  --ch-newspaper: var(--text-muted); --ch-magazine: var(--text-muted); --ch-newsletter: var(--text-muted); --ch-social: var(--text-muted); }
 /* an outbid line in My bids: the word in danger red and a thin bar, no tinted fill */
 html .mb-line.outbid { background: none; }
 /* phones: the page's own call to action stands in for the header's, so the header fits in one row */
@@ -274,8 +274,30 @@ html :is(.avatar, .logo-img.initials, .topbar .nav, .topbar .nav a, .btn) { box-
 /* the guide's dark theme variables (switch with data-theme="dark" on the page) */
 [data-theme="dark"] { --surface: #0B0B0C; --surface-raised: #151517; --surface-muted: #1C1C1F; --text: #FFFFFF; --text-muted: #B9B7B2; --text-subtle: #8C8A85;
   --line: #2A2A2D; --line-strong: #3D3C3A; --action: #FFFFFF; --action-hover: #E4E3E0; --on-action: #0B0B0C; --selection: #1F1F22;
-  --success: #3DDC97; --success-soft: #10291C; --warning: #F2B45A; --warning-soft: #2A2010; --danger: #F08A8F; --danger-soft: #2C1214; }
+  --success: #3DDC97; --success-soft: #10291C; --warning: #F2B45A; --warning-soft: #2A2010; --danger: #F08A8F; --danger-soft: #2C1214;
+  --night: #151517; --studio: #151517; --night-2: #1C1C1F; --shadow-pop: 0 16px 40px rgba(0, 0, 0, .55); color-scheme: dark; }
+/* documents that print (media plan, payout statement) stay ink on paper in both themes, and so does everything when printing */
+:is(.plan-sheet, .doc), [data-theme="dark"] :is(.plan-sheet, .doc) { --surface: #FFFFFF; --surface-raised: #FFFFFF; --surface-muted: #F4F4F2; --text: #0B0B0C;
+  --text-muted: #55534F; --text-subtle: #6E6C68; --line: #E4E3E0; --line-strong: #CFCDC8; --action: #0B0B0C; --action-hover: #2A2A2E; --on-action: #FFFFFF;
+  --success: #12703F; --success-soft: #E8F3EC; --warning: #9A5300; --warning-soft: #FFF2DC; --danger: #B4232C; --danger-soft: #FDECEC; color-scheme: light; color: var(--text); }
+@media print { [data-theme="dark"] { --surface: #FFFFFF; --surface-raised: #FFFFFF; --surface-muted: #F4F4F2; --text: #0B0B0C; --text-muted: #55534F;
+  --text-subtle: #6E6C68; --line: #E4E3E0; --line-strong: #CFCDC8; --action: #0B0B0C; --on-action: #FFFFFF; color-scheme: light; } }
+/* dark theme: body and the home page's own tokens follow it */
+html body { background: var(--surface); color: var(--text); }
+[data-theme="dark"] .lp { --brand: var(--action); --brand-press: var(--action-hover); --paper: var(--surface); --tint: var(--surface-muted); --line: #2A2A2D; --slate: var(--text-muted); --ink: var(--text); --lilac: #3D3C3A; }
 /* initials in avatars at 13 px; the alert count is a badge at 11.5 px */
 html .avatar { font-size: 13px; }
 html :is(.bell .n, .bell-n, .icon-btn .n) { font-size: 11.5px; }
 html select.btn:not(.sm):not(.icon) { padding-inline: 12px 34px; }
+/* the light/dark switch: a quiet 36 px outline icon button */
+html .theme-toggle { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--text); cursor: pointer; flex: none; }
+html .theme-toggle:hover { background: var(--surface-muted); }
+html .theme-choice { display: inline-flex; }
+html .auth-top-r { display: inline-flex; align-items: center; gap: 4px; }
+/* the home page's sample week: the booked cell inverts with the theme */
+html .lp .board-pill.p-won { background: var(--action); color: var(--on-action); }
+html .lp .board-pill.p-won small { color: color-mix(in srgb, var(--on-action) 80%, transparent); }
+html .name-pop-lang { gap: 12px; }
+html .name-pop-lang .theme-choice button { padding: 4px 10px; min-height: 28px; font-size: 13px; }
+/* phones: the signed-in header keeps the bell and the account; the theme is on the account page there */
+@media (max-width: 480px) { html .topbar > .theme-toggle { display: none; } }

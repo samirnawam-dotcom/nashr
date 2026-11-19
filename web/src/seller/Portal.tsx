@@ -62,12 +62,12 @@ export function Trend({ data, label }: { data: { date: string; value: number }[]
 
 /** A share as a ring (earnings by outlet, budget by media type), each part listed with its share and opening its detail. */
 export function Ring({ parts, total, caption, empty }: { parts: { label: string; value: number; href?: string }[]; total: number; caption?: string; empty?: string }) {
-  const R = 52, C = 2 * Math.PI * R, shades = ['#0B0B0C', '#55534F', '#9C9A96', '#CFCDC8', '#E4E3E0']
+  const R = 52, C = 2 * Math.PI * R, shades = ['var(--text)', 'var(--text-muted)', '#9C9A96', 'var(--line-strong)', 'var(--line)'] // ink to mist, following the theme
   let at = 0
   return <div className="pt-ring">
     <svg viewBox="0 0 140 140" role="img" aria-label={caption ?? t('Net earnings by outlet')}>
       <circle cx="70" cy="70" r={R} className="pt-ring-track" />
-      {total > 0 && parts.map((p, i) => { const len = p.value / total * C, el = <circle key={p.label} cx="70" cy="70" r={R} fill="none" stroke={shades[i % shades.length]} strokeWidth="18"
+      {total > 0 && parts.map((p, i) => { const len = p.value / total * C, el = <circle key={p.label} cx="70" cy="70" r={R} fill="none" style={{ stroke: shades[i % shades.length] }} strokeWidth="18"
         strokeDasharray={`${Math.max(0, len - 2)} ${C}`} strokeDashoffset={-at} transform="rotate(-90 70 70)" />; at += len; return el })}
       <text x="70" y="66" textAnchor="middle" className="pt-ring-v">{short(total)}</text><text x="70" y="84" textAnchor="middle" className="pt-ring-l">{caption ?? t('Net earnings')}</text>
     </svg>

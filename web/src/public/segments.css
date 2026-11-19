@@ -109,7 +109,7 @@ main.seg-page.aud-index { max-width: 1200px; padding-top: 0; }
 .aud-hero .seg-steps span { color: #b9b7b2; }
 .aud-index .seg-filter { gap: 8px; margin-bottom: 4px; }
 .aud-index button.aud-chip { padding: 8px 14px; font-size: 13.5px; font-weight: 400; }
-.aud-index button.aud-chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.aud-index button.aud-chip.on { background: var(--ink); border-color: var(--ink); color: var(--on-action); }
 .aud-index .seg-family { margin-top: 36px; }
 .aud-index .seg-family-h { display: grid; gap: 4px; margin-bottom: 14px; }
 .aud-index .seg-family-h h2 { font: 600 24px/1.15 var(--display); letter-spacing: -.025em; }
@@ -120,7 +120,7 @@ main.seg-page.aud-index { max-width: 1200px; padding-top: 0; }
 .aud-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .aud-top b { font: 600 17px/1.25 var(--display); letter-spacing: -.012em; }
 .aud-go { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--surface-3); color: var(--slate); font-style: normal; transition: background-color .15s, color .15s; }
-.aud-card:hover .aud-go { background: var(--teal); color: #fff; }
+.aud-card:hover .aud-go { background: var(--teal); color: var(--on-action); }
 .aud-index .aud-blurb { font-size: 14px; line-height: 1.5; }
 .aud-index .aud-live { gap: 8px; margin-top: 10px; padding-top: 14px; }
 .aud-count { display: flex; align-items: baseline; gap: 8px; }

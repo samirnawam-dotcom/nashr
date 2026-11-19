@@ -18,7 +18,7 @@
 .msg.mine .msg-who { justify-self: end; }
 .msg-body { margin: 0; padding: 9px 13px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; font-size: 14.5px; }
 .msg.theirs .msg-body { background: var(--surface); border: 1px solid var(--line); border-start-start-radius: 4px; }
-.msg.mine .msg-body { background: var(--teal); color: #fff; border-start-end-radius: 4px; }
+.msg.mine .msg-body { background: var(--teal); color: var(--on-action); border-start-end-radius: 4px; }
 .msg.cont.theirs .msg-body { border-start-start-radius: 14px; }
 .msg.cont.mine .msg-body { border-start-end-radius: 14px; }
 .msg.flagged .msg-body { box-shadow: 0 0 0 2px var(--signal); }
@@ -60,7 +60,7 @@
 .conv-what, .conv-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conv-last { color: var(--slate); }
 .conv.unread .conv-with, .conv.unread .conv-last { color: var(--ink); font-weight: 600; }
-.conv-badge { align-self: center; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 4px; background: var(--teal); color: #fff; font-size: 13px; font-weight: 600; display: grid; place-items: center; }
+.conv-badge { align-self: center; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 4px; background: var(--teal); color: var(--on-action); font-size: 13px; font-weight: 600; display: grid; place-items: center; }
 .conv-open { display: grid; gap: 12px; min-width: 0; }
 .conv-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .conv-bar .small { flex: 1; min-width: 0; }
@@ -79,7 +79,7 @@
   .msg { max-width: 88%; }
 }
 /* The unread count next to "Messages" in the navigation */
-.nav-badge { margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--signal); color: #ffffff; font-size: 13px; font-weight: 600; display: inline-grid; place-items: center; }
+.nav-badge { margin-inline-start: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--signal); color: var(--on-action); font-size: 13px; font-weight: 600; display: inline-grid; place-items: center; }
 .tabbar .nav-badge { position: absolute; top: 4px; margin: 0; inset-inline-start: calc(50% + 6px); min-width: 16px; height: 16px; font-size: 13px; padding: 0 4px; }
 .tabbar a { position: relative; }
 .staff-thread { max-height: 560px; border-radius: var(--radius); }
@@ -93,7 +93,7 @@
 .messages-head.sub h2 { margin: 0 0 4px; font-size: 18px; }
 .todo { padding: 18px 20px; }
 .todo h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 18px; }
-.todo-n { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--teal); color: #fff; font-size: 12.5px; display: inline-grid; place-items: center; }
+.todo-n { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--teal); color: var(--on-action); font-size: 12.5px; display: inline-grid; place-items: center; }
 .todo ul { list-style: none; margin: 0; padding: 0; }
 .todo li + li { border-top: 1px solid var(--line); }
 .todo-row { display: flex; align-items: center; gap: 14px; padding: 12px 4px; color: inherit; text-decoration: none; }

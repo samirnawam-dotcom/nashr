@@ -37,7 +37,7 @@
 .biz-edit { font-size: 13px; font-weight: 600; color: var(--teal); }
 .biz-back { justify-self: start; }
 .biz-tabs { justify-self: start; }
-.biz-tabs button.on { background: var(--teal); color: #fff; }
+.biz-tabs button.on { background: var(--teal); color: var(--on-action); }
 .biz-save { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 .biz-images { display: grid; gap: 16px; }
 .biz-ok { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }

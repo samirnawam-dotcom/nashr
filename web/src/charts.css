@@ -47,10 +47,10 @@ a.stat:hover { border-color: var(--teal-3); }
 .chart .tick { fill: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; }
 .col path { fill: var(--mark-context); transition: fill .12s; }
 .col.now path { fill: var(--mark); }
-.col.hot path { fill: var(--teal-4); } .col.now.hot path { fill: var(--studio-2); }
+.col.hot path { fill: var(--teal-4); } .col.now.hot path { fill: var(--action-hover); }
 .col .hit { fill: transparent; }
 .col:focus { outline: none; } .col:focus-visible path { stroke: var(--ink); stroke-width: 2; }
-.tip { position: absolute; top: 0; transform: translate(-50%, -8px); background: var(--ink); color: #fff; border-radius: 8px; padding: 6px 10px; display: grid;
+.tip { position: absolute; top: 0; transform: translate(-50%, -8px); background: var(--ink); color: var(--on-action); border-radius: 8px; padding: 6px 10px; display: grid;
   font-size: 13px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(23, 33, 43, .18); }
 .tip b { font: 600 14px var(--display); }
 .tip span { color: #d6d4cf; }

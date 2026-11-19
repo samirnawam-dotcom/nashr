@@ -35,7 +35,7 @@ export function StatementPage({ month }: { month: string }) {
       </div>
       {!s ? <p className={error ? 'error' : 'muted'}>{error || t('Loading…')}</p> : <article className="plan-sheet">
         <header className="plan-head">
-          <div><span className="plan-mark"><LogoImage height={24} /></span><p className="plan-kicker">{t('Payout statement')}</p>
+          <div><span className="plan-mark"><LogoImage tone="primary" height={24} /></span><p className="plan-kicker">{t('Payout statement')}</p>
             <h1>{monthName(s.month)}</h1>
             <p className="plan-meta">{s.company.name}{s.company.trn ? ` · ${t('TRN {trn}', { trn: s.company.trn })}` : ''}</p></div>
           <p className="plan-date">{t('From {name}', { name: s.issuer })}</p>

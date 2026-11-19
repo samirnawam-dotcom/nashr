@@ -5,9 +5,9 @@
 .rq-groups { display: flex; flex-wrap: wrap; gap: 6px; padding: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; justify-self: start; }
 .rq-groups button { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 8px 14px; border-radius: 10px; font:  14px var(--body); color: var(--slate); cursor: pointer; }
 .rq-groups button:hover { background: var(--surface-2); color: var(--ink); }
-.rq-groups button.on { background: var(--teal); color: #fff; font-weight: 600; }
+.rq-groups button.on { background: var(--teal); color: var(--on-action); font-weight: 600; }
 .rq-n { font-size: 13px; padding: 1px 7px; border-radius: 4px; background: var(--surface-3); color: var(--slate); }
-.rq-groups button.on .rq-n { background: rgba(255, 255, 255, .22); color: #fff; }
+.rq-groups button.on .rq-n { background: color-mix(in srgb, var(--on-action) 22%, transparent); color: var(--on-action); }
 
 .rq-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
 .rq-list { list-style: none; margin: 0; padding: 6px; display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-1); }
