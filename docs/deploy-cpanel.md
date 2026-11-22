@@ -66,7 +66,9 @@ cPanel → **Cron Jobs** → Common Settings **Once Per Minute** (or the shortes
 curl -fsS -o /dev/null https://nashr.pro/api/health
 ```
 
-Every job is safe to run late, so a longer interval (every 5 minutes) only means auctions can close up to that much late.
+Namecheap allows every 5 minutes at most (`*/5`). Results are exact regardless: bids and bookings are refused from the closing
+second. The jobs only announce results, and they also run on any visit (at most every 30 seconds). For announcements within a
+minute at quiet times too, add a free outside pinger: cron-job.org, every minute, URL `https://nashr.pro/api/health`.
 
 ### 6. HTTPS
 

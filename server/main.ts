@@ -65,6 +65,9 @@ if (p instanceof FakeProvider) {
   if (process.env.NASHR_DEMO === '1') p.sharedCash = cash // several copies of the app share one set of books (see FakeProvider)
 }
 const app = buildApp({ provider: p, log: process.env.LOG_REQUESTS === '1' || undefined, stripe: sk ? { publishableKey: pk, webhookSecret: whsec } : undefined })
+// every response may run the background jobs if they are due (set below, once the jobs exist; see "Shared hosting stops the app")
+let runDueJobs = () => {}
+app.addHook('onResponse', async () => { runDueJobs() })
 // cPanel shared hosting runs the app under Phusion Passenger, which owns the port: it is handed the server through one listen('passenger')
 // (Passenger's own Node.js instructions); everywhere else the app listens on PORT.
 const passenger = (globalThis as any).PhusionPassenger
@@ -86,6 +89,15 @@ const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(
   ['watch', () => watch({ at: new Date(), reconciles })]] as const
 for (const [name, job] of jobs) run(name, job) // once now, so /api/health is green from the start
 const timers = jobs.map(([name, job]) => setInterval(() => run(name, job), 60_000))
+// Shared hosting stops the app between visits and runs cron no more than every 5 minutes, so any visit also runs the jobs when they
+// have not run for 30 seconds: auctions are announced within half a minute of closing while anyone uses the site. (Results never
+// depended on this: bids, buy-now and bookings are refused from the closing second, whenever the jobs run.)
+let lastRun = Date.now(), running = false
+runDueJobs = () => {
+  if (running || Date.now() - lastRun < 30_000) return
+  running = true; lastRun = Date.now()
+  Promise.all(jobs.map(([name, job]) => run(name, job))).finally(() => { running = false })
+}
 console.log(`Nashr API on :${process.env.PORT ?? 3000}`)
 if (process.env.STAFF_TWO_STEP === 'off') console.warn('WARNING: STAFF_TWO_STEP=off. Admin and founder accounts sign in with a password only. For testing; remove it before launch.')
 
