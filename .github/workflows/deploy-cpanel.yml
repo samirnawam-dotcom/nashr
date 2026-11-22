@@ -3,10 +3,9 @@
 # Then: build the package, copy it to ~/nashr over SSH (data, uploads, logs and demo-credentials.txt are never touched),
 # restart the app, and check /api/health. Set-up (one-off): docs/deploy-cpanel.md, "Automatic deploys".
 #
-# Repository secrets used:
-#   CPANEL_SSH_KEY   private key whose public half is authorised in cPanel > SSH Access
-#   CPANEL_HOST      the server, e.g. premium82.web-hosting.com (not nashr.pro: Cloudflare does not pass SSH)
-#   CPANEL_USER      the cPanel user, e.g. nashbjis
+# Repository secret: NASHR_KEY, the private key whose public half is authorised in cPanel > SSH Access
+# (CPANEL_SSH_KEY works too). The server and the cPanel user are not secret, so they are set below in env;
+# secrets CPANEL_HOST / CPANEL_USER override them. Not nashr.pro as the host: Cloudflare does not pass SSH.
 name: Deploy to nashr.pro
 
 on:
@@ -42,6 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SSH_PORT: '21098' # Namecheap shared hosting's SSH port
+      HOST: ${{ secrets.CPANEL_HOST || 'premium82.web-hosting.com' }}
+      CP_USER: ${{ secrets.CPANEL_USER || 'nashbjis' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,31 +53,24 @@ jobs:
 
       - name: Set up SSH
         env:
-          KEY: ${{ secrets.CPANEL_SSH_KEY }}
-          HOST: ${{ secrets.CPANEL_HOST }}
+          KEY: ${{ secrets.NASHR_KEY || secrets.CPANEL_SSH_KEY }}
         run: |
-          test -n "$KEY" && test -n "$HOST" || { echo "Add the CPANEL_SSH_KEY, CPANEL_HOST and CPANEL_USER secrets (docs/deploy-cpanel.md)."; exit 1; }
+          test -n "$KEY" || { echo "Add the NASHR_KEY repository secret: the deploy key's private half (docs/deploy-cpanel.md)."; exit 1; }
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$KEY" > ~/.ssh/cpanel && chmod 600 ~/.ssh/cpanel
           ssh-keyscan -p "$SSH_PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Copy to the server
-        env:
-          HOST: ${{ secrets.CPANEL_HOST }}
-          USER: ${{ secrets.CPANEL_USER }}
         # --delete removes files of the old build (stale assets); the excludes keep everything the server owns.
         run: |
           rsync -az --delete \
             --exclude demo-credentials.txt --exclude 'stderr.log' --exclude 'tmp/' --exclude 'public/' \
             --exclude 'node_modules/' --exclude '.htaccess' \
-            -e "ssh -i ~/.ssh/cpanel -p $SSH_PORT" release/nashr/ "$USER@$HOST:nashr/"
+            -e "ssh -i ~/.ssh/cpanel -p $SSH_PORT" release/nashr/ "$CP_USER@$HOST:nashr/"
 
       - name: Restart the app
-        env:
-          HOST: ${{ secrets.CPANEL_HOST }}
-          USER: ${{ secrets.CPANEL_USER }}
         run: |
-          ssh -i ~/.ssh/cpanel -p "$SSH_PORT" "$USER@$HOST" \
+          ssh -i ~/.ssh/cpanel -p "$SSH_PORT" "$CP_USER@$HOST" \
             'cloudlinux-selector restart --json --interpreter nodejs --app-root nashr || { mkdir -p nashr/tmp && touch nashr/tmp/restart.txt; }'
 
       - name: Check the live site

@@ -120,10 +120,9 @@ One-off set-up:
    This makes two files: `nashr_deploy` (private, keep it secret) and `nashr_deploy.pub` (public).
 2. **Allow it on the server**: cPanel → SSH Access → Manage SSH Keys → Import Key. Name `nashr_deploy`, paste the contents of
    `nashr_deploy.pub` into the **Public Key** box only, Import. Back in Manage SSH Keys, click **Manage** next to it → **Authorize**.
-3. **Give it to GitHub**: the repository → Settings → Secrets and variables → Actions → New repository secret, three times:
-   - `CPANEL_SSH_KEY`: the whole contents of the private file `nashr_deploy` (from `-----BEGIN` to `END ...-----`)
-   - `CPANEL_HOST`: `premium82.web-hosting.com`
-   - `CPANEL_USER`: `nashbjis`
+3. **Give it to GitHub**: the repository → Settings → Secrets and variables → Actions → New repository secret named
+   `NASHR_KEY`, with the whole contents of the private file `nashr_deploy` (from `-----BEGIN` to `END ...-----`).
+   The server (`premium82.web-hosting.com`) and cPanel user (`nashbjis`) are set in the workflow itself.
 4. **Run it**: GitHub → Actions → "Deploy to nashr.pro" → Run workflow (or push any change). A green tick means it is live.
 
 The private key opens a shell on the hosting account, so keep it only in GitHub's secrets (and delete the local file after
