@@ -74,7 +74,7 @@ create table documents (
   unique (issuer_id, type, number)
 );
 create trigger documents_append_only before update or delete on documents
-  for each row execute function forbid_change();
+  for each row execute procedure forbid_change(); -- "procedure": the spelling every PostgreSQL version accepts (shared hosts run old ones)
 
 create table notifications (
   id bigserial primary key,

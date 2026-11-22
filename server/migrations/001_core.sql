@@ -3,6 +3,15 @@
 -- gen_random_uuid() is built into PostgreSQL 13 and later; pgcrypto only matters on older servers. A shared-hosting
 -- database user may not be allowed to add extensions, so a refusal is not an error here.
 do $$ begin create extension if not exists pgcrypto; exception when insufficient_privilege or feature_not_supported or undefined_file then null; end $$;
+-- Older servers without pgcrypto (cPanel's PostgreSQL 9.x/10, where a database user cannot add extensions): a stand-in with
+-- the same name and shape. The ids it makes are unique, not secret: nothing is unlocked by knowing an id (access is checked).
+do $$ begin
+  if to_regprocedure('gen_random_uuid()') is null then
+    execute $f$create function gen_random_uuid() returns uuid language sql volatile as $b$
+      select overlay(overlay(md5(random()::text || clock_timestamp()::text || random()::text) placing '4' from 13)
+        placing substr('89ab', 1 + floor(random() * 4)::int, 1) from 17)::uuid $b$ $f$;
+  end if;
+end $$;
 
 -- Append-only guard for audit and ledger tables.
 create function forbid_change() returns trigger language plpgsql as $$
@@ -42,7 +51,7 @@ create table audit_log (
   detail jsonb
 );
 create trigger audit_log_append_only before update or delete on audit_log
-  for each row execute function forbid_change();
+  for each row execute procedure forbid_change(); -- "procedure": the spelling every PostgreSQL version accepts (shared hosts run old ones)
 
 create table companies (
   id uuid primary key default gen_random_uuid(),
@@ -178,7 +187,7 @@ create table ledger_entries (
   ref text
 );
 create trigger ledger_append_only before update or delete on ledger_entries
-  for each row execute function forbid_change();
+  for each row execute procedure forbid_change(); -- "procedure": the spelling every PostgreSQL version accepts (shared hosts run old ones)
 
 -- Stripe (or other provider) webhook events, stored once.
 create table provider_events (

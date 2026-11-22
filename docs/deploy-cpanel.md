@@ -83,6 +83,12 @@ Open `https://nashr.pro/api/health`: `"ok":true`. Then the home page, and sign i
    `demo-credentials.txt` are not in the zip, so they stay.
 3. Setup Node.js App → **Restart**. New database changes are applied on start; the data is kept.
 
+## If it does not start
+
+Open `/home/nashbjis/nashr/stderr.log` in File Manager. The first line of each start reads `Database: PostgreSQL <version>`.
+Nashr's tables work on the old PostgreSQL that cPanel hosts run (no `execute function`, and a stand-in for
+`gen_random_uuid()` when the `pgcrypto` extension cannot be added).
+
 ## What differs from a VPS
 
 - **No nginx**: the app serves the website itself (`server/api/web.ts`), with the same page rules and security policy.

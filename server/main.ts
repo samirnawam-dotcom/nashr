@@ -52,6 +52,8 @@ async function firstDemoStart() {
   } finally { await c.query(`select pg_advisory_unlock(7310001)`).catch(() => {}); c.release() }
 }
 
+// the database version goes to the log first: shared hosts run old PostgreSQL, and this is the first thing to check when a start fails
+console.log(`Database: PostgreSQL ${(await pool.query('show server_version')).rows[0].server_version}`)
 await migrate()
 await firstDemoStart()
 const stopLive = shareLiveUpdates() // live updates reach pages on every copy of the API
