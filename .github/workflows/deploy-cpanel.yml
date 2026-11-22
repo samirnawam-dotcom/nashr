@@ -1,0 +1,95 @@
+# Auto-deploy to nashr.pro (Namecheap cPanel shared hosting) on every push to the working branch.
+# Tests first: if anything fails, nothing is deployed and the live site is untouched.
+# Then: build the package, copy it to ~/nashr over SSH (data, uploads, logs and demo-credentials.txt are never touched),
+# restart the app, and check /api/health. Set-up (one-off): docs/deploy-cpanel.md, "Automatic deploys".
+#
+# Repository secrets used:
+#   CPANEL_SSH_KEY   private key whose public half is authorised in cPanel > SSH Access
+#   CPANEL_HOST      the server, e.g. premium82.web-hosting.com (not nashr.pro: Cloudflare does not pass SSH)
+#   CPANEL_USER      the cPanel user, e.g. nashbjis
+name: Deploy to nashr.pro
+
+on:
+  push:
+    branches: [claude/zealous-wright-qlxrhi]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-nashr-pro
+  cancel-in-progress: false # never stop a deploy half-way; the next one waits
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: nashr, POSTGRES_PASSWORD: nashr, POSTGRES_DB: postgres }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U nashr" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://nashr:nashr@localhost:5432/nashr_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      SSH_PORT: '21098' # Namecheap shared hosting's SSH port
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - name: Build the package
+        run: VITE_SITE_URL=https://nashr.pro node scripts/build-cpanel.mjs
+
+      - name: Set up SSH
+        env:
+          KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          HOST: ${{ secrets.CPANEL_HOST }}
+        run: |
+          test -n "$KEY" && test -n "$HOST" || { echo "Add the CPANEL_SSH_KEY, CPANEL_HOST and CPANEL_USER secrets (docs/deploy-cpanel.md)."; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/cpanel && chmod 600 ~/.ssh/cpanel
+          ssh-keyscan -p "$SSH_PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy to the server
+        env:
+          HOST: ${{ secrets.CPANEL_HOST }}
+          USER: ${{ secrets.CPANEL_USER }}
+        # --delete removes files of the old build (stale assets); the excludes keep everything the server owns.
+        run: |
+          rsync -az --delete \
+            --exclude demo-credentials.txt --exclude 'stderr.log' --exclude 'tmp/' --exclude 'public/' \
+            --exclude 'node_modules/' --exclude '.htaccess' \
+            -e "ssh -i ~/.ssh/cpanel -p $SSH_PORT" release/nashr/ "$USER@$HOST:nashr/"
+
+      - name: Restart the app
+        env:
+          HOST: ${{ secrets.CPANEL_HOST }}
+          USER: ${{ secrets.CPANEL_USER }}
+        run: |
+          ssh -i ~/.ssh/cpanel -p "$SSH_PORT" "$USER@$HOST" \
+            'cloudlinux-selector restart --json --interpreter nodejs --app-root nashr || { mkdir -p nashr/tmp && touch nashr/tmp/restart.txt; }'
+
+      - name: Check the live site
+        run: |
+          for i in $(seq 1 18); do
+            body="$(curl -fsS https://nashr.pro/api/health || true)"
+            case "$body" in *'"ok":true'*) echo "Live: $body"; exit 0;; esac
+            sleep 10
+          done
+          echo "The site did not report healthy within 3 minutes. Last answer: $body"
+          echo "Look at ~/nashr/stderr.log in cPanel File Manager."
+          exit 1
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/cpanel

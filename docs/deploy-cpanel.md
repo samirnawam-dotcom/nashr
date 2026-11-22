@@ -106,3 +106,25 @@ Nashr's tables work on the old PostgreSQL that cPanel hosts run (no `execute fun
 `NASHR_DEMO=1` is for the demo only. Before real customers: remove it, add the Stripe keys (`STRIPE_SECRET_KEY`,
 `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`), and start from an empty database (the app refuses demo data and demo
 payments in production without `NASHR_DEMO`).
+
+## Automatic deploys (GitHub Actions)
+
+Every push to `claude/zealous-wright-qlxrhi` runs `.github/workflows/deploy-cpanel.yml`: type checks and unit tests first (a
+failure stops everything), then it builds the package, copies it to `~/nashr` over SSH (data, uploads, logs and
+`demo-credentials.txt` are kept), restarts the app and waits for `/api/health` to say `"ok":true`.
+
+One-off set-up:
+
+1. **Make a deploy key** on your own computer (Windows PowerShell, macOS or Linux terminal):
+   `ssh-keygen -t ed25519 -C nashr-deploy -f nashr_deploy -N ""` (on Windows PowerShell: `-N '""'`).
+   This makes two files: `nashr_deploy` (private, keep it secret) and `nashr_deploy.pub` (public).
+2. **Allow it on the server**: cPanel → SSH Access → Manage SSH Keys → Import Key. Name `nashr_deploy`, paste the contents of
+   `nashr_deploy.pub` into the **Public Key** box only, Import. Back in Manage SSH Keys, click **Manage** next to it → **Authorize**.
+3. **Give it to GitHub**: the repository → Settings → Secrets and variables → Actions → New repository secret, three times:
+   - `CPANEL_SSH_KEY`: the whole contents of the private file `nashr_deploy` (from `-----BEGIN` to `END ...-----`)
+   - `CPANEL_HOST`: `premium82.web-hosting.com`
+   - `CPANEL_USER`: `nashbjis`
+4. **Run it**: GitHub → Actions → "Deploy to nashr.pro" → Run workflow (or push any change). A green tick means it is live.
+
+The private key opens a shell on the hosting account, so keep it only in GitHub's secrets (and delete the local file after
+step 3). To stop automatic deploys, delete the `CPANEL_SSH_KEY` secret or disable the workflow in the Actions tab.
