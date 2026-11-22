@@ -64,7 +64,9 @@ jobs:
         # A plain archive over SSH (rsync fails on shared hosting: the login shell prints a banner into rsync's protocol).
         # It is unpacked into nashr-next first, then each part is swapped in, so the live folder is never half-written;
         # only the build's own parts are replaced: data, uploads, logs, demo-credentials.txt, tmp/ and public/ stay.
+        # pipefail and the "Installed:" check: a host that refuses shell commands must fail the deploy, not pass it silently.
         run: |
+          set -o pipefail
           tar -C release/nashr -czf - . | ssh -i ~/.ssh/cpanel -p "$SSH_PORT" "$CP_USER@$HOST" '
             set -e
             rm -rf nashr-next && mkdir -p nashr-next nashr && tar -xzf - -C nashr-next
@@ -73,21 +75,26 @@ jobs:
             done
             cp -f nashr-next/app.js nashr-next/package.json nashr-next/VERSION.txt nashr/
             rm -rf nashr-next nashr/*.old
-            echo "Installed: $(cat nashr/VERSION.txt)"'
+            echo "Installed: $(cat nashr/VERSION.txt)"' | tee copy.log
+          grep -q '^Installed: ' copy.log || { echo "The server did not unpack the files. If it says shell access is not enabled, ask Namecheap support to enable SSH shell access."; exit 1; }
 
       - name: Restart the app
         run: |
           ssh -i ~/.ssh/cpanel -p "$SSH_PORT" "$CP_USER@$HOST" \
-            'cloudlinux-selector restart --json --interpreter nodejs --app-root nashr || { mkdir -p nashr/tmp && touch nashr/tmp/restart.txt; }'
+            'cloudlinux-selector restart --json --interpreter nodejs --app-root nashr || { mkdir -p nashr/tmp && touch nashr/tmp/restart.txt; }; echo restarted' \
+            | tee restart.log
+          grep -q '^restarted' restart.log || { echo "The server did not run the restart (shell access)."; exit 1; }
 
       - name: Check the live site
+        # healthy AND running this commit (the build stamps it into /api/health), so the old copy cannot pass for the new one
         run: |
+          want="$(git rev-parse --short=12 HEAD)"
           for i in $(seq 1 18); do
             body="$(curl -fsS https://nashr.pro/api/health || true)"
-            case "$body" in *'"ok":true'*) echo "Live: $body"; exit 0;; esac
+            case "$body" in *'"ok":true'*'"build":"'"$want"'"'*) echo "Live: $body"; exit 0;; esac
             sleep 10
           done
-          echo "The site did not report healthy within 3 minutes. Last answer: $body"
+          echo "The site did not report healthy on build $want within 3 minutes. Last answer: $body"
           echo "Look at ~/nashr/stderr.log in cPanel File Manager."
           exit 1
 

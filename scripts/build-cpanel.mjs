@@ -15,11 +15,12 @@ execSync('npm run -s build:web', { stdio: 'inherit', env: { ...process.env, VITE
 cpSync('dist/web', `${out}/site`, { recursive: true })
 
 // One file per command. pg's optional native driver is never used. `require` is provided for the CommonJS libraries inside.
+const commit = execSync('git rev-parse --short=12 HEAD').toString().trim()
 const entries = { main: 'server/main.ts', seed: 'server/seed.ts', migrate: 'server/core/migrate.ts',
   'demo-credentials': 'scripts/demo-credentials.ts', 'invite-staff': 'scripts/invite-staff.ts' }
 for (const [name, entry] of Object.entries(entries))
   await build({ entryPoints: [entry], outfile: `${out}/server/${name}.mjs`, bundle: true, platform: 'node', target: 'node22', format: 'esm',
-    external: ['pg-native'], legalComments: 'none', logLevel: 'warning',
+    external: ['pg-native'], legalComments: 'none', logLevel: 'warning', define: { 'process.env.NASHR_BUILD': JSON.stringify(commit) },
     banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" } })
 
 // files the server reads beside its own code (paths as the bundles expect them)
@@ -39,7 +40,7 @@ writeFileSync(`${out}/package.json`, JSON.stringify({
     'demo-credentials': 'node server/demo-credentials.mjs',
   },
 }, null, 2) + '\n')
-writeFileSync(`${out}/VERSION.txt`, `${execSync('git rev-parse --short HEAD').toString().trim()} built ${new Date().toISOString()} for ${site}\n`)
+writeFileSync(`${out}/VERSION.txt`, `${commit} built ${new Date().toISOString()} for ${site}\n`)
 
 execSync('zip -qr nashr-cpanel.zip nashr', { cwd: 'release' })
 console.log(`release/nashr-cpanel.zip (${execSync('du -h release/nashr-cpanel.zip').toString().split('\t')[0]}) for ${site}`)

@@ -29,6 +29,7 @@ export function healthRoute(app: FastifyInstance, deps: { provider: PaymentProvi
       checks.ledgerReconciles = await reconciles(at)
     } catch { checks.database = false }
     const ok = Object.values(checks).every(Boolean) && checks.database
-    return reply.code(ok ? 200 : 503).header('cache-control', 'no-store').send({ ok, checks, at: at.toISOString() })
+    // build: the commit this server was built from (set by scripts/build-cpanel.mjs), so a deploy can confirm the new code is live
+    return reply.code(ok ? 200 : 503).header('cache-control', 'no-store').send({ ok, checks, at: at.toISOString(), build: process.env.NASHR_BUILD || 'dev' })
   })
 }
