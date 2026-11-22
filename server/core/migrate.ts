@@ -16,4 +16,5 @@ export async function migrate() {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await migrate().finally(() => pool.end())
+// run directly (tsx server/core/migrate.ts, or node server/migrate.mjs in the shared-hosting bundle), never when another script includes it
+if (/[\/]migrate\.(ts|mjs)$/.test(process.argv[1] ?? '')) await migrate().finally(() => pool.end())

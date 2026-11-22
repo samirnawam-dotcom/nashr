@@ -9,7 +9,8 @@ import { localDay } from './core/market.js'
 import { seedHistory } from './seed-history.js'
 import { demoBriefs } from './demo-creative.js'
 
-if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed demo data in production.')
+// NASHR_DEMO=1 marks a public demo server (shared hosting runs in production mode); never set on the live system.
+if (process.env.NODE_ENV === 'production' && process.env.NASHR_DEMO !== '1') throw new Error('Refusing to seed demo data in production.')
 
 const AED = (n: number) => n * 100
 const PASSWORD = 'nashr-demo-2026'

@@ -14,6 +14,7 @@ import { sellerDeskRoutes } from './routes-seller-desk.js'
 import { adminDeskRoutes } from './routes-admin-desk.js'
 import { healthRoute } from './routes-health.js'
 import { MAX_UPLOAD, sharedRoutes } from './routes-shared.js'
+import { serveWeb, webDir } from './web.js'
 import { coverRoutes } from './routes-covers.js'
 import { searchRoutes } from './routes-searches.js'
 import { ratingRoutes } from './routes-ratings.js'
@@ -103,8 +104,10 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
     // one exception: an email, shown to Nashr's staff inside the app's own page (same site only, no scripts, sandboxed)
     const emailPreview = req.method === 'GET' && /^\/api\/admin\/emails\/[0-9a-f-]{36}$/.test(req.url)
     reply.header('x-content-type-options', 'nosniff').header('x-frame-options', emailPreview ? 'SAMEORIGIN' : 'DENY').header('referrer-policy', 'same-origin')
-      .header('content-security-policy', emailPreview ? "default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox"
-        : "default-src 'none'; frame-ancestors 'none'").header('cross-origin-resource-policy', 'same-origin')
+      .header('cross-origin-resource-policy', 'same-origin')
+    // a web page served by the app itself (shared hosting) carries its own policy (server/api/web.ts); everything else is locked down
+    if (!reply.hasHeader('content-security-policy')) reply.header('content-security-policy', emailPreview
+      ? "default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox" : "default-src 'none'; frame-ancestors 'none'")
     if (process.env.NODE_ENV === 'production') reply.header('strict-transport-security', 'max-age=63072000; includeSubDomains')
   })
 
@@ -203,6 +206,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   const storage = deps.storage ?? new DiskStorage()
   sharedRoutes(route, storage)
   coverRoutes(route, storage)
+  const web = webDir(); if (web) serveWeb(app, web) // shared hosting: the app serves the website too
   return app
 }
 

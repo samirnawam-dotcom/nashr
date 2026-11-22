@@ -275,3 +275,15 @@ Decisions made while building (flag to owner if they disagree):
       The logo switches to the reversed file in dark. Stripe's card field takes the theme's colours. Checked: text contrast
       at least 4.5:1 (3:1 for large text) on 31 pages in light and dark, English and Arabic; screenshots of drawers and menus.
 - [x] Production security policy (plain nginx path) now allows our own fonts (font-src 'self'); it only allowed Google's.
+
+## Phase S: cPanel shared hosting (Namecheap, nashr.pro, 22 Nov 2026)
+- [x] Package without installs: scripts/build-cpanel.mjs -> release/nashr-cpanel.zip (bundled server, website, migrations).
+- [x] The app serves the website itself (server/api/web.ts): nginx's page rules, per-page CSP with hashes for inline styles,
+      no path escapes; /sitemap.xml from the API.
+- [x] Passenger: one listen('passenger'); NASHR_DEMO=1 for a demo server in production mode (demo payments, demo data).
+- [x] First start of an empty demo server seeds itself and writes demo-credentials.txt (owner only, never served); never re-seeds.
+- [x] Database password in PGPASSWORD (no escaping); pgcrypto optional (PostgreSQL 13+ has gen_random_uuid built in).
+- [x] Live updates fall back to a 30-second refresh where the host holds the stream back.
+- [x] Checked: packaged server in production mode with a non-superuser database: full journey ALL GOOD, no CSP violations,
+      restart keeps data. Owner steps: docs/deploy-cpanel.md.
+- Open: PostgreSQL version on the host (needs 13+); whether cron allows once a minute; Passenger listen not testable here.

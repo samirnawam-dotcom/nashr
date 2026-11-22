@@ -71,7 +71,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   const [exposure, setExposure] = useState<{ total: number; leading: { count: number }; requests: { count: number }; toPay: { count: number } } | null>(null)
   useEffect(() => { load(); if (!guest) api('/buyer/exposure').then(setExposure, () => {}) }, [slotId])
   // Another buyer bid or the slot was booked: show the new state at once. What the buyer typed stays, unless it is now too low.
-  useLive('slot', d => { if (d.id === slotId) api<Detail>(`/slots/${slotId}`).then(n => { setS(n)
+  useLive('slot', d => { if (d.poll || d.id === slotId) api<Detail>(`/slots/${slotId}`).then(n => { setS(n)
     setAmount(a => toFils(a || '0') < n.minNextBid ? String(n.minNextBid / 100) : a) }, () => {}) }, 200)
   // In the last hour of bidding, count down the minutes.
   const [now, setNow] = useState(() => Date.now())

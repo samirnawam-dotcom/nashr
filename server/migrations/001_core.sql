@@ -1,6 +1,8 @@
 -- Nashr core schema. Money is bigint minor units (fils/halalas). Times are timestamptz (UTC).
 
-create extension if not exists pgcrypto;
+-- gen_random_uuid() is built into PostgreSQL 13 and later; pgcrypto only matters on older servers. A shared-hosting
+-- database user may not be allowed to add extensions, so a refusal is not an error here.
+do $$ begin create extension if not exists pgcrypto; exception when insufficient_privilege or feature_not_supported or undefined_file then null; end $$;
 
 -- Append-only guard for audit and ledger tables.
 create function forbid_change() returns trigger language plpgsql as $$
