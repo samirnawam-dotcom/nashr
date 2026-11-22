@@ -61,12 +61,19 @@ jobs:
           ssh-keyscan -p "$SSH_PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Copy to the server
-        # --delete removes files of the old build (stale assets); the excludes keep everything the server owns.
+        # A plain archive over SSH (rsync fails on shared hosting: the login shell prints a banner into rsync's protocol).
+        # It is unpacked into nashr-next first, then each part is swapped in, so the live folder is never half-written;
+        # only the build's own parts are replaced: data, uploads, logs, demo-credentials.txt, tmp/ and public/ stay.
         run: |
-          rsync -az --delete \
-            --exclude demo-credentials.txt --exclude 'stderr.log' --exclude 'tmp/' --exclude 'public/' \
-            --exclude 'node_modules/' --exclude '.htaccess' \
-            -e "ssh -i ~/.ssh/cpanel -p $SSH_PORT" release/nashr/ "$CP_USER@$HOST:nashr/"
+          tar -C release/nashr -czf - . | ssh -i ~/.ssh/cpanel -p "$SSH_PORT" "$CP_USER@$HOST" '
+            set -e
+            rm -rf nashr-next && mkdir -p nashr-next nashr && tar -xzf - -C nashr-next
+            for d in server site migrations web; do
+              rm -rf "nashr/$d.old"; if [ -e "nashr/$d" ]; then mv "nashr/$d" "nashr/$d.old"; fi; mv "nashr-next/$d" "nashr/$d"
+            done
+            cp -f nashr-next/app.js nashr-next/package.json nashr-next/VERSION.txt nashr/
+            rm -rf nashr-next nashr/*.old
+            echo "Installed: $(cat nashr/VERSION.txt)"'
 
       - name: Restart the app
         run: |
