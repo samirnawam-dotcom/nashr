@@ -41,7 +41,7 @@ async function firstDemoStart() {
   if (process.env.NASHR_DEMO !== '1' || !existsSync(seed)) return
   const c = await pool.connect()
   try {
-    if (!(await c.query(`select pg_try_advisory_lock(7310001) ok`)).rows[0].ok) return
+    await c.query(`select pg_advisory_lock(7310001)`) // a second copy starting meanwhile waits here, then finds the data
     if ((await c.query(`select count(*)::int n from companies`)).rows[0].n > 0) return
     console.log('First start of a demo server: adding the demo data.')
     execFileSync(process.execPath, [seed], { stdio: 'inherit', env: process.env })
@@ -58,7 +58,12 @@ await migrate()
 await firstDemoStart()
 const stopLive = shareLiveUpdates() // live updates reach pages on every copy of the API
 const p = provider()
-if (p instanceof FakeProvider) p.prime('AED', Number((await pool.query(`select coalesce(sum(case when debit = 'cash' then amount else -amount end), 0) n from ledger_entries where 'cash' in (debit, credit) and currency = 'AED'`)).rows[0].n))
+if (p instanceof FakeProvider) {
+  const cash = async (currency: string) => Number((await pool.query(`select coalesce(sum(case when debit = 'cash' then amount else -amount end), 0) n
+    from ledger_entries where 'cash' in (debit, credit) and currency = $1`, [currency])).rows[0].n)
+  p.prime('AED', await cash('AED'))
+  if (process.env.NASHR_DEMO === '1') p.sharedCash = cash // several copies of the app share one set of books (see FakeProvider)
+}
 const app = buildApp({ provider: p, log: process.env.LOG_REQUESTS === '1' || undefined, stripe: sk ? { publishableKey: pk, webhookSecret: whsec } : undefined })
 // cPanel shared hosting runs the app under Phusion Passenger, which owns the port: it is handed the server through one listen('passenger')
 // (Passenger's own Node.js instructions); everywhere else the app listens on PORT.

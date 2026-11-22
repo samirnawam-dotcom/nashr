@@ -67,5 +67,11 @@ export class FakeProvider implements PaymentProvider {
     return this.once(a.idempotencyKey, () => { this.add(a.currency, -a.amount); return { id: `tr_${this.tag}_${++this.n}` } })
   }
 
-  async balance(currency: string) { return this.bal.get(currency) ?? 0 }
+  /**
+   * A demo server can run several copies of the app on one database (shared hosting's web server starts more when busy), and each
+   * copy's fake balance lives in its own memory, so no single copy sees every demo payment. There the balance is read from the
+   * shared books instead (sharedCash). Tests keep the in-memory balance, so the reconciliation they check stays a real check.
+   */
+  sharedCash?: (currency: string) => Promise<number>
+  async balance(currency: string) { return this.sharedCash ? this.sharedCash(currency) : this.bal.get(currency) ?? 0 }
 }
