@@ -9,6 +9,7 @@ import { BidDrawer } from '../calendar/BidDrawer'
 import { STATUS, type TrackStatus } from '../calendar/Tracker'
 import { DatesPanel } from '../directory/Shop'
 import { ResultsPage } from '../insights/Results'
+import { AthenaPlan } from './AthenaPlan'
 import '../calendar/tracker.css'
 import '../directory/directory.css'
 import './campaigns.css'
@@ -157,7 +158,7 @@ export const nextText = (c: Campaign) => { const x = c.next; if (!x) return null
 
 export function CampaignsPage() {
   const [list, setList] = useState<Campaign[] | null>(null), [error, setError] = useState(''), [form, setForm] = useState(() => new URLSearchParams(location.search).get('new') === '1')
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<Client[]>([]), [athena, setAthena] = useState(() => new URLSearchParams(location.search).get('athena') === '1')
   const [tab, setTab] = useState<Phase | 'all'>('active')
   const [layout, setLayout] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('nashr:cp-view') === 'list' ? 'list' : 'cards' } catch { return 'cards' } })
   useEffect(() => { try { localStorage.setItem('nashr:cp-view', layout) } catch { /* fine */ } }, [layout])
@@ -171,12 +172,15 @@ export function CampaignsPage() {
   return (
     <main>
       <PhotoBand img="/brand/campaigns-wide.jpg" title={t("Campaigns")} sub={t("A campaign keeps one budget and one brief for many bids.")}>
-        {!form && <button className="btn primary" onClick={() => setForm(true)}>{t("New campaign")}</button>}
+        {!form && <div className="row-flex"><button className="btn primary" onClick={() => { setAthena(false); setForm(true) }}>{t("New campaign")}</button>
+          <button className="btn" onClick={() => { setAthena(true); setForm(true) }}>{t('Plan your campaign with Athena')}</button></div>}
       </PhotoBand>
-      {form && <CampaignForm initial={formOf()} clients={clients} onSaved={id => navigate(`/campaigns/${id}`)} onCancel={() => setForm(false)} />}
+      {form && athena && <p className="athena-line">{t('First the campaign: its dates, budget and brief. Then Athena suggests a plan for it.')}</p>}
+      {form && <CampaignForm initial={formOf()} clients={clients} onSaved={id => navigate(`/campaigns/${id}${athena ? '?athena=1' : ''}`)} onCancel={() => setForm(false)} />}
       {error && <p className="error">{error}</p>}
       {list && !list.length && !form && <div className="card cp-empty"><p>{t('No campaigns yet. A campaign keeps one budget and one brief for many bids.')}</p>
-        <button className="btn primary" onClick={() => setForm(true)}>{t('New campaign')}</button></div>}
+        <div className="row-flex"><button className="btn primary" onClick={() => setForm(true)}>{t('New campaign')}</button>
+          <button className="btn" onClick={() => { setAthena(true); setForm(true) }}>{t('Plan your campaign with Athena')}</button></div></div>}
       {list && list.length > 0 && <>
         <div className="cp-bar-row">
           <div className="tabs profile-tabs" role="tablist" aria-label={t('Campaigns')}>{TABS.map(([k, l]) =>
@@ -276,6 +280,8 @@ export function CampaignPage({ id }: { id: string }) {
         <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
 
       {tab === 'plan' && <>
+        <AthenaPlan campaignId={c.id} autoFocus={new URLSearchParams(location.search).get('athena') === '1'}
+          onAdded={n => { setNote(t('{n} added to the plan. Bid on each one when you are ready.', { n })); setReload(x => x + 1) }} />
         <div className="cp-h"><a className="btn primary" href={add}>+ {t('Add products')}</a><span className="spacer" /><a href={`/calendar?campaign=${c.id}${c.startDate ? `&date=${c.startDate}` : ''}`}>{t('View in Calendar')}</a></div>
         {!items ? <p className="muted">{t('Loading…')}</p> : !items.length ? <div className="card cp-empty"><p>{t('No products yet. Add them from the Directory: they show here with their dates, prices and status.')}</p>
             <a className="btn primary" href={add}>+ {t('Add products')}</a></div>

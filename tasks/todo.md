@@ -307,3 +307,12 @@ Decisions made while building (flag to owner if they disagree):
   desktop and phone. Migrations 043 (campaign lines keep a listing's date) and 044 (older campaigns get dates) run on start.
 - Decisions: guests' /calendar goes to the Directory's Products view (shopping moved there); tour progress and the Get started
   close are kept per browser; on phones My bids does not open by itself (the "!" on its button shows an outbid instead).
+
+## Phase A: Athena without an outside AI service (23 Nov 2026, owner's doc pages 12–15)
+- [x] Reader (server/shared/athena.ts): media types, sectors, dates, amounts, audiences, languages, time of day, English and Arabic; unit tests
+- [x] Directory: "Search or ask Athena"; a name searches, a sentence becomes filter chips, Best fit ranking with one line on why,
+      one question when dates are missing, Clear removes what Athena set
+- [x] Campaigns: "Plan your campaign with Athena": split by media type, best products per part within the budget (outlets mixed,
+      products on several dates, auctions costed +10%), shares adjustable, keep / remove / swap, Add to campaign as Added
+- [x] Campaign lines can hold one product on several dates (migration 045); tour, Get started and empty pages mention Athena again
+- Not built: the seller media-kit upload (reading a PDF reliably needs an AI model; the document marks it the most optional part)

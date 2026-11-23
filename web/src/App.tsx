@@ -70,8 +70,6 @@ const MessagesPage = L(() => import('./messages/Messages'), 'MessagesPage')
 import { BuyerToDo, toDo } from './messages/ToDo'
 const CompanyPage = L(() => import('./buyer/Company'), 'CompanyPage')
 const StatementPage = L(() => import('./seller/Statement'), 'StatementPage')
-const load_Athena = () => import('./Athena')
-const AthenaPage = L(load_Athena, 'AthenaPage')
 const load_admin_Overview = () => import('./admin/Overview')
 const AccessPage = L(load_admin_Overview, 'AccessPage')
 const AdminOverview = L(load_admin_Overview, 'AdminOverview')
@@ -114,7 +112,7 @@ const BUYER: Routes = [
   [/^\/(bookings|reports)$/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><BookingsPage /></SubTabs>],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><DocumentsPage /></SubTabs>],
-  [/^\/athena/, () => <AthenaPage />],
+  [/^\/athena/, () => <Redirect to="/directory" />],
   [/^\/help/, () => <HelpPage role="buyer" />],
   // Inbox: what to act on, then the messages
   [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="buyer" top={<BuyerToDo />} />],

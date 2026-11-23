@@ -1,6 +1,6 @@
 import { navigate } from '../nav'
 import { PAGES, breadcrumb, siteUrl, useMeta } from '../seo'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, type Price } from '../api'
 import { money } from '../format'
 import './directory.css'
@@ -14,7 +14,7 @@ import { ProductSummary, daysText, mediaName, type SummaryProduct } from '../pro
 import { AddToCampaign } from '../campaigns/AddToCampaign'
 import { setCurrentCampaign, useCampaigns, useCurrentCampaign } from '../calendar/CampaignDrawer'
 import { OutletCalendar, saleLabel, SaleIcon, useNarrow } from '../calendar/CalendarPage'
-import { CampaignButton, EMPTY, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
+import { AskBar, AthenaLine, CampaignButton, EMPTY, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
 
 /*
  * The Directory (owner's buyer-side fixes): the same structure as the publisher's Products page, outlets first, then their
@@ -56,7 +56,7 @@ function SaveStar({ b, onChange }: { b: { id: string; name: string; saved: boole
   </button>
 }
 
-const SORTS: [ShopSort, string][] = [['popular', 'Most popular'], ['price_asc', 'Price: low to high'], ['price_desc', 'Price: high to low'], ['closing', 'Closing soonest'], ['newest', 'Newest on Nashr']]
+const SORTS: [ShopSort, string][] = [['fit', 'Best fit (Athena)'], ['popular', 'Most popular'], ['price_asc', 'Price: low to high'], ['price_desc', 'Price: high to low'], ['closing', 'Closing soonest'], ['newest', 'Newest on Nashr']]
 
 export function DirectoryPage() {
   useMeta({ ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], [t("Directory"), '/directory']])] })
@@ -69,11 +69,12 @@ export function DirectoryPage() {
   useMeta(list && { ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], [t("Directory"), '/directory']]), { '@context': 'https://schema.org', '@type': 'ItemList',
     name: 'UAE media outlets on Nashr', itemListElement: list.filter(o => o.market === 'AE').map((o, k) => ({ '@type': 'ListItem', position: k + 1, name: o.name, url: `${siteUrl()}/directory/${o.slug}` })) }] }, [list])
   // "Closing soonest" is a Products-view sort; the Outlets view falls back to Most popular
-  const outletSort: ShopSort = sort === 'closing' ? 'popular' : sort
+  const outletSort: ShopSort = sort === 'closing' || sort === 'fit' ? 'popular' : sort
+  const askRef = useRef<HTMLInputElement>(null)
   const needServer = view === 'products' || shopping(f)
   const prods = useProducts(f, sort, needServer, buying.reload)
   const lo = toFils(f.min), hi = toFils(f.max)
-  const shown = (list ?? []).filter(o => o.market === f.market && (!f.channel || o.channels.includes(f.channel)) && (!f.nashr || o.onNashr) && (!f.saved || o.saved)
+  const shown = (list ?? []).filter(o => o.market === f.market && (!f.channel || f.channel.split(',').some(c => o.channels.includes(c))) && (!f.nashr || o.onNashr) && (!f.saved || o.saved)
     && (lo == null || (o.fromPrice != null && o.fromPrice >= lo)) && (hi == null || (o.fromPrice != null && o.fromPrice <= hi))
     && (!shopping(f) || !prods.brands || prods.brands.has(o.id))
     && (!f.q || `${o.name} ${o.nameAr ?? ''} ${o.sectors.join(' ')} ${o.audience ?? ''}`.toLowerCase().includes(f.q.toLowerCase())))
@@ -90,7 +91,7 @@ export function DirectoryPage() {
     <main>
       <PhotoBand img="/brand/skyline.jpg" title={t("Directory")} sub={t("UAE radio, TV, print, digital and podcasts. Find an outlet or a product, then bid, buy or make an offer.")} />
       <div className="dir-bar">
-        <input className="search" type="search" placeholder={t("Search outlets, products, sectors")} aria-label={t("Search")} value={f.q} onChange={e => set({ q: e.target.value })} />
+        <AskBar f={f} set={set} inputRef={askRef} onAsk={() => { setView('products'); setSort('fit') }} />
         {!guest && <CampaignButton onOpen={buying.openCampaign} />}
         <div className="seg" role="group" aria-label={t("Show")}>
           <button className={view === 'outlets' ? 'on' : ''} onClick={() => setView('outlets')}>{t("Outlets")}</button>
@@ -99,12 +100,13 @@ export function DirectoryPage() {
           <button className={layout === 'grid' ? 'on' : ''} onClick={() => setLayout('grid')}>{t("Grid")}</button>
           <button className={layout === 'list' ? 'on' : ''} onClick={() => setLayout('list')}>{t("List")}</button></div>
         <label className="dir-sort"><span>{t('Sort by:')}</span><select value={view === 'outlets' ? outletSort : sort} onChange={e => setSort(e.target.value as ShopSort)}>
-          {SORTS.filter(([k]) => view === 'products' || k !== 'closing').map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>
+          {SORTS.filter(([k]) => (view === 'products' || (k !== 'closing' && k !== 'fit')) && (k !== 'fit' || !!f.ask)).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>
       </div>
       {narrow ? <div className="row-flex dir-mfilters">
           <button className={`btn ${activeFilters ? 'primary' : ''}`} onClick={() => setSheet(true)}>{activeFilters ? t('Filters ({n})', { n: activeFilters }) : t('Filters')}</button>
           {activeFilters > 0 && <button className="text-link small" onClick={() => set({ ...EMPTY, q: f.q, market: f.market })}>{t('Clear all')}</button>}</div>
         : <ShopFilters f={f} set={set} guest={guest} view={view} />}
+      <AthenaLine f={f} set={set} />
       {/* phones: the filters open full screen from a Filters button (owner's "Buying moves to the Directory") */}
       {narrow && sheet && <div className="scrim" onClick={() => setSheet(false)}><div className="cv-sheet dir-sheet" role="dialog" aria-label={t('Filters')} onClick={e => e.stopPropagation()}>
         <header className="drawer-h"><h2>{t('Filters')}</h2><button className="btn" onClick={() => setSheet(false)} aria-label={t('Close')}>✕</button></header>
@@ -117,7 +119,8 @@ export function DirectoryPage() {
         <div className="shop-main">
           {view === 'outlets' ? <>
             {list && !shown.length && <div className="empty"><p className="muted">{f.saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t('Nothing matches these filters.')}</p>
-              {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}</div>}
+              {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}
+              <button className="btn" onClick={() => askRef.current?.focus()}>{t('Ask Athena')}</button></div>}
             {layout === 'grid'
               ? <div className="outlet-grid">{shown.map(o => <article key={o.id} className="card outlet-card" onClick={() => navigate(`/directory/${o.slug}`)}>
                   <img className="outlet-cover" src={o.coverUrl ?? art(o.channels[0], 'card')} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-card.jpg` }} width={800} height={250} alt="" loading="lazy" decoding="async" />
@@ -140,7 +143,8 @@ export function DirectoryPage() {
             {prods.items == null && <p className="muted">{t('Loading…')}</p>}
             {prods.items && <p className="small muted">{t('{n} products', { n: prods.total })}</p>}
             {prods.items && !prods.items.length && <div className="empty"><p className="muted">{filtered ? t('Nothing matches these filters.') : t('Nothing on sale right now.')}</p>
-              {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}</div>}
+              {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}
+              <button className="btn" onClick={() => askRef.current?.focus()}>{t('Ask Athena')}</button></div>}
             {prods.items && prods.items.length > 0 && (layout === 'grid'
               ? <div className="prod-grid">{prods.items.map(p => <ProductCardView key={p.placementId} p={p} layout="grid" guest={guest} onBuy={buying.buy} onSaved={setOne} />)}</div>
               : <div className="table-wrap card"><table className="table"><thead><tr><th>{t('Product')}</th><th>{t('Sale type')}</th><th className="r">{t('Starting price')}</th><th>{t('On sale')}</th><th /></tr></thead>

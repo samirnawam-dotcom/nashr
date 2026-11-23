@@ -17,6 +17,12 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   await p.locator('.prod-card .btn.primary').first().click(); await p.waitForSelector('.date-lines button')
   out && await p.screenshot({ path: out + '/6b-dates.png' })
   await p.keyboard.press('Escape')
+  // Athena (rules only): a sentence becomes the Directory's filters, results best fit first with one line on why
+  await p.goto(BASE + '/directory'); await p.waitForSelector('.ask-bar input')
+  await p.fill('.ask-bar input', 'Radio for a fintech launch in the first week of December, about AED 20,000, business people'); await p.keyboard.press('Enter')
+  await p.waitForSelector('.athena-line'); await p.waitForSelector('.pc-why')
+  console.log('athena search:', (await p.locator('.fchip').allTextContents()).join(' | '), '→', (await p.locator('.pc-why').first().textContent()).trim())
+  out && await p.screenshot({ path: out + '/6c-athena.png' })
   const W = await p.evaluate(async () => { const from = new Date().toISOString(), to = new Date(Date.now() + 40 * 86_400_000).toISOString()
     const d = await (await fetch(`/api/slots/days?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&open=1&sale=auction&ch=radio`)).json()
     const day = new Date(d[0].date + 'T12:00:00Z'), monday = new Date(day.getTime() - ((day.getUTCDay() || 7) - 1) * 86_400_000)
@@ -62,6 +68,12 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   const bookingUrl = p.url(); await p.goto(BASE + '/calendar'); await p.waitForSelector('.tk-item')
   console.log('tracker statuses:', [...new Set(await p.locator('.tk-item .tk-st').allTextContents())].join(', '))
   out && await p.screenshot({ path: out + '/10b-tracker.png' })
+  // Athena plans the campaign: a split by media type, the best products for each part, kept lines added as Added
+  await p.goto(BASE + '/campaigns'); await p.locator('.cp-card').first().click(); await p.waitForSelector('.ap-ask input')
+  await p.fill('.ap-ask input', 'AED 55,000, 1-14 Dec, business people, mostly radio and online'); await p.click('.ap-ask .btn.primary')
+  await p.waitForSelector('.ap-total'); console.log('athena plan:', (await p.locator('.ap-total b').textContent()).trim())
+  await p.click('.athena-plan .btn.primary:has-text("Add")'); await p.waitForSelector('.ok:has-text("added to the plan")')
+  out && await p.screenshot({ path: out + '/10c-athena-plan.png' })
   await p.goto(bookingUrl); await p.waitForSelector('main .page-title')
 
   // Creative: the buyer uploads, the publisher approves

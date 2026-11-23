@@ -11,6 +11,7 @@ import { briefProblems } from '../fulfilment/brief.js'
 import { outletRating } from './routes-ratings.js'
 import { parseQuery, where } from '../marketplace/search.js'
 import { reachMatch, reachWindow } from '../shared/slot-filter.js'
+import { estimate, planBudget, readRequest, score, type Candidate, type PlanCandidate } from '../shared/athena.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const OPEN = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1)`
@@ -135,7 +136,12 @@ export function planRoutes(route: RouteFn) {
     const order = [reachSet ? '(o.reach is null)' : '', sort === 'price_asc' ? 'from_price' : sort === 'price_desc' ? 'from_price desc' : sort === 'closing' ? 'next_closes'
       : sort === 'newest' ? 'joined desc nulls last' : 'popular desc', 'title'].filter(Boolean).join(', ')
     const limit = Math.min(Math.max(Number(r.limit) || 60, 1), 200), offset = Math.max(Number(r.offset) || 0, 0)
+    // Athena (rules only): rank by fit to what the buyer asked (who to reach, language, time of day, their words, reach for the price)
+    const athena = r.rank === 'athena', words = (v?: string) => (v ?? '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean).slice(0, 20)
+    const ask = { audiences: words(r.aaud), languages: words(r.alang), dayparts: words(r.adp), words: words(r.awords), sectors: q.sectors ?? [] }
     const rows = (await db.query(`select p.id placement_id, p.kind, p.name placement, p.sale_type, p.buy_now_price placement_buy_now, o.id outlet_id, o.product_id, o.channel,
+        p.audiences p_aud, o.audiences o_aud, o.audience aud_text, concat_ws(' ', p.description, o.description, pr.description) about, coalesce(p.language, o.language) lang,
+        o.sectors, p.starts_at_local::text starts_local,
         o.channel_other, o.reach, o.reach_unit, o.logo_key, o.logo_url, pr.logo_key brand_logo_key, brand_name(o) brand, coalesce(o.product_id, o.id) brand_key,
         case when p.kind = 'main' then brand_name(o) || ' · ' || o.name else brand_name(o) || ' · ' || p.name end title,
         count(*)::int on_sale, min(coalesce(s.top_amount, s.starting_price)) from_price, min(s.buy_now_price) buy_now, min(s.starts_at) next_at, min(s.closes_at) next_closes,
@@ -146,7 +152,23 @@ export function planRoutes(route: RouteFn) {
         ${buyer ? `exists (select 1 from saved_outlets so where so.company_id = ${w.add(buyer)} and so.brand_key = coalesce(o.product_id, o.id))` : 'false'} saved,
         count(*) over ()::int total
       ${w.from} where ${cond} and not p.archived
-      group by p.id, o.id, pr.id order by ${order} limit ${limit} offset ${offset}`, w.params)).rows
+      group by p.id, o.id, pr.id order by ${order} limit ${athena ? 300 : limit} offset ${athena ? 0 : offset}`, w.params)).rows
+    if (athena) {
+      const part = (t: string | null) => { const h = t ? Number(t.slice(0, 2)) : NaN; return Number.isNaN(h) ? [] : h >= 5 && h < 12 ? ['morning'] : h < 17 && h >= 12 ? ['afternoon'] : h >= 17 ? ['evening'] : [] }
+      for (const x of rows as any[]) {
+        const c: Candidate = { channel: x.channel, placement: x.placement, brand: x.brand, kind: x.kind, audiences: (x.p_aud?.length ? x.p_aud : x.o_aud) ?? [], audienceText: x.aud_text,
+          text: x.about ?? '', language: x.lang, reach: x.reach, price: Number(x.from_price), onSale: x.on_sale, popular: Number(x.popular), sectors: x.sectors ?? [], blocked: [],
+          dayparts: part(x.starts_local) }
+        const sc = score(c, ask)
+        x.athena = { score: sc.score, why: { audiences: sc.audiences, sectors: ask.sectors.filter(y => !(x.sectors ?? []).length || (x.sectors ?? []).map((z: string) => z.toLowerCase()).includes(y.toLowerCase())),
+          dayparts: ask.dayparts.filter(d => c.dayparts!.includes(d)), language: ask.languages.length && x.lang ? x.lang : null, onSale: x.on_sale, inDates: !!dateFrom } }
+      }
+      rows.sort((a: any, b: any) => b.athena.score - a.athena.score)
+      rows.splice(0, offset); rows.splice(limit)
+      // the Get started line "Ask Athena something in the search bar"
+      if (buyer && !(await db.query(`select 1 from audit_log where action = 'athena.asked' and entity_id = $1 limit 1`, [buyer])).rowCount)
+        await audit(db, `user:${me!.userId}`, 'athena.asked', 'company', buyer, null, at)
+    }
     const brands = (await db.query(`select distinct coalesce(o.product_id, o.id) k ${w.from} where ${cond} and not p.archived`, w.params.slice(0, condParams))).rows.map((x: any) => x.k)
     const slug = (n: string, k: string) => n.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || k
     return { total: rows[0]?.total ?? 0, brands, items: rows.map((x: any) => ({
@@ -156,7 +178,7 @@ export function planRoutes(route: RouteFn) {
       // the sale type of what is on sale (a programme sells one way; if its listings differ, the placement's own)
       saleType: x.sale_types === 1 ? x.one_sale_type : x.sale_type, price: x.from_price, buyNowPrice: x.buy_now,
       onSale: x.on_sale, nextAt: x.next_at, nextClosesAt: x.next_closes, reach: x.reach, reachUnit: x.reach_unit,
-      reachMatch: reachSet ? reachMatch(x.reach, reach) : null, saved: x.saved,
+      reachMatch: reachSet ? reachMatch(x.reach, reach) : null, saved: x.saved, why: x.athena?.why ?? null,
     })) }
   })
 
@@ -290,14 +312,17 @@ export function planRoutes(route: RouteFn) {
   const totals = `select c.*, c.start_date::text start_text, c.end_date::text end_text,
       coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${BOOKED}), 0)::bigint committed,
       coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${LIVE}), 0)::bigint pending,
-      coalesce((select sum(coalesce(p.default_price, o.default_price, p.starting_price)) from campaign_lines l join placements p on p.id = l.placement_id
+      coalesce((select sum(coalesce((select coalesce(s.top_amount, s.starting_price) from slots s where s.id = l.slot_id), p.default_price, o.default_price, p.starting_price))
+        from campaign_lines l join placements p on p.id = l.placement_id
         join outlets o on o.id = p.outlet_id where l.campaign_id = c.id), 0)::bigint estimated,
       (select count(*)::int from campaign_lines l where l.campaign_id = c.id) lines,
       (select name from clients where id = c.client_id) client, (select logo_key from clients where id = c.client_id) client_logo_key,
       -- where things are: products planned with nothing bid yet, open bids and requests, accepted to pay, paid, ran
       (select count(*)::int from campaign_lines l join placements p on p.id = l.placement_id where l.campaign_id = c.id
-         and not exists (select 1 from bids b join slots s on s.id = b.slot_id where s.placement_id = p.id and b.campaign_id = c.id and b.status in ('active', 'outbid', 'selected'))
-         and not exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = c.id and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded'))) n_added,
+         and not exists (select 1 from bids b join slots s on s.id = b.slot_id where b.campaign_id = c.id and b.status in ('active', 'outbid', 'selected')
+           and (case when l.slot_id is not null then b.slot_id = l.slot_id else s.placement_id = p.id end))
+         and not exists (select 1 from deals d join slots s on s.id = d.slot_id where d.campaign_id = c.id and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded')
+           and (case when l.slot_id is not null then d.slot_id = l.slot_id else s.placement_id = p.id end))) n_added,
       ((select count(distinct b.slot_id)::int from bids b join slots s on s.id = b.slot_id where b.campaign_id = c.id and b.status in ('active', 'outbid') and s.status = 'open')
         + (select count(*)::int from deals d where d.campaign_id = c.id and d.status = 'awaiting_seller')) n_bids,
       (select count(*)::int from deals d where d.campaign_id = c.id and d.status = 'awaiting_payment') n_pay,
@@ -397,8 +422,9 @@ export function planRoutes(route: RouteFn) {
     const deals = (await db.query(
       `select d.id, d.ref, d.status, d.amount, s.label, s.starts_at, brand_name(o) outlet, o.channel, p.name placement from deals d join slots s on s.id = d.slot_id
        join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.campaign_id = $1 order by s.starts_at`, [c.id])).rows
+    const once = new Set<string>(), products = lines.filter((l: any) => !once.has(l.placement_id) && once.add(l.placement_id))
     return { ...card(c), next,
-      plan: lines.map(l => ({ placementId: l.placement_id, productId: l.outlet_id, brandId: l.brand_id, title: `${l.brand ?? ''} · ${l.name}`.replace(/^ · /, ''),
+      plan: products.map(l => ({ placementId: l.placement_id, productId: l.outlet_id, brandId: l.brand_id, title: `${l.brand ?? ''} · ${l.name}`.replace(/^ · /, ''),
         brand: l.brand, name: l.name, kind: l.kind, channel: l.channel, logoUrl: brandLogoUrl(l.brand_id, l.brand_logo_key) ?? logoUrl({ id: l.outlet_id, logo_key: l.outlet_logo_key }),
         estimated: Number(l.p_default ?? l.default_price ?? l.starting_price), committed: Number(l.committed), stage: l.stage, openSlots: l.open_slots })),
       bookings: deals.map(d => ({ id: d.id, ref: d.ref, status: buyerStatus[d.status] ?? d.status, price: Number(d.amount), label: d.label, startsAt: d.starts_at,
@@ -413,8 +439,11 @@ export function planRoutes(route: RouteFn) {
     if (!p) throw new MarketError('This product is no longer on sale.')
     // added from one listing (the bid drawer): that date is the one planned
     const slot = req.body.slotId ? (await db.query(`select id from slots where id = $1 and placement_id = $2`, [req.body.slotId, p.id])).rows[0]?.id ?? null : null
-    await db.query(`insert into campaign_lines (campaign_id, placement_id, added_at, slot_id) values ($1, $2, $3, $4)
-                    on conflict (campaign_id, placement_id) do update set slot_id = coalesce(excluded.slot_id, campaign_lines.slot_id)`, [c.id, p.id, at, slot])
+    // a date for a product already planned without one fills that line; otherwise each date is its own line
+    const filled = slot ? (await db.query(`update campaign_lines set slot_id = $3 where campaign_id = $1 and placement_id = $2 and slot_id is null
+        and not exists (select 1 from campaign_lines l2 where l2.campaign_id = $1 and l2.slot_id = $3)`, [c.id, p.id, slot])).rowCount : 0
+    if (!filled) await db.query(`insert into campaign_lines (campaign_id, placement_id, added_at, slot_id) values ($1, $2, $3, $4)
+        on conflict (campaign_id, placement_id, (coalesce(slot_id, '00000000-0000-0000-0000-000000000000'::uuid))) do nothing`, [c.id, p.id, at, slot])
     return { ok: true }
   }, { type: 'object', required: ['placementId'], additionalProperties: false, properties: { placementId: { type: 'string', format: 'uuid' }, slotId: { type: 'string', format: 'uuid' } } })
 
@@ -459,10 +488,11 @@ export function planRoutes(route: RouteFn) {
                 and (k.end_date is null or s.starts_at < (k.end_date + 1)::timestamp at time zone 'Asia/Dubai'))
             order by (s.id = l.slot_id) desc nulls last, s.starts_at limit 1) ns on true
         where k.buyer_id = $1 and k.status = 'active' and ($4::uuid is null or k.id = $4) and ($5::uuid is null or k.client_id = $5)
-          and not exists (select 1 from bids bd join slots s2 on s2.id = bd.slot_id where s2.placement_id = p.id and bd.buyer_id = $1 and bd.campaign_id = k.id
-                          and bd.status in ('active', 'outbid', 'selected'))
-          and not exists (select 1 from deals d join slots s2 on s2.id = d.slot_id where s2.placement_id = p.id and d.buyer_id = $1 and d.campaign_id = k.id
-                          and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded'))
+          -- planned and not yet bid on: a dated line, nothing on that date; an undated one, nothing on that product in this campaign
+          and not exists (select 1 from bids bd join slots s2 on s2.id = bd.slot_id where bd.buyer_id = $1 and bd.campaign_id = k.id
+                          and (case when l.slot_id is not null then bd.slot_id = l.slot_id else s2.placement_id = p.id end) and bd.status in ('active', 'outbid', 'selected'))
+          and not exists (select 1 from deals d join slots s2 on s2.id = d.slot_id where d.buyer_id = $1 and d.campaign_id = k.id
+                          and (case when l.slot_id is not null then d.slot_id = l.slot_id else s2.placement_id = p.id end) and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded'))
           and coalesce(ns.starts_at, k.start_date::timestamp at time zone 'Asia/Dubai') >= $2
           and coalesce(ns.starts_at, k.start_date::timestamp at time zone 'Asia/Dubai') < $3`, [b, from, to, campaign, client, at])).rows
     const DEAL: Record<string, string> = { awaiting_seller: 'waiting', awaiting_payment: 'pay', secured: 'paid', in_review: 'ran', issue_open: 'ran', disputed: 'ran',
@@ -492,8 +522,9 @@ export function planRoutes(route: RouteFn) {
     const company = !!co.logo_key && !!(co.trn || co.address)
     if (me.role === 'buyer') {
       const r = (await db.query(`select exists (select 1 from campaigns where buyer_id = $1) campaign,
+          exists (select 1 from audit_log where action = 'athena.asked' and entity_id = $1::text) athena,
           exists (select 1 from bids where buyer_id = $1) or exists (select 1 from deals where buyer_id = $1) bid`, [c])).rows[0]
-      return { steps: [{ key: 'company', done: company }, { key: 'campaign', done: r.campaign }, { key: 'bid', done: r.bid }] }
+      return { steps: [{ key: 'company', done: company }, { key: 'athena', done: r.athena }, { key: 'campaign', done: r.campaign }, { key: 'bid', done: r.bid }] }
     }
     const r = (await db.query(`select exists (select 1 from products where company_id = $1) outlet,
         exists (select 1 from placements p join outlets o on o.id = p.outlet_id where o.company_id = $1 and not p.archived) product,
@@ -501,5 +532,60 @@ export function planRoutes(route: RouteFn) {
     return { steps: [{ key: 'company', done: company }, { key: 'outlet', done: r.outlet }, { key: 'product', done: r.product },
       { key: 'onSale', done: r.on_sale }, { key: 'payouts', done: !!co.payouts_enabled }] }
   })
+
+  // Athena plans a campaign (owner's doc, rules only): reads the campaign's dates, budget, industry and brief plus what the buyer
+  // typed, suggests a split by media type and the best products for each part, within the budget. It never bids or adds by itself.
+  route('POST', '/api/athena/plan', BUYER, async ({ db, at, me }, req) => {
+    const b = req.body as { text?: string; campaignId?: string; shares?: Record<string, number> }, buyer = me.actAs.companyId
+    const today = new Date(at.getTime() + 4 * 3_600_000).toISOString().slice(0, 10)
+    const c = b.campaignId ? (await db.query(`select start_date::text start_text, end_date::text end_text, budget, brief, objective, audience from campaigns
+        where id = $1 and buyer_id = $2`, [b.campaignId, buyer])).rows[0] : null
+    if (b.campaignId && !c) throw new NotFound()
+    const r = readRequest(b.text ?? '', today), about = readRequest(`${b.text ?? ''} ${c?.audience ?? ''} ${c?.objective ?? ''} ${c?.brief?.message ?? ''}`, today)
+    const from = r.dateFrom ?? c?.start_text, to = r.dateTo ?? c?.end_text, budget = r.amount ?? (c?.budget != null ? Number(c.budget) : undefined)
+    const sectors = r.sectors.length ? r.sectors : c?.brief?.industry && c.brief.industry !== 'Other' ? [c.brief.industry] : []
+    const languages = r.languages.length ? r.languages : c?.brief?.language && c.brief.language !== 'other' ? [c.brief.language === 'bilingual' ? 'english' : c.brief.language] : []
+    const read = { channels: r.channels, sectors, dateFrom: from ?? null, dateTo: to ?? null, budget: budget ?? null, audiences: about.audiences, languages }
+    // one short question when something important is missing
+    if (!from || !to) return { read, question: 'dates', parts: [], total: 0 }
+    if (!budget) return { read, question: 'amount', parts: [], total: 0 }
+    await audit(db, `user:${me.userId}`, 'athena.asked', 'company', buyer, { plan: true }, at)
+    // what is on sale in those dates, for that industry (its sectors accepted), in the open market
+    const start = new Date(`${from}T00:00:00+04:00`), end = new Date(new Date(`${to}T00:00:00+04:00`).getTime() + 86_400_000)
+    const q = { ...parseQuery({ sectors: sectors.join(','), market: 'AE' }, buyer, (start > at ? start : at).toISOString(), end.toISOString()), open: true }
+    q.to = end.toISOString()
+    const w = where(q, at)
+    const rows = (await db.query(`select p.id placement_id, p.kind, p.name placement, o.id outlet_id, o.product_id, o.channel, o.reach, o.logo_key, o.logo_url, pr.logo_key brand_logo_key,
+        brand_name(o) brand, coalesce(o.product_id, o.id) brand_key, p.audiences p_aud, o.audiences o_aud, o.audience aud_text,
+        concat_ws(' ', p.description, o.description, pr.description) about, coalesce(p.language, o.language) lang, o.sectors, p.starts_at_local::text starts_local,
+        count(*)::int on_sale, (array_agg(s.id order by s.starts_at))[1:20] slot_ids, (array_agg(s.starts_at order by s.starts_at))[1:20] slot_ats,
+        (array_agg(s.sale_type order by s.starts_at))[1:20] slot_sales, (array_agg(coalesce(s.top_amount, s.starting_price) order by s.starts_at))[1:20] slot_prices,
+        (select count(*) from bids b2 join slots s2 on s2.id = b2.slot_id where s2.placement_id = p.id and b2.created_at > now() - interval '90 days') popular
+      ${w.from} ${w.where} and o.market = 'AE' and not p.archived group by p.id, o.id, pr.id limit 500`, w.params)).rows
+    const part = (t: string | null) => { const h = t ? Number(t.slice(0, 2)) : NaN; return Number.isNaN(h) ? [] : h >= 5 && h < 12 ? ['morning'] : h >= 12 && h < 17 ? ['afternoon'] : h >= 17 ? ['evening'] : [] }
+    const ask = { audiences: about.audiences, languages, dayparts: r.dayparts, words: about.words, sectors }
+    // a product can run on several dates: its listings in the dates, spread out (up to 6), each one a choice
+    const cands: PlanCandidate[] = rows.flatMap((x: any) => {
+      const n = x.slot_ids.length, idx = [...new Set(Array.from({ length: Math.min(6, n) }, (_, i) => Math.floor(i * n / Math.min(6, n))))]
+      const price = Math.min(...x.slot_prices.map(Number))
+      const base: Candidate = { channel: x.channel, placement: x.placement, brand: x.brand, kind: x.kind, audiences: (x.p_aud?.length ? x.p_aud : x.o_aud) ?? [], audienceText: x.aud_text,
+        text: x.about ?? '', language: x.lang, reach: x.reach, price, onSale: x.on_sale, popular: Number(x.popular), sectors: x.sectors ?? [], blocked: [], dayparts: part(x.starts_local) }
+      const sc = score(base, ask)
+      const why = [...sc.audiences.map(a => `aud:${a}`), ...base.dayparts!.filter(d => r.dayparts.includes(d)).map(d => `dp:${d}`),
+        ...sectors.filter(y => !(x.sectors ?? []).length || (x.sectors ?? []).includes(y)).map(y => `sector:${y}`), `onSale:${x.on_sale}`, ...(x.reach ? [`reach:${x.reach}`] : [])]
+      const logo = brandLogoUrl(x.product_id, x.brand_logo_key) ?? logoUrl({ id: x.outlet_id, logo_key: x.logo_key }) ?? x.logo_url ?? null
+      // later dates of the same product rank a little lower, so other products come in first
+      return idx.map((k, j) => ({ ...base, price: Number(x.slot_prices[k]), placementId: x.placement_id, brandKey: x.brand_key, slotId: x.slot_ids[k], slotAt: new Date(x.slot_ats[k]).toISOString(),
+        saleType: x.slot_sales[k], fit: sc.score - j * 0.5, why, logoUrl: logo }) as PlanCandidate)
+    })
+    const shares = b.shares && Object.keys(b.shares).length ? b.shares : undefined
+    const plan = planBudget(cands, budget, { channels: r.channels, shares })
+    const line = (x: PlanCandidate) => ({ placementId: x.placementId, slotId: x.slotId, title: x.kind === 'main' ? x.brand : `${x.brand} · ${x.placement}`, brand: x.brand,
+      channel: x.channel, logoUrl: (x as any).logoUrl, saleType: x.saleType, price: x.price, estimate: estimate(x), at: x.slotAt, onSale: x.onSale, why: x.why })
+    const parts = plan.map(p => ({ channel: p.channel, share: p.share, amount: p.amount, count: p.count, picks: p.picks.map(line), spare: p.spare.map(line) }))
+    return { read, question: null, parts, total: parts.reduce((n, p) => n + p.picks.reduce((m, x) => m + x.estimate, 0), 0) }
+  }, { type: 'object', additionalProperties: false, properties: {
+    text: { type: 'string', maxLength: 500 }, campaignId: { type: 'string', format: 'uuid' },
+    shares: { type: 'object', additionalProperties: { type: 'integer', minimum: 0, maximum: 100 }, maxProperties: 9 } } })
 }
 

@@ -15,6 +15,9 @@ import { MyBids } from '../calendar/MyBids'
 import { SavedSearches } from '../calendar/SavedSearches'
 import { AddToCampaign } from '../campaigns/AddToCampaign'
 import { OutletMark } from '../LogoPicker'
+import { readRequest, type AthenaRead } from '../../../server/shared/athena'
+import { audienceLabel } from '../../../server/shared/audiences'
+import { todayInDubai } from '../calendar/layout'
 
 /*
  * The Directory as the shop (owner's "Buying moves to the Directory"): find outlets and products, filter, and buy from here.
@@ -25,14 +28,18 @@ import { OutletMark } from '../LogoPicker'
  */
 
 export type ShopFilter = { q: string; channel: string; sale: string[]; min: string; max: string; sectors: string[]; dateFrom: string; dateTo: string
-  reachMin: string; reachMax: string; reachOnly: boolean; dp: string[]; saved: boolean; nashr: boolean; market: 'AE' | 'SA' }
-export type ShopSort = 'popular' | 'price_asc' | 'price_desc' | 'closing' | 'newest'
+  reachMin: string; reachMax: string; reachOnly: boolean; dp: string[]; saved: boolean; nashr: boolean; market: 'AE' | 'SA'
+  ask: string /* the sentence Athena read; its filters are set in the fields above, its ranking hints come from reading it again */ }
+export type ShopSort = 'popular' | 'price_asc' | 'price_desc' | 'closing' | 'newest' | 'fit'
 export type ProductCard = { placementId: string; title: string; product: string | null; brand: string; brandKey: string; slug: string; logoUrl: string | null
   channel: string; channelOther: string | null; saleType: string; price: number; buyNowPrice: number | null; onSale: number; nextAt: string; nextClosesAt: string
-  reach: number | null; reachUnit: string | null; reachMatch: 'in' | 'close' | 'none' | null; saved: boolean }
+  reach: number | null; reachUnit: string | null; reachMatch: 'in' | 'close' | 'none' | null; saved: boolean
+  why?: { audiences: string[]; sectors: string[]; dayparts: string[]; language: string | null; onSale: number; inDates: boolean } | null }
 
+/** What Athena sets (and Clear takes back): the sentence and the filters it read from it. */
+export const ATHENA_CLEAR: Partial<ShopFilter> = { ask: '', channel: '', sectors: [], dateFrom: '', dateTo: '', max: '' }
 export const EMPTY: ShopFilter = { q: '', channel: '', sale: [], min: '', max: '', sectors: [], dateFrom: '', dateTo: '', reachMin: '', reachMax: '', reachOnly: false,
-  dp: [], saved: false, nashr: false, market: 'AE' }
+  dp: [], saved: false, nashr: false, market: 'AE', ask: '' }
 const list = (v: string | null) => v ? v.split(',').filter(Boolean) : []
 const toFils = (v: string) => v.trim() === '' ? undefined : Math.round(Number(v.replace(/,/g, '')) * 100)
 const toNum = (v: string) => v.trim() === '' ? undefined : Math.round(Number(v.replace(/,/g, '')))
@@ -40,13 +47,14 @@ const toNum = (v: string) => v.trim() === '' ? undefined : Math.round(Number(v.r
 export function readFilter(p: URLSearchParams): ShopFilter {
   return { q: p.get('q') ?? '', channel: p.get('channel') ?? p.get('ch') ?? '', sale: list(p.get('sale')), min: p.get('min') ?? '', max: p.get('max') ?? '',
     sectors: list(p.get('sectors')), dateFrom: p.get('df') ?? '', dateTo: p.get('dt') ?? '', reachMin: p.get('rmin') ?? '', reachMax: p.get('rmax') ?? '',
-    reachOnly: p.get('ronly') === '1', dp: list(p.get('dp')), saved: p.get('saved') === '1', nashr: p.get('nashr') === '1', market: p.get('market') === 'SA' ? 'SA' : 'AE' }
+    reachOnly: p.get('ronly') === '1', dp: list(p.get('dp')), saved: p.get('saved') === '1', nashr: p.get('nashr') === '1', market: p.get('market') === 'SA' ? 'SA' : 'AE',
+    ask: p.get('ask') ?? '' }
 }
 function writeFilter(f: ShopFilter, extra: Record<string, string>) {
   const p = new URLSearchParams()
   const set = (k: string, v: string | boolean | string[]) => { const s = Array.isArray(v) ? v.join(',') : v === true ? '1' : v === false ? '' : v; if (s) p.set(k, s) }
   set('q', f.q); set('channel', f.channel); set('sale', f.sale); set('min', f.min); set('max', f.max); set('sectors', f.sectors); set('df', f.dateFrom); set('dt', f.dateTo)
-  set('rmin', f.reachMin); set('rmax', f.reachMax); set('ronly', f.reachOnly); set('dp', f.dp); set('saved', f.saved); set('nashr', f.nashr); if (f.market === 'SA') p.set('market', 'SA')
+  set('rmin', f.reachMin); set('rmax', f.reachMax); set('ronly', f.reachOnly); set('dp', f.dp); set('saved', f.saved); set('nashr', f.nashr); if (f.market === 'SA') p.set('market', 'SA'); set('ask', f.ask)
   for (const [k, v] of Object.entries(extra)) if (v) p.set(k, v)
   const qs = p.toString(); history.replaceState(history.state, '', `${location.pathname}${qs ? `?${qs}` : ''}`)
 }
@@ -75,7 +83,9 @@ export function productQuery(f: ShopFilter, sort: ShopSort, extra: Record<string
   const set = (k: string, v: unknown) => { if (v != null && v !== '' && !(Array.isArray(v) && !v.length) && v !== false) p.set(k, Array.isArray(v) ? v.join(',') : v === true ? '1' : String(v)) }
   set('q', f.q.trim()); set('ch', f.channel); set('sale', f.sale); set('min', toFils(f.min)); set('max', toFils(f.max)); set('sectors', f.sectors)
   set('dateFrom', f.dateFrom); set('dateTo', f.dateTo); set('reachMin', toNum(f.reachMin)); set('reachMax', toNum(f.reachMax)); set('reachOnly', f.reachOnly)
-  set('dp', f.dp); set('saved', f.saved); set('market', f.market); set('sort', sort)
+  set('dp', f.dp); set('saved', f.saved); set('market', f.market); set('sort', sort === 'fit' ? 'popular' : sort)
+  // Athena's ranking: who to reach, language, time of day and the other words, read again from the sentence
+  if (sort === 'fit' && f.ask) { const r = readRequest(f.ask, todayInDubai()); p.set('rank', 'athena'); set('aaud', r.audiences); set('alang', r.languages); set('adp', r.dayparts); set('awords', r.words.slice(0, 20)) }
   for (const [k, v] of Object.entries(extra)) set(k, v)
   return p.toString()
 }
@@ -142,7 +152,7 @@ function MoreFilters({ f, set, guest }: { f: ShopFilter; set: (p: Partial<ShopFi
 /** Every filter in use, as a small chip with an × to remove it, and Clear all. */
 function Chips({ f, set }: { f: ShopFilter; set: (p: Partial<ShopFilter>) => void }) {
   const chips: [string, Partial<ShopFilter>][] = []
-  if (f.channel) chips.push([`${t('Media type')}: ${CHANNEL_NAME[f.channel] ?? f.channel}`, { channel: '' }])
+  if (f.channel) chips.push([`${t('Media type')}: ${f.channel.split(',').map(c => CHANNEL_NAME[c] ?? c).join(', ')}`, { channel: '' }])
   if (f.sale.length) chips.push([`${t('Sale type')}: ${f.sale.map(saleLabel).join(', ')}`, { sale: [] }])
   if (f.min || f.max) chips.push([`${t('Price')}: ${f.min ? `AED ${f.min}` : '…'} – ${f.max ? `AED ${f.max}` : '…'}`, { min: '', max: '' }])
   for (const s of f.sectors) chips.push([`${t('Sector')}: ${t(s)}`, { sectors: f.sectors.filter(x => x !== s) }])
@@ -152,10 +162,66 @@ function Chips({ f, set }: { f: ShopFilter; set: (p: Partial<ShopFilter>) => voi
   for (const d of f.dp) chips.push([t((DAYPARTS.find(x => x[0] === d) ?? [d, d])[1]), { dp: f.dp.filter(x => x !== d) }])
   if (f.saved) chips.push([t('Saved outlets'), { saved: false }])
   if (f.nashr) chips.push([t('On Nashr only'), { nashr: false }])
+  // "Clear removes everything Athena set" (owner's doc)
+  if (f.ask) chips.push([`${t('Athena')}: “${f.ask.length > 40 ? f.ask.slice(0, 40) + '…' : f.ask}”`, ATHENA_CLEAR])
   if (!chips.length) return null
   return <div className="filter-chips" aria-label={t('Filters in use')}>
     {chips.map(([label, clear]) => <span key={label} className="fchip">{label}<button type="button" aria-label={t('Remove {name}', { name: label })} onClick={() => set(clear)}>×</button></span>)}
     <button type="button" className="text-link small" onClick={() => set({ ...EMPTY, q: f.q, market: f.market })}>{t('Clear all')}</button>
+  </div>
+}
+
+/** Athena's one line on why a product fits: "Reaches business owners, morning show, accepts Banking, 6 dates on sale in your dates." */
+export function whyText(p: ProductCard) {
+  const w = p.why!, bits: string[] = []
+  if (w.audiences.length) bits.push(t('reaches {who}', { who: w.audiences.map(a => t(audienceLabel(a)).toLowerCase()).join(', ') }))
+  if (w.dayparts.length) bits.push(w.dayparts.includes('morning') ? t('morning show') : w.dayparts.includes('evening') ? t('evening show') : t('afternoon show'))
+  if (w.sectors.length) bits.push(t('accepts {sector}', { sector: w.sectors.map(x => t(x)).join(', ') }))
+  if (w.language) bits.push(t('in {language}', { language: t(w.language.charAt(0).toUpperCase() + w.language.slice(1)) }))
+  bits.push(w.inDates ? t('{n} dates on sale in your dates', { n: w.onSale }) : t('{n} on sale', { n: w.onSale }))
+  if (p.reach) bits.push(t('reach {n}', { n: p.reach.toLocaleString('en-US') }))
+  const line = bits.join(', ')
+  return line.charAt(0).toUpperCase() + line.slice(1) + '.'
+}
+
+// ---- Athena in the search bar (rules only, no outside AI) -----------------------------------------------------------------
+/** What Athena read, as the Directory's own filters. Amounts are the most to spend on one product here. */
+export function athenaFilters(r: AthenaRead, text: string): Partial<ShopFilter> {
+  return { ask: text, q: '', channel: r.channels.join(','), sectors: r.sectors, dateFrom: r.dateFrom ?? '', dateTo: r.dateTo ?? '', max: r.amount ? String(r.amount / 100) : '' }
+}
+
+/**
+ * One bar for search and Athena: "Search or ask Athena". A name searches as you type; a sentence ("radio for a bank launch in
+ * December, about AED 20,000") is shown as Athena's when Enter is pressed: its filters become chips, results rank by fit.
+ */
+export function AskBar({ f, set, onAsk, inputRef }: { f: ShopFilter; set: (p: Partial<ShopFilter>) => void; onAsk: () => void; inputRef?: React.RefObject<HTMLInputElement | null> }) {
+  const [text, setText] = useState(f.ask || f.q), read = useMemo(() => readRequest(text, todayInDubai()), [text])
+  // a name: search as you type (after a short pause); a sentence waits for Enter
+  useEffect(() => { if (read.request || text === f.q || (f.ask && text === f.ask)) return
+    const k = setTimeout(() => set({ q: text, ...(f.ask ? ATHENA_CLEAR : {}) }), 250); return () => clearTimeout(k) }, [text])
+  useEffect(() => { if (!f.ask && !f.q) setText('') }, [f.ask, f.q])
+  const ask = () => { if (!text.trim()) return; if (read.request) { set(athenaFilters(read, text.trim())); onAsk() } else set({ q: text, ...ATHENA_CLEAR }) }
+  return <form className="ask-bar" role="search" onSubmit={e => { e.preventDefault(); ask() }}>
+    <input ref={inputRef} className="search" type="search" placeholder={t('Search or ask Athena')} aria-label={t('Search or ask Athena')} value={text} onChange={e => setText(e.target.value)} />
+    {read.request && text !== f.ask && <button type="submit" className="btn sm primary ask-go">{t('Ask Athena')}</button>}
+  </form>
+}
+
+/** Athena's reading of the sentence, and its one short question when something important is missing (the dates). */
+export function AthenaLine({ f, set }: { f: ShopFilter; set: (p: Partial<ShopFilter>) => void }) {
+  const [answer, setAnswer] = useState('')
+  if (!f.ask) return null
+  const r = readRequest(f.ask, todayInDubai())
+  const read = [r.audiences.length ? t('reaching {who}', { who: r.audiences.map(a => t(audienceLabel(a)).toLowerCase()).join(', ') }) : '',
+    r.languages.length ? t('in {language}', { language: r.languages.map(l => t(l.charAt(0).toUpperCase() + l.slice(1))).join(t(' or ')) }) : '',
+    ...r.dayparts.map(d => d === 'morning' ? t('morning show') : d === 'evening' ? t('evening show') : t('afternoon show'))].filter(Boolean)
+  return <div className="athena-line" role="status">
+    <p><b>{t('Athena')}</b> · {t('Best fit first')}{read.length ? `, ${read.join(', ')}` : ''}. <button type="button" className="text-link" onClick={() => set(ATHENA_CLEAR)}>{t('Clear')}</button></p>
+    {r.missing.includes('dates') && <form className="row-flex athena-q" onSubmit={e => { e.preventDefault(); if (!answer.trim()) return
+        const both = `${f.ask} ${answer}`, rr = readRequest(both, todayInDubai()); set(athenaFilters(rr, both)); setAnswer('') }}>
+      <label htmlFor="athena-q">{t('Which dates? For example: 1–14 Dec.')}</label>
+      <input id="athena-q" className="search" value={answer} onChange={e => setAnswer(e.target.value)} placeholder={t('1–14 Dec')} />
+      <button className="btn sm">{t('OK')}</button></form>}
   </div>
 }
 
@@ -171,7 +237,7 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
   if (layout === 'list') return <tr>
     <td><span className="row-flex"><OutletMark name={p.brand} url={p.logoUrl} size={28} /><span><b dir="auto">{p.title}</b><span className="small muted d-block">{media}</span></span></span></td>
     <td><span className="tag"><SaleIcon k={p.saleType} />{saleLabel(p.saleType)}</span></td>
-    <td className="r num">{money(p.price)}</td><td className="small">{t('{n} on sale', { n: p.onSale })} · {next}{reachTag && <> {reachTag}</>}</td><td>{actions}</td></tr>
+    <td className="r num">{money(p.price)}</td><td className="small">{t('{n} on sale', { n: p.onSale })} · {next}{reachTag && <> {reachTag}</>}{p.why && <div className="pc-why">{whyText(p)}</div>}</td><td>{actions}</td></tr>
   return <article className="card prod-card">
     <div className="row-flex pc-head"><OutletMark name={p.brand} url={p.logoUrl} size={40} />
       <div className="pc-name"><a href={`/directory/${p.slug}`}><b dir="auto">{p.title}</b></a><span className="small muted">{media} · <bdi>{p.brand}</bdi></span></div>
@@ -180,6 +246,7 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
       {p.buyNowPrice != null && <span className="tag">{t('Buy now {amount}', { amount: money(p.buyNowPrice) })}<Tip text={GLOSSARY.buyNow} label={t('Buy now')} /></span>}{reachTag}</div>
     <div className="pc-price"><span className="small muted">{priceLabel}</span><b className="num">{money(p.price)}</b></div>
     <span className="small muted">{t('{n} on sale', { n: p.onSale })} · {t('next: {when}', { when: next })}</span>
+    {p.why && <p className="pc-why small"><span className="pc-why-a">{t('Athena')}</span> {whyText(p)}</p>}
     {actions}
   </article>
 }
@@ -219,7 +286,7 @@ export function useShop() {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const [f, setF] = useState<ShopFilter>(() => readFilter(params))
   const [view, setView] = useState<'outlets' | 'products'>(() => params.get('view') === 'products' ? 'products' : 'outlets')
-  const [sort, setSort] = useState<ShopSort>(() => (['popular', 'price_asc', 'price_desc', 'closing', 'newest'] as ShopSort[]).find(x => x === params.get('sort')) ?? 'popular')
+  const [sort, setSort] = useState<ShopSort>(() => (['popular', 'price_asc', 'price_desc', 'closing', 'newest', 'fit'] as ShopSort[]).find(x => x === params.get('sort')) ?? (params.get('ask') ? 'fit' : 'popular'))
   const [layout, setLayout] = useState<'grid' | 'list'>(() => { try { return (localStorage.getItem('nashr:dir-view') as any) || 'grid' } catch { return 'grid' } })
   useEffect(() => { try { localStorage.setItem('nashr:dir-view', layout) } catch { /* fine */ } }, [layout])
   useEffect(() => { writeFilter(f, { view: view === 'products' ? 'products' : '', sort: sort === 'popular' ? '' : sort, campaign: params.get('campaign') ?? '', search: params.get('search') ?? '' }) }, [f, view, sort])

@@ -15,7 +15,7 @@ type Step = { at: string | string[]; text: string; click?: boolean; then?: { at:
 const side = (href: string) => [`.side-nav a[href="${href}"]`, `.tabbar a[href="${href}"]`, `.topbar .nav a[href="${href}"]`]
 
 const BUYER: Step[] = [
-  { at: side('/directory'), click: true, text: t('This is where you find and buy media. Type a name in the search bar.') },
+  { at: side('/directory'), click: true, text: t('This is where you find and buy media. Type a name in the search bar, or describe what you want and Athena will help.') },
   { at: '.dir-bar', page: '/directory', text: t('Browse by outlet or by product. Narrow down with the filters; More filters has sectors and dates.') },
   { at: '.outlet-card a.badge.on', page: '/directory', click: true, text: t("Open an outlet's calendar."),
     then: { at: '.oc-cal .cv-cell:not(.closed), .oc-cal .cv-items button', text: t('Click a price to bid.') } },
@@ -134,7 +134,7 @@ function SkipAsk({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
 
 // ---- Get started (on the Dashboard until everything is done, or it is closed) --------------------------------------------
 const LINES: Record<string, [string, string]> = {
-  company: [t('Add company details and logo'), ''], campaign: [t('Create a campaign'), '/campaigns?new=1'], bid: [t('Place your first bid'), '/directory?view=products'],
+  company: [t('Add company details and logo'), ''], athena: [t('Ask Athena something in the search bar'), '/directory'], campaign: [t('Create a campaign'), '/campaigns?new=1'], bid: [t('Place your first bid'), '/directory?view=products'],
   outlet: [t('Add your first outlet'), '/listings/new'], product: [t('Add a product'), '/listings'], onSale: [t('Put your first dates on sale'), '/schedule'],
   payouts: [t('Add payout details'), '/profile'],
 }

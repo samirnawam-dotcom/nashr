@@ -195,3 +195,15 @@ main.booking { max-width: 1180px; }
   html .drawer { width: 100%; max-width: none; border-radius: 0; border: 0; }
   .dates-panel { z-index: 70; }
 }
+
+/* ---- Athena in the search bar ---- */
+.ask-bar { position: relative; flex: 1 1 320px; display: flex; min-width: 0; }
+.ask-bar .search { flex: 1; min-width: 0; padding-inline-end: 110px; }
+.ask-bar .ask-go { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); }
+.athena-line { margin: 4px 0 8px; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-muted); display: grid; gap: 8px; }
+.athena-line p { margin: 0; }
+.athena-q { gap: 8px; flex-wrap: wrap; }
+.athena-q .search { width: 160px; }
+.pc-why { margin: 0; color: var(--text); }
+.pc-why-a { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--text); color: var(--surface); margin-inline-end: 4px; }
+td .pc-why { color: var(--text-muted); margin-top: 2px; }

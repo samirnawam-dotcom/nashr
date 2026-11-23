@@ -75,3 +75,20 @@
   .cp-l-st { grid-column: 1; } .cp-l-act { grid-column: 2; }
 }
 .cp-form .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px 16px; align-items: start; }
+
+/* ---- Plan your campaign with Athena ---- */
+.athena-plan { padding: 16px; margin: 0 0 16px; display: grid; gap: 12px; }
+.ap-ask { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ap-ask .search { flex: 1 1 280px; min-width: 0; }
+.ap-total { margin: 0; }
+.ap-split td, .ap-split th { vertical-align: middle; }
+.ap-share { display: inline-flex; align-items: center; gap: 4px; }
+.ap-share input { width: 64px; text-align: end; }
+.ap-part h4 { margin: 8px 0 6px; font-size: 15px; }
+.ap-lines { list-style: none; margin: 0; padding: 0; display: grid; }
+.ap-lines li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.ap-lines li.off { opacity: .5; }
+.ap-what { display: grid; gap: 1px; min-width: 0; }
+.ap-price { font-weight: 600; }
+.ap-swap { max-width: 170px; }
+@media (max-width: 760px) { .ap-lines li { grid-template-columns: auto auto minmax(0, 1fr); } .ap-price, .ap-swap { grid-column: 3; justify-self: start; } }
