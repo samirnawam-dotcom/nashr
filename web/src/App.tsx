@@ -7,6 +7,7 @@ import { MyAccountPage, ForgotPassword, ResetPassword } from './Account'
 import { Bell } from './Bell'
 import { TrackerPage } from './calendar/Tracker'
 import { Redirect } from './Redirect'
+import { replayTour, Tour } from './onboarding/Onboarding'
 import { DirectoryPage, OutletPage } from './directory/Directory'
 import { Landing } from './Landing'
 import { DisputesPolicyPage, PrivacyPage, RefundsPage, TermsPage } from './Legal'
@@ -240,7 +241,7 @@ const TabIcon = ({ path }: { path: string }) => <svg width="20" height="20" view
 export const Wordmark = ({ href, tone = 'auto', height = 24 }: { href?: string; tone?: 'auto' | 'primary' | 'reversed'; height?: number }) => <Logo href={href ?? '/'} tone={tone} height={height} />
 
 /** The menu under the account's name (owner's rules): its settings, help, the language and signing out, out of the main list. */
-function NameMenu({ name, sub, initials, links, mini, onSignOut }: { name: string; sub: string; initials: string; links: [string, string][]; mini: boolean; onSignOut: () => void }) {
+function NameMenu({ name, sub, initials, links, mini, onSignOut, onTour }: { name: string; sub: string; initials: string; links: [string, string][]; mini: boolean; onSignOut: () => void; onTour?: () => void }) {
   const [open, setOpen] = useState(false), ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -256,6 +257,7 @@ function NameMenu({ name, sub, initials, links, mini, onSignOut }: { name: strin
     {open && <div className="name-pop" role="menu">
       <div className="name-pop-h"><b>{name}</b><span className="small muted">{sub}</span></div>
       {links.map(([href, l]) => <a key={href} role="menuitem" href={href} onClick={() => setOpen(false)}>{l}</a>)}
+      {onTour && <button type="button" role="menuitem" className="name-out" onClick={() => { setOpen(false); onTour() }}>{t('Take the tutorial again')}</button>}
       <div className="name-pop-lang"><span className="small muted">{t('Language')}</span><LangSwitch /></div>
       <div className="name-pop-lang"><span className="small muted">{t('Theme')}</span><ThemeChoice /></div>
       <button type="button" role="menuitem" className="name-out" onClick={onSignOut}>{t('Sign out')}</button>
@@ -318,17 +320,20 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
 
   const nav = NAV[staff ? 'admin' : seller ? 'seller' : 'buyer']
   const initials = me.company.name.split(' ').map(w => w[0]).slice(0, 2).join('')
+  // the guided tour: buyers and publishers, never staff or someone acting as the account
+  const tourFor = (me.role === 'buyer' || me.role === 'seller') && !me.signedInAs && !me.viewingAs ? me.role as 'buyer' | 'seller' : null
   const signOut = async () => { await api('/auth/logout', { method: 'POST' }); navigate(''); setMe(null); resetLive() }
   const hit = routesFor(me.role).map(([re, page]) => [path.match(re), page] as const).find(([m]) => m)
   return (
     <div className={`shell ${mini ? 'min' : ''}`}>
+      {tourFor && <Tour role={tourFor} who={`${tourFor}:${me.company.name}`} />}
       {/* brand guide: a 56 px top bar (logo, alerts, the account) over a 216 px sidebar of the main places */}
       <header className="wtop">
         <Wordmark href={`${home}`} />
         <div className="spacer" />
         <ThemeToggle />
         <Bell role={me.role} />
-        <NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={false} onSignOut={signOut}
+        <NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={false} onSignOut={signOut} onTour={tourFor ? replayTour : undefined}
           links={[...(seller ? [['/profile', t('Your business')]] : me.role === 'buyer' ? [['/company', t('Company')]] : []), ['/account', t('Your account')], ...(!staff ? [['/help', t('Help')]] : [])] as [string, string][]} />
       </header>
       <aside className="side" aria-label={t('Menu')}>
@@ -354,6 +359,7 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
         <nav className="nav" id="main-nav">{nav.map(([p, l]) => <a key={p} href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''}>
           {l}{p === '/athena' && <span className={t("soon")}>{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a>)}
           <a href="/account" className={isActive(path, '/account') ? 'active' : ''}>{t('Your account')}</a>
+          {tourFor && <a href="#tour" onClick={e => { e.preventDefault(); setMenu(false); replayTour() }}>{t('Take the tutorial again')}</a>}
           <a href="/" className="nav-signout" onClick={async e => { e.preventDefault(); await signOut() }}>{t("Sign out")}</a></nav>
         <div className="spacer" />
         <ThemeToggle />

@@ -35,7 +35,7 @@ export function ProductsPage() {
       <div><b className="num">{list.length}</b><span>{t(list.length === 1 ? 'outlet' : 'outlets')}</span></div><div><b className="num">{media.length}</b><span>{t(media.length === 1 ? 'product' : 'products')}</span></div>
       <div><b className="num">{sell.filter(s => s.openSlots > 0).length}</b><span>{t('listed now')}</span></div><div><b className="num">{sell.reduce((n, s) => n + s.openSlots, 0).toLocaleString('en-US')}</b><span>{t('slots on sale')}</span></div>
     </section>}
-    {!list.length && <section className="card pad pd-empty"><h2>{t('Add your first outlet')}</h2>
+    {!list.length && <section className="card pad pd-empty"><h2>{t('Add your first outlet to start selling.')}</h2>
       <p className="muted">{t('An outlet is your brand, for example Skyline FM. Under it, add each product it sells (its radio station, its website, its newsletter…) and, for radio, TV and podcasts, its programmes. Then list them for the dates you choose.')}</p>
       <a className="btn primary" href="/listings/new">+ {t('Add outlet')}</a></section>}
 

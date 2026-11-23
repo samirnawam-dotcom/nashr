@@ -32,7 +32,7 @@ const login = async (b, email) => { const r = (await b.newContext()).request; aw
   await seller.post(`${BASE}/api/seller/deals/${dealId}/issues/offer`, { data: { type: 'partial_refund', amount: 50000 } })
   await buyer.post(`${BASE}/api/deals/${dealId}/issues/respond`, { data: { accept: false } })
 
-  const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errors = []
+  const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errors = []; await p.addInitScript(() => { try { localStorage.setItem('nashr:tour:off', '1') } catch {} })
   p.on('pageerror', e => errors.push(e.message)); p.on('response', r => r.status() >= 400 && !/\/api\/(me|auth\/login)$/.test(new URL(r.url()).pathname) && errors.push(`${r.status()} ${r.url()}`)) // sign-in asks for the code with a 400 first
   const shot = async n => out && (await p.waitForTimeout(300), await p.screenshot({ path: `${out}/${n}.png`, fullPage: true }))
   p.on('dialog', d => d.accept())

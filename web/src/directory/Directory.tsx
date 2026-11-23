@@ -14,7 +14,7 @@ import { ProductSummary, daysText, mediaName, type SummaryProduct } from '../pro
 import { AddToCampaign } from '../campaigns/AddToCampaign'
 import { setCurrentCampaign, useCampaigns, useCurrentCampaign } from '../calendar/CampaignDrawer'
 import { OutletCalendar, saleLabel, SaleIcon } from '../calendar/CalendarPage'
-import { CampaignButton, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
+import { CampaignButton, EMPTY, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
 
 /*
  * The Directory (owner's buyer-side fixes): the same structure as the publisher's Products page, outlets first, then their
@@ -105,7 +105,8 @@ export function DirectoryPage() {
       <div className={`shop ${buying.myBids ? 'with-bids' : ''}`}>
         <div className="shop-main">
           {view === 'outlets' ? <>
-            {list && !shown.length && <p className="muted empty">{f.saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t("No outlets match. Clear the filters to see everything.")}</p>}
+            {list && !shown.length && <div className="empty"><p className="muted">{f.saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t('Nothing matches these filters.')}</p>
+              {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}</div>}
             {layout === 'grid'
               ? <div className="outlet-grid">{shown.map(o => <article key={o.id} className="card outlet-card" onClick={() => navigate(`/directory/${o.slug}`)}>
                   <img className="outlet-cover" src={o.coverUrl ?? art(o.channels[0], 'card')} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-card.jpg` }} width={800} height={250} alt="" loading="lazy" decoding="async" />
@@ -127,7 +128,8 @@ export function DirectoryPage() {
           </> : <>
             {prods.items == null && <p className="muted">{t('Loading…')}</p>}
             {prods.items && <p className="small muted">{t('{n} products', { n: prods.total })}</p>}
-            {prods.items && !prods.items.length && <div className="empty"><p className="muted">{filtered ? t('No products match. Remove a filter to see more.') : t('Nothing on sale right now.')}</p></div>}
+            {prods.items && !prods.items.length && <div className="empty"><p className="muted">{filtered ? t('Nothing matches these filters.') : t('Nothing on sale right now.')}</p>
+              {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}</div>}
             {prods.items && prods.items.length > 0 && (layout === 'grid'
               ? <div className="prod-grid">{prods.items.map(p => <ProductCardView key={p.placementId} p={p} layout="grid" guest={guest} onBuy={buying.buy} onSaved={setOne} />)}</div>
               : <div className="table-wrap card"><table className="table"><thead><tr><th>{t('Product')}</th><th>{t('Sale type')}</th><th className="r">{t('Starting price')}</th><th>{t('On sale')}</th><th /></tr></thead>

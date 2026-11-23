@@ -1,0 +1,32 @@
+/* Guided onboarding: the tour's spotlight and popup, its welcome and paused states, Get started, and the "?" tips */
+.tour-spot { position: fixed; z-index: 900; border-radius: 10px; pointer-events: none; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text), 0 0 0 9999px rgba(11, 11, 12, .45); transition: top .2s, left .2s, width .2s, height .2s; }
+@media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }
+.tour-pop { position: fixed; z-index: 902; width: min(340px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow-pop); display: grid; gap: 8px; }
+.tour-pop p { margin: 0; }
+.tour-pop > p:nth-child(2) { font-size: 15px; line-height: 22px; }
+.tour-scrim { position: fixed; inset: 0; z-index: 905; background: rgba(11, 11, 12, .45); display: grid; place-items: center; padding: 16px; }
+.tour-card { width: min(420px, 100%); background: var(--surface); color: var(--text); border-radius: 14px; padding: 24px; display: grid; gap: 16px; box-shadow: var(--shadow-pop); }
+.tour-card h2 { margin: 0; font-size: 20px; line-height: 28px; }
+.tour-paused { position: fixed; z-index: 902; inset-inline: 0; bottom: 16px; margin-inline: auto; width: max-content; max-width: calc(100vw - 24px); display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+  background: var(--text); color: var(--surface); border-radius: 999px; box-shadow: var(--shadow-pop); }
+.tour-paused .text-link { color: var(--surface); }
+.tour-skip { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px; }
+.tour-paused .tour-skip { position: absolute; bottom: calc(100% + 8px); inset-inline-start: 0; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px; width: 300px; }
+.tour-skip p { margin: 0; }
+@media (max-width: 760px) { .tour-paused { bottom: 76px; } }
+
+.get-started { margin: 0 0 20px; }
+.gs-head { display: flex; align-items: center; gap: 10px; }
+.gs-head h2 { margin: 0; font-size: 18px; }
+.get-started ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; counter-reset: gs; }
+.get-started li { counter-increment: gs; display: flex; align-items: center; gap: 10px; }
+.get-started li::before { content: counter(gs); flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; border: 1px solid var(--line-strong); }
+.get-started li.done::before { content: "✓"; background: var(--success); border-color: var(--success); color: #fff; }
+.get-started li.done span { color: var(--text-muted); text-decoration: line-through; }
+
+.tip { position: relative; display: inline-flex; vertical-align: middle; margin-inline-start: 4px; }
+.tip-q { width: 16px; height: 16px; padding: 0; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text-muted); font: 600 11px/14px var(--font-sans); cursor: help; }
+.tip-q:hover, .tip-q:focus-visible, .tip-q[aria-expanded="true"] { border-color: var(--text); color: var(--text); }
+.tip-pop { position: absolute; z-index: 60; bottom: calc(100% + 6px); inset-inline-start: 50%; transform: translateX(-50%); width: max-content; max-width: 240px; padding: 8px 10px; border-radius: 8px;
+  background: var(--text); color: var(--surface); font: 400 13px/18px var(--font-sans); text-align: start; white-space: normal; box-shadow: var(--shadow-pop); }
+[dir="rtl"] .tip-pop { transform: translateX(50%); }

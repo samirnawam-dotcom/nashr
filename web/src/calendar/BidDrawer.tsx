@@ -1,3 +1,4 @@
+import { GLOSSARY, Tip } from '../onboarding/Onboarding'
 import { useEffect, useState } from 'react'
 import { tm, tmTitle } from '../i18n-server'
 import { api, upload, type CampaignBrief, type Client, type Slot } from '../api'
@@ -111,14 +112,14 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       {s.saleType === 'auction' && s.available && closes.getTime() - now < 3_600_000 && closes.getTime() > now && <p className="bid-countdown" role="timer" aria-live="off">
         {t('Bidding closes in {time}', { time: `${Math.floor((closes.getTime() - now) / 60_000)}:${String(Math.floor((closes.getTime() - now) / 1000) % 60).padStart(2, '0')}` })}</p>}
       {s.saleType === 'auction' && <p className="small muted">{hasTime(s.channel) ? t('Bidding closes {date}, {time} (Dubai time)', { date: dayLabel(dubai(s.closesAt).date, { weekday: 'short', day: 'numeric', month: 'short' }), time: time(s.closesAt) })
-        : t('Bidding closes {when}', { when: slotWhen(s.closesAt, s.channel) })}</p>}
+        : t('Bidding closes {when}', { when: slotWhen(s.closesAt, s.channel) })}<Tip text={GLOSSARY.closes} label={t('Bidding closes')} /></p>}
 
       {s.details && !!(s.details.description || s.details.specs || s.details.language || s.details.notAccepted?.length) && <dl className="facts placement-facts">
         {s.details.description && <div><dt>{t('What you get')}</dt><dd dir="auto">{s.details.description}</dd></div>}
         {s.details.specs && <div><dt>{t('Creative specs')}</dt><dd dir="auto">{s.details.specs}</dd></div>}
         {s.details.language && <div><dt>{t('Ad language')}</dt><dd>{t(LANGUAGE[s.details.language] ?? s.details.language)}</dd></div>}
         {s.details.notAccepted?.length ? <div><dt>{t('Does not accept')}</dt><dd>{s.details.notAccepted.map(i => t(i)).join(', ')}</dd></div> : null}
-        <div><dt>{t('Creative due')}</dt><dd>{slotWhen(s.creativeDueAt, s.channel)}</dd></div>
+        <div><dt>{t('Creative due')}<Tip text={GLOSSARY.creativeDue} label={t('Creative due')} /></dt><dd>{slotWhen(s.creativeDueAt, s.channel)}</dd></div>
       </dl>}
       <Reach audience={s.audience} reach={s.reach} reachUnit={s.reachUnit} notes={s.notes} />
       {s.publisher && <div className="drawer-seller"><span className="small muted">{t('Sold by')}</span><CompanyCard p={s.publisher} compact /></div>}
@@ -134,14 +135,14 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
       {s.available && !guest && <>
         {/* the campaign first (owner's buyer-side fixes); optional */}
         <section className="form bd-campaign">
-          <div className="field"><label htmlFor="camp">{t('Campaign (optional)')}</label>
+          <div className="field"><label htmlFor="camp">{t('Campaign (optional)')}</label><Tip text={GLOSSARY.campaign} label={t('Campaign')} />
             <select id="camp" value={campaignId} onChange={e => { setCampaignId(e.target.value); setOwnBrief(false) }}><option value="">{t('No campaign')}</option>
               {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
           {campaign && !ownBrief && <div className="bd-brief" role="note">
             <p className="small">{t('Your campaign brief and creative will be sent to {outlet}.', { outlet: s.brand ?? s.outlet })}</p>
             {campaign.brief ? <p className="bd-brief-p"><b dir="auto">{campaign.brief.advertiser}</b> · {t(campaign.brief.industry)}<br /><span dir="auto">{campaign.brief.message}</span></p>
               : <p className="small warn">{t('This campaign has no brief yet.')}</p>}
-            <button type="button" className="linkish small" onClick={editForThisBid}>{t('Edit for this bid')}</button></div>}
+            <button type="button" className="linkish small" onClick={editForThisBid}>{t('Edit for this bid')}</button><Tip text={GLOSSARY.editForBid} label={t('Edit for this bid')} /></div>}
         </section>
 
         {clients.length > 0 && <div className="field"><label htmlFor="client">{t('Client (optional)')}</label>
@@ -176,7 +177,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           <div className="seg bid-mode" role="radiogroup" aria-label={t('How to bid')}>
             <button type="button" role="radio" aria-checked={!auto} className={!auto ? 'on' : ''} onClick={() => setAuto(false)}>{t('Single bid')}</button>
             <button type="button" role="radio" aria-checked={auto} className={auto ? 'on' : ''} onClick={() => setAuto(true)}>{t('Auto-bid')}</button></div>
-          {!auto ? <div className="field"><label htmlFor="amt">{t("Your bid (excl. VAT)")}</label>
+          {!auto ? <div className="field"><label htmlFor="amt">{t("Your bid (excl. VAT)")}</label><Tip text={GLOSSARY.price} label={t('Price excl. VAT')} />
             <div className="money-input"><span aria-hidden>{t("AED")}</span><input id="amt" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></div>
             <div className="quick-add" aria-label={t("Raise your bid")}>{[100, 250, 500].map(n => <button key={n} type="button" className="btn"
               onClick={() => setAmount(String(Math.max(Number(amount.replace(/,/g, '')) || 0, s.minNextBid / 100) + n))}>+{n}</button>)}</div></div>
@@ -196,7 +197,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
           const price = s.saleType === 'auction' ? (auto ? toFils(max) || s.minNextBid : toFils(amount) || 0) : s.saleType === 'fixed' ? s.startingPrice : toFils(amount) || s.startingPrice
           const after = campaign.remaining - price
           return <p className={`bd-budget small ${after < 0 ? 'over' : ''}`} role="note">{t('{left} left · after this bid {after}', { left: money(campaign.remaining), after: money(after) })}
-            <span className="muted"> · {t('Only you see this.')}</span></p> })()}
+            <span className="muted"> · {t('Only you see this.')}</span><Tip text={GLOSSARY.budget} label={t('Budget')} /></p> })()}
 
         {exposure && s.saleType === 'auction' && (() => {
           const bid = (auto ? toFils(max) : toFils(amount)) || 0, mine = s.youLead && s.topBid ? s.topBid : 0, withThis = exposure.total - mine + bid

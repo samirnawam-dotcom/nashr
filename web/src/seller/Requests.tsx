@@ -53,7 +53,7 @@ export function RequestsPage() {
     <div className={`rq-split${current ? ' has-pick' : ''}`}>
       <ul className="rq-list" aria-label={t('Requests')}>
         {tasks == null ? <li className="muted rq-empty">{t('Loading…')}</li>
-          : !shown.length ? <li className="muted rq-empty">{t('Nothing needs you right now.')}</li>
+          : !shown.length ? <li className="muted rq-empty">{t('Nothing needs you right now. Payments, proofs and messages will show here.')}</li>
           : shown.map(x => <li key={keyOf(x)}>
             <button className={`rq-item${keyOf(x) === pick ? ' on' : ''}`} aria-current={keyOf(x) === pick ? 'true' : undefined} onClick={() => { setPick(keyOf(x)); setNote('') }}>
               <span className="rq-av" aria-hidden>{(x.buyer ?? x.outlet).slice(0, 2).toUpperCase()}</span>

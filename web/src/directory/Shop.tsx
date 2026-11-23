@@ -1,3 +1,4 @@
+import { GLOSSARY, Tip } from '../onboarding/Onboarding'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
 import { money, slotWhen } from '../format'
@@ -104,7 +105,7 @@ export function ShopFilters({ f, set, guest, view }: { f: ShopFilter; set: (p: P
       <Popover label={<>{t('More filters')}{more > 0 && <span className="count">{more}</span>}</>} on={more > 0} wide align="end">
         <MoreFilters f={f} set={set} guest={guest} />
       </Popover>
-      {!guest && <label className="check"><input type="checkbox" checked={f.saved} onChange={e => set({ saved: e.target.checked })} /> {t('Saved outlets')}</label>}
+      {!guest && <span className="row-flex"><label className="check"><input type="checkbox" checked={f.saved} onChange={e => set({ saved: e.target.checked })} /> {t('Saved outlets')}</label><Tip text={GLOSSARY.savedOutlets} label={t('Saved outlets')} /></span>}
       {view === 'outlets' && <label className="check"><input type="checkbox" checked={f.nashr} onChange={e => set({ nashr: e.target.checked })} /> {t('On Nashr only')}</label>}
       <div className="seg" role="group" aria-label={t('Market')}><button className={f.market === 'AE' ? 'on' : ''} onClick={() => set({ market: 'AE' })}>{t('UAE')}</button>
         <button className={f.market === 'SA' ? 'on' : ''} onClick={() => set({ market: 'SA' })}>{t('KSA · coming soon')}</button></div>
@@ -125,7 +126,7 @@ function MoreFilters({ f, set, guest }: { f: ShopFilter; set: (p: Partial<ShopFi
       <span className="dir-range"><input className="search" type="date" aria-label={t('From date')} value={f.dateFrom} onChange={e => set({ dateFrom: e.target.value })} />
         <span aria-hidden>–</span><input className="search" type="date" aria-label={t('To date')} value={f.dateTo} min={f.dateFrom || undefined} onChange={e => set({ dateTo: e.target.value })} /></span>
     </fieldset>
-    <fieldset><legend>{t('Reach')}</legend>
+    <fieldset><legend>{t('Reach')}<Tip text={GLOSSARY.reach} label={t('Reach')} /></legend>
       <span className="dir-range"><input className="search" inputMode="numeric" aria-label={t('Reach from')} placeholder={t('Reach from')} value={f.reachMin} onChange={e => set({ reachMin: e.target.value.replace(/[^\d,]/g, '') })} />
         <span aria-hidden>–</span><input className="search" inputMode="numeric" aria-label={t('Reach to')} placeholder={t('to')} value={f.reachMax} onChange={e => set({ reachMax: e.target.value.replace(/[^\d,]/g, '') })} /></span>
       <label className="check"><input type="checkbox" checked={f.reachOnly} onChange={e => set({ reachOnly: e.target.checked })} />{t('Only show products with reach')}</label>
@@ -162,7 +163,7 @@ function Chips({ f, set }: { f: ShopFilter; set: (p: Partial<ShopFilter>) => voi
 export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: ProductCard; onBuy: (p: ProductCard) => void; guest: boolean; onSaved?: (key: string, v: boolean) => void; layout: 'grid' | 'list' }) {
   const priceLabel = p.saleType === 'fixed' ? t('Price') : t('Starting price')
   const next = slotWhen(p.nextAt, p.channel)
-  const reachTag = p.reachMatch === 'close' ? <span className="badge">{t('Close match')}</span> : p.reachMatch === 'none' ? <span className="badge muted">{t('Reach not given')}</span> : null
+  const reachTag = p.reachMatch === 'close' ? <span className="badge">{t('Close match')}<Tip text={GLOSSARY.closeMatch} label={t('Close match')} /></span> : p.reachMatch === 'none' ? <span className="badge muted">{t('Reach not given')}</span> : null
   const media = p.channel === 'other' && p.channelOther ? p.channelOther : CHANNEL_NAME[p.channel] ?? p.channel
   const actions = <span className="prod-acts">
     <button type="button" className="btn sm primary" onClick={() => onBuy(p)}>{verb(p.saleType)}</button>
@@ -175,8 +176,8 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
     <div className="row-flex pc-head"><OutletMark name={p.brand} url={p.logoUrl} size={40} />
       <div className="pc-name"><a href={`/directory/${p.slug}`}><b dir="auto">{p.title}</b></a><span className="small muted">{media} · <bdi>{p.brand}</bdi></span></div>
       {!guest && onSaved && <ShopStar brandKey={p.brandKey} name={p.brand} saved={p.saved} onChange={v => onSaved(p.brandKey, v)} />}</div>
-    <div className="row-flex pc-tags"><span className="tag"><SaleIcon k={p.saleType} />{saleLabel(p.saleType)}</span>
-      {p.buyNowPrice != null && <span className="tag">{t('Buy now {amount}', { amount: money(p.buyNowPrice) })}</span>}{reachTag}</div>
+    <div className="row-flex pc-tags"><span className="tag"><SaleIcon k={p.saleType} />{saleLabel(p.saleType)}<Tip text={GLOSSARY[p.saleType as 'auction' | 'fixed' | 'quick_sale'] ?? GLOSSARY.quick_sale} label={saleLabel(p.saleType)} /></span>
+      {p.buyNowPrice != null && <span className="tag">{t('Buy now {amount}', { amount: money(p.buyNowPrice) })}<Tip text={GLOSSARY.buyNow} label={t('Buy now')} /></span>}{reachTag}</div>
     <div className="pc-price"><span className="small muted">{priceLabel}</span><b className="num">{money(p.price)}</b></div>
     <span className="small muted">{t('{n} on sale', { n: p.onSale })} · {t('next: {when}', { when: next })}</span>
     {actions}

@@ -23,7 +23,7 @@ let step = ''
 const say = (...m) => console.log(`✓ ${step}`, ...m)
 
 async function page(b, name) {
-  const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage(), errors = []
+  const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage(), errors = []; await p.addInitScript(() => { try { localStorage.setItem('nashr:tour:off', '1') } catch {} })
   p.on('pageerror', e => errors.push(e.message))
   p.on('response', r => { const u = new URL(r.url()); if (r.status() >= 400 && u.pathname.startsWith('/api/') && !/\/api\/(me|auth\/login)$/.test(u.pathname)) errors.push(`${r.status()} ${r.request().method()} ${u.pathname}`) })
   p.on('dialog', d => d.accept())

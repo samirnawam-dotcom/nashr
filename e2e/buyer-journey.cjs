@@ -4,7 +4,7 @@ const { chromium } = require('playwright')
 const out = process.env.E2E_OUT
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
 ;(async () => {
-  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } })
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); await p.addInitScript(() => { try { localStorage.setItem('nashr:tour:off', '1') } catch {} })
   const errors = []; p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
   await p.goto(BASE + '/#/sign-in')
   await p.fill('#email', 'demo@northwind.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')

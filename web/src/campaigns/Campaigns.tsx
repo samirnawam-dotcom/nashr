@@ -1,3 +1,4 @@
+import { GLOSSARY, Tip } from '../onboarding/Onboarding'
 import { navigate } from '../nav'
 import { tm } from '../i18n-server'
 import { useEffect, useState } from 'react'
@@ -138,7 +139,7 @@ export function BudgetBar({ c, big }: { c: Campaign; big?: boolean }) {
     <div className="cp-track" role="img" aria-label={c.budget ? t('{a} committed and {b} estimated of a {c} budget', { a: money(c.committed), b: money(c.estimated), c: money(c.budget) })
       : t('{a} committed and {b} estimated, no budget set', { a: money(c.committed), b: money(c.estimated) })}>
       <i className="c" style={{ width: w(c.committed) }} /><i className="e" style={{ width: w(extra) }} /></div>
-    <p className="small"><span><b className="num">{money(c.committed)}</b> {t('committed')}</span> · <span><b className="num">{money(c.estimated)}</b> {t('estimated')}</span>
+    <p className="small"><span><b className="num">{money(c.committed)}</b> {t('committed')}<Tip text={GLOSSARY.committed} label={t('Committed')} /></span> · <span><b className="num">{money(c.estimated)}</b> {t('estimated')}<Tip text={GLOSSARY.estimated} label={t('Estimated')} /></span>
       {' · '}{c.budget ? <span><b className="num">{money(c.budget)}</b> {t('budget')}</span> : <span className="muted">{t('No budget set')}</span>}</p>
   </div>
 }

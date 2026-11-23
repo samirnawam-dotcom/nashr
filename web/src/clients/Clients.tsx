@@ -60,7 +60,8 @@ export function ClientsPage() {
       {form && <><section className="card pad" style={{ maxWidth: 620, marginBottom: 12 }}><LogoPicker name={form.name || t('Client')} url={null} endpoint="" onBlob={setLogo} chosen={t('Logo chosen. It is saved with the client.')} /><span className="small muted">{t('Optional')}</span></section>
         <ClientForm form={form} setForm={setForm} busy={busy} error={error} onSave={create} onCancel={() => setForm(null)} saveLabel={t('Add client')} /></>}
       {!form && error && <p className="error">{error}</p>}
-      {list && !list.length && !form && <p className="muted empty">{t('No clients yet. Add one, then choose it when you bid or book, so its spend, receipts and report stay together.')}</p>}
+      {list && !list.length && !form && <div className="card cp-empty"><p>{t('Optional. Add a client to keep its bookings, receipts and reports together.')}</p>
+        <button className="btn primary" onClick={() => { setLogo(null); setForm(blank) }}>{t('Add a client')}</button></div>}
       {list && list.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t('Client')}</th><th className="r">{t('Bookings')}</th>
         <th className="r">{t('Committed')}</th><th>{t('Status')}</th></tr></thead>
         <tbody>{list.map(c => <tr key={c.id} onClick={() => navigate(`/clients/${c.id}`)}>

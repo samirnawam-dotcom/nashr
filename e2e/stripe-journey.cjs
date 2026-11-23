@@ -26,7 +26,7 @@ const ok = (cond, what) => { if (!cond) throw new Error('FAILED: ' + what); cons
   const dealId = (await (await ctx.request.post(`${BASE}/api/slots/${slot.id}/buy-now`, { data: { brief } })).json()).id
   await sellerCtx.request.post(`${BASE}/api/seller/deals/${dealId}/accept`)
 
-  const p = await ctx.newPage()
+  const p = await ctx.newPage(); await p.addInitScript(() => { try { localStorage.setItem('nashr:tour:off', '1') } catch {} })
   await p.goto(`${BASE}/bookings/${dealId}`); await p.waitForSelector('#mock-card')
   ok(!(await p.locator('#card').count()), 'the card form is Stripe\'s, not the test-card list')
   // Declined

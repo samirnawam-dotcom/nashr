@@ -1,3 +1,4 @@
+import { GetStarted } from '../onboarding/Onboarding'
 import { useEffect, useState } from 'react'
 import { tm, tmTitle } from '../i18n-server'
 import { api } from '../api'
@@ -20,10 +21,7 @@ type Portal = { period: { days: number }; outlets: { id: string; name: string; c
   kpis: { gross: Kpi; net: Kpi; pending: Kpi; listings: { live: number; total: number; openSlots: number }; awaiting: Kpi }
   trend: { date: string; value: number }[]; byOutlet: { outlet: string; value: number }[]
   actions: Action[]; actionsTotal: number; transactions: Tx[]; payouts: { available: number; pending: number; pendingCount: number; paidOut: number } }
-type Onboarding = { onboarding: Record<string, boolean> }
 
-const STEPS: [string, string, string][] = [['outlet', 'Add your outlet profile', '/profile'], ['payouts', 'Connect your payout account', '/profile'],
-  ['tax', 'Add your TRN and invoice choice', '/profile'], ['placement', 'Add your first product', '/listings/new'], ['live', 'List it for the dates you choose', '/listings']]
 const PERIODS = [[7, 'Last 7 days'], [30, 'Last 30 days'], [90, 'Last 90 days'], [365, 'Last 12 months']] as const
 
 // What a transaction's status means to a publisher, and how it looks
@@ -93,17 +91,16 @@ export const KI = {
 
 export function PortalDashboard() {
   const [days, setDays] = useState(30), [outlet, setOutlet] = useState(''), [d, setD] = useState<Portal | null>(null), [err, setErr] = useState('')
-  const [setup, setSetup] = useState<Onboarding | null>(null), [busy, setBusy] = useState(''), [note, setNote] = useState('')
+  const [busy, setBusy] = useState(''), [note, setNote] = useState('')
   const load = () => api<Portal>(`/seller/portal?days=${days}${outlet ? `&outlet=${outlet}` : ''}`).then(setD, e => setErr(e.message))
   useEffect(() => { load() }, [days, outlet])
-  useEffect(() => { api<Onboarding>('/seller/overview').then(setSetup, () => {}) }, [])
   async function accept(a: Action) {
     setBusy(a.dealId!); setNote('')
     try { await api(`/seller/deals/${a.dealId}/accept`, { method: 'POST', body: {} }); setNote(t('Accepted. The buyer is asked to pay.')); await load() }
     catch (e: any) { setNote(e.message) } finally { setBusy('') }
   }
   if (!d) return <main>{err ? <p className="error">{err}</p> : <p className="muted">{t('Loading…')}</p>}</main>
-  const k = d.kpis, todo = setup ? STEPS.filter(([key]) => !setup.onboarding[key]) : []
+  const k = d.kpis
   const open = (a: Action) => navigate(a.dealId ? `/deals/${a.dealId}` : `/slots/${a.slotId}`)
   return <main className="pt">
     <div className="pt-head">
@@ -115,8 +112,7 @@ export function PortalDashboard() {
       </div>
     </div>
 
-    {todo.length > 0 && <section className="card pad pt-setup"><b>{t('Finish setting up to start selling')}</b>
-      <ol>{STEPS.map(([key, label, href]) => <li key={key} className={setup!.onboarding[key] ? 'done' : ''}><a href={href}>{t(label)}</a></li>)}</ol></section>}
+    <GetStarted role="seller" />
 
     <section className="pt-kpis">
       <Kpi main href="/deals" icon={KI.trend} label={t('Gross sales')} value={money(k.gross.value)}><Change v={k.gross.change} /></Kpi>

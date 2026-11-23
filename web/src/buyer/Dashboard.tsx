@@ -1,3 +1,4 @@
+import { GetStarted } from '../onboarding/Onboarding'
 import { useEffect, useState } from 'react'
 import { tm } from '../i18n-server'
 import { api, type Campaign } from '../api'
@@ -48,6 +49,7 @@ export function BuyerDashboard() {
         <div><h1>{greeting()}{company ? sep + company : ''}</h1><p className="muted">{t('Your bookings, bids and spend at a glance. Click any card for detail.')}</p></div>
         <div className="pt-filters"><a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/directory?view=products">{t('Find media')}</a></div>
       </div>
+      <GetStarted role="buyer" />
 
       {d.wins.length > 0 && <section className="wins" aria-label={t('Auctions you won')}>{d.wins.map(w => <a key={w.dealId} className="win" href={`/bookings/${w.dealId}`}>
         <span className="win-mark" aria-hidden>✓</span>

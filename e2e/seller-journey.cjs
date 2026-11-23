@@ -14,7 +14,7 @@ const fail = m => { console.error(m); process.exitCode = 1 }
     message: 'Business cards for growing companies.', language: 'english', draftFileKey: (await (await buyer.post(`${BASE}/api/files`, { data: Buffer.from('ID3 draft spot'), headers: { 'content-type': 'application/octet-stream', 'x-file-name': 'draft-spot.mp3' } })).json()).key } } })
   const dealId = (await req.json()).id
 
-  const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errors = []
+  const p = await b.newPage({ viewport: { width: 1440, height: 900 } }); const errors = []; await p.addInitScript(() => { try { localStorage.setItem('nashr:tour:off', '1') } catch {} })
   p.on('pageerror', e => errors.push(e.message)); p.on('console', m => m.type() === 'error' && !/401/.test(m.text()) && errors.push(m.text()))
   const shot = async n => out && (await p.waitForTimeout(300), await p.screenshot({ path: `${out}/${n}.png`, fullPage: true }))
   await p.goto(BASE + '/#/sign-in'); await p.fill('#email', 'sales@skyline.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')

@@ -31,7 +31,7 @@ export const TASK: Record<string, string> = { interest: 'Buyer interested', deci
   proof: 'Send proof', issue: 'Respond to an issue', prerun: 'Confirm the pre-run check', invoice: 'Upload your invoice' }
 
 export function TaskList({ tasks, limit }: { tasks: Task[]; limit?: number }) {
-  if (!tasks.length) return <p className="muted empty">{t("Nothing needs you right now.")}</p>
+  if (!tasks.length) return <p className="muted empty">{t('Nothing needs you right now. Payments, proofs and messages will show here.')}</p>
   return <ul className="tasks card">{tasks.slice(0, limit).map((task, i) => (
     <li key={i} className={urgent(task.dueAt) ? 'urgent' : ''}><a href={task.dealId ? `/deals/${task.dealId}` : `/slots/${task.slotId}`}>
       <span className={`task-k ${task.type}`}>{t(TASK[task.type] ?? task.type)}</span>

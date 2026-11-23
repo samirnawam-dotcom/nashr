@@ -484,5 +484,22 @@ export function planRoutes(route: RouteFn) {
     items.sort((x, y) => new Date(x.at).getTime() - new Date(y.at).getTime())
     return { items }
   })
+
+  // The "Get started" list on the Dashboard (owner's guided onboarding): which steps this company has done.
+  route('GET', '/api/me/get-started', ['buyer', 'seller'], async ({ db, me }) => {
+    const c = me.actAs.companyId
+    const co = (await db.query(`select logo_key, trn, address, payouts_enabled from companies where id = $1`, [c])).rows[0] ?? {}
+    const company = !!co.logo_key && !!(co.trn || co.address)
+    if (me.role === 'buyer') {
+      const r = (await db.query(`select exists (select 1 from campaigns where buyer_id = $1) campaign,
+          exists (select 1 from bids where buyer_id = $1) or exists (select 1 from deals where buyer_id = $1) bid`, [c])).rows[0]
+      return { steps: [{ key: 'company', done: company }, { key: 'campaign', done: r.campaign }, { key: 'bid', done: r.bid }] }
+    }
+    const r = (await db.query(`select exists (select 1 from products where company_id = $1) outlet,
+        exists (select 1 from placements p join outlets o on o.id = p.outlet_id where o.company_id = $1 and not p.archived) product,
+        exists (select 1 from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where o.company_id = $1) on_sale`, [c])).rows[0]
+    return { steps: [{ key: 'company', done: company }, { key: 'outlet', done: r.outlet }, { key: 'product', done: r.product },
+      { key: 'onSale', done: r.on_sale }, { key: 'payouts', done: !!co.payouts_enabled }] }
+  })
 }
 
