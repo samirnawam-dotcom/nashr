@@ -190,4 +190,7 @@ export const AR_BUYER: Record<string, string> = {
   "Dates on sale": "التواريخ المعروضة للبيع",
   "Pick a date": "اختر تاريخاً",
   "Nothing on sale for this product right now.": "لا شيء معروض لهذا المنتج الآن.",
+  "Product:": "المنتج:",
+  "About": "نبذة",
+  "{name} has not added a description yet.": "لم يُضف {name} وصفاً بعد.",
 }

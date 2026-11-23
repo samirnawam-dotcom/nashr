@@ -13,7 +13,7 @@ import { OutletMark } from '../LogoPicker'
 import { ProductSummary, daysText, mediaName, type SummaryProduct } from '../products/Summary'
 import { AddToCampaign } from '../campaigns/AddToCampaign'
 import { setCurrentCampaign, useCampaigns, useCurrentCampaign } from '../calendar/CampaignDrawer'
-import { saleLabel, SaleIcon } from '../calendar/CalendarPage'
+import { OutletCalendar, saleLabel, SaleIcon } from '../calendar/CalendarPage'
 import { CampaignButton, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
 
 /*
@@ -195,10 +195,19 @@ type Sell = { id: string; kind: string; name: string; days: number[]; saleType: 
 type BuyerProduct = Omit<SummaryProduct, 'sellable'> & { id: string; description: string | null; coverUrl: string | null; onSale: number; sellable: Sell[] }
 type Profile = Brand & { description: string | null; website: string | null; recent: { score: number; comment: string; at: string }[]; products: BuyerProduct[] }
 
+type Tab = 'about' | 'products' | 'calendar'
+
 export function OutletPage({ id }: { id: string }) {
   const guest = useGuest()
   const [o, setO] = useState<Profile | null>(null), [error, setError] = useState('')
   const [message, setMessage] = useState(''), [sent, setSent] = useState(''), [busy, setBusy] = useState(false), [open, setOpen] = useState<string | null>(null)
+  // About · Products · Calendar (owner's "Buying moves to the Directory"); the tab and the product picked live in the address
+  const [tab, setTabRaw] = useState<Tab>(() => { const v = new URLSearchParams(location.search).get('tab'); return v === 'products' || v === 'calendar' ? v : 'about' })
+  const [calProduct, setCalProductRaw] = useState<string | undefined>(() => new URLSearchParams(location.search).get('item') ?? undefined)
+  const keep = (k: string, v?: string) => { const q = new URLSearchParams(location.search); v ? q.set(k, v) : q.delete(k); history.replaceState(history.state, '', `${location.pathname}${q.size ? `?${q}` : ''}`) }
+  const setTab = (v: Tab) => { setTabRaw(v); keep('tab', v === 'about' ? undefined : v) }
+  const setCalProduct = (v?: string) => { setCalProductRaw(v); keep('item', v) }
+  const availability = (placement?: string) => { setCalProduct(placement); setTab('calendar'); scrollTo({ top: 0, behavior: 'smooth' }) }
   useEffect(() => { api<Profile>(`/directory/${id}`).then(setO, e => setError(e.message)) }, [id])
   async function quote() {
     setBusy(true); setError('')
@@ -214,10 +223,12 @@ export function OutletPage({ id }: { id: string }) {
   }, [o])
   if (!o) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
   const groups = [...new Set(o.products.map(p => p.channel))]
-  const seeDates = (p: BuyerProduct, s?: Sell) => s ? `/calendar?item=${s.id}&pname=${encodeURIComponent(`${o.name} · ${s.name}`)}` : `/calendar?product=${p.id}&pname=${encodeURIComponent(p.name)}`
   const cmp = (p: BuyerProduct, s: Sell): CompareItem => ({ placementId: s.id, outlet: o.name, logoUrl: o.logoUrl, product: s.kind === 'main' ? p.name : `${p.name} · ${s.name}`, channel: p.channel,
     saleType: s.saleType, price: s.price, creativeDays: s.creativeDays, audience: p.audience, sectors: p.sectors ?? [], reach: p.reach, reachUnit: p.reachUnit })
   const quoteOnly = !o.onNashr && !o.comingSoon
+  const shown: Tab = quoteOnly ? 'about' : tab
+  const sellable = o.products.flatMap(p => p.sellable.map(x => ({ id: x.id, name: x.kind === 'main' ? p.name : `${p.name} · ${x.name}` })))
+  const TABS: [Tab, string][] = [['about', t('About')], ['products', t('Products')], ['calendar', t('Calendar')]]
   return (
     <main className="narrow wide">
       <p className="small"><a href="/directory">{t("Directory")}</a> {isAr ? '‹' : '›'} {o.name}</p>
@@ -232,6 +243,11 @@ export function OutletPage({ id }: { id: string }) {
         {o.comingSoon && <Waitlist topic="KSA" label={t("Tell me when KSA opens")} />}
       </div>
       {o.comingSoon && <p className="warn">{t("Coming soon: this market is not open yet. You can plan it in a campaign; booking opens with the market.")}</p>}
+      {!quoteOnly && <div className="tabs profile-tabs" role="tablist" aria-label={o.name}>{TABS.map(([k, l]) =>
+        <button key={k} type="button" role="tab" aria-selected={shown === k} className={shown === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>}
+
+      {shown === 'about' && <>
+      {!(o.description || o.website || quoteOnly) && <p className="muted">{t('{name} has not added a description yet.', { name: o.name })}</p>}
       {(o.description || o.website || quoteOnly) && <div className="cols">
         {(o.description || o.website) && <section className="card pad">
           {o.description && <p dir="auto">{o.description}</p>}
@@ -249,8 +265,12 @@ export function OutletPage({ id }: { id: string }) {
         </section>}
       </div>}
 
-      {!quoteOnly && <>
-        <h2 className="sec-h">{t("Products")}</h2>
+      {o.recent.length > 0 && <section className="section reviews"><h2 className="sec-h">{t("What buyers say")}</h2>
+        <ul className="review-list">{o.recent.map((r, i) => <li key={i} className="card pad"><Stars value={r.score} /><p>“{r.comment}”</p>
+          <span className="small muted">{t('Verified booking')} · {new Date(r.at).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span></li>)}</ul></section>}
+      </>}
+
+      {shown === 'products' && <>
         {groups.map(c => <section key={c} className="pr-group">
           <h3 className="pr-gh"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={ICON[c] ?? ICON.digital} /></svg>{CHANNEL_NAME[c] ?? c}</h3>
           {o.products.filter(p => p.channel === c).map(p => { const one = p.sellable.length === 1 ? p.sellable[0] : undefined, isOpen = open === p.id
@@ -263,22 +283,20 @@ export function OutletPage({ id }: { id: string }) {
                 <span className="dp-price num">{p.defaultPrice != null ? money(p.defaultPrice) : '—'}<small>{t('Starting price')}</small></span>
                 <span className="dp-acts">
                   {one && !guest && <AddToCampaign placementId={one.id} small />}
-                  {p.onSale > 0 && <a className="btn sm" href={seeDates(p, one)}>{t('Check availability')}</a>}
+                  {p.onSale > 0 && <button type="button" className="btn sm" onClick={() => availability(one?.id)}>{t('Check availability')}</button>}
                   {one && <CompareTick item={cmp(p, one)} />}</span>
               </div>
               {!one && p.sellable.length > 0 && <ul className="dp-items">{p.sellable.map(s => <li key={s.id}>
                 <span><b dir="auto">{s.name}</b><span className="small muted">{[s.days?.length ? daysText(s.days) : '', s.startsAt ? `${s.startsAt}–${s.endsAt ?? ''}` : '', saleLabel(s.saleType), s.openSlots ? t('{n} on sale', { n: s.openSlots }) : ''].filter(Boolean).join(' · ')}</span></span>
                 <span className="num">{money(s.price)}</span>
-                <span className="dp-acts">{!guest && <AddToCampaign placementId={s.id} small />}{s.openSlots > 0 && <a className="btn sm" href={seeDates(p, s)}>{t('Check availability')}</a>}<CompareTick item={cmp(p, s)} /></span>
+                <span className="dp-acts">{!guest && <AddToCampaign placementId={s.id} small />}{s.openSlots > 0 && <button type="button" className="btn sm" onClick={() => availability(s.id)}>{t('Check availability')}</button>}<CompareTick item={cmp(p, s)} /></span>
               </li>)}</ul>}
               {isOpen && <ProductSummary m={p} buyer />}
             </article> })}
         </section>)}
       </>}
 
-      {o.recent.length > 0 && <section className="section reviews"><h2 className="sec-h">{t("What buyers say")}</h2>
-        <ul className="review-list">{o.recent.map((r, i) => <li key={i} className="card pad"><Stars value={r.score} /><p>“{r.comment}”</p>
-          <span className="small muted">{t('Verified booking')} · {new Date(r.at).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'Asia/Dubai' })}</span></li>)}</ul></section>}
+      {shown === 'calendar' && <OutletCalendar outlet={o.id} products={sellable} product={calProduct} onProduct={setCalProduct} />}
       <CompareBar />
     </main>
   )

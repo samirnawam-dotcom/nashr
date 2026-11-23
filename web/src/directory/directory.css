@@ -163,3 +163,13 @@ main.booking { max-width: 1180px; }
   .dates-panel { inset: 0; width: auto; max-height: none; border-radius: 0; }
   .more-filters .cv-checks.two { grid-template-columns: 1fr; }
 }
+
+/* ---- outlet profile: About · Products · Calendar ---- */
+.profile-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 20px 0 16px; overflow-x: auto; scrollbar-width: none; }
+.profile-tabs button { flex: none; white-space: nowrap; border: 0; background: none; padding: 10px 14px; color: var(--text-muted); border-bottom: 2px solid transparent; font: 600 15px/20px var(--font-sans); cursor: pointer; }
+.profile-tabs button.on { color: var(--text); border-bottom-color: var(--text); }
+.profile-tabs button:hover { color: var(--text); }
+.oc-cal { display: grid; gap: 12px; }
+.oc-cal-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.oc-cal-title { font-size: 17px; margin-inline-end: 8px; }
+.oc-cal .cv-body { display: grid; gap: 16px; align-items: start; }
