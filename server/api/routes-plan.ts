@@ -9,6 +9,8 @@ import { buyerStatus } from './shapes.js'
 import { brandLogoUrl, coverUrl, logoUrl } from './routes-covers.js'
 import { briefProblems } from '../fulfilment/brief.js'
 import { outletRating } from './routes-ratings.js'
+import { parseQuery, where } from '../marketplace/search.js'
+import { reachMatch, reachWindow } from '../shared/slot-filter.js'
 
 const BUYER: ['buyer'] = ['buyer']
 const OPEN = `(select value from settings where key = 'open_markets' order by valid_from desc limit 1)`
@@ -101,6 +103,76 @@ export function planRoutes(route: RouteFn) {
 
   route('GET', '/api/directory', [...BUYER, 'admin', 'guest'], async ({ db, at, me }) =>
     (await brands(db, at, me?.role === 'buyer' ? me.actAs.companyId : null)).sort((a, b) => a.card.popularRank - b.card.popularRank).map(x => x.card))
+
+  // ---- Products view (owner's "Buying moves to the Directory") ----------------------------------------------------------
+  // One card per product (a placement: the media type's own unit, or one of its programmes) with something on sale, filtered by
+  // every shopping filter and sorted like the outlets. `brands` lists every outlet with a matching product, so the Outlets view can
+  // show "an outlet if any of its products match". All in SQL: 1000+ outlets stay cheap.
+  route('GET', '/api/directory/products', [...BUYER, 'admin', 'guest'], async ({ db, at, me }, req) => {
+    const r = req.query as Record<string, string | undefined>
+    const buyer = me?.role === 'buyer' ? me.actAs.companyId : null
+    const day = (v?: string) => v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined
+    const dateFrom = day(r.dateFrom), dateTo = day(r.dateTo)
+    // "on sale between": listings airing on those Dubai dates (both included); otherwise everything on sale in the next 90 days
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00+04:00`) : at
+    const to = dateTo ? new Date(new Date(`${dateTo}T00:00:00+04:00`).getTime() + 86_400_000) : new Date(at.getTime() + 90 * 86_400_000)
+    const q = { ...parseQuery({ ...r, from: undefined, to: undefined }, buyer, (from > at ? from : at).toISOString(), to.toISOString()), open: true }
+    q.to = to.toISOString() // the window the buyer typed, not the calendar's 62-day screen limit
+    const num = (v?: string) => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
+    const reach = { reachMin: num(r.reachMin), reachMax: num(r.reachMax) }, reachOnly = r.reachOnly === '1', win = reachWindow(reach)
+    const w = where(q, at)
+    const extra: string[] = []
+    if (r.market) extra.push(`o.market = ${w.add(r.market)}`)
+    if (r.saved === '1') extra.push(buyer ? `exists (select 1 from saved_outlets so where so.company_id = ${w.add(buyer)} and so.brand_key = coalesce(o.product_id, o.id))` : 'false')
+    const reachSet = reach.reachMin != null || reach.reachMax != null
+    if (reachSet) {
+      const inRange = [win.lo != null ? `o.reach >= ${w.add(win.lo)}` : '', win.hi != null ? `o.reach <= ${w.add(win.hi)}` : ''].filter(Boolean).join(' and ')
+      extra.push(reachOnly ? `(${inRange})` : `(o.reach is null or (${inRange}))`)
+    }
+    const cond = [w.where.replace(/^where /, ''), ...extra].join(' and '), condParams = w.params.length // the outlets query below uses only these
+    const sort = (['popular', 'price_asc', 'price_desc', 'closing', 'newest'] as const).find(x => x === r.sort) ?? 'popular'
+    // products with no reach given come last when the buyer filters by reach
+    const order = [reachSet ? '(o.reach is null)' : '', sort === 'price_asc' ? 'from_price' : sort === 'price_desc' ? 'from_price desc' : sort === 'closing' ? 'next_closes'
+      : sort === 'newest' ? 'joined desc nulls last' : 'popular desc', 'title'].filter(Boolean).join(', ')
+    const limit = Math.min(Math.max(Number(r.limit) || 60, 1), 200), offset = Math.max(Number(r.offset) || 0, 0)
+    const rows = (await db.query(`select p.id placement_id, p.kind, p.name placement, p.sale_type, p.buy_now_price placement_buy_now, o.id outlet_id, o.product_id, o.channel,
+        o.channel_other, o.reach, o.reach_unit, o.logo_key, o.logo_url, pr.logo_key brand_logo_key, brand_name(o) brand, coalesce(o.product_id, o.id) brand_key,
+        case when p.kind = 'main' then brand_name(o) || ' · ' || o.name else brand_name(o) || ' · ' || p.name end title,
+        count(*)::int on_sale, min(coalesce(s.top_amount, s.starting_price)) from_price, min(s.buy_now_price) buy_now, min(s.starts_at) next_at, min(s.closes_at) next_closes,
+        count(distinct s.sale_type)::int sale_types, min(s.sale_type) one_sale_type,
+        max(coalesce(pr.created_at, c.created_at)) joined,
+        ((select count(*) from bids b2 join slots s2 on s2.id = b2.slot_id where s2.placement_id = p.id and b2.created_at > now() - interval '90 days')
+          + (select count(*) from deals d2 join slots s2 on s2.id = d2.slot_id where s2.placement_id = p.id and d2.created_at > now() - interval '90 days')) popular,
+        ${buyer ? `exists (select 1 from saved_outlets so where so.company_id = ${w.add(buyer)} and so.brand_key = coalesce(o.product_id, o.id))` : 'false'} saved,
+        count(*) over ()::int total
+      ${w.from} where ${cond} and not p.archived
+      group by p.id, o.id, pr.id order by ${order} limit ${limit} offset ${offset}`, w.params)).rows
+    const brands = (await db.query(`select distinct coalesce(o.product_id, o.id) k ${w.from} where ${cond} and not p.archived`, w.params.slice(0, condParams))).rows.map((x: any) => x.k)
+    const slug = (n: string, k: string) => n.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || k
+    return { total: rows[0]?.total ?? 0, brands, items: rows.map((x: any) => ({
+      placementId: x.placement_id, title: x.title, product: x.kind === 'main' ? null : x.placement, brand: x.brand, brandKey: x.brand_key, slug: slug(x.brand, x.brand_key),
+      logoUrl: brandLogoUrl(x.product_id, x.brand_logo_key) ?? logoUrl({ id: x.outlet_id, logo_key: x.logo_key }) ?? x.logo_url ?? null,
+      channel: x.channel, channelOther: x.channel_other,
+      // the sale type of what is on sale (a programme sells one way; if its listings differ, the placement's own)
+      saleType: x.sale_types === 1 ? x.one_sale_type : x.sale_type, price: x.from_price, buyNowPrice: x.buy_now,
+      onSale: x.on_sale, nextAt: x.next_at, nextClosesAt: x.next_closes, reach: x.reach, reachUnit: x.reach_unit,
+      reachMatch: reachSet ? reachMatch(x.reach, reach) : null, saved: x.saved,
+    })) }
+  })
+
+  // Dates on sale for one product (the panel a product card opens before the bid drawer): one line per listing, soonest first.
+  route('GET', '/api/directory/products/:placement/dates', [...BUYER, 'admin', 'guest'], async ({ db, at, me }, req) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(req.params.placement)) throw new NotFound()
+    const buyer = me?.role === 'buyer' ? me.actAs.companyId : null
+    const q = { ...parseQuery({}, buyer, at.toISOString(), new Date(at.getTime() + 90 * 86_400_000).toISOString()), open: true, placement: req.params.placement }
+    q.to = new Date(at.getTime() + 90 * 86_400_000).toISOString()
+    const w = where(q, at)
+    return (await db.query(`select s.id, s.label, s.kind, s.sale_type, s.starts_at, s.ends_at, s.closes_at, coalesce(s.top_amount, s.starting_price) price, s.buy_now_price,
+        o.channel ${w.from} ${w.where} order by s.starts_at, s.id limit 120`, w.params)).rows.map((x: any) => ({
+      id: x.id, label: x.label, kind: x.kind, saleType: x.sale_type, startsAt: x.starts_at, endsAt: x.ends_at, closesAt: x.closes_at, price: x.price, buyNowPrice: x.buy_now_price,
+      // times matter for radio and TV only
+      timed: x.channel === 'radio' || x.channel === 'tv' }))
+  })
 
   // One outlet: its products grouped by media type, each with the same summary the publisher sees, and what it sells.
   route('GET', '/api/directory/:key', [...BUYER, 'admin', 'guest'], async ({ db, at, me }, req) => {

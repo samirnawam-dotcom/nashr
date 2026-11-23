@@ -14,6 +14,7 @@ import { ProductSummary, daysText, mediaName, type SummaryProduct } from '../pro
 import { AddToCampaign } from '../campaigns/AddToCampaign'
 import { setCurrentCampaign, useCampaigns, useCurrentCampaign } from '../calendar/CampaignDrawer'
 import { saleLabel, SaleIcon } from '../calendar/CalendarPage'
+import { CampaignButton, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
 
 /*
  * The Directory (owner's buyer-side fixes): the same structure as the publisher's Products page, outlets first, then their
@@ -40,8 +41,6 @@ export function Waitlist({ topic, label }: { topic: 'KSA' | 'Athena'; label: str
 export type Brand = { id: string; slug: string; name: string; nameAr: string | null; logoUrl: string | null; coverUrl: string | null; channels: string[]; sectors: string[]
   audiences: string[]; audience: string | null; market: string; comingSoon: boolean; onNashr: boolean; fromPrice: number | null; currency: string; onSale: number; products: number
   rating: { average: number | null; count: number }; saved: boolean; popularRank: number; newestRank: number }
-type Sort = 'popular' | 'price_asc' | 'price_desc' | 'newest'
-const SORTS: [Sort, string][] = [['popular', 'Most popular'], ['price_asc', 'Price: low to high'], ['price_desc', 'Price: high to low'], ['newest', 'Newest on Nashr']]
 const toFils = (v: string) => v.trim() === '' ? null : Math.round(Number(v.replace(/,/g, '')) * 100)
 const channelsText = (cs: string[]) => cs.map(c => CHANNEL_NAME[c] ?? c).join(' · ')
 
@@ -57,76 +56,88 @@ function SaveStar({ b, onChange }: { b: { id: string; name: string; saved: boole
   </button>
 }
 
+const SORTS: [ShopSort, string][] = [['popular', 'Most popular'], ['price_asc', 'Price: low to high'], ['price_desc', 'Price: high to low'], ['closing', 'Closing soonest'], ['newest', 'Newest on Nashr']]
+
 export function DirectoryPage() {
   useMeta({ ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], [t("Directory"), '/directory']])] })
-  const guest = useGuest(), params = new URLSearchParams(location.search)
+  const { f, set, view, setView, sort, setSort, layout, setLayout, params } = useShop()
+  const buying = useBuying(), guest = buying.guest
   const [list, setList] = useState<Brand[] | null>(null), [error, setError] = useState('')
-  const [q, setQ] = useState(''), [channel, setChannel] = useState(() => params.get('channel') ?? ''), [onlyNashr, setOnlyNashr] = useState(false), [market, setMarket] = useState('AE')
-  const [sort, setSort] = useState<Sort>('popular'), [from, setFrom] = useState(''), [to, setTo] = useState(''), [fits, setFits] = useState(false), [saved, setSaved] = useState(false)
-  const [view, setView] = useState<'grid' | 'list'>(() => { try { return (localStorage.getItem('nashr:dir-view') as any) || 'grid' } catch { return 'grid' } })
-  // arriving from a campaign's "Add products": that campaign is the one products are added to
+  // arriving from a campaign's "+ Add products": that campaign is the one products are added to
   useEffect(() => { const c = params.get('campaign'); if (c && !guest) setCurrentCampaign(c) }, [])
-  const [campaignId] = useCurrentCampaign(), { list: campaigns } = useCampaigns(!guest), campaign = campaigns.find(c => c.id === campaignId)
   useEffect(() => { api<Brand[]>('/directory').then(setList, e => setError(e.message)) }, [])
-  useEffect(() => { try { localStorage.setItem('nashr:dir-view', view) } catch { /* fine */ } }, [view])
   useMeta(list && { ...PAGES['/directory'], jsonLd: [breadcrumb([['Nashr', '/'], [t("Directory"), '/directory']]), { '@context': 'https://schema.org', '@type': 'ItemList',
     name: 'UAE media outlets on Nashr', itemListElement: list.filter(o => o.market === 'AE').map((o, k) => ({ '@type': 'ListItem', position: k + 1, name: o.name, url: `${siteUrl()}/directory/${o.slug}` })) }] }, [list])
-  const lo = toFils(from), hi = toFils(to), left = fits && campaign?.remaining != null ? campaign.remaining : null
-  const shown = (list ?? []).filter(o => o.market === market && (!channel || o.channels.includes(channel)) && (!onlyNashr || o.onNashr) && (!saved || o.saved)
+  // "Closing soonest" is a Products-view sort; the Outlets view falls back to Most popular
+  const outletSort: ShopSort = sort === 'closing' ? 'popular' : sort
+  const needServer = view === 'products' || shopping(f)
+  const prods = useProducts(f, sort, needServer, buying.reload)
+  const lo = toFils(f.min), hi = toFils(f.max)
+  const shown = (list ?? []).filter(o => o.market === f.market && (!f.channel || o.channels.includes(f.channel)) && (!f.nashr || o.onNashr) && (!f.saved || o.saved)
     && (lo == null || (o.fromPrice != null && o.fromPrice >= lo)) && (hi == null || (o.fromPrice != null && o.fromPrice <= hi))
-    && (left == null || o.fromPrice == null || o.fromPrice <= left)
-    && (!q || `${o.name} ${o.nameAr ?? ''} ${o.sectors.join(' ')} ${o.audience ?? ''}`.toLowerCase().includes(q.toLowerCase())))
-  // price sorts put outlets with no price on Nashr ("Request a quote") last
-  const price = (o: Brand) => o.fromPrice ?? null
-  shown.sort((a, b) => sort === 'popular' ? a.popularRank - b.popularRank : sort === 'newest' ? a.newestRank - b.newestRank
-    : price(a) == null ? 1 : price(b) == null ? -1 : sort === 'price_asc' ? price(a)! - price(b)! : price(b)! - price(a)!)
-  const setOne = (id: string, v: boolean) => setList(l => l && l.map(x => x.id === id ? { ...x, saved: v } : x))
+    && (!shopping(f) || !prods.brands || prods.brands.has(o.id))
+    && (!f.q || `${o.name} ${o.nameAr ?? ''} ${o.sectors.join(' ')} ${o.audience ?? ''}`.toLowerCase().includes(f.q.toLowerCase())))
+  // price sorts put outlets not on Nashr ("Request a quote") last
+  const price = (o: Brand) => o.onNashr ? o.fromPrice ?? null : null
+  shown.sort((a, b) => outletSort === 'popular' ? a.popularRank - b.popularRank : outletSort === 'newest' ? a.newestRank - b.newestRank
+    : price(a) == null ? (price(b) == null ? 0 : 1) : price(b) == null ? -1 : outletSort === 'price_asc' ? price(a)! - price(b)! : price(b)! - price(a)!)
+  const setOne = (id: string, v: boolean) => { setList(l => l && l.map(x => x.id === id ? { ...x, saved: v } : x)); prods.setSaved(id, v) }
+  const availability = (o: Brand) => `/directory/${o.slug}?tab=calendar`
+  const filtered = Object.keys(toSlotFilter(f)).length > 0 || f.saved || f.nashr
   return (
     <main>
-      <PhotoBand img="/brand/skyline.jpg" title={t("Directory")} sub={t("UAE radio, TV, print, digital and podcasts. Outlets on Nashr can be booked; others take a quote request.")} />
+      <PhotoBand img="/brand/skyline.jpg" title={t("Directory")} sub={t("UAE radio, TV, print, digital and podcasts. Find an outlet or a product, then bid, buy or make an offer.")} />
       <div className="dir-bar">
-        <input className="search" type="search" placeholder={t("Search outlets, sectors, audiences")} aria-label={t("Search")} value={q} onChange={e => setQ(e.target.value)} />
-        <label className="dir-sort"><span>{t('Sort by:')}</span><select value={sort} onChange={e => setSort(e.target.value as Sort)}>{SORTS.map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>
-      </div>
-      <div className="dir-row"><span className="dir-label">{t('Media type:')}</span>
-        <div className="seg" role="group" aria-label={t('Media type')}>
-          <button className={!channel ? 'on' : ''} onClick={() => setChannel('')}>{t("All")}</button>
-          {CHANNELS.map(c => <button key={c} className={channel === c ? 'on' : ''} onClick={() => setChannel(c)}>{CHANNEL_NAME[c]}</button>)}</div></div>
-      <div className="dir-row">
-        <span className="dir-label">{t('Price:')}</span>
-        <span className="dir-range"><input className="search" inputMode="decimal" aria-label={t('AED from')} placeholder={t('AED from')} value={from} onChange={e => setFrom(e.target.value.replace(/[^\d.,]/g, ''))} />
-          <span aria-hidden>–</span><input className="search" inputMode="decimal" aria-label={t('to')} placeholder={t('to')} value={to} onChange={e => setTo(e.target.value.replace(/[^\d.,]/g, ''))} /></span>
-        {campaign && campaign.remaining != null && <label className="switch-l"><input type="checkbox" role="switch" checked={fits} onChange={e => setFits(e.target.checked)} />
-          <span className="switch-t">{t('Fits my budget')}<span className="small muted">{t('{amount} left', { amount: money(campaign.remaining) })} · <bdi>{campaign.name}</bdi></span></span></label>}
-        {!guest && <label className="check"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} /> {t('Saved')}</label>}
-        <label className="check"><input type="checkbox" checked={onlyNashr} onChange={e => setOnlyNashr(e.target.checked)} /> {t('On Nashr only')}</label>
-        <div className="seg" role="group" aria-label={t("Market")}><button className={market === 'AE' ? 'on' : ''} onClick={() => setMarket('AE')}>{t("UAE")}</button>
-          <button className={market === 'SA' ? 'on' : ''} onClick={() => setMarket('SA')}>{t('KSA · coming soon')}</button></div>
-        <div className="spacer" />
+        <input className="search" type="search" placeholder={t("Search outlets, products, sectors")} aria-label={t("Search")} value={f.q} onChange={e => set({ q: e.target.value })} />
+        {!guest && <CampaignButton onOpen={buying.openCampaign} />}
+        <div className="seg" role="group" aria-label={t("Show")}>
+          <button className={view === 'outlets' ? 'on' : ''} onClick={() => setView('outlets')}>{t("Outlets")}</button>
+          <button className={view === 'products' ? 'on' : ''} onClick={() => setView('products')}>{t("Products")}</button></div>
         <div className="seg" role="group" aria-label={t("View")}>
-          <button className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')}>{t("Grid")}</button>
-          <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>{t("List")}</button></div>
+          <button className={layout === 'grid' ? 'on' : ''} onClick={() => setLayout('grid')}>{t("Grid")}</button>
+          <button className={layout === 'list' ? 'on' : ''} onClick={() => setLayout('list')}>{t("List")}</button></div>
+        <label className="dir-sort"><span>{t('Sort by:')}</span><select value={view === 'outlets' ? outletSort : sort} onChange={e => setSort(e.target.value as ShopSort)}>
+          {SORTS.filter(([k]) => view === 'products' || k !== 'closing').map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>
       </div>
-      {market === 'SA' && <p className="warn row-flex">{t('Saudi Arabia opens soon. You can add Saudi outlets to a campaign plan now; booking opens with the market.')} <Waitlist topic="KSA" label={t("Tell me when KSA opens")} /></p>}
+      <ShopFilters f={f} set={set} guest={guest} view={view} />
+      {f.market === 'SA' && <p className="warn row-flex">{t('Saudi Arabia opens soon. You can add Saudi outlets to a campaign plan now; booking opens with the market.')} <Waitlist topic="KSA" label={t("Tell me when KSA opens")} /></p>}
       {error && <p className="error">{error}</p>}
-      {list && !shown.length && <p className="muted empty">{saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t("No outlets match. Clear the filters to see everything.")}</p>}
-      {view === 'grid'
-        ? <div className="outlet-grid">{shown.map(o => <article key={o.id} className="card outlet-card" onClick={() => navigate(`/directory/${o.slug}`)}>
-            <img className="outlet-cover" src={o.coverUrl ?? art(o.channels[0], 'card')} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-card.jpg` }} width={800} height={250} alt="" loading="lazy" decoding="async" />
-            <div className="row-flex oc-head"><Logo o={o} /><div className="oc-name"><a href={`/directory/${o.slug}`} onClick={e => e.stopPropagation()}><b>{o.name}</b></a>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div>
-              <SaveStar b={o} onChange={v => setOne(o.id, v)} /></div>
-            <div className="small muted">{channelsText(o.channels)}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).map(x => t(x)).join(', ')}` : ''}</div>
-            {o.comingSoon ? <span className="badge">{t("Coming soon")}</span>
-              : o.fromPrice != null ? <span className="oc-price"><span className="small muted">{t('From')}</span> <b className="num">{money(o.fromPrice, o.currency)}</b></span>
-              : <span className="badge">{t("Request a quote")}</span>}
-            {o.rating.count > 0 && <Stars value={o.rating.average!} count={o.rating.count} />}
-            {o.onNashr && !o.comingSoon && <a className="badge on" href={`/calendar?product=${o.id}&pname=${encodeURIComponent(o.name)}`} onClick={e => e.stopPropagation()}>{t('Check availability')}</a>}
-          </article>)}</div>
-        : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Outlet")}</th><th>{t("Media type")}</th><th>{t("Sectors")}</th><th className="r">{t("Starting price")}</th><th /></tr></thead>
-            <tbody>{shown.map(o => <tr key={o.id} onClick={() => navigate(`/directory/${o.slug}`)}>
-              <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b><SaveStar b={o} onChange={v => setOne(o.id, v)} /></div></td><td className="small">{channelsText(o.channels)}</td>
-              <td className="small">{o.sectors.map(x => t(x)).join(', ')}</td><td className="r num">{o.fromPrice != null ? t('From {amount}', { amount: money(o.fromPrice, o.currency) }) : '—'}</td>
-              <td className="small">{o.comingSoon ? t("Coming soon") : o.onNashr ? <a href={`/calendar?product=${o.id}&pname=${encodeURIComponent(o.name)}`} onClick={e => e.stopPropagation()}>{t('Check availability')}</a> : t("Request a quote")}</td></tr>)}</tbody></table></div>}
+      <div className={`shop ${buying.myBids ? 'with-bids' : ''}`}>
+        <div className="shop-main">
+          {view === 'outlets' ? <>
+            {list && !shown.length && <p className="muted empty">{f.saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t("No outlets match. Clear the filters to see everything.")}</p>}
+            {layout === 'grid'
+              ? <div className="outlet-grid">{shown.map(o => <article key={o.id} className="card outlet-card" onClick={() => navigate(`/directory/${o.slug}`)}>
+                  <img className="outlet-cover" src={o.coverUrl ?? art(o.channels[0], 'card')} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-card.jpg` }} width={800} height={250} alt="" loading="lazy" decoding="async" />
+                  <div className="row-flex oc-head"><Logo o={o} /><div className="oc-name"><a href={`/directory/${o.slug}`} onClick={e => e.stopPropagation()}><b>{o.name}</b></a>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div>
+                    <SaveStar b={o} onChange={v => setOne(o.id, v)} /></div>
+                  <div className="small muted">{channelsText(o.channels)}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).map(x => t(x)).join(', ')}` : ''}</div>
+                  {o.comingSoon ? <span className="badge">{t("Coming soon")}</span>
+                    : o.fromPrice != null && o.onNashr ? <span className="oc-price"><span className="small muted">{t('From')}</span> <b className="num">{money(o.fromPrice, o.currency)}</b></span>
+                    : null}
+                  {o.rating.count > 0 && <Stars value={o.rating.average!} count={o.rating.count} />}
+                  {o.comingSoon ? null : o.onNashr ? <a className="badge on" href={availability(o)} onClick={e => { e.stopPropagation(); e.preventDefault(); navigate(availability(o)) }}>{t('Check availability')}</a>
+                    : <a className="badge" href={`/directory/${o.slug}`} onClick={e => e.stopPropagation()}>{t("Request a quote")}</a>}
+                </article>)}</div>
+              : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Outlet")}</th><th>{t("Media type")}</th><th>{t("Sectors")}</th><th className="r">{t("Starting price")}</th><th /></tr></thead>
+                  <tbody>{shown.map(o => <tr key={o.id} onClick={() => navigate(`/directory/${o.slug}`)}>
+                    <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b><SaveStar b={o} onChange={v => setOne(o.id, v)} /></div></td><td className="small">{channelsText(o.channels)}</td>
+                    <td className="small">{o.sectors.map(x => t(x)).join(', ')}</td><td className="r num">{o.fromPrice != null && o.onNashr ? t('From {amount}', { amount: money(o.fromPrice, o.currency) }) : '—'}</td>
+                    <td className="small">{o.comingSoon ? t("Coming soon") : o.onNashr ? <a href={availability(o)} onClick={e => { e.stopPropagation(); e.preventDefault(); navigate(availability(o)) }}>{t('Check availability')}</a> : t("Request a quote")}</td></tr>)}</tbody></table></div>}
+          </> : <>
+            {prods.items == null && <p className="muted">{t('Loading…')}</p>}
+            {prods.items && <p className="small muted">{t('{n} products', { n: prods.total })}</p>}
+            {prods.items && !prods.items.length && <div className="empty"><p className="muted">{filtered ? t('No products match. Remove a filter to see more.') : t('Nothing on sale right now.')}</p></div>}
+            {prods.items && prods.items.length > 0 && (layout === 'grid'
+              ? <div className="prod-grid">{prods.items.map(p => <ProductCardView key={p.placementId} p={p} layout="grid" guest={guest} onBuy={buying.buy} onSaved={setOne} />)}</div>
+              : <div className="table-wrap card"><table className="table"><thead><tr><th>{t('Product')}</th><th>{t('Sale type')}</th><th className="r">{t('Starting price')}</th><th>{t('On sale')}</th><th /></tr></thead>
+                  <tbody>{prods.items.map(p => <ProductCardView key={p.placementId} p={p} layout="list" guest={guest} onBuy={buying.buy} />)}</tbody></table></div>)}
+            {prods.items && prods.items.length < prods.total && <p className="center"><button className="btn" onClick={prods.loadMore}>{t('Show more')}</button></p>}
+          </>}
+        </div>
+        {buying.myBids}
+      </div>
+      {buying.ui}
       <CompareBar />
     </main>
   )

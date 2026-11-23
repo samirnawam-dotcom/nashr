@@ -287,3 +287,19 @@ Decisions made while building (flag to owner if they disagree):
 - [x] Checked: packaged server in production mode with a non-superuser database: full journey ALL GOOD, no CSP violations,
       restart keeps data. Owner steps: docs/deploy-cpanel.md.
 - Open: PostgreSQL version on the host (needs 13+); whether cron allows once a minute; Passenger listen not testable here.
+
+## Phase T: owner's "Buying moves to the Directory" (21 Nov 2026)
+- [ ] T1 Directory = the shop: Outlets | Products switch; product cards (Bid/Buy/Make an offer + dates panel, + Add to campaign);
+      filters row (Media type, Sale type, Price) + More filters (Sectors multi, Dates, Reach with close match, Time of day,
+      Saved filters) + chips; Sort by both views (popular, price, closing, newest); Saved outlets; Campaign button/drawer;
+      My bids folded bar; search "Search outlets, products, sectors"
+- [ ] T2 Outlet profile: About · Products · Calendar tabs; buyer calendar from the seller's data (no Minimum accepted,
+      no bidders, no notes); Sale type + Product filters; My bids folded
+- [ ] T3 Buyer Calendar = tracker: own items only (Added, You lead/Outbid, Waiting for seller, Accepted pay now, Paid,
+      Ran check proof, Completed), colour key + ?, filters Campaign (budget line)/Client/Status/Search, empty state;
+      campaign lines get an optional date
+- [ ] T4 Campaigns new look: Cards | List, Active/Upcoming/Finished/All from dates, budget bar, counts, next thing to do;
+      inside: Plan · Brief · Results
+- [ ] T5 Guided onboarding: buyer + seller tour, Get started checklist, empty states, ? tips
+- [ ] T6 Phones: calendars as date lists, My bids bottom button, filters full screen, drawer full screen
+- Not now: Athena (optional; Omar wants to discuss it first). Search bar stays a plain search.

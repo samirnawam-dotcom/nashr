@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { dayLabel, money, slotWhen } from '../format'
 import { OutletMark } from '../LogoPicker'
@@ -28,10 +28,15 @@ const KEY = 'nashr:mybids-open'
  * a thin bar with the count. Outbid lines come first, in red, with "Bid again". A paid booking leaves (it is in Reports → Bookings),
  * and so does a lost bid. The Campaign drawer opens over it; closing the drawer shows it again.
  */
-export function MyBids({ onOpen, reload, narrow }: { onOpen: (slotId: string) => void; reload: number; narrow: boolean }) {
+export function MyBids({ onOpen, reload, narrow, folded }: { onOpen: (slotId: string) => void; reload: number; narrow: boolean; folded?: boolean }) {
   const [items, setItems] = useState<Line[] | null>(null), [now, setNow] = useState(() => Date.now())
-  const [open, setOpenRaw] = useState(() => { try { return localStorage.getItem(KEY) !== '0' && !narrow } catch { return !narrow } })
-  const setOpen = (v: boolean) => { setOpenRaw(v); try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* private mode: this visit only */ } }
+  // On the Calendar it starts as the buyer left it (open by default); on the Directory and outlet profile it starts folded
+  // and opens by itself when the buyer is outbid (owner's "Buying moves to the Directory")
+  const [open, setOpenRaw] = useState(() => { if (folded) return false; try { return localStorage.getItem(KEY) !== '0' && !narrow } catch { return !narrow } })
+  const setOpen = (v: boolean) => { setOpenRaw(v); if (!folded) try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* private mode: this visit only */ } }
+  const outbid = items?.filter(i => i.status === 'outbid').length ?? 0, seen = useRef<number | null>(null)
+  // only a new outbid opens it: the ones already there when the page loaded show as the "!" on the folded bar
+  useEffect(() => { if (!items) return; if (folded && seen.current != null && outbid > seen.current) setOpenRaw(true); seen.current = outbid }, [outbid, folded, items])
   const load = () => api<{ items: Line[] }>('/buyer/my-bids').then(r => setItems(r.items), () => setItems([]))
   useEffect(() => { load() }, [reload])
   useLive('slot', () => load(), 1500)            // someone outbid you, or the publisher answered
@@ -48,7 +53,8 @@ export function MyBids({ onOpen, reload, narrow }: { onOpen: (slotId: string) =>
     <aside className={`mybids ${narrow ? 'narrow' : ''}`} aria-label={t('My bids')}>
       {head}
       {!items ? <p className="muted small mb-empty">{t('Loading…')}</p>
-        : !items.length ? <p className="muted small mb-empty">{t('No bids in play. Click a price on the calendar to bid or book.')}</p>
+        : !items.length ? <div className="mb-empty"><p className="muted small">{t('No bids yet. Click Bid / Buy on a product, or a price on an outlet\'s calendar.')}</p>
+          {location.pathname !== '/directory' && <a className="btn sm" href="/directory">{t('Go to Directory')}</a>}</div>
         : <ul className="mb-list">{items.map(i => { const [label, cls] = STATUS[i.status]
           const go = () => i.status === 'pay' && i.dealId ? navigate(`/bookings/${i.dealId}`) : onOpen(i.slotId)
           return <li key={`${i.slotId}-${i.dealId ?? ''}`} className={`mb-line ${i.status}`}>

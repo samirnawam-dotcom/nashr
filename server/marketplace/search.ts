@@ -47,6 +47,9 @@ export function where(q: Query, now: Date) {
   if (q.sector) { const x = add(q.sector)
     w.push(`(cardinality(o.sectors) = 0 or exists (select 1 from unnest(o.sectors) y where lower(y) = lower(${x})))`,
       `not exists (select 1 from unnest(coalesce(o.blocked_industries, '{}')) y where lower(y) = lower(${x}))`) }
+  if (q.sectors?.length) { const x = add(q.sectors.map(v => v.toLowerCase()))
+    w.push(`(cardinality(o.sectors) = 0 or exists (select 1 from unnest(o.sectors) y where lower(y) = any(${x}::text[])))`,
+      `not exists (select 1 from unnest(coalesce(o.blocked_industries, '{}')) y where lower(y) = any(${x}::text[]))`) }
   if (q.maxPrice != null && Number.isFinite(q.maxPrice)) w.push(`${PRICE} <= ${add(q.maxPrice)}`)
   if (q.minPrice != null && Number.isFinite(q.minPrice)) w.push(`${PRICE} >= ${add(q.minPrice)}`)
   if (q.dayparts?.length) w.push(`(${q.dayparts.map(d => Object.hasOwn(DAYPART, d) ? DAYPART[d] : 'false').join(' or ')})`)
@@ -195,7 +198,7 @@ export function parseQuery(r: Record<string, string | undefined>, me: string | n
   const to = clampRange(from, rawTo)
   const list = (v?: string) => v ? v.split(',').map(x => x.trim()).filter(Boolean) : undefined
   const num = (v?: string) => v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined
-  return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, maxPrice: num(r.max), minPrice: num(r.min),
+  return { from, to, me, channels: list(r.ch), saleTypes: list(r.sale), sector: r.sector || undefined, sectors: list(r.sectors), maxPrice: num(r.max), minPrice: num(r.min),
     dayparts: list(r.dp) as SlotFilter['dayparts'], q: r.q || undefined, closingWithinHours: num(r.soon), audiences: list(r.aud),
     mine: r.mine === '1', open: r.open === '1', placement: r.placement || undefined, date: r.date || undefined, outlet: r.outlet || undefined, campaign: r.campaign || undefined,
     tmin: num(r.tmin), tmax: num(r.tmax), statuses: list(r.st) }

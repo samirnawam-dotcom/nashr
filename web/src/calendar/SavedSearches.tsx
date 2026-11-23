@@ -12,7 +12,7 @@ const canonical = (f: SlotFilter) => JSON.stringify(Object.keys(f).sort().reduce
   const v = (f as any)[k]; if (v != null && v !== '') o[k] = Array.isArray(v) ? [...v].sort() : v; return o }, {} as Record<string, unknown>))
 
 /**
- * A buyer's saved calendar searches: apply one, switch its alerts on or off, delete it, or save what is on screen.
+ * A buyer's saved filters ("Saved searches" before the owner's "Buying moves to the Directory"): apply one, switch its alerts on or off, delete it, or save what is on screen.
  * Alerts arrive in the bell ("3 new slots match …") and open the calendar with that search applied (?search=id).
  */
 export function SavedSearches({ filter, active, names, onApply }: { filter: SlotFilter; active: number; names: Record<string, string>; onApply: (f: SlotFilter) => void }) {
@@ -27,7 +27,7 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
     if (!id || !list || applied.current === id) return
     applied.current = id
     if (hit) onApply(hit.filter)
-    else setNote(t('That saved search was deleted, so the calendar shows every slot.'))
+    else setNote(t('Those saved filters were deleted, so everything is shown.'))
   }, [path, list])
 
   const current = canonical(filter)
@@ -36,7 +36,7 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
     try {
       const s = await api<Saved>('/searches', { method: 'POST', body: { name: name.trim(), filter, alerts } })
       setList([...(list ?? []), s]); setSaving(false)
-      setNote(alerts ? t('Saved. We will alert you when new slots match.') : t('Saved.'))
+      setNote(alerts ? t('Saved. We will alert you when new listings match.') : t('Saved.'))
     } catch (err: any) { setError(err.message) } finally { setBusy(false) }
   }
   async function toggle(s: Saved) {
@@ -51,9 +51,9 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
   }
 
   return (
-    <section className="saved" aria-label={t("Saved searches")}>
-      <h3 className="side-h">{t("Saved searches")}</h3>
-      {list && !list.length && !saving && <p className="small muted">{t("Set the filters below, then save the search to get an alert when new slots match.")}</p>}
+    <section className="saved" aria-label={t("Saved filters")}>
+      <h3 className="side-h">{t("Saved filters")}</h3>
+      {list && !list.length && !saving && <p className="small muted">{t("Set the filters, then save them to get an alert when new listings match.")}</p>}
       {list && list.length > 0 && <ul className="saved-list">{list.map(s => {
         const on = canonical(s.filter) === current
         return <li key={s.id} className={on ? 'on' : ''}>
@@ -65,11 +65,11 @@ export function SavedSearches({ filter, active, names, onApply }: { filter: Slot
           </button>
           <button type="button" className="saved-del" onClick={() => remove(s)} aria-label={t('Delete {name}', { name: s.name })} title={t("Delete")}>×</button>
         </li> })}</ul>}
-      {active > 0 && !saving && !list?.some(x => canonical(x.filter) === current) && <button type="button" className="btn saved-save" onClick={() => { setName(describe(filter, names, t, money).slice(0, 80)); setAlerts(true); setSaving(true); setNote('') }}>{t("Save this search")}</button>}
+      {active > 0 && !saving && !list?.some(x => canonical(x.filter) === current) && <button type="button" className="btn saved-save" onClick={() => { setName(describe(filter, names, t, money).slice(0, 80)); setAlerts(true); setSaving(true); setNote('') }}>{t("Save these filters")}</button>}
       {saving && <form className="saved-form" onSubmit={save}>
         <label className="small" htmlFor="saved-name">{t("Name")}</label>
         <input id="saved-name" className="cal-input" value={name} maxLength={80} onChange={e => setName(e.target.value)} required autoFocus />
-        <label className="check"><input type="checkbox" checked={alerts} onChange={e => setAlerts(e.target.checked)} />{t("Alert me when new slots match")}</label>
+        <label className="check"><input type="checkbox" checked={alerts} onChange={e => setAlerts(e.target.checked)} />{t("Alert me when new listings match")}</label>
         <div className="row-flex"><button className="btn primary" disabled={busy || !name.trim()}>{t("Save")}</button><button type="button" className="btn" onClick={() => setSaving(false)}>{t("Cancel")}</button></div>
       </form>}
       {error && <p className="error small" role="alert">{error}</p>}
