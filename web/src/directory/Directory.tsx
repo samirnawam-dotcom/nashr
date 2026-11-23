@@ -13,7 +13,7 @@ import { OutletMark } from '../LogoPicker'
 import { ProductSummary, daysText, mediaName, type SummaryProduct } from '../products/Summary'
 import { AddToCampaign } from '../campaigns/AddToCampaign'
 import { setCurrentCampaign, useCampaigns, useCurrentCampaign } from '../calendar/CampaignDrawer'
-import { OutletCalendar, saleLabel, SaleIcon } from '../calendar/CalendarPage'
+import { OutletCalendar, saleLabel, SaleIcon, useNarrow } from '../calendar/CalendarPage'
 import { CampaignButton, EMPTY, ProductCardView, ShopFilters, shopping, toSlotFilter, useBuying, useProducts, useShop, type ShopSort } from './Shop'
 
 /*
@@ -84,6 +84,8 @@ export function DirectoryPage() {
   const setOne = (id: string, v: boolean) => { setList(l => l && l.map(x => x.id === id ? { ...x, saved: v } : x)); prods.setSaved(id, v) }
   const availability = (o: Brand) => `/directory/${o.slug}?tab=calendar`
   const filtered = Object.keys(toSlotFilter(f)).length > 0 || f.saved || f.nashr
+  const activeFilters = Object.keys(toSlotFilter(f)).filter(k => k !== 'q').length + (f.saved ? 1 : 0) + (f.nashr ? 1 : 0)
+  const narrow = useNarrow(), [sheet, setSheet] = useState(false)
   return (
     <main>
       <PhotoBand img="/brand/skyline.jpg" title={t("Directory")} sub={t("UAE radio, TV, print, digital and podcasts. Find an outlet or a product, then bid, buy or make an offer.")} />
@@ -99,7 +101,16 @@ export function DirectoryPage() {
         <label className="dir-sort"><span>{t('Sort by:')}</span><select value={view === 'outlets' ? outletSort : sort} onChange={e => setSort(e.target.value as ShopSort)}>
           {SORTS.filter(([k]) => view === 'products' || k !== 'closing').map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></label>
       </div>
-      <ShopFilters f={f} set={set} guest={guest} view={view} />
+      {narrow ? <div className="row-flex dir-mfilters">
+          <button className={`btn ${activeFilters ? 'primary' : ''}`} onClick={() => setSheet(true)}>{activeFilters ? t('Filters ({n})', { n: activeFilters }) : t('Filters')}</button>
+          {activeFilters > 0 && <button className="text-link small" onClick={() => set({ ...EMPTY, q: f.q, market: f.market })}>{t('Clear all')}</button>}</div>
+        : <ShopFilters f={f} set={set} guest={guest} view={view} />}
+      {/* phones: the filters open full screen from a Filters button (owner's "Buying moves to the Directory") */}
+      {narrow && sheet && <div className="scrim" onClick={() => setSheet(false)}><div className="cv-sheet dir-sheet" role="dialog" aria-label={t('Filters')} onClick={e => e.stopPropagation()}>
+        <header className="drawer-h"><h2>{t('Filters')}</h2><button className="btn" onClick={() => setSheet(false)} aria-label={t('Close')}>✕</button></header>
+        <ShopFilters f={f} set={set} guest={guest} view={view} />
+        <footer className="drawer-f"><button className="btn primary" onClick={() => setSheet(false)}>{t('Show results')}</button></footer>
+      </div></div>}
       {f.market === 'SA' && <p className="warn row-flex">{t('Saudi Arabia opens soon. You can add Saudi outlets to a campaign plan now; booking opens with the market.')} <Waitlist topic="KSA" label={t("Tell me when KSA opens")} /></p>}
       {error && <p className="error">{error}</p>}
       <div className={`shop ${buying.myBids ? 'with-bids' : ''}`}>

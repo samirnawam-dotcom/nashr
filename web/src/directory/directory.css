@@ -173,3 +173,25 @@ main.booking { max-width: 1180px; }
 .oc-cal-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .oc-cal-title { font-size: 17px; margin-inline-end: 8px; }
 .oc-cal .cv-body { display: grid; gap: 16px; align-items: start; }
+
+/* ---- phones (owner's "Buying moves to the Directory"): filters full screen, My bids from a bottom button, bid drawer full screen ---- */
+.dir-mfilters { margin: 8px 0; }
+@media (max-width: 760px) {
+  .cv-sheet.dir-sheet { inset: 0; max-height: none; border-radius: 0; overflow-x: hidden; }
+  .dir-sheet { grid-template-columns: minmax(0, 1fr); }
+  .dir-sheet .dir-row, .dir-sheet .row-flex { flex-wrap: wrap; }
+  .dir-sheet .seg { max-width: 100%; overflow-x: auto; }
+  .dir-sheet .more-filters, .dir-sheet .pop-panel { width: auto; }
+  .dir-sheet .drawer-f .btn.primary { flex: 1; justify-content: center; }
+}
+.mb-fab { position: fixed; z-index: 35; /* above the tab bar, under drawers and sheets */ inset-inline-end: 16px; bottom: calc(72px + env(safe-area-inset-bottom)); display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 999px; border: 0; background: var(--text); color: var(--surface); font: 600 14px/20px var(--font-sans); box-shadow: var(--shadow-pop); cursor: pointer; }
+.mb-fab .mb-alert { background: var(--danger); color: #fff; }
+.scrim.mb-scrim { z-index: 75; }
+.mybids.mb-sheet { position: fixed; inset: 0; max-height: none; border-radius: 0; border: 0; overflow-y: auto; z-index: 76; display: block; }
+.mb-sheet > .mybids { position: static; max-height: none; border: 0; border-radius: 0; }
+.mb-sheet .mb-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+@media (max-width: 760px) {
+  html .drawer { width: 100%; max-width: none; border-radius: 0; border: 0; }
+  .dates-panel { z-index: 70; }
+}

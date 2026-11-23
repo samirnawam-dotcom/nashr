@@ -10,6 +10,7 @@ import { type SlotFilter } from '../../../server/shared/slot-filter'
 import { sep, t } from '../i18n'
 import { tm } from '../i18n-server'
 import './calendar.css'
+import './tracker.css'
 import { CHANNELS, CHANNEL_NAME, ICON } from '../media'
 import { MyBids } from './MyBids'
 export { CHANNELS, CHANNEL_NAME }
@@ -299,11 +300,28 @@ export function OutletCalendar({ outlet, products, product, onProduct }: { outle
     </div>
     <div className={`cv-body ${guest ? '' : 'with-bids'}`}>
       {!guest && narrow && <MyBids folded onOpen={setOpen} reload={reload} narrow />}
-      <RowsView single s={s} view={view} from={from} to={to} reload={reload} live={live} onOpen={setOpen} onPick={setPanel} />
+      {narrow ? <OutletDays s={s} from={from} to={to} reload={reload + live} onOpen={setOpen} />
+        : <RowsView single s={s} view={view} from={from} to={to} reload={reload} live={live} onOpen={setOpen} onPick={setPanel} />}
       {!guest && !narrow && <MyBids folded onOpen={setOpen} reload={reload} narrow={false} />}
     </div>
     <p className="small muted">{t('Dubai time. Prices exclude VAT. You pay only once the publisher accepts, and the money is held until the ad has run.')}</p>
     {panel && <SlotsPanel p={panel} s={s} onClose={() => setPanel(null)} onOpen={id => { setPanel(null); setOpen(id) }} onPanel={setPanel} />}
     {open && <BidDrawer slotId={open} onClose={() => setOpen(null)} onDone={() => setReload(n => n + 1)} />}
   </div>
+}
+
+/** On a phone an outlet's calendar is a list by date: each date, then the listings on sale that day. Tap one for the bid drawer. */
+function OutletDays({ s, from, to, reload, onOpen }: { s: State; from: string; to: string; reload: number; onOpen: (id: string) => void }) {
+  const [slots, setSlots] = useState<Slot[] | null>(null), latest = useLatest()
+  useEffect(() => { latest(api<Slot[]>(`/slots?${query(s, from, to)}`), setSlots, () => setSlots([])) }, [from, to, s.item, s.f.saleTypes?.join(), reload])
+  if (!slots) return <p className="muted">{t('Loading…')}</p>
+  const open = slots.filter(x => x.available).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  if (!open.length) return <p className="card pad muted">{t('Nothing on sale in this period. Use the arrows to see other dates.')}</p>
+  const days = [...new Set(open.map(x => dubai(x.startsAt).date))]
+  return <div className="tk-days">{days.map(d => <section key={d} className="tk-day">
+    <h3>{dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
+    <ul className="list">{open.filter(x => dubai(x.startsAt).date === d).map(x => <li key={x.id}><button className="row" onClick={() => onOpen(x.id)}>
+      <span><b dir="auto">{x.placement}</b>{clock(x) ? <span className="muted num"> · {clock(x)}</span> : null}{x.kind !== 'single' && <span className="muted"> · {tm(x.label)}</span>}<br /><SaleType t={x.saleType} /></span>
+      <span className="right"><b className="num">{money(x.topBid ?? x.startingPrice)}</b><br /><span className="small">{status(x)}</span></span></button></li>)}</ul>
+  </section>)}</div>
 }

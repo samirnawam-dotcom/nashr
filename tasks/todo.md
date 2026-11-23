@@ -289,17 +289,21 @@ Decisions made while building (flag to owner if they disagree):
 - Open: PostgreSQL version on the host (needs 13+); whether cron allows once a minute; Passenger listen not testable here.
 
 ## Phase T: owner's "Buying moves to the Directory" (21 Nov 2026)
-- [ ] T1 Directory = the shop: Outlets | Products switch; product cards (Bid/Buy/Make an offer + dates panel, + Add to campaign);
+- [x] T1 Directory = the shop: Outlets | Products switch; product cards (Bid/Buy/Make an offer + dates panel, + Add to campaign);
       filters row (Media type, Sale type, Price) + More filters (Sectors multi, Dates, Reach with close match, Time of day,
       Saved filters) + chips; Sort by both views (popular, price, closing, newest); Saved outlets; Campaign button/drawer;
       My bids folded bar; search "Search outlets, products, sectors"
-- [ ] T2 Outlet profile: About · Products · Calendar tabs; buyer calendar from the seller's data (no Minimum accepted,
+- [x] T2 Outlet profile: About · Products · Calendar tabs; buyer calendar from the seller's data (no Minimum accepted,
       no bidders, no notes); Sale type + Product filters; My bids folded
-- [ ] T3 Buyer Calendar = tracker: own items only (Added, You lead/Outbid, Waiting for seller, Accepted pay now, Paid,
+- [x] T3 Buyer Calendar = tracker: own items only (Added, You lead/Outbid, Waiting for seller, Accepted pay now, Paid,
       Ran check proof, Completed), colour key + ?, filters Campaign (budget line)/Client/Status/Search, empty state;
       campaign lines get an optional date
-- [ ] T4 Campaigns new look: Cards | List, Active/Upcoming/Finished/All from dates, budget bar, counts, next thing to do;
+- [x] T4 Campaigns new look: Cards | List, Active/Upcoming/Finished/All from dates, budget bar, counts, next thing to do;
       inside: Plan · Brief · Results
-- [ ] T5 Guided onboarding: buyer + seller tour, Get started checklist, empty states, ? tips
-- [ ] T6 Phones: calendars as date lists, My bids bottom button, filters full screen, drawer full screen
+- [x] T5 Guided onboarding: buyer + seller tour, Get started checklist, empty states, ? tips
+- [x] T6 Phones: calendars as date lists, My bids bottom button, filters full screen, drawer full screen
 - Not now: Athena (optional; Omar wants to discuss it first). Search bar stays a plain search.
+- Verified (23 Nov 2026): typecheck, 207 unit tests, journeys buyer / seller / admin / full / tour (new), English and Arabic,
+  desktop and phone. Migrations 043 (campaign lines keep a listing's date) and 044 (older campaigns get dates) run on start.
+- Decisions: guests' /calendar goes to the Directory's Products view (shopping moved there); tour progress and the Get started
+  close are kept per browser; on phones My bids does not open by itself (the "!" on its button shows an outbid instead).

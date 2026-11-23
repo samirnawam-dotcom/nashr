@@ -315,4 +315,7 @@ export const AR_BUYER: Record<string, string> = {
   "Nothing needs you right now. Payments, proofs and messages will show here.": "لا شيء يحتاج إليك الآن. ستظهر هنا المدفوعات والإثباتات والرسائل.",
   "Nothing on sale yet. Put a product on sale for dates.": "لا شيء معروض للبيع بعد. اعرض منتجاً للبيع في تواريخ.",
   "Add listing": "أضف عرضاً",
+  "Nothing on sale in this period. Use the arrows to see other dates.": "لا شيء معروض للبيع في هذه الفترة. استخدم الأسهم لرؤية تواريخ أخرى.",
+  "My bids · {n}": "عروضي · {n}",
+  "Show results": "اعرض النتائج",
 }

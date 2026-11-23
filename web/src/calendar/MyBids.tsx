@@ -36,7 +36,7 @@ export function MyBids({ onOpen, reload, narrow, folded }: { onOpen: (slotId: st
   const setOpen = (v: boolean) => { setOpenRaw(v); if (!folded) try { localStorage.setItem(KEY, v ? '1' : '0') } catch { /* private mode: this visit only */ } }
   const outbid = items?.filter(i => i.status === 'outbid').length ?? 0, seen = useRef<number | null>(null)
   // only a new outbid opens it: the ones already there when the page loaded show as the "!" on the folded bar
-  useEffect(() => { if (!items) return; if (folded && seen.current != null && outbid > seen.current) setOpenRaw(true); seen.current = outbid }, [outbid, folded, items])
+  useEffect(() => { if (!items) return; if (folded && !narrow && seen.current != null && outbid > seen.current) setOpenRaw(true); seen.current = outbid }, [outbid, folded, items])
   const load = () => api<{ items: Line[] }>('/buyer/my-bids').then(r => setItems(r.items), () => setItems([]))
   useEffect(() => { load() }, [reload])
   useLive('slot', () => load(), 1500)            // someone outbid you, or the publisher answered
@@ -48,15 +48,21 @@ export function MyBids({ onOpen, reload, narrow, folded }: { onOpen: (slotId: st
     {items?.some(i => i.status === 'outbid') && <span className="mb-alert" aria-label={t('Outbid')}>!</span>}
     <svg className={`mb-arrow ${open ? 'open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden><path d="M9 6l6 6-6 6" /></svg>
   </button>
-  if (!open) return <aside className={`mybids folded ${narrow ? 'narrow' : ''}`} aria-label={t('My bids')}>{head}</aside>
-  return (
+  // phones (owner's "Buying moves to the Directory"): a "My bids · N" button at the bottom of the screen opens the list full screen
+  if (narrow && !open) return <button type="button" className={`mb-fab ${outbid ? 'alert' : ''}`} onClick={() => setOpenRaw(true)} aria-haspopup="dialog">
+    {t('My bids · {n}', { n })}{outbid > 0 && <span className="mb-alert" aria-label={t('Outbid')}>!</span>}</button>
+  if (!open) return <aside className="mybids folded" aria-label={t('My bids')}>{head}</aside>
+  const sheet = (body: React.ReactNode) => narrow ? <div className="scrim mb-scrim" onClick={() => setOpenRaw(false)}>
+    <div className="mybids mb-sheet" role="dialog" aria-label={t('My bids')} onClick={e => e.stopPropagation()}>{body}</div></div> : body
+  const close = () => { setOpenRaw(false); if (!narrow && !folded) try { localStorage.setItem(KEY, '0') } catch { /* fine */ } }
+  return sheet(
     <aside className={`mybids ${narrow ? 'narrow' : ''}`} aria-label={t('My bids')}>
-      {head}
+      {narrow ? <div className="mb-head"><b>{t('My bids ({n})', { n })}</b><button type="button" className="btn sm" onClick={close} aria-label={t('Close')}>✕</button></div> : head}
       {!items ? <p className="muted small mb-empty">{t('Loading…')}</p>
         : !items.length ? <div className="mb-empty"><p className="muted small">{t('No bids yet. Click Bid / Buy on a product, or a price on an outlet\'s calendar.')}</p>
           {location.pathname !== '/directory' && <a className="btn sm" href="/directory">{t('Go to Directory')}</a>}</div>
         : <ul className="mb-list">{items.map(i => { const [label, cls] = STATUS[i.status]
-          const go = () => i.status === 'pay' && i.dealId ? navigate(`/bookings/${i.dealId}`) : onOpen(i.slotId)
+          const go = () => { if (narrow) setOpenRaw(false); i.status === 'pay' && i.dealId ? navigate(`/bookings/${i.dealId}`) : onOpen(i.slotId) }
           return <li key={`${i.slotId}-${i.dealId ?? ''}`} className={`mb-line ${i.status}`}>
             <button type="button" className="mb-row" onClick={go}>
               <OutletMark name={i.title} url={i.logoUrl} size={28} />
@@ -65,7 +71,7 @@ export function MyBids({ onOpen, reload, narrow, folded }: { onOpen: (slotId: st
                 <span className="mb-meta"><span className={`dot ${cls}`}>{t(label)}</span><span className="num">{money(i.amount)}</span></span>
                 {i.endsAt && <span className="small muted">{left(i.endsAt, now)}</span>}</span>
             </button>
-            {i.status === 'outbid' && <button type="button" className="btn sm mb-again" onClick={() => onOpen(i.slotId)}>{t('Bid again')}</button>}
+            {i.status === 'outbid' && <button type="button" className="btn sm mb-again" onClick={() => { if (narrow) setOpenRaw(false); onOpen(i.slotId) }}>{t('Bid again')}</button>}
             {i.status === 'pay' && i.dealId && <a className="btn sm mb-again" href={`/bookings/${i.dealId}`}>{t('Pay now')}</a>}
           </li> })}</ul>}
     </aside>
