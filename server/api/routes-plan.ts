@@ -385,9 +385,12 @@ export function planRoutes(route: RouteFn) {
     if (!c) throw new NotFound()
     const p = (await db.query(`select p.id from placements p where p.id = $1 and not p.archived`, [req.body.placementId])).rows[0]
     if (!p) throw new MarketError('This product is no longer on sale.')
-    await db.query(`insert into campaign_lines (campaign_id, placement_id, added_at) values ($1, $2, $3) on conflict do nothing`, [c.id, p.id, at])
+    // added from one listing (the bid drawer): that date is the one planned
+    const slot = req.body.slotId ? (await db.query(`select id from slots where id = $1 and placement_id = $2`, [req.body.slotId, p.id])).rows[0]?.id ?? null : null
+    await db.query(`insert into campaign_lines (campaign_id, placement_id, added_at, slot_id) values ($1, $2, $3, $4)
+                    on conflict (campaign_id, placement_id) do update set slot_id = coalesce(excluded.slot_id, campaign_lines.slot_id)`, [c.id, p.id, at, slot])
     return { ok: true }
-  }, { type: 'object', required: ['placementId'], additionalProperties: false, properties: { placementId: { type: 'string', format: 'uuid' } } })
+  }, { type: 'object', required: ['placementId'], additionalProperties: false, properties: { placementId: { type: 'string', format: 'uuid' }, slotId: { type: 'string', format: 'uuid' } } })
 
   route('DELETE', '/api/campaigns/:id/lines/:placement', BUYER, async ({ db, me }, req) => {
     const r = await db.query(`delete from campaign_lines l using campaigns c where c.id = l.campaign_id and c.id = $1 and c.buyer_id = $2 and l.placement_id = $3`,
@@ -395,4 +398,65 @@ export function planRoutes(route: RouteFn) {
     if (!r.rowCount) throw new NotFound()
     return { ok: true }
   })
+
+  // The buyer's Calendar (owner's "Buying moves to the Directory"): only the buyer's own items, each with its price, status and next
+  // deadline. Added (planned in a campaign) · You lead / Outbid · Waiting for seller · Accepted, pay now · Paid · Ran, check proof · Completed.
+  route('GET', '/api/buyer/tracker', BUYER, async ({ db, me, at }, req) => {
+    const b = me.actAs.companyId, r = req.query as Record<string, string | undefined>
+    const iso = (v?: string) => v && !Number.isNaN(Date.parse(v)) ? new Date(v) : null
+    const from = iso(r.from) ?? new Date(at.getTime() - 7 * 86_400_000), to = iso(r.to) ?? new Date(at.getTime() + 62 * 86_400_000)
+    const uuid = (v?: string) => v && /^[0-9a-f-]{36}$/i.test(v) ? v : null
+    const campaign = uuid(r.campaign), client = uuid(r.client)
+    const cols = `p.id placement_id, p.name placement, p.kind, o.id outlet_id, o.channel, o.logo_key, pr.id brand_id, pr.logo_key brand_logo_key,
+      brand_name(o) brand, coalesce(o.product_id, o.id) brand_key`
+    const joins = `join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id left join products pr on pr.id = o.product_id`
+    // bookings: every deal still going or done (declined, lapsed, cancelled and refunded ones are not on the plan any more)
+    const deals = (await db.query(`select d.id deal_id, d.status, d.amount, d.next_deadline_at, d.campaign_id, d.client_id, s.id slot_id, s.starts_at, s.label, ${cols}
+        from deals d join slots s on s.id = d.slot_id ${joins}
+        where d.buyer_id = $1 and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded') and s.starts_at >= $2 and s.starts_at < $3
+          and ($4::uuid is null or d.campaign_id = $4) and ($5::uuid is null or d.client_id = $5)`, [b, from, to, campaign, client])).rows
+    // open bids and offers with no deal yet: the buyer's own highest on each listing
+    const bids = (await db.query(`select distinct on (s.id) s.id slot_id, s.sale_type, s.top_buyer_id, s.closes_at, s.starts_at, s.label, bd.kind, bd.amount, bd.campaign_id, bd.client_id, ${cols}
+        from bids bd join slots s on s.id = bd.slot_id ${joins}
+        where bd.buyer_id = $1 and bd.status in ('active', 'outbid') and bd.kind in ('bid', 'auto', 'interest') and s.status = 'open' and s.closes_at > $6
+          and s.starts_at >= $2 and s.starts_at < $3 and ($4::uuid is null or bd.campaign_id = $4) and ($5::uuid is null or bd.client_id = $5)
+          and not exists (select 1 from deals d where d.slot_id = s.id and d.buyer_id = $1)
+        order by s.id, bd.amount desc`, [b, from, to, campaign, client, at])).rows
+    // planned: products in a campaign with nothing bid or booked on them yet in that campaign, on the date chosen or the next one on sale
+    const planned = (await db.query(`select l.campaign_id, k.client_id, k.start_date::text start_text, ns.id slot_id, ns.starts_at, ns.closes_at, ns.label,
+          coalesce(ns.top_amount, ns.starting_price, p.default_price, o.default_price, p.starting_price) amount, ${cols}
+        from campaign_lines l join campaigns k on k.id = l.campaign_id join placements p on p.id = l.placement_id join outlets o on o.id = p.outlet_id
+        left join products pr on pr.id = o.product_id
+        left join lateral (select s.* from slots s where (l.slot_id is not null and s.id = l.slot_id)
+            or (l.slot_id is null and s.placement_id = p.id and s.status = 'open' and s.closes_at > $6
+                and s.starts_at >= greatest($6, coalesce(k.start_date::timestamp at time zone 'Asia/Dubai', $6))
+                and (k.end_date is null or s.starts_at < (k.end_date + 1)::timestamp at time zone 'Asia/Dubai'))
+            order by (s.id = l.slot_id) desc nulls last, s.starts_at limit 1) ns on true
+        where k.buyer_id = $1 and k.status = 'active' and ($4::uuid is null or k.id = $4) and ($5::uuid is null or k.client_id = $5)
+          and not exists (select 1 from bids bd join slots s2 on s2.id = bd.slot_id where s2.placement_id = p.id and bd.buyer_id = $1 and bd.campaign_id = k.id
+                          and bd.status in ('active', 'outbid', 'selected'))
+          and not exists (select 1 from deals d join slots s2 on s2.id = d.slot_id where s2.placement_id = p.id and d.buyer_id = $1 and d.campaign_id = k.id
+                          and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded'))
+          and coalesce(ns.starts_at, k.start_date::timestamp at time zone 'Asia/Dubai') >= $2
+          and coalesce(ns.starts_at, k.start_date::timestamp at time zone 'Asia/Dubai') < $3`, [b, from, to, campaign, client, at])).rows
+    const DEAL: Record<string, string> = { awaiting_seller: 'waiting', awaiting_payment: 'pay', secured: 'paid', in_review: 'ran', issue_open: 'ran', disputed: 'ran',
+      released: 'completed', paid_out: 'completed' }
+    const base = (x: any) => ({ placementId: x.placement_id, product: x.kind === 'main' ? x.brand : x.placement, brand: x.brand, brandKey: x.brand_key, channel: x.channel,
+      logoUrl: brandLogoUrl(x.brand_id, x.brand_logo_key) ?? logoUrl({ id: x.outlet_id, logo_key: x.logo_key }), label: x.label ?? null, campaignId: x.campaign_id ?? null })
+    let items = [
+      ...deals.map(x => ({ ...base(x), status: DEAL[x.status] ?? 'waiting', at: x.starts_at, price: Number(x.amount), deadline: x.status === 'released' || x.status === 'paid_out' ? null : x.next_deadline_at,
+        slotId: x.slot_id, dealId: x.deal_id, clientId: x.client_id })),
+      ...bids.map(x => ({ ...base(x), status: x.kind === 'interest' ? 'waiting' : x.top_buyer_id === b ? 'lead' : 'outbid', at: x.starts_at, price: Number(x.amount),
+        deadline: x.closes_at, slotId: x.slot_id, dealId: null, clientId: x.client_id })),
+      ...planned.map(x => ({ ...base(x), status: 'added', at: x.starts_at ?? (x.start_text ? new Date(`${x.start_text}T12:00:00+04:00`) : at),
+        price: x.amount == null ? null : Number(x.amount), deadline: x.closes_at ?? null, slotId: x.slot_id ?? null, dealId: null, clientId: x.client_id })),
+    ]
+    const statuses = (r.status ?? '').split(',').filter(Boolean)
+    if (statuses.length) items = items.filter(i => statuses.includes(i.status))
+    const words = (r.q ?? '').toLowerCase().split(/\s+/).filter(Boolean)
+    if (words.length) items = items.filter(i => words.every(w => `${i.brand} ${i.product}`.toLowerCase().includes(w)))
+    items.sort((x, y) => new Date(x.at).getTime() - new Date(y.at).getTime())
+    return { items }
+  })
 }
+

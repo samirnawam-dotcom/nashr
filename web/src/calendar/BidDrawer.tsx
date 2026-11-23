@@ -61,7 +61,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
   async function addToCampaign(id = campaignId) {
     if (!id) { setAdding(true); return }
     setError('')
-    try { await api(`/campaigns/${id}/lines`, { method: 'POST', body: { placementId: s!.placementId } }); setCampaignId(id); setAdding(false)
+    try { await api(`/campaigns/${id}/lines`, { method: 'POST', body: { placementId: s!.placementId, slotId } }); setCampaignId(id); setAdding(false)
       setAdded(t('Added to {name}.', { name: campaigns.find(c => c.id === id)?.name ?? '' })); reloadCampaigns() } catch (e: any) { setError(e.message) }
   }
 

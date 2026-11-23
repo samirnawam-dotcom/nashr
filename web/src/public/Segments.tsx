@@ -47,7 +47,7 @@ function HelpPanel({ calendarHref }: { calendarHref: string }) {
   return <aside className="card pad seg-help" aria-label={t('Help planning')}>
     <h2>{t('Planning a campaign?')}</h2>
     <ul>
-      <li><b>{t('Get told about new slots.')}</b> {t('Open the calendar with this filter and save the search; Nashr sends an alert when something new matches.')} <a href={calendarHref}>{t('Open the calendar')}</a></li>
+      <li><b>{t('Get told about new slots.')}</b> {t('Open the Directory with this filter and save it; Nashr sends an alert when something new matches.')} <a href={calendarHref}>{t('Open the Directory')}</a></li>
       {!guest && <li><b>{t('Plan against a budget.')}</b> {t('A campaign keeps your outlets, budget and bookings together, and makes a media plan PDF to share.')} <a href="/campaigns">{t('Campaigns')}</a></li>}
       <li><b>{t('Not sure where to start?')}</b> {t("Tell Nashr's team who you want to reach and your budget; we will suggest outlets and dates.")} <a href={guest ? '/help' : '/help#contact'}>{t('Ask Nashr')}</a></li>
     </ul>
@@ -82,7 +82,7 @@ function SegmentBody({ filter, calendarBase }: { filter: string; calendarBase: s
   if (!rows.length) return <div className="card pad seg-empty">
     <h2>{t('Nothing open for this right now')}</h2>
     <p>{t('Publishers add new dates every day. Save this search on the calendar and Nashr tells you as soon as something matches, or ask our team to find you options.')}</p>
-    <div className="row-flex"><a className="btn primary" href={calendarBase}>{t('Get alerts on the calendar')}</a><a className="btn" href="/help">{t('Ask Nashr')}</a></div>
+    <div className="row-flex"><a className="btn primary" href={calendarBase}>{t('Get alerts in the Directory')}</a><a className="btn" href="/help">{t('Ask Nashr')}</a></div>
   </div>
   return <>
     <Stats slots={total} outlets={rows.length} fromPrice={Math.min(...rows.map(r => r.fromPrice))} channels={channels} />
@@ -107,7 +107,7 @@ function SegmentBody({ filter, calendarBase }: { filter: string; calendarBase: s
           <td className="num">{slotWhen(s.startsAt, s.channel)}</td>
           <td className="small">{closesIn(s.closesAt) ?? dayLabel(dubai(s.closesAt).date)}</td>
           <td className="r num">{money(s.topBid ?? s.startingPrice)}</td></tr>)}</tbody></table></div>
-      <div className="row-flex section"><a className="btn primary" href={calendarBase}>{t('See all {n} open slots on the calendar', { n: total.toLocaleString('en-US') })}</a></div></section>}
+      <div className="row-flex section"><a className="btn primary" href={calendarBase}>{t('See all {n} open slots in the Directory', { n: total.toLocaleString('en-US') })}</a></div></section>}
   </>
 }
 
@@ -156,7 +156,7 @@ export function AudiencesPage() {
     <aside className="card pad seg-help seg-help-wide">
       <h2>{t('Not sure who to reach?')}</h2>
       <p>{t("Tell Nashr's team what you sell, who buys it and your budget. We will suggest the audiences, outlets and dates that fit, at no cost.")}</p>
-      <div className="row-flex"><a className="btn primary" href="/help">{t('Ask Nashr')}</a><a className="btn" href="/calendar">{t('Browse the calendar')}</a></div>
+      <div className="row-flex"><a className="btn primary" href="/help">{t('Ask Nashr')}</a><a className="btn" href="/directory">{t('Browse media')}</a></div>
     </aside>
   </main>
 }
@@ -165,7 +165,7 @@ export function AudiencePage({ id }: { id: string }) {
   const a = AUDIENCES.find(x => x[0] === id)
   useMeta(a ? { title: t('Advertise to {who} in the UAE | Nashr', { who: t(a[1]) }), description: t(a[2]) } : null, [id])
   if (!a) return <main><p>{t('Not found')}</p><a href="/audiences">{t('All audiences')}</a></main>
-  const calendarHref = `/calendar?view=list&aud=${id}`
+  const calendarHref = `/directory?view=products`
   return <SegmentShell crumb={t('Audiences')} crumbHref="/audiences" title={t(a[1])} intro={t(a[2])} calendarHref={calendarHref} othersTitle={t('Other audiences')}
     others={<div className="aud-pick">{AUDIENCES.filter(x => x[0] !== id).map(([k, l]) => <a key={k} className="aud-chip" href={`/audiences/${k}`}>{t(l)}</a>)}</div>}>
     <SegmentBody filter={`aud=${id}`} calendarBase={calendarHref} />
@@ -176,7 +176,7 @@ export function IndustryPage({ id }: { id: string }) {
   const p = INDUSTRY_PAGES.find(x => x[0] === id)
   useMeta(p ? { title: t('{industry} advertising in the UAE | Nashr', { industry: t(p[2]) }), description: t(p[3]) } : null, [id])
   if (!p) return <main><p>{t('Not found')}</p><a href="/">{t('Home')}</a></main>
-  const calendarHref = `/calendar?view=list&sector=${encodeURIComponent(p[1])}`
+  const calendarHref = `/directory?view=products&sectors=${encodeURIComponent(p[1])}`
   return <SegmentShell crumb={t('Industries')} crumbHref="/" title={t('{industry} advertising in the UAE', { industry: t(p[2]) })} intro={t(p[3])} calendarHref={calendarHref}
     othersTitle={t('Other industries')}
     others={<div className="aud-pick">{INDUSTRY_PAGES.filter(x => x[0] !== id).map(([k, , l]) => <a key={k} className="aud-chip" href={`/advertise/${k}`}>{t(l)}</a>)}</div>}>

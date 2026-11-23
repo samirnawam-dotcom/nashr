@@ -5,7 +5,8 @@ import { Login } from './Login'
 import { AcceptInvite, RequestAccess } from './Access'
 import { MyAccountPage, ForgotPassword, ResetPassword } from './Account'
 import { Bell } from './Bell'
-import { CalendarPage } from './calendar/CalendarPage'
+import { TrackerPage } from './calendar/Tracker'
+import { Redirect } from './Redirect'
 import { DirectoryPage, OutletPage } from './directory/Directory'
 import { Landing } from './Landing'
 import { DisputesPolicyPage, PrivacyPage, RefundsPage, TermsPage } from './Legal'
@@ -98,7 +99,7 @@ export type Me = { role: string; company: { name: string; type: string }; viewin
 type Routes = [RegExp, (id: string) => React.ReactNode][]
 const BUYER: Routes = [
   [/^\/dashboard/, () => <BuyerDashboard />],
-  [/^\/calendar/, () => <CalendarPage />],
+  [/^\/calendar/, () => <TrackerPage />],
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
   [/^\/campaigns\/([\w-]+)\/plan$/, id => <MediaPlanPage id={id} />],
@@ -180,7 +181,7 @@ const LEGAL: Routes = [[/^\/terms$/, () => <TermsPage />], [/^\/privacy$/, () =>
 // Visitors can browse the calendar and the directory; everything else asks them to sign in.
 const GUEST: Routes = [...LEGAL,
   [/^\/help/, () => <HelpPage role="guest" />],
-  [/^\/calendar/, () => <CalendarPage />],
+  [/^\/calendar/, () => <Redirect to="/directory?view=products" />],
   [/^\/directory\/([\w-]+)$/, id => <OutletPage id={id} />],
   [/^\/directory/, () => <DirectoryPage />],
 ]
@@ -197,7 +198,7 @@ const isActive = (path: string, p: string, seller = false) => (p === '/' ? path 
 const NAV: Record<string, string[][]> = {
   admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
-  guest: [['/', t('Home')], ['/calendar', t('Calendar')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
+  guest: [['/', t('Home')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   // owner's buyer-side fixes: no section titles; Company and Help are in the menu under the buyer's name
   buyer: [['/dashboard', t('Dashboard')], ['/calendar', t('Calendar')], ['/directory', t('Directory')], ['/campaigns', t('Campaigns')], ['/clients', t('Clients')], ['/inbox', t('Inbox')], ['/reports', t('Reports')]],
   seller: [['/home', t('Dashboard')], ['/schedule', t('Calendar')], ['/listings', t('Products')], ['/inbox', t('Inbox')], ['/reports', t('Reports')]],

@@ -95,7 +95,7 @@ export function ClientPage({ id }: { id: string }) {
         {!form && <button className="btn" onClick={() => setForm({ name: c.name, industry: c.industry ?? '', trn: c.trn ?? '', billingEmail: c.billingEmail ?? '', address: c.address ?? '' })}>{t('Edit')}</button>}
         {c.status === 'active' ? <button className="btn" disabled={busy} onClick={() => save({ status: 'archived' }, t('Archived. Its bookings and documents stay.'))}>{t('Archive')}</button>
           : <button className="btn" disabled={busy} onClick={() => save({ status: 'active' }, t('Active again.'))}>{t('Make active')}</button>}
-        {c.status === 'active' && <a className="btn primary" href="/calendar">{t('Check availability')}</a>}</div>
+        {c.status === 'active' && <a className="btn primary" href="/directory?view=products">{t('Find media')}</a>}</div>
       {form && <><section className="card pad" style={{ maxWidth: 620, marginBottom: 12 }}><LogoPicker name={c.name} url={c.logoUrl} endpoint={`/clients/${c.id}/logo`} saved={t('Logo saved.')} /></section>
         <ClientForm form={form} setForm={setForm} busy={busy} error={error} onSave={() => save(bodyOf(form), t('Saved.'))} onCancel={() => setForm(null)} saveLabel={t('Save')} /></>}
       {!form && error && <p className="error" role="alert">{error}</p>}{note && <p className="ok" role="status">{note}</p>}

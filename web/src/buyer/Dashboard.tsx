@@ -46,7 +46,7 @@ export function BuyerDashboard() {
     <main className="pt">
       <div className="pt-head">
         <div><h1>{greeting()}{company ? sep + company : ''}</h1><p className="muted">{t('Your bookings, bids and spend at a glance. Click any card for detail.')}</p></div>
-        <div className="pt-filters"><a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/calendar">{t('Check availability')}</a></div>
+        <div className="pt-filters"><a className="btn" href="/campaigns">{t("Campaigns")}</a><a className="btn primary" href="/directory?view=products">{t('Find media')}</a></div>
       </div>
 
       {d.wins.length > 0 && <section className="wins" aria-label={t('Auctions you won')}>{d.wins.map(w => <a key={w.dealId} className="win" href={`/bookings/${w.dealId}`}>
@@ -91,7 +91,7 @@ export function BuyerDashboard() {
         <div className="card pad"><div className="pt-card-h"><h2>{t('Your bids')}</h2><a href="/calendar">{t('Calendar')} ›</a></div>
           {!d.bids.items.length ? <p className="muted">{t("No open bids. Find a slot on the calendar.")}</p>
             : <div className="table-wrap"><table className="table pt-tx"><thead><tr><th>{t('Slot')}</th><th>{t('Airs')}</th><th>{t('Closes')}</th><th className="r">{t('Top bid')}</th><th>{t('Status')}</th></tr></thead>
-              <tbody>{d.bids.items.map(b => <tr key={b.slotId} onClick={() => navigate(`/calendar?view=list&q=${encodeURIComponent(b.outlet)}&date=${dubai(b.startsAt).date}`)}>
+              <tbody>{d.bids.items.map(b => <tr key={b.slotId} onClick={() => navigate(`/calendar?slot=${b.slotId}`)}>
                 <td><b>{b.outlet}</b><div className="small muted">{tm(b.label)} · {CHANNEL[b.channel]}</div></td><td className="small">{dayLabel(dubai(b.startsAt).date)}</td>
                 <td className="small">{isAr ? (closesIn(b.closesAt) ?? t('closing')) : (closesIn(b.closesAt) ?? 'closing')}</td>
                 <td className="r num">{money(b.topBid)}</td><td><span className={`pt-pill ${b.leading ? 'good' : 'bad'}`}>{b.leading ? t('Leading') : t('Outbid')}</span></td></tr>)}</tbody></table></div>}

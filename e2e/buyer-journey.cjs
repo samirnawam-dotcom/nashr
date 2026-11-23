@@ -10,20 +10,22 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   await p.fill('#email', 'demo@northwind.ae'); await p.fill('#pw', 'nashr-demo-2026'); await p.click('button:has-text("Sign in")')
   await p.waitForSelector('.pt-kpis') // the buyer dashboard is home
   await twoStepViaPage(p, BASE); await p.goto(BASE + '/dashboard'); await p.waitForSelector('.pt-kpis') // paying needs two-step sign-in
-  await p.click('.nav >> text=Calendar'); await p.waitForSelector('.cv-head')
-  // The first week with radio auctions on sale (the demo data moves with today's date): week rows, then the day, then radio auctions
+  // Shopping is in the Directory (owner's "Buying moves to the Directory"): Products view, radio auctions, a product's dates, then its outlet's Calendar tab
+  await p.click('.nav >> text=Directory'); await p.waitForSelector('.outlet-grid')
+  await p.goto(BASE + '/directory?view=products&sale=auction&channel=radio'); await p.waitForSelector('.prod-card')
+  out && await p.screenshot({ path: out + '/6-shop.png' })
+  await p.locator('.prod-card .btn.primary').first().click(); await p.waitForSelector('.date-lines button')
+  out && await p.screenshot({ path: out + '/6b-dates.png' })
+  await p.keyboard.press('Escape')
   const W = await p.evaluate(async () => { const from = new Date().toISOString(), to = new Date(Date.now() + 40 * 86_400_000).toISOString()
     const d = await (await fetch(`/api/slots/days?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&open=1&sale=auction&ch=radio`)).json()
     const day = new Date(d[0].date + 'T12:00:00Z'), monday = new Date(day.getTime() - ((day.getUTCDay() || 7) - 1) * 86_400_000)
     return { start: monday.toISOString().slice(0, 10), end: new Date(monday.getTime() + 7 * 86_400_000).toISOString().slice(0, 10) } })
-  await p.goto(BASE + `/calendar?view=week&date=${W.start}`); await p.waitForSelector('.cv-rtable')
-  out && await p.screenshot({ path: out + '/6-week2.png' })
-  await p.click('.cv-views button:has-text("Day")'); await p.waitForSelector('.rv-day .cv-rtable')
-  out && await p.screenshot({ path: out + '/7-day.png' })
+  await p.goto(BASE + '/directory/skyline-fm?tab=calendar'); await p.waitForSelector('.oc-cal .cv-rtable .cv-prow')
+  out && await p.screenshot({ path: out + '/7-outlet-calendar.png' })
+  await p.click('.oc-cal .seg button:has-text("Day")'); await p.waitForSelector('.oc-cal .rv-day .cv-rtable')
   const picks = await p.evaluate(async W => (await (await fetch(`/api/slots/list?from=${W.start}T00:00:00%2B04:00&to=${W.end}T00:00:00%2B04:00&open=1&sale=auction&ch=radio&limit=100`)).json())
     .items.filter(s => s.kind === 'single' && s.buyNowPrice && !s.youBid).slice(0, 2).map(s => s.id), W)
-  // the week as outlet rows, then each slot's bid drawer by its link
-  await p.goto(BASE + `/calendar?view=week&date=${W.start}&sale=auction&ch=radio`); await p.waitForSelector('.cv-rtable .cv-prow')
   const openSlot = async id => { await p.goto(BASE + `/calendar?slot=${id}`); await p.waitForSelector('.drawer h2') }
   // Bid on a break with a full brief
   await openSlot(picks[0])
@@ -56,6 +58,11 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:5173'
   const status = await p.locator('main .page-title').first().textContent()
   if (!/Paid/.test(status)) { console.error('Expected Paid, got', status); process.exitCode = 1 }
   console.log('status now:', status)
+  // The Calendar is the buyer's tracker: the paid booking shows as Paid
+  const bookingUrl = p.url(); await p.goto(BASE + '/calendar'); await p.waitForSelector('.tk-item')
+  console.log('tracker statuses:', [...new Set(await p.locator('.tk-item .tk-st').allTextContents())].join(', '))
+  out && await p.screenshot({ path: out + '/10b-tracker.png' })
+  await p.goto(bookingUrl); await p.waitForSelector('main .page-title')
 
   // Creative: the buyer uploads, the publisher approves
   await p.setInputFiles('#file', { name: 'spot.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3 demo audio') })

@@ -137,13 +137,11 @@ const bell = async p => { await p.reload({ waitUntil: 'networkidle' }); return (
       return r.items.filter(s => s.placement === prog).map(s => s.id) }, [`Palm Radio ${run}`, prog])
     const openSlot = async (p, id) => { await p.goto(BASE + `/calendar?slot=${id}`); await p.waitForSelector('.drawer h2') }
 
-    step = '6 buyer finds it on the calendar'
-    await nav(buy, 'Calendar'); await buy.waitForSelector('.cv-head')
-    await buy.fill('.cv-filters input[type=search]', `Palm Radio ${run}`)
-    await buy.waitForSelector(`.cv-rtable .cv-orow:has-text("Palm Radio ${run}"), .cv-empty`, { timeout: 15000 })
-    if (await buy.locator('.cv-empty').count()) await buy.click('.cv-empty .btn.primary') // the first dates on sale may be next week
-    await buy.waitForSelector(`.cv-rtable .cv-orow:has-text("Palm Radio ${run}")`, { timeout: 15000 }); await buy.shot('f6-buyer-finds')
-    say(await buy.locator('.cv-rtable .cv-orow').count(), 'outlet rows')
+    step = '6 buyer finds it in the Directory'
+    await nav(buy, 'Directory'); await buy.waitForSelector('.dir-bar')
+    await buy.click('.dir-bar .seg button:has-text("Products")'); await buy.fill('.dir-bar input[type=search]', `Palm Radio ${run}`)
+    await buy.waitForSelector(`.prod-card:has-text("Palm Radio ${run}")`, { timeout: 15000 }); await buy.shot('f6-buyer-finds')
+    say(await buy.locator('.prod-card').count(), 'products')
 
     step = '7 buyer: buy-now request'
     const brief = async p => { await p.fill('#adv', 'Desert Bank'); await p.selectOption('#ind', 'Banking'); await p.fill('#msg', 'Open a business account in ten minutes.')

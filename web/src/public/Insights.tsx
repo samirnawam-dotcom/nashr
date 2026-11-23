@@ -108,7 +108,7 @@ export function ArticlePage({ id }: { id: string }) {
     <h1>{text(a).title}</h1>
     <p className="lead">{text(a).summary}</p>
     {text(a).body.map((p, i) => <p key={i}>{p}</p>)}
-    <div className="row-flex section"><a className="btn primary" href="/calendar">{t('Browse the calendar')}</a><a className="btn" href="/request-access">{t('Request access')}</a></div>
+    <div className="row-flex section"><a className="btn primary" href="/directory">{t('Browse media')}</a><a className="btn" href="/request-access">{t('Request access')}</a></div>
   </article>
     <aside className="section"><h2 className="sec-h">{t('More insights')}</h2><ul className="ins-more">{ARTICLES.filter(x => x.slug !== id).map(x =>
       <li key={x.slug}><a href={`/insights/${x.slug}`}>{text(x).title}</a></li>)}</ul></aside>

@@ -55,7 +55,7 @@ export function Landing() {
             <p className="lede">{t("Buy and sell premium media across the UAE in one marketplace: websites, newspapers, magazines, newsletters, radio, TV, podcasts and social. The money is held until the ad has run.")}</p>
             <div className="cta-row">
               <a className="btn signal" href="/request-access">{t("Get early access")}</a>
-              <a className="btn ghost" href="/calendar">{t("Browse the calendar")}</a>
+              <a className="btn ghost" href="/directory">{t("Browse media")}</a>
             </div>
             <p className="fine">{t("Every slot and price is open to browse. Sign in when you're ready to bid.")} <button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></p>
           </div>
@@ -118,7 +118,7 @@ export function Landing() {
               <li>{t("Plan campaigns against a budget, with committed and remaining spend.")}</li>
               <li>{t("Upload creative, approve proof and download the publisher's tax invoice in one place.")}</li>
             </ul>
-            <a className="btn" href="/calendar">{t("Browse the calendar")}</a>
+            <a className="btn" href="/directory">{t("Browse media")}</a>
           </article>
           <article className="aud pub" id="publishers">
             <div className="vig" aria-hidden>
@@ -208,7 +208,7 @@ export function Landing() {
       <footer className="lp-foot">
         <div className="wrap foot-grid">
           <div className="foot-brand"><LogoImage tone="reversed" height={28} /><p>{t("The UAE media marketplace. Prices in AED, times in Dubai time.")}</p></div>
-          <nav aria-label={t("Product")}><b>{t("Product")}</b><a href="/calendar">{t("Calendar")}</a><a href="/directory">{t("Directory")}</a><a href="/audiences">{t('Audiences')}</a><a href="/insights">{t('Insights')}</a><button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></nav>
+          <nav aria-label={t("Product")}><b>{t("Product")}</b><a href="/directory">{t("Directory")}</a><a href="/audiences">{t('Audiences')}</a><a href="/insights">{t('Insights')}</a><button type="button" className="text-link" onClick={() => go('how')}>{t("How it works")}</button></nav>
           <nav aria-label={t("Account")}><b>{t("Account")}</b><a href="/request-access">{t("Request access")}</a><a href="/sign-in">{t("Sign in")}</a></nav>
           <nav aria-label={t("Legal")}><b>{t("Legal")}</b><a href="/terms">{t("Terms")}</a><a href="/privacy">{t("Privacy")}</a><a href="/refunds">{t("Refunds")}</a></nav>
         </div>

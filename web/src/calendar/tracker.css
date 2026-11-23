@@ -1,0 +1,51 @@
+/* The buyer's Calendar as a tracker (owner's "Buying moves to the Directory"): one colour per status, always with its words. */
+.tk { --tk-grey: #6E6C68; --tk-green: var(--success); --tk-red: var(--danger); --tk-amber: var(--warning); --tk-blue: #1F4FB8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tk { --tk-blue: #8FB0FF; --tk-grey: #A9A7A2; } }
+:root[data-theme="dark"] .tk { --tk-blue: #8FB0FF; --tk-grey: #A9A7A2; }
+.tk-filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 12px; }
+.tk-filters .search { flex: 1 1 240px; max-width: 360px; }
+.tk-budget { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-muted); margin: 0 0 12px; }
+.tk-budget span { color: var(--text-muted); }
+.tk-budget span b { color: var(--text); margin-inline-start: 4px; }
+.tk-empty { padding: 40px 24px; text-align: center; display: grid; gap: 10px; justify-items: center; }
+.tk-empty h2 { margin: 0; }
+.tk-oname { display: inline-flex; align-items: center; gap: 10px; cursor: default; }
+.tk-cell { vertical-align: top; padding: 6px !important; }
+.tk-stack { display: grid; gap: 6px; }
+.tk-item { --c: var(--tk-grey); display: grid; gap: 1px; width: 100%; text-align: start; padding: 6px 8px; border-radius: var(--radius-md); cursor: pointer; font: inherit; color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-inline-start: 3px solid var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); }
+.tk-item:hover, .tk-item:focus-visible { border-color: var(--c); }
+.tk-item b { font-size: 13px; line-height: 18px; }
+.tk-st { font-size: 12px; line-height: 16px; color: var(--c); font-weight: 600; }
+.tk-dl { font-size: 11px; line-height: 15px; color: var(--text-muted); }
+.tk-item.s-added { border-style: dashed; border-inline-start-style: dashed; background: var(--surface); }
+.tk-item.s-lead { --c: var(--tk-green); }
+.tk-item.s-outbid { --c: var(--tk-red); }
+.tk-item.s-waiting { --c: var(--tk-amber); }
+.tk-item.s-pay { --c: var(--tk-amber); border-width: 2px; border-inline-start-width: 4px; }
+.tk-item.s-pay .tk-st { font-weight: 800; }
+.tk-item.s-paid { --c: var(--tk-blue); }
+.tk-item.s-ran { --c: var(--tk-blue); border-width: 2px; border-inline-start-width: 4px; }
+.tk-item.s-ran .tk-st { font-weight: 800; }
+.tk-item.s-completed { --c: var(--tk-grey); background: color-mix(in srgb, var(--tk-grey) 18%, var(--surface)); border-color: var(--tk-grey); }
+.tk-item.s-completed .tk-st { color: var(--text-muted); }
+.tk-key { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tk-key li { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; }
+.tk-key .tk-item.demo { cursor: default; padding: 4px 8px; font-size: 12px; font-weight: 600; color: var(--c); }
+.tk-key .tk-item.s-completed.demo { color: var(--text-muted); }
+.tk-key-l { display: inline-flex; align-items: center; gap: 8px; }
+.tk-swatches { display: inline-flex; gap: 2px; }
+.tk-swatches i { width: 8px; height: 14px; border-radius: 2px; background: var(--tk-grey); }
+.tk-swatches .s-added { background: none; border: 1px dashed var(--tk-grey); }
+.tk-swatches .s-lead { background: var(--tk-green); } .tk-swatches .s-outbid { background: var(--tk-red); }
+.tk-swatches .s-waiting, .tk-swatches .s-pay { background: var(--tk-amber); }
+.tk-swatches .s-paid, .tk-swatches .s-ran { background: var(--tk-blue); }
+.tk-days { display: grid; gap: 16px; }
+.tk-day h3 { margin: 0 0 8px; font-size: 15px; }
+.tk-day ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tk-day li { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.tk-dhead { gap: 8px; }
+@media (max-width: 760px) {
+  .tk-key li { grid-template-columns: 1fr; gap: 2px; }
+  .tk-filters .search { max-width: none; }
+}

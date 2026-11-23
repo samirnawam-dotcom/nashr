@@ -24,7 +24,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
       <section className="auth-form">
         <header className="auth-top"><a href="/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 6l-6 6 6 6" /></svg>{t('Back to home')}</a><span className="auth-top-r"><ThemeToggle /><LangSwitch className="auth-lang" /></span></header>
         {children}
-        <footer className="auth-foot"><a href="/calendar">{t("Browse the calendar")}</a><nav aria-label={t("Legal")}><a href="/terms">{t("Terms")}</a><a href="/privacy">{t("Privacy")}</a><a href="/refunds">{t("Refunds")}</a></nav></footer>
+        <footer className="auth-foot"><a href="/directory">{t("Browse media")}</a><nav aria-label={t("Legal")}><a href="/terms">{t("Terms")}</a><a href="/privacy">{t("Privacy")}</a><a href="/refunds">{t("Refunds")}</a></nav></footer>
       </section>
     </div>
   )
