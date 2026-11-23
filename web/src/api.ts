@@ -50,7 +50,8 @@ export type CampaignBrief = { advertiser: string; industry: string; message: str
 /** The campaign is the plan (owner's buyer-side fixes). Amounts in fils, excl. VAT; the budget is the buyer's only. */
 export type Campaign = { id: string; name: string; budget: number | null; startDate: string | null; endDate: string | null; objective: string | null
   brief: CampaignBrief | null; status: 'active' | 'completed'; lines: number; estimated: number; committed: number; pending: number; remaining: number | null
-  clientId?: string | null; client?: string | null }
+  clientId?: string | null; client?: string | null; clientLogoUrl?: string | null
+  counts?: { added: number; bids: number; pay: number; paid: number; ran: number }; next?: { kind: 'pay' | 'closes' | 'proof'; outlet: string; due: string | null } | null }
 /** A client an agency books for. Budget and amounts in fils, excl. VAT; remaining counts requests still waiting on publishers. */
 export type Client = { id: string; name: string; industry: string | null; trn: string | null; address: string | null; billingEmail: string | null; logoUrl: string | null
   status: 'active' | 'archived'; committed: number; pending: number; paid: number; bookings: number }

@@ -3,7 +3,12 @@ import { tm } from '../i18n-server'
 import { useEffect, useState } from 'react'
 import { api, upload, type Campaign, type CampaignBrief, type Client } from '../api'
 import { dayLabel, money, slotWhen } from '../format'
-import { Status } from '../bookings/Bookings'
+import { addDays, dubai, todayInDubai } from '../calendar/layout'
+import { BidDrawer } from '../calendar/BidDrawer'
+import { STATUS, type TrackStatus } from '../calendar/Tracker'
+import { DatesPanel } from '../directory/Shop'
+import { ResultsPage } from '../insights/Results'
+import '../calendar/tracker.css'
 import '../directory/directory.css'
 import './campaigns.css'
 import { PhotoBand } from '../PhotoBand'
@@ -51,7 +56,7 @@ const bodyOf = (f: Form) => {
 }
 
 /** The campaign form: the campaign itself (buyer only), then the campaign brief (what publishers see). */
-function CampaignForm({ initial, clients, onSaved, onCancel, id }: { initial: Form; clients: Client[]; onSaved: (id: string) => void; onCancel: () => void; id?: string }) {
+function CampaignForm({ initial, clients, onSaved, onCancel, id, title }: { initial: Form; clients: Client[]; onSaved: (id: string) => void; onCancel: () => void; id?: string; title?: string }) {
   const [f, setF] = useState(initial), [busy, setBusy] = useState(false), [error, setError] = useState(''), [tried, setTried] = useState(false), [uploading, setUploading] = useState(false)
   const b = f.brief, setB = (x: Partial<Form['brief']>) => setF({ ...f, brief: { ...b, ...x } }), problem = missing(f)
   function pickClient(cid: string) {
@@ -72,7 +77,7 @@ function CampaignForm({ initial, clients, onSaved, onCancel, id }: { initial: Fo
     } catch (e: any) { setError(tm(e.message)) } finally { setBusy(false) }
   }
   return <section className="card pad form cp-form">
-    <h2>{id ? t('Edit campaign') : t('New campaign')}</h2>
+    <h2>{title ?? (id ? t('Edit campaign') : t('New campaign'))}</h2>
     <div className="cp-sec"><h3>{t('The campaign')}</h3><p className="small muted">{t('Only your team sees these.')}</p></div>
     <div className="grid2">
       <div className="field"><label htmlFor="cp-n">{t('Name')} <span className="req">*</span></label><input id="cp-n" dir="auto" maxLength={200} value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder={t('Q4 business cards launch')} /></div>
@@ -82,7 +87,7 @@ function CampaignForm({ initial, clients, onSaved, onCancel, id }: { initial: Fo
       <div className="field"><label htmlFor="cp-s">{t('Start date')} <span className="req">*</span></label><input id="cp-s" type="date" value={f.startDate} onChange={e => setF({ ...f, startDate: e.target.value })} /></div>
       <div className="field"><label htmlFor="cp-e">{t('End date')} <span className="req">*</span></label><input id="cp-e" type="date" min={f.startDate || undefined} value={f.endDate} onChange={e => setF({ ...f, endDate: e.target.value })} /></div>
       <div className="field"><label htmlFor="cp-b">{t('Budget (AED, excl. VAT, optional)')}</label><input id="cp-b" inputMode="decimal" value={f.budget} onChange={e => setF({ ...f, budget: e.target.value.replace(/[^\d.,]/g, '') })} placeholder="150,000" />
-        <span className="small muted">{t('Yours only: publishers never see it.')}</span></div>
+        <span className="small muted">{t('Only you see this. Sellers never see your budget.')}</span></div>
       <div className="field"><label htmlFor="cp-o">{t('Objective (optional)')}</label><input id="cp-o" dir="auto" maxLength={500} value={f.objective} onChange={e => setF({ ...f, objective: e.target.value })} placeholder={t('Awareness, launch, footfall…')} /></div>
     </div>
 
@@ -115,28 +120,97 @@ function CampaignForm({ initial, clients, onSaved, onCancel, id }: { initial: Fo
   </section>
 }
 
+// ---- the list: Cards | List, Active · Upcoming · Finished · All (owner's "Buying moves to the Directory") ----------------
+export type Phase = 'upcoming' | 'active' | 'finished'
+/** Status from the dates, never typed: Upcoming before the start, Active between the dates, Finished after the end (or marked done). */
+export function phaseOf(c: Campaign, today = todayInDubai()): Phase {
+  if (c.status === 'completed' || (c.endDate && c.endDate < today)) return 'finished'
+  return c.startDate && c.startDate > today ? 'upcoming' : 'active'
+}
+const PHASE: Record<Phase, string> = { upcoming: t('Upcoming'), active: t('Active'), finished: t('Finished') }
+export const PhasePill = ({ c }: { c: Campaign }) => { const p = phaseOf(c); return <span className={`cp-phase ph-${p}`}>{PHASE[p]}</span> }
+
+/** One bar in three parts: committed (solid), estimated (light), what is left (empty), with the numbers under it. */
+export function BudgetBar({ c, big }: { c: Campaign; big?: boolean }) {
+  const extra = Math.max(0, c.estimated - c.committed), scale = c.budget ?? Math.max(c.committed + extra, 1)
+  const w = (n: number) => `${Math.min(100, (n / scale) * 100)}%`
+  return <div className={`cp-budget ${big ? 'big' : ''}`}>
+    <div className="cp-track" role="img" aria-label={c.budget ? t('{a} committed and {b} estimated of a {c} budget', { a: money(c.committed), b: money(c.estimated), c: money(c.budget) })
+      : t('{a} committed and {b} estimated, no budget set', { a: money(c.committed), b: money(c.estimated) })}>
+      <i className="c" style={{ width: w(c.committed) }} /><i className="e" style={{ width: w(extra) }} /></div>
+    <p className="small"><span><b className="num">{money(c.committed)}</b> {t('committed')}</span> · <span><b className="num">{money(c.estimated)}</b> {t('estimated')}</span>
+      {' · '}{c.budget ? <span><b className="num">{money(c.budget)}</b> {t('budget')}</span> : <span className="muted">{t('No budget set')}</span>}</p>
+  </div>
+}
+/** Where things are, in small counts: "3 added · 2 bids · 1 paid · 1 ran". */
+const countsText = (c: Campaign) => { const n = c.counts; if (!n) return ''
+  return [n.added && t('{n} added', { n: n.added }), n.bids && (n.bids === 1 ? t('1 bid') : t('{n} bids', { n: n.bids })), n.pay && t('{n} to pay', { n: n.pay }),
+    n.paid && t('{n} paid', { n: n.paid }), n.ran && t('{n} ran', { n: n.ran })].filter(Boolean).join(' · ') }
+/** The next thing to do, if any: "Pay Skyline FM by Thu", "Bid closes in 6h", "Check proof from Gulf News". */
+export const nextText = (c: Campaign) => { const x = c.next; if (!x) return null
+  const day = x.due ? dayLabel(dubai(x.due).date, { weekday: 'short' }) : ''
+  if (x.kind === 'pay') return x.due ? t('Pay {outlet} by {day}', { outlet: x.outlet, day }) : t('Pay {outlet}', { outlet: x.outlet })
+  if (x.kind === 'proof') return t('Check proof from {outlet}', { outlet: x.outlet })
+  const h = x.due ? Math.max(0, Math.round((new Date(x.due).getTime() - Date.now()) / 3_600_000)) : null
+  return h != null && h < 48 ? t('Bid closes in {h}h', { h }) : t('Bid closes {day}', { day }) }
+
 export function CampaignsPage() {
   const [list, setList] = useState<Campaign[] | null>(null), [error, setError] = useState(''), [form, setForm] = useState(() => new URLSearchParams(location.search).get('new') === '1')
   const [clients, setClients] = useState<Client[]>([])
-  useEffect(() => { api<Campaign[]>('/campaigns').then(setList, e => setError(e.message)); api<Client[]>('/clients').then(c => setClients(c.filter(x => x.status === 'active')), () => {}) }, [])
+  const [tab, setTab] = useState<Phase | 'all'>('active')
+  const [layout, setLayout] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('nashr:cp-view') === 'list' ? 'list' : 'cards' } catch { return 'cards' } })
+  useEffect(() => { try { localStorage.setItem('nashr:cp-view', layout) } catch { /* fine */ } }, [layout])
+  useEffect(() => { api<Campaign[]>('/campaigns').then(l => { setList(l)
+      // open on a tab that has something: Active, else Upcoming, else All
+      if (!l.some(c => phaseOf(c) === 'active')) setTab(l.some(c => phaseOf(c) === 'upcoming') ? 'upcoming' : 'all') }, e => setError(e.message))
+    api<Client[]>('/clients').then(c => setClients(c.filter(x => x.status === 'active')), () => {}) }, [])
+  const shown = (list ?? []).filter(c => tab === 'all' || phaseOf(c) === tab)
+  const n = (p: Phase) => (list ?? []).filter(c => phaseOf(c) === p).length
+  const TABS: [Phase | 'all', string][] = [['active', t('Active')], ['upcoming', t('Upcoming')], ['finished', t('Finished')], ['all', t('All')]]
   return (
     <main>
-      <PhotoBand img="/brand/campaigns-wide.jpg" title={t("Campaigns")} sub={t("Optional: plan products, dates and a budget, with one brief sent with every bid. You can always just bid.")}>
+      <PhotoBand img="/brand/campaigns-wide.jpg" title={t("Campaigns")} sub={t("A campaign keeps one budget and one brief for many bids.")}>
         {!form && <button className="btn primary" onClick={() => setForm(true)}>{t("New campaign")}</button>}
       </PhotoBand>
       {form && <CampaignForm initial={formOf()} clients={clients} onSaved={id => navigate(`/campaigns/${id}`)} onCancel={() => setForm(false)} />}
       {error && <p className="error">{error}</p>}
-      {list && !list.length && !form && <p className="muted empty">{t("No campaigns yet. A campaign holds your dates, budget and brief; add products to it from the Directory or the Calendar.")}</p>}
-      {list && list.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Campaign")}</th><th>{t("Dates")}</th><th className="r">{t("Products")}</th>
-        <th className="r">{t("Budget")}</th><th className="r">{t("Estimated")}</th><th className="r">{t("Committed")}</th><th>{t("Status")}</th></tr></thead>
-        <tbody>{list.map(c => <tr key={c.id} onClick={() => navigate(`/campaigns/${c.id}`)}>
-          <td><a href={`/campaigns/${c.id}`} onClick={e => e.stopPropagation()}><b dir="auto">{c.name}</b></a>{(c.client || c.objective) && <div className="small muted">{[c.client, c.objective].filter(Boolean).join(' · ')}</div>}</td>
-          <td className="num small">{dates(c) || '—'}</td><td className="r num">{c.lines}</td>
-          <td className="r num">{c.budget ? money(c.budget) : '—'}</td><td className="r num">{money(c.estimated)}</td><td className="r num">{money(c.committed)}</td>
-          <td className="small">{c.status === 'active' ? t('Active') : t('Completed')}</td></tr>)}</tbody></table></div>}
+      {list && !list.length && !form && <div className="card cp-empty"><p>{t('No campaigns yet. A campaign keeps one budget and one brief for many bids.')}</p>
+        <button className="btn primary" onClick={() => setForm(true)}>{t('New campaign')}</button></div>}
+      {list && list.length > 0 && <>
+        <div className="cp-bar-row">
+          <div className="tabs profile-tabs" role="tablist" aria-label={t('Campaigns')}>{TABS.map(([k, l]) =>
+            <button key={k} role="tab" type="button" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}{k !== 'all' && n(k) > 0 && <span className="count">{n(k)}</span>}</button>)}</div>
+          <span className="spacer" />
+          <div className="seg" role="group" aria-label={t('View')}>
+            <button className={layout === 'cards' ? 'on' : ''} onClick={() => setLayout('cards')}>{t('Cards')}</button>
+            <button className={layout === 'list' ? 'on' : ''} onClick={() => setLayout('list')}>{t('List')}</button></div>
+        </div>
+        {!shown.length && <p className="muted">{tab === 'upcoming' ? t('No upcoming campaigns.') : tab === 'finished' ? t('No finished campaigns yet.') : t('No active campaigns right now.')}</p>}
+        {layout === 'cards' ? <div className="cp-cards">{shown.map(c => <article key={c.id} className="card cp-card" onClick={() => navigate(`/campaigns/${c.id}`)}>
+            <div className="cp-card-h">
+              {c.client ? <OutletMark name={c.client} url={c.clientLogoUrl} size={36} /> : null}
+              <div className="cp-card-name"><a href={`/campaigns/${c.id}`} onClick={e => e.stopPropagation()}><b dir="auto">{c.name}</b></a>
+                {c.client && <span className="small muted" dir="auto">{c.client}</span>}</div>
+              <PhasePill c={c} /></div>
+            {c.objective && <p className="small muted cp-obj" dir="auto">{c.objective}</p>}
+            <p className="cp-dates num">{dates(c)}</p>
+            <BudgetBar c={c} />
+            {countsText(c) && <p className="small">{countsText(c)}</p>}
+            {nextText(c) && <p className="cp-next small"><b>{nextText(c)}</b></p>}
+          </article>)}</div>
+        : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Campaign")}</th><th>{t("Dates")}</th><th>{t('Budget')}</th>
+            <th className="r">{t("Committed")}</th><th className="r">{t("Estimated")}</th><th className="r">{t("Remaining")}</th><th>{t('Next thing to do')}</th><th>{t("Status")}</th></tr></thead>
+            <tbody>{shown.map(c => <tr key={c.id} onClick={() => navigate(`/campaigns/${c.id}`)}>
+              <td><a href={`/campaigns/${c.id}`} onClick={e => e.stopPropagation()}><b dir="auto">{c.name}</b></a>{c.client && <div className="small muted">{c.client}</div>}</td>
+              <td className="num small">{dates(c)}</td><td className="cp-mini"><MiniBar c={c} /></td>
+              <td className="r num">{money(c.committed)}</td><td className="r num">{money(c.estimated)}</td><td className="r num">{c.remaining == null ? '—' : money(c.remaining)}</td>
+              <td className="small">{nextText(c) ?? <span className="muted">—</span>}</td><td><PhasePill c={c} /></td></tr>)}</tbody></table></div>}
+      </>}
     </main>
   )
 }
+const MiniBar = ({ c }: { c: Campaign }) => { const extra = Math.max(0, c.estimated - c.committed), scale = c.budget ?? Math.max(c.committed + extra, 1)
+  return <div className="cp-track mini" aria-hidden><i className="c" style={{ width: `${Math.min(100, c.committed / scale * 100)}%` }} /><i className="e" style={{ width: `${Math.min(100, extra / scale * 100)}%` }} /></div> }
 
 export type PlanLine = { placementId: string; productId: string; title: string; brand: string | null; name: string; kind: string; channel: string; logoUrl: string | null
   estimated: number; committed: number; stage: 'added' | 'bid' | 'accepted' | 'paid' | 'ran'; openSlots: number }
@@ -161,46 +235,65 @@ export function Totals({ c }: { c: Campaign }) {
     <i className="c" style={{ width: pct(c.committed, c.budget) }} /><i className="p" style={{ width: pct(Math.max(0, c.estimated - c.committed), c.budget) }} /></div> : null}</>
 }
 
+type PlanItem = { placementId: string; product: string; brand: string; brandKey: string; channel: string; logoUrl: string | null; label: string | null
+  status: TrackStatus; at: string; price: number | null; deadline: string | null; slotId: string | null; dealId: string | null }
+
 export function CampaignPage({ id }: { id: string }) {
-  const [c, setC] = useState<CampaignDetail | null>(null), [error, setError] = useState(''), [editing, setEditing] = useState(false), [clients, setClients] = useState<Client[]>([]), [note, setNote] = useState('')
+  const [c, setC] = useState<CampaignDetail | null>(null), [error, setError] = useState(''), [clients, setClients] = useState<Client[]>([]), [note, setNote] = useState('')
+  const [tab, setTabRaw] = useState<'plan' | 'brief' | 'results'>(() => { const v = new URLSearchParams(location.search).get('tab'); return v === 'brief' || v === 'results' ? v : 'plan' })
+  const setTab = (v: typeof tab) => { setTabRaw(v); const q = new URLSearchParams(location.search); v === 'plan' ? q.delete('tab') : q.set('tab', v); history.replaceState(history.state, '', `${location.pathname}${q.size ? `?${q}` : ''}`) }
+  const [items, setItems] = useState<PlanItem[] | null>(null), [slot, setSlot] = useState<string | null>(null), [pick, setPick] = useState<{ placementId: string; title: string } | null>(null)
+  const [reload, setReload] = useState(0), [formKey, setFormKey] = useState(0)
   const load = () => api<CampaignDetail>(`/campaigns/${id}`).then(setC, e => setError(e.message))
-  useEffect(() => { load(); api<Client[]>('/clients').then(x => setClients(x.filter(y => y.status === 'active')), () => {}) }, [id])
-  async function setStatus(status: 'active' | 'completed') { await api(`/campaigns/${id}`, { method: 'PUT', body: { status } }); load() }
-  async function remove(l: PlanLine) { await api(`/campaigns/${id}/lines/${l.placementId}`, { method: 'DELETE' }); setNote(t('{name} taken out of the plan.', { name: l.title })); load() }
+  useEffect(() => { load(); api<Client[]>('/clients').then(x => setClients(x.filter(y => y.status === 'active')), () => {}) }, [id, reload])
+  // the plan: this campaign's products, bids and bookings, each with its date, price and status (the Calendar's words)
+  useEffect(() => { if (!c) return
+    const from = addDays(c.startDate ?? todayInDubai(), -400), to = addDays(c.endDate ?? todayInDubai(), 400)
+    api<{ items: PlanItem[] }>(`/buyer/tracker?campaign=${id}&from=${from}T00:00:00%2B04:00&to=${to}T00:00:00%2B04:00`).then(r => setItems(r.items), () => setItems([])) }, [c?.id, c?.lines, reload])
+  async function remove(i: PlanItem) { await api(`/campaigns/${id}/lines/${i.placementId}`, { method: 'DELETE' }); setNote(t('{name} taken out of the plan.', { name: `${i.brand} · ${i.product}` })); setReload(n => n + 1) }
   if (!c) return <main>{error ? <p className="error">{error}</p> : <p className="muted">{t("Loading…")}</p>}</main>
-  const book = `/calendar?campaign=${c.id}${c.startDate ? `&date=${c.startDate}` : ''}`
+  // + Add products: the Directory's products, on sale within the campaign's dates, for its industry
+  const add = `/directory?view=products&campaign=${c.id}${c.startDate ? `&df=${c.startDate}` : ''}${c.endDate ? `&dt=${c.endDate}` : ''}${c.brief?.industry ? `&sectors=${encodeURIComponent(c.brief.industry)}` : ''}`
+  const groups = [...new Set((items ?? []).map(i => i.brandKey))].map(k => (items ?? []).filter(i => i.brandKey === k))
+  const step = (i: PlanItem) => i.status === 'added' || i.status === 'outbid' ? <button className="btn sm primary" onClick={() => i.slotId ? setSlot(i.slotId) : setPick({ placementId: i.placementId, title: `${i.brand} · ${i.product}` })}>{t('Bid')}</button>
+    : i.status === 'pay' && i.dealId ? <a className="btn sm primary" href={`/bookings/${i.dealId}`}>{t('Pay now')}</a>
+    : i.status === 'ran' && i.dealId ? <a className="btn sm primary" href={`/bookings/${i.dealId}`}>{t('Check proof')}</a>
+    : i.dealId ? <a className="btn sm" href={`/bookings/${i.dealId}`}>{t('Open')}</a> : i.slotId ? <button className="btn sm" onClick={() => setSlot(i.slotId)}>{t('Open')}</button> : null
   return (
     <main className="narrow wide">
       <p className="small"><a href="/campaigns">{t("Campaigns")}</a> {isAr ? '‹' : '›'} <bdi>{c.name}</bdi></p>
-      <div className="profile-h"><div><h1 dir="auto">{c.name}</h1><p className="muted">{[dates(c), c.client, c.objective].filter(Boolean).join(' · ')}</p></div>
-        <div className="spacer" />
-        {!editing && <button className="btn" onClick={() => setEditing(true)}>{t('Edit')}</button>}
-        <a className="btn" href={`/campaigns/${c.id}/plan`}>{t("Media plan (PDF)")}</a>
-        {c.status === 'active' ? <button className="btn" onClick={() => setStatus('completed')}>{t("Mark completed")}</button> : <button className="btn" onClick={() => setStatus('active')}>{t("Reopen")}</button>}
-        {c.status === 'active' && <a className="btn primary" href={book}>{t('Check availability')}</a>}</div>
-      {editing && <CampaignForm id={c.id} initial={formOf(c)} clients={clients} onSaved={() => { setEditing(false); setNote(t('Campaign saved.')); load() }} onCancel={() => setEditing(false)} />}
+      <header className="cp-head">
+        <div className="cp-head-t">{c.client && <OutletMark name={c.client} url={c.clientLogoUrl} size={48} />}
+          <div><h1 dir="auto">{c.name}</h1><p className="muted">{[c.client, dates(c), c.objective].filter(Boolean).join(' · ')}</p></div>
+          <PhasePill c={c} /><span className="spacer" />
+          <a className="btn" href={`/campaigns/${c.id}/plan`}>{t("Media plan (PDF)")}</a></div>
+        <BudgetBar c={c} big />
+        {nextText(c) && <p className="cp-next"><b>{nextText(c)}</b></p>}
+      </header>
       {note && <p className="ok" role="status">{note}</p>}
-      <Totals c={c} />
-      <p className="small muted">{t('Prices excl. VAT. Estimated uses each product\'s default price; committed is what publishers accepted.')}</p>
+      <div className="tabs profile-tabs" role="tablist" aria-label={c.name}>{([['plan', t('Plan')], ['brief', t('Brief')], ['results', t('Results')]] as [typeof tab, string][]).map(([k, l]) =>
+        <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
 
-      <div className="cp-h"><h2 className="sec-h">{t("Plan")}</h2><span className="spacer" /><a className="btn" href={`/directory?campaign=${c.id}`}>+ {t('Add products')}</a></div>
-      {!c.plan.length ? <p className="muted empty">{t('No products yet. Add them from the Directory, or with "Add to campaign" when you open a slot in the Calendar.')}</p>
-        : <div className="table-wrap card"><table className="table cp-plan"><thead><tr><th>{t("Product")}</th><th className="r">{t("Estimated cost")}</th><th>{t("Where it is")}</th><th className="r">{t("Committed")}</th><th><span className="sr-only">{t('Remove')}</span></th></tr></thead>
-          <tbody>{c.plan.map(l => <tr key={l.placementId}>
-            <td><span className="cp-prod"><OutletMark name={l.brand ?? l.name} url={l.logoUrl} size={34} /><span><b dir="auto">{l.title}</b>
-              <span className="small muted">{t(MEDIA_LABEL[l.channel] ?? 'Other')}{l.openSlots > 0 ? ` · ${t('{n} on sale', { n: l.openSlots })}` : ''}</span></span></span></td>
-            <td className="r num">{money(l.estimated)}</td><td><Stage s={l.stage} /></td><td className="r num">{l.committed ? money(l.committed) : '—'}</td>
-            <td className="r">{l.stage === 'added' && <button className="btn sm" onClick={() => remove(l)} aria-label={t('Remove {name}', { name: l.title })}>{t('Remove')}</button>}</td>
-          </tr>)}</tbody></table></div>}
-      {c.plan.length > 0 && c.status === 'active' && <p className="small"><a href={book}>{t('See their dates in the Calendar')}</a></p>}
+      {tab === 'plan' && <>
+        <div className="cp-h"><a className="btn primary" href={add}>+ {t('Add products')}</a><span className="spacer" /><a href={`/calendar?campaign=${c.id}${c.startDate ? `&date=${c.startDate}` : ''}`}>{t('View in Calendar')}</a></div>
+        {!items ? <p className="muted">{t('Loading…')}</p> : !items.length ? <div className="card cp-empty"><p>{t('No products yet. Add them from the Directory: they show here with their dates, prices and status.')}</p>
+            <a className="btn primary" href={add}>+ {t('Add products')}</a></div>
+          : groups.map(g => <section key={g[0].brandKey} className="card cp-group">
+            <h3 className="cp-gh"><OutletMark name={g[0].brand} url={g[0].logoUrl} size={30} /><bdi>{g[0].brand}</bdi></h3>
+            <ul className="cp-lines">{g.map(i => <li key={`${i.status}-${i.slotId ?? i.placementId}-${i.dealId ?? ''}`}>
+              <span className="cp-l-what"><b dir="auto">{i.product}</b><span className="small muted">{slotWhen(i.at, i.channel)}{i.label && i.label !== i.product ? ` · ${tm(i.label)}` : ''}</span></span>
+              <span className="num cp-l-price">{i.price != null ? money(i.price) : '—'}{i.status === 'added' && <small>{t('Estimated')}</small>}</span>
+              <span className={`tk-item s-${i.status} demo cp-l-st`}>{STATUS.find(x => x[0] === i.status)![1]}</span>
+              <span className="cp-l-act">{step(i)}{i.status === 'added' && <button className="btn sm" onClick={() => remove(i)} aria-label={t('Remove {name}', { name: `${i.brand} · ${i.product}` })}>{t('Remove')}</button>}</span>
+            </li>)}</ul></section>)}
+        <p className="small muted">{t("Prices excl. VAT. Estimated is a product's listed price; committed is what publishers accepted.")}</p>
+      </>}
+      {tab === 'brief' && <CampaignForm key={formKey} id={c.id} title={t('Brief')} initial={formOf(c)} clients={clients}
+        onSaved={() => { setNote(t('Campaign saved.')); setReload(n => n + 1) }} onCancel={() => setFormKey(k => k + 1)} />}
+      {tab === 'results' && <ResultsPage fixedCampaign={c.id} />}
 
-      <h2 className="sec-h">{t("Bookings")}</h2>
-      {!c.bookings.length ? <p className="muted">{t("Nothing booked yet.")}</p>
-        : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Order")}</th><th>{t("Listing")}</th><th>{t("Runs")}</th><th className="r">{t("Price")}</th><th>{t("Status")}</th></tr></thead>
-          <tbody>{c.bookings.map(b => <tr key={b.id} onClick={() => (navigate(`/bookings/${b.id}`))}>
-            <td className="num">{b.ref}</td><td><b>{b.outlet}</b> · {tm(b.label)}</td><td className="num">{slotWhen(b.startsAt, b.channel)}</td>
-            <td className="r num">{money(b.price)}</td><td><Status s={b.status} /></td></tr>)}</tbody></table></div>}
-      {c.bookings.length > 0 && <p className="small"><a href={`/results?campaign=${c.id}`}>{t('Results for this campaign')}</a></p>}
+      {pick && <DatesPanel placementId={pick.placementId} title={pick.title} onClose={() => setPick(null)} onPick={sid => { setPick(null); setSlot(sid) }} />}
+      {slot && <BidDrawer slotId={slot} onClose={() => setSlot(null)} onDone={() => setReload(n => n + 1)} />}
     </main>
   )
 }

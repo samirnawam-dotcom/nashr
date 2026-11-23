@@ -301,3 +301,6 @@ html .name-pop-lang { gap: 12px; }
 html .name-pop-lang .theme-choice button { padding: 4px 10px; min-height: 28px; font-size: 13px; }
 /* phones: the signed-in header keeps the bell and the account; the theme is on the account page there */
 @media (max-width: 480px) { html .topbar > .theme-toggle { display: none; } }
+
+/* narrow phones: the top bar holds menu, logo, theme, language and bell; "Your account" is in the menu, so the avatar steps aside */
+@media (max-width: 440px) { .topbar > .avatar { display: none; } }

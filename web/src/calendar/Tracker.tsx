@@ -31,10 +31,10 @@ export const STATUS: [TrackStatus, string, string][] = [
   ['added', t('Added'), t('In a campaign plan. No bid or booking yet.')],
   ['lead', t('You lead'), t('Your bid is the highest so far.')],
   ['outbid', t('Outbid'), t('Someone bid more. Bid again before it closes.')],
-  ['waiting', t('Waiting for seller'), t('The publisher has your request or offer and has not answered yet.')],
-  ['pay', t('Accepted, pay now'), t('The publisher accepted. Pay before the deadline to keep it.')],
-  ['paid', t('Paid'), t('Booked and paid. Nashr holds the money until the ad has run.')],
-  ['ran', t('Ran, check proof'), t('The ad ran and the publisher sent proof. Check it.')],
+  ['waiting', t('Waiting for seller'), t('Bidding has closed or your request is sent. The seller will accept or decline.')],
+  ['pay', t('Accepted, pay now'), t('The seller said yes. Pay to secure it.')],
+  ['paid', t('Paid'), t('Nashr holds your money until the ad runs and you approve the proof.')],
+  ['ran', t('Ran, check proof'), t('The ad ran. Check the proof and approve it to finish.')],
   ['completed', t('Completed'), t('Done. The publisher has been paid.')],
 ]
 const label = (s: TrackStatus) => STATUS.find(x => x[0] === s)![1]

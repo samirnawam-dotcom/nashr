@@ -15,9 +15,10 @@ type R = { totals: { bookings: number; spend: number; aired: number; withProof: 
 const people = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${Math.round(n / 1_000)}K` : String(n)
 
 /** What the money bought: a report a buyer (or an agency's client) can read, with every airing behind it and a CSV to keep. */
-export function ResultsPage() {
+/** Reports → Results; with fixedCampaign, the same for one campaign inside its page (its Results tab). */
+export function ResultsPage({ fixedCampaign }: { fixedCampaign?: string } = {}) {
   const [r, setR] = useState<R | null>(null), [error, setError] = useState(''), [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [campaign, setCampaign] = useState(() => new URLSearchParams(location.search).get('campaign') ?? '')
+  const [campaign, setCampaign] = useState(() => fixedCampaign ?? new URLSearchParams(location.search).get('campaign') ?? '')
   const [clients, setClients] = useState<Client[]>([]), [client, setClient] = useState(() => new URLSearchParams(location.search).get('client') ?? '')
   useEffect(() => { api<Campaign[]>('/campaigns').then(setCampaigns, () => {}); api<Client[]>('/clients').then(setClients, () => {}) }, [])
   useEffect(() => { setR(null); const q = new URLSearchParams({ ...(campaign ? { campaign } : {}), ...(client ? { client } : {}) }).toString()
@@ -32,18 +33,20 @@ export function ResultsPage() {
     a.download = `nashr-results${client ? '-' + (clients.find(c => c.id === client)?.name ?? 'client') : ''}${campaign ? '-' + (campaigns.find(c => c.id === campaign)?.name ?? 'campaign') : ''}.csv`; a.click()
   }
   const max = Math.max(1, ...(r?.byChannel.map(c => c.spend) ?? [1]))
+  const Wrap = fixedCampaign ? 'div' : 'main'
   return (
-    <main>
-      <PhotoBand img="/brand/dash-buyer.jpg" title={t('Results')} sub={t('What your bookings delivered: spend, airings, proof and the reach publishers report.')}>
+    <Wrap className={fixedCampaign ? 'cp-results' : undefined}>
+      {fixedCampaign ? r && r.items.length > 0 && <div className="row-flex"><span className="spacer" /><button className="btn" onClick={csv}>{t('Download CSV')}</button></div>
+      : <PhotoBand img="/brand/dash-buyer.jpg" title={t('Results')} sub={t('What your bookings delivered: spend, airings, proof and the reach publishers report.')}>
         <div className="row-flex">{clients.length > 0 && <select className="search" aria-label={t('Client')} value={client} onChange={e => setClient(e.target.value)}>
           <option value="">{t('All clients')}</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
           {campaigns.length > 0 && <select className="search" aria-label={t('Campaign')} value={campaign} onChange={e => setCampaign(e.target.value)}>
           <option value="">{t('All campaigns')}</option>{campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}
           {r && r.items.length > 0 && <button className="btn" onClick={csv}>{t('Download CSV')}</button>}</div>
-      </PhotoBand>
+      </PhotoBand>}
       {error && <p className="error">{error}</p>}
       {!r ? !error && <p className="muted">{t('Loading…')}</p> : !r.items.length ? <div className="card pad empty"><p><b>{t('No paid bookings yet.')}</b></p>
-        <p className="muted">{t('Results appear here once a booking is paid. Each airing, its proof and its reach are added as it runs.')}</p><a className="btn primary" href="/calendar">{t('Check availability')}</a></div> : <>
+        <p className="muted">{t('Results appear here once a booking is paid. Each airing, its proof and its reach are added as it runs.')}</p><a className="btn primary" href="/directory?view=products">{t('Find media')}</a></div> : <>
         <dl className="kpis">
           <div className="card"><dt>{t('Spend (excl. VAT)')}</dt><dd className="num">{money(r.totals.spend)}</dd><span className="small muted">{r.totals.bookings === 1 ? t('1 booking') : t('{n} bookings', { n: r.totals.bookings })}</span></div>
           <div className="card"><dt>{t('Aired')}</dt><dd className="num">{r.totals.aired} / {r.totals.bookings}</dd><span className="small muted">{t('{n} with proof', { n: r.totals.withProof })}</span></div>
@@ -63,6 +66,6 @@ export function ResultsPage() {
             <td className="small">{i.proof ? <span className="dot lead">{t('Received')}</span> : i.aired ? <span className="dot soon">{t('Due')}</span> : <span className="muted">{t('After airing')}</span>}</td>
             <td className="r num small">{i.reach ? people(i.reach) : '—'}</td></tr>)}</tbody></table></div>
       </>}
-    </main>
+    </Wrap>
   )
 }

@@ -6,7 +6,7 @@ import { containsContactDetails } from '../core/contact.js'
 import { notify } from '../core/notify.js'
 import { audit } from '../core/audit.js'
 import { buyerStatus } from './shapes.js'
-import { brandLogoUrl, coverUrl, logoUrl } from './routes-covers.js'
+import { brandLogoUrl, clientLogoUrl, coverUrl, logoUrl } from './routes-covers.js'
 import { briefProblems } from '../fulfilment/brief.js'
 import { outletRating } from './routes-ratings.js'
 import { parseQuery, where } from '../marketplace/search.js'
@@ -293,11 +293,21 @@ export function planRoutes(route: RouteFn) {
       coalesce((select sum(coalesce(p.default_price, o.default_price, p.starting_price)) from campaign_lines l join placements p on p.id = l.placement_id
         join outlets o on o.id = p.outlet_id where l.campaign_id = c.id), 0)::bigint estimated,
       (select count(*)::int from campaign_lines l where l.campaign_id = c.id) lines,
-      (select name from clients where id = c.client_id) client
+      (select name from clients where id = c.client_id) client, (select logo_key from clients where id = c.client_id) client_logo_key,
+      -- where things are: products planned with nothing bid yet, open bids and requests, accepted to pay, paid, ran
+      (select count(*)::int from campaign_lines l join placements p on p.id = l.placement_id where l.campaign_id = c.id
+         and not exists (select 1 from bids b join slots s on s.id = b.slot_id where s.placement_id = p.id and b.campaign_id = c.id and b.status in ('active', 'outbid', 'selected'))
+         and not exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = c.id and d.status not in ('declined', 'lapsed', 'cancelled', 'refunded'))) n_added,
+      ((select count(distinct b.slot_id)::int from bids b join slots s on s.id = b.slot_id where b.campaign_id = c.id and b.status in ('active', 'outbid') and s.status = 'open')
+        + (select count(*)::int from deals d where d.campaign_id = c.id and d.status = 'awaiting_seller')) n_bids,
+      (select count(*)::int from deals d where d.campaign_id = c.id and d.status = 'awaiting_payment') n_pay,
+      (select count(*)::int from deals d where d.campaign_id = c.id and d.status = 'secured') n_paid,
+      (select count(*)::int from deals d where d.campaign_id = c.id and d.status in ${RAN}) n_ran
     from campaigns c where c.buyer_id = $1`
   const num = (v: any) => v == null ? null : Number(v)
   const card = (c: any) => ({ id: c.id, name: c.name, budget: num(c.budget), startDate: c.start_text, endDate: c.end_text, objective: c.objective,
-    brief: c.brief ?? null, status: c.status, clientId: c.client_id, client: c.client, lines: c.lines,
+    brief: c.brief ?? null, status: c.status, clientId: c.client_id, client: c.client, clientLogoUrl: clientLogoUrl(c.client_id, c.client_logo_key), lines: c.lines,
+    counts: { added: c.n_added, bids: c.n_bids, pay: c.n_pay, paid: c.n_paid, ran: c.n_ran },
     estimated: Number(c.estimated), committed: Number(c.committed), pending: Number(c.pending),
     // what is left to spend: the budget less what publishers accepted and what is waiting for them
     remaining: c.budget == null ? null : Number(c.budget) - Number(c.committed) - Number(c.pending) })
@@ -323,8 +333,23 @@ export function planRoutes(route: RouteFn) {
     }
   }
 
-  route('GET', '/api/campaigns', BUYER, async ({ db, me }) =>
-    (await db.query(`${totals} order by c.status, c.created_at desc`, [me.actAs.companyId])).rows.map(card))
+  // The next thing to do on each campaign, most urgent first: pay an accepted booking, a bid about to close, a proof to check
+  const nextSteps = async (db: any, buyer: string, at: Date, one?: string) => new Map((await db.query(`select distinct on (campaign_id) campaign_id, kind, outlet, due from (
+      select d.campaign_id, 'pay' kind, brand_name(o) outlet, d.next_deadline_at due, 1 rank from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
+        join outlets o on o.id = p.outlet_id where d.buyer_id = $1 and d.status = 'awaiting_payment'
+      union all
+      select b.campaign_id, 'closes', brand_name(o), s.closes_at, 2 from bids b join slots s on s.id = b.slot_id join placements p on p.id = s.placement_id
+        join outlets o on o.id = p.outlet_id where b.buyer_id = $1 and b.status in ('active', 'outbid') and s.status = 'open' and s.closes_at > $2
+      union all
+      select d.campaign_id, 'proof', brand_name(o), d.next_deadline_at, 3 from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id
+        join outlets o on o.id = p.outlet_id where d.buyer_id = $1 and d.status = 'in_review'
+    ) x where campaign_id is not null and ($3::uuid is null or campaign_id = $3) order by campaign_id, rank, due nulls last`, [buyer, at, one ?? null])).rows
+    .map((r: any) => [r.campaign_id, { kind: r.kind, outlet: r.outlet, due: r.due }]))
+
+  route('GET', '/api/campaigns', BUYER, async ({ db, me, at }) => {
+    const next = await nextSteps(db, me.actAs.companyId, at)
+    return (await db.query(`${totals} order by c.start_date desc nulls last, c.created_at desc`, [me.actAs.companyId])).rows.map(c => ({ ...card(c), next: next.get(c.id) ?? null }))
+  })
 
   route('POST', '/api/campaigns', BUYER, async ({ db, at, me }, req) => {
     const b = req.body; check(b); if (b.brief) await ownFile(db, b.brief.draftFileKey, me.actAs.companyId)
@@ -354,6 +379,7 @@ export function planRoutes(route: RouteFn) {
   route('GET', '/api/campaigns/:id', BUYER, async ({ db, me, at }, req) => {
     const c = (await db.query(`${totals} and c.id = $2`, [me.actAs.companyId, req.params.id])).rows[0]
     if (!c) throw new NotFound()
+    const next = (await nextSteps(db, me.actAs.companyId, at, c.id)).get(c.id) ?? null
     // each product in the plan: its estimated cost, and how far it has got (Added, Bid placed, Accepted, Paid, Ran)
     const lines = (await db.query(
       `select p.id placement_id, p.kind, p.name, o.id outlet_id, o.channel, o.default_price, p.default_price p_default, p.starting_price,
@@ -371,7 +397,7 @@ export function planRoutes(route: RouteFn) {
     const deals = (await db.query(
       `select d.id, d.ref, d.status, d.amount, s.label, s.starts_at, brand_name(o) outlet, o.channel, p.name placement from deals d join slots s on s.id = d.slot_id
        join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where d.campaign_id = $1 order by s.starts_at`, [c.id])).rows
-    return { ...card(c),
+    return { ...card(c), next,
       plan: lines.map(l => ({ placementId: l.placement_id, productId: l.outlet_id, brandId: l.brand_id, title: `${l.brand ?? ''} · ${l.name}`.replace(/^ · /, ''),
         brand: l.brand, name: l.name, kind: l.kind, channel: l.channel, logoUrl: brandLogoUrl(l.brand_id, l.brand_logo_key) ?? logoUrl({ id: l.outlet_id, logo_key: l.outlet_logo_key }),
         estimated: Number(l.p_default ?? l.default_price ?? l.starting_price), committed: Number(l.committed), stage: l.stage, openSlots: l.open_slots })),

@@ -1,7 +1,6 @@
 /* The buyer's Calendar as a tracker (owner's "Buying moves to the Directory"): one colour per status, always with its words. */
-.tk { --tk-grey: #6E6C68; --tk-green: var(--success); --tk-red: var(--danger); --tk-amber: var(--warning); --tk-blue: #1F4FB8; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tk { --tk-blue: #8FB0FF; --tk-grey: #A9A7A2; } }
-:root[data-theme="dark"] .tk { --tk-blue: #8FB0FF; --tk-grey: #A9A7A2; }
+:root { --tk-grey: #6E6C68; --tk-green: var(--success); --tk-red: var(--danger); --tk-amber: var(--warning); --tk-blue: #1F4FB8; }
+[data-theme="dark"] { --tk-blue: #8FB0FF; --tk-grey: #A9A7A2; }
 .tk-filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 12px; }
 .tk-filters .search { flex: 1 1 240px; max-width: 360px; }
 .tk-budget { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-muted); margin: 0 0 12px; }
