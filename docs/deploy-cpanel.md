@@ -135,3 +135,15 @@ registration form, the API gives them no data, and search engines are kept out. 
 Switch on with `touch ~/nashr/PRELAUNCH`, switch off (launch) with `rm ~/nashr/PRELAUNCH`; restart the app either way.
 `https://nashr.pro/api/launch` says which mode is on. Build the package for launch without `PRELAUNCH` so search engines
 get the pre-rendered pages again.
+
+## Settings file and registration emails
+
+`~/nashr/settings.env` (KEY=value per line, readable only by you: `chmod 600`) adds settings that are not set in
+Setup Node.js App, and is read at every start. Useful ones:
+
+- `REGISTRATION_EMAILS=a@example.com,b@example.com`: inboxes that get an email for every registration (Coming soon page and
+  `/join/<event>`). Staff accounts get it anyway, on the bell and by email.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`: the mailbox Nashr sends from. Without them nothing is
+  sent; emails wait on the Emails page instead.
+
+Restart the app after changing it. The file sits beside the app, not in the website folder, so it is never served.

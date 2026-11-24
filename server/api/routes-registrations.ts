@@ -1,6 +1,8 @@
 import type { RouteFn } from './app.js'
 import { rateLimit } from './app.js'
 import { MarketError } from '../marketplace/market.js'
+import { notify } from '../core/notify.js'
+import { queueRegistrationEmails } from '../core/mail.js'
 
 /*
  * Event registrations (owner's request): a short public form at /join or /join/<event>. People register their interest only;
@@ -18,6 +20,11 @@ export function registrationRoutes(route: RouteFn) {
     const event = /^[a-z0-9-]{1,40}$/.test(b.event ?? '') ? b.event : 'general'
     await db.query(`insert into registrations (event, side, name, company, email, phone, created_at) values ($1, $2, $3, $4, $5, $6, $7)`,
       [event, b.side, b.name.trim(), b.company.trim(), email, String(b.phone).trim(), at])
+    // Nashr's team hears at once: on the bell and by email, with what they need to follow up
+    const who = { name: b.name.trim(), company: b.company.trim(), side: b.side, event, email, phone: String(b.phone).trim() }
+    for (const s of (await db.query(`select distinct company_id from users where role in ('admin', 'founder') and status = 'active'`)).rows)
+      await notify(db, s.company_id, 'registration.new', null, who, at)
+    await queueRegistrationEmails(db, who, at) // and the extra inboxes named in REGISTRATION_EMAILS
     return { ok: true }
   }, { type: 'object', required: ['side', 'name', 'company', 'email', 'phone'], additionalProperties: false, properties: {
     side: { enum: ['buyer', 'media_outlet'] }, name: text(200), company: text(200), email: text(200), phone: text(40), event: { type: 'string', maxLength: 40 } } })

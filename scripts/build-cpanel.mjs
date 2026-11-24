@@ -31,7 +31,11 @@ cpSync('web/public/brand/print-card.jpg', `${out}/web/public/brand/print-card.jp
 
 writeFileSync(`${out}/app.js`, `// Startup file for cPanel "Setup Node.js App" (Phusion Passenger). The server itself is server/main.mjs.
 // A file named PRELAUNCH beside this one puts the site behind the Coming soon page (touch it to switch on, delete it to launch; restart either way).
-import('node:fs').then(({ existsSync }) => { if (existsSync(\`\${typeof __dirname === 'string' ? __dirname : process.cwd()}/PRELAUNCH\`)) process.env.PRELAUNCH ||= '1' })
+// A file named settings.env beside it (KEY=value lines: SMTP_*, REGISTRATION_EMAILS, ...) adds settings the host's own ones lack.
+import('node:fs').then(({ existsSync, readFileSync }) => { const dir = typeof __dirname === 'string' ? __dirname : process.cwd()
+  if (existsSync(\`\${dir}/settings.env\`)) for (const line of readFileSync(\`\${dir}/settings.env\`, 'utf8').split(/\\r?\\n/)) {
+    const m = line.match(/^\\s*([A-Z][A-Z0-9_]*)\\s*=\\s*(.*?)\\s*$/); if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].replace(/^(["'])(.*)\\1$/, '$2') }
+  if (existsSync(\`\${dir}/PRELAUNCH\`)) process.env.PRELAUNCH ||= '1' })
   .then(() => import('./server/main.mjs')).catch(e => { console.error(e); process.exit(1) })
 `)
 writeFileSync(`${out}/package.json`, JSON.stringify({

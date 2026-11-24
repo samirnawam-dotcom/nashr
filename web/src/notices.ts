@@ -74,6 +74,8 @@ export function noticeTexts(t: Tr, money: (fils: number) => string, day: (iso: s
   'prerun.confirm_slot_and_creative': () => t('Confirm the slot and creative before air.'),
   'message.new': n => n.data?.from === 'seller' ? t('New message from the publisher.') : t('New message from the buyer.'),
   'search.match': n => t(n.data?.count === 1 ? '1 new slot matches your search “{name}”.' : '{n} new slots match your search “{name}”.', { n: n.data?.count ?? '', name: n.data?.name ?? '' }),
+  'registration.new': n => t(n.data?.side === 'media_outlet' ? 'New registration: {name} from {company}, a media outlet ({event}). Email {email}, phone {phone}.' : 'New registration: {name} from {company}, a buyer ({event}). Email {email}, phone {phone}.',
+    { name: n.data?.name ?? '', company: n.data?.company ?? '', event: n.data?.event ?? '', email: n.data?.email ?? '', phone: n.data?.phone ?? '' }),
   'access.requested': n => t('{company} requested access.', { company: n.data?.company ?? t('Someone') }),
   'quote.requested': n => t('Quote requested for {outlet}.', { outlet: n.data?.outlet ?? t('an outlet') }),
   }
@@ -84,6 +86,7 @@ export function noticeHref(n: N, role: string): string | undefined {
   // Nashr's staff: bookings open on the staff deal page; requests on the page that handles them
   if (role === 'admin' || role === 'founder') {
     if (n.kind === 'access.requested') return '/access'
+    if (n.kind === 'registration.new') return '/registrations'
     if (n.kind === 'quote.requested') return '/directory'
     if (n.kind.startsWith('ops.') && !n.dealId) return '/admin'
     if (n.dealId && n.kind !== 'message.new' && n.kind !== 'support.new') return `/deals/${n.dealId}`

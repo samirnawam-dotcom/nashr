@@ -99,6 +99,19 @@ export async function queueInviteEmail(db: Db, a: { userId: string; to: string; 
   return queue(db, { to: a.to, userId: a.userId, kind: 'access.invite', subject: `${t('You are invited to Nashr')} · ${tr('ar')('You are invited to Nashr')}`, text, html }, at)
 }
 
+/** A new event registration, by email to the extra addresses in REGISTRATION_EMAILS (comma-separated; people outside Nashr's
+ * staff accounts, e.g. the owners' own inboxes). Staff accounts already get it through their notification. */
+export async function queueRegistrationEmails(db: Db, r: { name: string; company: string; side: string; event: string; email: string; phone: string }, at: Date) {
+  const to = [...new Set((process.env.REGISTRATION_EMAILS ?? '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))]
+  if (!to.length) return
+  const t = tr('en'), title = t('New registration: {name}', { name: r.name })
+  const { html, text } = renderEmail('en', { title, paragraphs: [
+    `${t('Name')}: ${r.name}`, `${t('Company')}: ${r.company}`, `${t('I am')}: ${r.side === 'media_outlet' ? t('Media outlet') : t('Buyer')}`,
+    `${t('Email')}: ${r.email}`, `${t('Phone')}: ${r.phone}`, `${t('Event')}: ${r.event}`],
+    cta: { label: t('Open Registrations'), url: site() + '/registrations' }, footer: t('Nashr sends this email for each new registration.') })
+  for (const addr of to) await queue(db, { to: addr, kind: 'registration.new', subject: title, text, html }, at)
+}
+
 /** A password reset link, by email (only when SMTP is set up: otherwise Nashr's team issues it). */
 export async function queueResetEmail(db: Db, a: { userId: string; to: string; name: string; lang: Lang; link: string }, at: Date) {
   const t = tr(a.lang)

@@ -1158,6 +1158,18 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
       expect((await call(buyerA, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)
       // the registration form on the Coming soon page still takes sign-ups
       expect((await call(null, 'POST', '/api/registrations', { side: 'buyer', name: 'Lina', company: 'Acme', email: 'lina@example.com', phone: '+971 50 000 0000', event: 'website' })).statusCode).toBe(200)
+      // Nashr's team hears at once: an email to each staff member, with the person's details to follow up
+      const mail = (await pool.query(`select o.to_email, o.subject, o.text_body from outbox o join users u on u.email = o.to_email where o.kind = 'registration.new' and u.role in ('admin', 'founder')`)).rows
+      expect(mail.length).toBeGreaterThan(0)
+      expect(mail[0].text_body).toContain('Lina from Acme, a buyer (website)')
+      expect(mail[0].text_body).toContain('lina@example.com')
+      // and the extra inboxes in REGISTRATION_EMAILS, each once
+      process.env.REGISTRATION_EMAILS = 'owner.one@example.com, Owner.Two@example.com;owner.one@example.com'
+      await call(null, 'POST', '/api/registrations', { side: 'media_outlet', name: 'Omar', company: 'Gulf FM', email: 'omar@example.com', phone: '0501234567' })
+      delete process.env.REGISTRATION_EMAILS
+      const extra = (await pool.query(`select to_email, text_body from outbox where kind = 'registration.new' and to_email like 'owner.%' order by to_email`)).rows
+      expect(extra.map(r => r.to_email)).toEqual(['owner.one@example.com', 'owner.two@example.com'])
+      expect(extra[0].text_body).toContain('Phone: 0501234567')
     } finally { delete process.env.PRELAUNCH }
     expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)
   })

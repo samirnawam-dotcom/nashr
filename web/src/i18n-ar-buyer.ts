@@ -394,4 +394,9 @@ export const AR_BUYER: Record<string, string> = {
   "Nashr isn't open yet. Register your interest and our team will be in touch.": "نشر لم يُفتح بعد. سجّل اهتمامك وسيتواصل معك فريقنا.",
   "Register your interest": "سجّل اهتمامك",
   "Premium media buying marketplace": "منصة متميزة لشراء المساحات الإعلامية",
+  "New registration: {name} from {company}, a buyer ({event}). Email {email}, phone {phone}.": "تسجيل جديد: {name} من {company}، مشترٍ ({event}). البريد {email}، الهاتف {phone}.",
+  "New registration: {name} from {company}, a media outlet ({event}). Email {email}, phone {phone}.": "تسجيل جديد: {name} من {company}، منصة إعلامية ({event}). البريد {email}، الهاتف {phone}.",
+  "New registration: {name}": "تسجيل جديد: {name}",
+  "Open Registrations": "افتح التسجيلات",
+  "Nashr sends this email for each new registration.": "يرسل نشر هذا البريد عند كل تسجيل جديد.",
 }
