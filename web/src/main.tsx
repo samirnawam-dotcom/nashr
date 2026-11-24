@@ -22,7 +22,9 @@ if (isAr) document.querySelector<HTMLLinkElement>('link[rel=manifest]')?.setAttr
 const root = document.getElementById('root')!
 if (isAr) root.style.visibility = 'hidden'
 installNavigation()
-api<Me>('/me').then(m => m, () => null).then(me => { createRoot(root).render(<App initialMe={me} />); requestAnimationFrame(() => { root.style.visibility = '' }) })
+// who is here, and whether the site is still behind Coming soon, before the first paint (no flash of the full site for a guest)
+Promise.all([api<Me>('/me').then(m => m, () => null), api<{ prelaunch: boolean }>('/launch').then(r => !!r.prelaunch, () => false)])
+  .then(([me, soon]) => { createRoot(root).render(<App initialMe={me} initialSoon={soon} />); requestAnimationFrame(() => { root.style.visibility = '' }) })
 
 // The service worker: alerts while Nashr is closed, and an offline page (web/public/sw.js). Not in development (Vite reloads).
 if ('serviceWorker' in navigator && import.meta.env.PROD) addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}) })

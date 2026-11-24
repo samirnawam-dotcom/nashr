@@ -5,5 +5,5 @@ import { App } from './App'
 export function render(path: string, origin: string) {
   const g = globalThis as any
   g.location = { pathname: path, search: '', hash: '', origin, href: origin + path }
-  return renderToString(<App initialMe={null} />)
+  return renderToString(<App initialMe={null} initialSoon={false} />)
 }

@@ -14,9 +14,20 @@ const vite = await createServer({ configFile: `${root}web/vite.config.ts`, serve
 try {
   const { render } = await vite.ssrLoadModule('/src/prerender-entry.tsx')
   const { PAGES, faqLd } = await vite.ssrLoadModule('/src/seo.ts')
-  const template = readFileSync(`${dist}index.html`, 'utf8')
+  const built = readFileSync(`${dist}index.html`, 'utf8')
   const attr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-  const pages = ['/', '/terms', '/privacy', '/refunds', '/request-access']
+  // Before release (PRELAUNCH=1): no page content in the HTML, and search engines are asked to stay away.
+  const pre = /^(1|true|yes|on)$/i.test((process.env.PRELAUNCH ?? '').trim())
+  // the shell says no more than the name while the site is behind Coming soon
+  const soon = 'Nashr is coming soon.'
+  const template = !pre ? built : built
+    .replace(/<title>.*?<\/title>/, '<title>Nashr</title>')
+    .replace(/(<meta (?:name|property)="(?:description|og:description|twitter:description)" content=")[^"]*/g, `$1${soon}`)
+    .replace(/(<meta (?:property|name)="(?:og:title|twitter:title)" content=")[^"]*/g, '$1Nashr')
+    .replace(/(<meta name="robots" content=")[^"]*/, '$1noindex, nofollow')
+    .replace(/<script type="application\/ld\+json"[\s\S]*?<\/script>\s*/g, '')
+  if (pre) writeFileSync(`${dist}index.html`, template)
+  const pages = pre ? [] : ['/', '/terms', '/privacy', '/refunds', '/request-access']
   for (const path of pages) {
     const m = PAGES[path], url = SITE + path
     let html = template
@@ -34,10 +45,10 @@ try {
   }
   // The plain app shell for every other address (calendar, directory, signed-in screens): same tags, nothing pre-rendered.
   writeFileSync(`${dist}app.html`, template)
-  writeFileSync(`${dist}robots.txt`, [
+  writeFileSync(`${dist}robots.txt`, pre ? 'User-agent: *\nDisallow: /\n' : [
     'User-agent: *', 'Allow: /',
     ...['/api/', '/sign-in', '/invite', '/bookings', '/campaigns', '/documents', '/athena', '/home', '/inbox', '/schedule', '/slots', '/deals',
       '/earnings', '/listings', '/profile', '/admin', '/access', '/accounts', '/disputes', '/funds', '/payouts', '/reports', '/audit', '/settings'].map(p => `Disallow: ${p}`),
     '', `Sitemap: ${SITE}/sitemap.xml`, ''].join('\n'))
-  console.log(`Pre-rendered ${pages.length} pages for ${SITE}`)
+  console.log(pre ? 'Coming soon mode: no pages pre-rendered, robots.txt keeps search engines out' : `Pre-rendered ${pages.length} pages for ${SITE}`)
 } finally { await vite.close() }

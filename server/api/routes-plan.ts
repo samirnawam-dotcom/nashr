@@ -1,4 +1,5 @@
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
+import { prelaunch } from './launch.js'
 import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
 import { MarketError, ownFile } from '../marketplace/market.js'
@@ -271,6 +272,7 @@ export function planRoutes(route: RouteFn) {
 
   // For search engines: every public page and every outlet, at the site's own address.
   route('GET', '/api/sitemap.xml', 'public', async ({ db }, req, reply) => {
+    if (prelaunch()) return reply.code(404).send({ error: 'Not found.' }) // nothing to index before release
     const origin = (process.env.SITE_URL ?? `${req.protocol}://${req.headers.host}`).replace(/\/$/, '')
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
     const outlets = (await db.query(`select o.id, o.name from outlets o order by o.name`)).rows

@@ -1,4 +1,5 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
+import { prelaunch } from './launch.js'
 import type pg from 'pg'
 import { pool, tx } from '../core/db.js'
 import { audit } from '../core/audit.js'
@@ -148,7 +149,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
       if (roles === 'public') return tx(db => handler({ db, at, me: null as any, provider: deps.provider }, req as Req, reply))
       const s = await session(pool, cookie(req), at)
       if (!s) {
-        if (roles.includes('guest') && method === 'GET') return tx(db => handler({ db, at, me: null as any, provider: deps.provider }, req as Req, reply))
+        if (roles.includes('guest') && method === 'GET' && !prelaunch()) return tx(db => handler({ db, at, me: null as any, provider: deps.provider }, req as Req, reply))
         return reply.code(401).send({ error: 'Please sign in.' })
       }
       const viewing = s.viewAs && ['admin', 'founder'].includes(s.role)
@@ -204,6 +205,8 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   liveRoute(app, clock)
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.
+  // Whether the site is still behind the Coming soon page (the web app asks before showing anything to a guest).
+  route('GET', '/api/launch', 'public', async () => ({ prelaunch: prelaunch() }))
   route('GET', '/api/config', 'public', async () => ({ stripePublishableKey: deps.stripe?.publishableKey ?? null }))
   const storage = deps.storage ?? new DiskStorage()
   sharedRoutes(route, storage)

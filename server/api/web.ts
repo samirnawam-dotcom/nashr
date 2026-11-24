@@ -3,6 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { FastifyInstance } from 'fastify'
+import { PRELAUNCH_ROBOTS, prelaunch } from './launch.js'
 
 /*
  * The built web app (dist/web), served by the API itself where no nginx sits in front (cPanel shared hosting: Passenger hands
@@ -38,6 +39,7 @@ export function serveWeb(app: FastifyInstance, root: string) {
   }
   const resolve = (path: string) => {
     const clean = decodeURIComponent(path.split('?')[0]).replace(/\/+$/, '') || '/index'
+    if (prelaunch() && !extname(clean)) return file('/app.html') // before release: no pre-rendered pages, only the app (which shows Coming soon)
     return file(clean) ?? file(`${clean}.html`) ?? file(`${clean}/index.html`) ?? (extname(clean) ? null : file('/app.html'))
   }
 
@@ -48,9 +50,13 @@ export function serveWeb(app: FastifyInstance, root: string) {
   })
 
   app.setNotFoundHandler(async (req, reply) => {
+    if (prelaunch() && req.url.split('?')[0] === '/robots.txt')
+      return reply.type('text/plain; charset=utf-8').header('cache-control', 'no-cache').send(PRELAUNCH_ROBOTS)
+    // before release a pre-rendered page asked for by name (/terms.html) gets the app shell too
+    const url = prelaunch() && /\.html$/.test(req.url.split('?')[0]) ? '/' : req.url
     if (req.url.startsWith('/api/') || (req.method !== 'GET' && req.method !== 'HEAD')) return reply.code(404).send({ error: 'Not found.' })
     let p: string | null
-    try { p = resolve(req.url) } catch { p = null } // a malformed %-escape
+    try { p = resolve(url) } catch { p = null } // a malformed %-escape
     if (!p) return reply.code(404).type('text/plain; charset=utf-8').send('Not found.')
     const type = TYPES[extname(p).toLowerCase()] ?? 'application/octet-stream'
     reply.type(type)

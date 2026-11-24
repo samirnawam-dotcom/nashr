@@ -25,7 +25,53 @@ html .join .join-field input:focus, html .join .join-field input:focus-visible {
 :root[lang="ar"] .join-submit { letter-spacing: 0; font-size: 15px; }
 .join-submit:disabled { opacity: .5; cursor: default; }
 .join-tabs button:focus-visible, .join-submit:focus-visible { outline: 2px solid var(--j-text); outline-offset: 4px; }
+html:has(.join), html:has(.join) body { background: #0B0B0C; } /* no white band past the page on a phone */
 .join-done { text-align: center; display: grid; justify-items: center; gap: 12px; }
 .join-done h1 { margin: 0; font: 600 clamp(28px, 4vw, 40px)/1.2 var(--display); color: var(--j-text); }
 .join-done p { margin: 0; color: var(--j-muted); font-size: 17px; }
 @media (max-width: 640px) { .join-grid { grid-template-columns: 1fr; gap: 32px; } .join-tabs { gap: 28px; margin-bottom: 36px; } }
+
+/* ---- Coming soon: the whole site for guests before release. The logo's noon, drawn large, is the one bold thing; the form sits beside it. ---- */
+.join--soon { grid-template-rows: auto 1fr auto; position: relative; overflow: hidden;
+  background: radial-gradient(60vmax 60vmax at 22% 38%, rgba(200, 16, 46, .13), transparent 60%), var(--j-bg); }
+:root[dir="rtl"] .join--soon { background: radial-gradient(60vmax 60vmax at 78% 38%, rgba(200, 16, 46, .13), transparent 60%), var(--j-bg); }
+html .join--soon > main { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(40px, 6vw, 96px); align-items: center;
+  justify-items: stretch; width: min(1200px, 100%); margin: 0 auto; padding: 24px clamp(16px, 5vw, 48px) 48px; }
+.soon-hero { display: grid; justify-items: start; }
+.soon-mark { width: clamp(180px, 22vw, 300px); height: auto; overflow: visible; margin: 0 0 36px -6px; }
+.soon-bowl { fill: none; stroke: var(--j-text); stroke-width: 44; stroke-linecap: butt; stroke-dasharray: 1; stroke-dashoffset: 1; animation: soon-draw 1.4s cubic-bezier(.65, 0, .35, 1) .2s forwards; }
+.soon-dot { fill: var(--j-red); transform-box: fill-box; transform-origin: center; transform: scale(0); animation: soon-land .5s cubic-bezier(.34, 1.56, .64, 1) 1.5s forwards; }
+.soon-rings circle { fill: none; stroke: var(--j-red); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; animation: soon-ring 4.2s ease-out infinite; }
+.soon-rings circle:nth-child(1) { animation-delay: 2.1s; } .soon-rings circle:nth-child(2) { animation-delay: 3.5s; } .soon-rings circle:nth-child(3) { animation-delay: 4.9s; }
+@keyframes soon-draw { to { stroke-dashoffset: 0; } }
+@keyframes soon-land { to { transform: scale(1); } }
+@keyframes soon-ring { 0% { opacity: .55; transform: scale(1); } 100% { opacity: 0; transform: scale(4.2); } }
+html .join--soon .soon-hero h1 { margin: 0; font: 700 clamp(48px, 7.4vw, 112px)/.95 var(--display); letter-spacing: -.035em; color: var(--j-text); white-space: nowrap; }
+:root[lang="ar"] .join--soon .soon-hero h1 { letter-spacing: 0; line-height: 1.2; }
+.soon-hero .soon-slogan { margin: 0 0 18px; max-width: none; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: inherit;
+  font: 600 13px/18px var(--font-sans); letter-spacing: .22em; text-transform: uppercase; color: var(--j-text); }
+.soon-slogan span { display: inline-block; width: 28px; height: 2px; background: var(--j-red); }
+:root[lang="ar"] .soon-hero .soon-slogan { letter-spacing: 0; font-size: 16px; }
+.soon-hero p { margin: 24px 0 0; max-width: 38ch; color: var(--j-muted); font-size: 18px; line-height: 1.6; }
+.soon-panel { background: rgba(255, 255, 255, .025); border: 1px solid #26262A; padding: clamp(28px, 4vw, 48px); backdrop-filter: blur(6px); }
+.join--soon .join-form { width: 100%; justify-items: stretch; }
+.join--soon .join-iam { margin-bottom: 14px; }
+.join--soon .join-tabs { margin-bottom: 36px; }
+.join--soon .join-grid { grid-template-columns: 1fr; gap: 30px; }
+.join--soon .join-submit { margin-top: 40px; width: 100%; transition: background-color .15s; }
+.join--soon .join-submit:hover:not(:disabled) { background: #A50D26; }
+.join--soon .join-done { justify-items: start; text-align: start; padding: 24px 0; }
+.join--soon .join-done h2 { margin: 0; font: 600 clamp(28px, 3vw, 36px)/1.2 var(--display); color: var(--j-text); }
+.join--soon .join-done .join-submit { width: auto; margin-top: 20px; }
+.soon-foot { padding: 20px clamp(16px, 5vw, 48px); color: #6E6C69; font-size: 13px; }
+@media (max-width: 900px) {
+  html .join--soon > main { grid-template-columns: 1fr; gap: 40px; padding-top: 8px; }
+  .soon-hero { justify-items: center; text-align: center; }
+  .soon-mark { width: 150px; margin: 0 0 24px; }
+  .soon-hero p { font-size: 17px; }
+  .soon-hero .soon-slogan { justify-content: center; font-size: 11px; letter-spacing: .18em; gap: 10px; }
+  .join--soon { background: radial-gradient(90vmax 70vmax at 50% 12%, rgba(200, 16, 46, .14), transparent 60%), var(--j-bg) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soon-bowl { animation: none; stroke-dashoffset: 0; } .soon-dot { animation: none; transform: none; } .soon-rings { display: none; }
+}

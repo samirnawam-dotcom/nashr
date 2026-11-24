@@ -390,4 +390,8 @@ export const AR_BUYER: Record<string, string> = {
   "Thank you": "شكرًا لك",
   "You're registered. Nashr's team will be in touch.": "تم تسجيلك. سيتواصل معك فريق نشر.",
   "Submit": "إرسال",
+  "Coming soon": "قريباً",
+  "Nashr isn't open yet. Register your interest and our team will be in touch.": "نشر لم يُفتح بعد. سجّل اهتمامك وسيتواصل معك فريقنا.",
+  "Register your interest": "سجّل اهتمامك",
+  "Premium media buying marketplace": "منصة متميزة لشراء المساحات الإعلامية",
 }

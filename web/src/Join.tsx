@@ -10,11 +10,13 @@ import './join.css'
  * A simple form: I am Buyer / Media outlet, then name, company, email (any address) and phone. Nothing on the page leads into the
  * website: no links, no site header or menu, not listed by search engines. "Next person" clears it for the next visitor at the stand.
  * /join/<event> tags the sign-ups with the event; Nashr's team sees them in Registrations.
+ * Before release (`soon`) the same form is the whole site for anyone not signed in: "Coming soon" above it, sign-ups tagged "website".
  */
-export function JoinPage() {
+export function JoinPage({ soon = false }: { soon?: boolean }) {
   useEffect(() => { document.title = 'Nashr'; let m = document.querySelector('meta[name=robots]') as HTMLMetaElement | null
     if (!m) { m = document.createElement('meta'); m.name = 'robots'; document.head.appendChild(m) } m.content = 'noindex, nofollow' }, [])
-  const event = location.pathname.split('/')[2]?.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40) || 'general'
+  const tag = /^\/join\//.test(location.pathname) ? location.pathname.split('/')[2]?.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40) : ''
+  const event = tag || (soon ? 'website' : 'general')
   const blank = { side: 'buyer' as 'buyer' | 'media_outlet', name: '', company: '', email: '', phone: '' }
   const [f, setF] = useState(blank), [busy, setBusy] = useState(false), [error, setError] = useState(''), [done, setDone] = useState(false)
   const first = useRef<HTMLInputElement>(null)
@@ -26,11 +28,9 @@ export function JoinPage() {
   }
   const next = () => { setF(blank); setDone(false); setError(''); setTimeout(() => first.current?.focus(), 0) }
 
-  return <div className="join">
-    <header className="join-top"><LogoImage height={26} tone="reversed" /><LangSwitch /></header>
-    <main>
+  const body = <>
       {done ? <div className="join-done" aria-live="polite">
-        <h1>{t('Thank you')}</h1>
+        {soon ? <h2>{t('Thank you')}</h2> : <h1>{t('Thank you')}</h1>}
         <p>{t("You're registered. Nashr's team will be in touch.")}</p>
         <button type="button" className="join-submit" onClick={next}>{t('Next person')}</button>
       </div>
@@ -53,6 +53,34 @@ export function JoinPage() {
         {error && <p className="join-error" role="alert">{error}</p>}
         <button className="join-submit" disabled={busy}>{busy ? t('Sending…') : t('Submit')}</button>
       </form>}
+  </>
+  if (soon) return <div className="join join--soon">
+    <header className="join-top"><LogoImage height={26} tone="reversed" /><LangSwitch /></header>
+    <main>
+      <section className="soon-hero">
+        <SoonMark />
+        <p className="soon-slogan">{t('Premium media buying marketplace')}<span aria-hidden="true" /> {t('UAE')}</p>
+        <h1>{t('Coming soon')}</h1>
+        <p>{t("Nashr isn't open yet. Register your interest and our team will be in touch.")}</p>
+      </section>
+      <section className="soon-panel" aria-label={t('Register your interest')}>{body}</section>
+    </main>
+    <footer className="soon-foot"><bdi dir="ltr">© {new Date().getFullYear()} Nashr</bdi></footer>
+  </div>
+
+  return <div className="join">
+    <header className="join-top"><LogoImage height={26} tone="reversed" /><LangSwitch /></header>
+    <main>
+      {body}
     </main>
   </div>
+}
+
+/** The noon of the logo, drawn large: the bowl draws itself, the red dot lands, then sends out slow rings, like a light that is on air. */
+function SoonMark() {
+  return <svg className="soon-mark" viewBox="0 0 480 300" aria-hidden="true" focusable="false">
+    <g className="soon-rings">{[0, 1, 2].map(i => <circle key={i} cx="240" cy="62" r="34" />)}</g>
+    <path className="soon-bowl" d="M 52 120 A 188 158 0 0 0 428 120" pathLength={1} />
+    <circle className="soon-dot" cx="240" cy="62" r="34" />
+  </svg>
 }

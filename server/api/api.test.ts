@@ -1146,6 +1146,21 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect(commuters.slots).toBeGreaterThan(0)
     expect(commuters.slots).toBe((await call(null, 'GET', `/api/slots/outlets?${range}&open=1&aud=commuters`)).json().items.reduce((n: number, o: any) => n + o.slots, 0))
   })
+
+  test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
+    const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
+    expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })
+    process.env.PRELAUNCH = '1'
+    try {
+      expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: true })
+      expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(401)
+      expect((await call(null, 'GET', '/api/sitemap.xml')).statusCode).toBe(404)
+      expect((await call(buyerA, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)
+      // the registration form on the Coming soon page still takes sign-ups
+      expect((await call(null, 'POST', '/api/registrations', { side: 'buyer', name: 'Lina', company: 'Acme', email: 'lina@example.com', phone: '+971 50 000 0000', event: 'website' })).statusCode).toBe(200)
+    } finally { delete process.env.PRELAUNCH }
+    expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)
+  })
 })
 
 describe('the publisher and Nashr calendars: the same search, scoped', () => {

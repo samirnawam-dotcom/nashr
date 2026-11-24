@@ -267,13 +267,16 @@ function NameMenu({ name, sub, initials, links, mini, onSignOut, onTour }: { nam
   </div>
 }
 
-export function App({ initialMe }: { initialMe?: Me | null }) {
+export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initialSoon?: boolean }) {
   const [me, setMe] = useState<Me | null | undefined>(initialMe), [menu, setMenu] = useState(false)
   const full = usePath(), hash = full.split('?')[0]
   useEffect(() => setMenu(false), [full]) // a phone menu closes once you go somewhere
   useEffect(() => { scrollTo(0, 0) }, [hash]) // a new page starts at the top
   const load = () => api<Me>('/me').then(setMe, () => setMe(null))
   useEffect(() => { if (initialMe === undefined) load() }, [])
+  // before release, guests see only the Coming soon page (the server says so; it also refuses them any data)
+  const [soon, setSoon] = useState<boolean | undefined>(initialSoon)
+  useEffect(() => { if (initialSoon === undefined) api<{ prelaunch: boolean }>('/launch').then(r => setSoon(!!r.prelaunch), () => setSoon(false)) }, [])
   const unread = useUnread(!!me && (me.role === 'buyer' || me.role === 'seller'), full)
   // open requests for a publisher, shown on Requests in the menu (refreshed every minute)
   const [requests, setRequests] = useState(0)
@@ -301,6 +304,9 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
 
   if (me === null) {
     const path = hash || '/'
+    if (soon === undefined) return null
+    // the team still signs in (and resets a password) at their usual addresses; everything else is the Coming soon page
+    if (soon && path !== '/sign-in' && path !== '/forgot') return <Suspense fallback={null}><JoinPage soon /></Suspense>
     if (path === '/') return <GuestContext.Provider value={true}><GuestHeader path={path} menu={menu} setMenu={setMenu} /><Landing /><GuestTabs path={path} /></GuestContext.Provider>
     if (path === '/sign-in') return <Login onIn={signedIn} />
     if (path === '/request-access') return <RequestAccess />

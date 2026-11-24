@@ -3,6 +3,7 @@ import { pool } from '../core/db.js'
 import { live } from '../core/live.js'
 import { session } from '../auth/access.js'
 import { cookie } from './app.js'
+import { prelaunch } from './launch.js'
 
 /*
  * GET /api/events: a Server-Sent Events stream. Signed-in pages get their company's bell signals; everyone (guests too) gets
@@ -17,6 +18,7 @@ let total = 0
 export function liveRoute(app: FastifyInstance, clock: () => Date) {
   app.get('/api/events', async (req, reply) => {
     const token = cookie(req as any), ip = `ip:${req.ip}`, who = token ? `s:${token.slice(0, 16)}` : null
+    if (!token && prelaunch()) return reply.code(401).send({ error: 'Please sign in.' }) // before release guests get no live signals
     if (total >= TOTAL || (open.get(ip) ?? 0) >= PER_IP || (who && (open.get(who) ?? 0) >= PER_SESSION))
       return reply.code(429).send({ error: 'Too many live connections.' })
     const companyOf = async () => {
