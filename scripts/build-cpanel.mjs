@@ -30,7 +30,9 @@ mkdirSync(`${out}/web/public/brand`, { recursive: true })
 cpSync('web/public/brand/print-card.jpg', `${out}/web/public/brand/print-card.jpg`) // the demo bookings' sample creative
 
 writeFileSync(`${out}/app.js`, `// Startup file for cPanel "Setup Node.js App" (Phusion Passenger). The server itself is server/main.mjs.
-import('./server/main.mjs').catch(e => { console.error(e); process.exit(1) })
+// A file named PRELAUNCH beside this one puts the site behind the Coming soon page (touch it to switch on, delete it to launch; restart either way).
+import('node:fs').then(({ existsSync }) => { if (existsSync(\`\${typeof __dirname === 'string' ? __dirname : process.cwd()}/PRELAUNCH\`)) process.env.PRELAUNCH ||= '1' })
+  .then(() => import('./server/main.mjs')).catch(e => { console.error(e); process.exit(1) })
 `)
 writeFileSync(`${out}/package.json`, JSON.stringify({
   name: 'nashr', private: true, description: 'Nashr, built for cPanel shared hosting (no dependencies to install)',

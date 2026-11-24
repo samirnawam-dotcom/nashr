@@ -127,3 +127,11 @@ One-off set-up:
 
 The private key opens a shell on the hosting account, so keep it only in GitHub's secrets (and delete the local file after
 step 3). To stop automatic deploys, delete the `CPANEL_SSH_KEY` secret or disable the workflow in the Actions tab.
+
+## Coming soon (before release)
+
+A file named `PRELAUNCH` in `~/nashr` puts the site behind the Coming soon page: guests see only that page and its
+registration form, the API gives them no data, and search engines are kept out. The team signs in at `/sign-in` as usual.
+Switch on with `touch ~/nashr/PRELAUNCH`, switch off (launch) with `rm ~/nashr/PRELAUNCH`; restart the app either way.
+`https://nashr.pro/api/launch` says which mode is on. Build the package for launch without `PRELAUNCH` so search engines
+get the pre-rendered pages again.
