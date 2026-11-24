@@ -72,6 +72,8 @@ const CompanyPage = L(() => import('./buyer/Company'), 'CompanyPage')
 const StatementPage = L(() => import('./seller/Statement'), 'StatementPage')
 const load_admin_Overview = () => import('./admin/Overview')
 const AccessPage = L(load_admin_Overview, 'AccessPage')
+const JoinPage = L(() => import('./Join'), 'JoinPage')
+const RegistrationsPage = L(() => import('./admin/Registrations'), 'RegistrationsPage')
 const AdminOverview = L(load_admin_Overview, 'AdminOverview')
 const load_admin_Accounts = () => import('./admin/Accounts')
 const AccountPage = L(load_admin_Accounts, 'AccountPage')
@@ -153,6 +155,7 @@ const SELLER: Routes = [
 const ADMIN = (founder: boolean): Routes => [
   [/^\/admin/, () => <AdminOverview />],
   [/^\/access/, () => <AccessPage />],
+  [/^\/registrations/, () => <RegistrationsPage />],
   [/^\/accounts\/([\w-]+)$/, id => <AccountPage id={id} isFounder={founder} />],
   [/^\/users\/([\w-]+)$/, id => <UserPage id={id} />],
   [/^\/users/, () => <UsersPage />],
@@ -195,7 +198,7 @@ const isActive = (path: string, p: string, seller = false) => (p === '/' ? path 
   || ((p === '/inbox' && path.startsWith('/messages')) || (p === '/reports' && /^\/(deals|earnings|documents|bookings|results)/.test(path)))
 
 const NAV: Record<string, string[][]> = {
-  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
+  admin: [['/admin', t('Overview')], ['/access', t('Access')], ['/registrations', t('Registrations')], ['/accounts', t('Accounts')], ['/users', t('Users')], ['/calendar', t('Calendar')], ['/deals', t('Deals')], ['/disputes', t('Disputes')], ['/support', t('Support')], ['/funds', t('Funds')],
     ['/payouts', t('Payouts')], ['/reports', t('Reports')], ['/directory', t('Directory')], ['/audit', t('Audit')], ['/emails', t('Emails')], ['/settings', t('Settings')]],
   guest: [['/', t('Home')], ['/audiences', t('Audiences')], ['/directory', t('Directory')], ['/help', t('Help')], ['/sign-in', t('Sign in')]],
   // owner's buyer-side fixes: no section titles; Company and Help are in the menu under the buyer's name
@@ -208,6 +211,7 @@ const TABS: Record<string, string[]> = { buyer: ['/dashboard', '/calendar', '/di
 
 const ICON: Record<string, string> = {
   '/dashboard': 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v4h6V4zM4 20h6v-3H4z',
+  '/registrations': 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a6 6 0 0 1 12 0M18 8v6M15 11h6',
   '/calendar': 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   '/schedule': 'M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   '/directory': 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z', '/campaigns': 'M5 21V4M5 4h11l-2 4 2 4H5', '/clients': 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 6',
@@ -289,6 +293,8 @@ export function App({ initialMe }: { initialMe?: Me | null }) {
     navigate(next && m && routesFor(m.role).some(([re]) => re.test(next.split('?')[0])) ? next : '/', true)
     setMe(m); resetLive()
   }
+  // the event registration page stands alone (no site header, menu or links), signed in or not
+  if (/^\/join(\/|$)/.test(location.pathname)) return <Suspense fallback={null}><JoinPage /></Suspense>
   if (location.pathname === '/reset') return <ResetPassword token={location.hash.slice(1)} onDone={() => { navigate('/sign-in', true); load() }} />
   if (location.pathname === '/invite') return <AcceptInvite token={location.hash.slice(1)} onDone={() => { navigate('/sign-in', true); load() }} />
   if (me === undefined) return null

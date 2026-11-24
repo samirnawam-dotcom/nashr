@@ -8,6 +8,8 @@ import { AR } from './i18n-ar.js'
  * In a key, {} stands for a value the server fills in; the Arabic says where each one goes as {1}, {2}…
  */
 export const SERVER_AR: Record<string, string> = {
+  "Enter a valid email.": "أدخل بريدًا إلكترونيًا صحيحًا.",
+  "Enter a valid phone number.": "أدخل رقم هاتف صحيحًا.",
   "Email is not set up yet: add the SMTP details to the server settings first.": "البريد غير مُعد بعد: أضف بيانات SMTP إلى إعدادات الخادم أولًا.",
   "The email server refused: {}": "رفض خادم البريد: {1}",
   "Your company needs at least one active team manager. Make someone else a manager first.": "تحتاج شركتك إلى مدير فريق نشط واحد على الأقل. اجعل شخصًا آخر مديرًا أولًا.",

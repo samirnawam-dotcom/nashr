@@ -1,0 +1,31 @@
+/* Event registration: a simple form on black, as the owners' design (underlined fields, small spaced labels, one red button). */
+.join { --j-bg: #0B0B0C; --j-text: #FFFFFF; --j-muted: #9C9A96; --j-line: #3A3A3E; --j-red: #C8102E;
+  min-height: 100svh; background: var(--j-bg); color: var(--j-text); display: grid; grid-template-rows: auto 1fr; }
+.join-top { display: flex; align-items: center; justify-content: space-between; padding: 20px clamp(16px, 5vw, 48px); }
+.join-top .lang-switch, .join-top button { color: var(--j-text); }
+html .join > main { display: grid; align-content: center; justify-items: center; padding: 24px 16px 64px; width: 100%; max-width: none; margin: 0; box-sizing: border-box; }
+.join-form { width: min(760px, 100%); display: grid; justify-items: center; }
+.join-label { font: 600 11px/16px var(--font-sans); letter-spacing: .18em; text-transform: uppercase; color: var(--j-muted); }
+:root[lang="ar"] .join-label { letter-spacing: 0; font-size: 13px; }
+.join-iam { margin: 0 0 18px; }
+.join-tabs { display: flex; gap: 36px; margin-bottom: 48px; }
+.join-tabs button { background: none; border: 0; border-bottom: 1px solid transparent; padding: 0 0 12px; cursor: pointer; color: var(--j-muted);
+  font: 600 13px/18px var(--font-sans); letter-spacing: .18em; text-transform: uppercase; }
+:root[lang="ar"] .join-tabs button { letter-spacing: 0; font-size: 15px; }
+.join-tabs button.on { color: var(--j-text); border-bottom-color: var(--j-text); }
+.join-grid { width: 100%; justify-self: stretch; display: grid; grid-template-columns: 1fr 1fr; gap: 44px 48px; }
+.join-field { display: grid; gap: 10px; }
+/* the site's own input styles (boxes, white background) must not reach this page */
+html .join .join-field input { background: transparent !important; color: var(--j-text) !important; border: 0 !important; border-bottom: 1px solid var(--j-line) !important;
+  border-radius: 0 !important; box-shadow: none !important; padding: 8px 0 !important; height: auto; font: 400 17px/24px var(--font-sans); }
+html .join .join-field input:focus, html .join .join-field input:focus-visible { border-bottom-color: var(--j-text) !important; box-shadow: none !important; outline: none !important; }
+.join-error { margin: 24px 0 0; color: #FF6B6B; font-size: 15px; }
+.join-submit { margin-top: 52px; min-width: 180px; padding: 20px 40px; border: 0; border-radius: 0; background: var(--j-red); color: #FFFFFF; cursor: pointer;
+  font: 700 12px/16px var(--font-sans); letter-spacing: .2em; text-transform: uppercase; }
+:root[lang="ar"] .join-submit { letter-spacing: 0; font-size: 15px; }
+.join-submit:disabled { opacity: .5; cursor: default; }
+.join-tabs button:focus-visible, .join-submit:focus-visible { outline: 2px solid var(--j-text); outline-offset: 4px; }
+.join-done { text-align: center; display: grid; justify-items: center; gap: 12px; }
+.join-done h1 { margin: 0; font: 600 clamp(28px, 4vw, 40px)/1.2 var(--display); color: var(--j-text); }
+.join-done p { margin: 0; color: var(--j-muted); font-size: 17px; }
+@media (max-width: 640px) { .join-grid { grid-template-columns: 1fr; gap: 32px; } .join-tabs { gap: 28px; margin-bottom: 36px; } }

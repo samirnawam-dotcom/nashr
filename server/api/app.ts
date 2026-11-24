@@ -8,6 +8,7 @@ import type { PaymentProvider } from '../payments/provider.js'
 import { authRoutes } from './routes-auth.js'
 import { buyerRoutes } from './routes-buyer.js'
 import { sellerRoutes } from './routes-seller.js'
+import { registrationRoutes } from './routes-registrations.js'
 import { adminRoutes } from './routes-admin.js'
 import { planRoutes } from './routes-plan.js'
 import { sellerDeskRoutes } from './routes-seller-desk.js'
@@ -183,6 +184,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   buyerRoutes(route)
   sellerRoutes(route)
   adminRoutes(route)
+  registrationRoutes(route)
   planRoutes(route)
   clientRoutes(route)
   sellerDeskRoutes(route, deps)
