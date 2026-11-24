@@ -61,7 +61,6 @@ export function JoinPage({ soon = false }: { soon?: boolean }) {
         <SoonMark />
         <p className="soon-slogan">{t('Premium media buying marketplace')}<span aria-hidden="true" /> {t('UAE')}</p>
         <h1>{t('Coming soon')}</h1>
-        <p>{t("Nashr isn't open yet. Register your interest and our team will be in touch.")}</p>
       </section>
       <section className="soon-panel" aria-label={t('Register your interest')}>{body}</section>
     </main>
