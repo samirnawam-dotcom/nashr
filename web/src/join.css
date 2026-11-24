@@ -75,3 +75,10 @@ html .join--soon .soon-hero h1 { margin: 0; font: 700 clamp(48px, 7.4vw, 112px)/
 @media (prefers-reduced-motion: reduce) {
   .soon-bowl { animation: none; stroke-dashoffset: 0; } .soon-dot { animation: none; transform: none; } .soon-rings { display: none; }
 }
+
+/* after a sign-up: a thin red line runs out over the five seconds before the empty form comes back */
+.join-countdown { display: block; width: 160px; height: 2px; margin-top: 20px; background: var(--j-red); transform-origin: left; animation: join-count 5s linear forwards; }
+:root[dir="rtl"] .join-countdown { transform-origin: right; }
+.join-done { justify-items: center; }
+@keyframes join-count { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .join-countdown { animation: none; opacity: .5; } }

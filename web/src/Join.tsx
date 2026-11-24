@@ -8,7 +8,7 @@ import './join.css'
 /*
  * Event registration (owner's request for a conference): register interest only, no account and no access request.
  * A simple form: I am Buyer / Media outlet, then name, company, email (any address) and phone. Nothing on the page leads into the
- * website: no links, no site header or menu, not listed by search engines. "Next person" clears it for the next visitor at the stand.
+ * website: no links, no site header or menu, not listed by search engines. After a sign-up it thanks the person, then clears itself for the next visitor (a stand with one tablet).
  * /join/<event> tags the sign-ups with the event; Nashr's team sees them in Registrations.
  * Before release (`soon`) the same form is the whole site for anyone not signed in: "Coming soon" above it, sign-ups tagged "website".
  */
@@ -27,12 +27,14 @@ export function JoinPage({ soon = false }: { soon?: boolean }) {
     catch (err: any) { setError(tm(err.message)) } finally { setBusy(false) }
   }
   const next = () => { setF(blank); setDone(false); setError(''); setTimeout(() => first.current?.focus(), 0) }
+  // the thank-you shows for a few seconds, then the empty form is back for the next person
+  useEffect(() => { if (!done) return; const x = setTimeout(next, 5000); return () => clearTimeout(x) }, [done])
 
   const body = <>
       {done ? <div className="join-done" aria-live="polite">
         {soon ? <h2>{t('Thank you')}</h2> : <h1>{t('Thank you')}</h1>}
         <p>{t("You're registered. Nashr's team will be in touch.")}</p>
-        <button type="button" className="join-submit" onClick={next}>{t('Next person')}</button>
+        <span className="join-countdown" aria-hidden="true" />
       </div>
       : <form className="join-form" onSubmit={submit}>
         <p className="join-label join-iam">{t('I am')}</p>
