@@ -23,10 +23,12 @@
 .ath-tag .ath-label { font-weight: 600; color: var(--text); }
 :root[lang="ar"] .ath-tag { font-family: var(--font-arabic); }
 
-/* the panel: grey, black edge on the reading side */
-.ath { border: 1px solid var(--line-strong); border-inline-start: 3px solid var(--text); border-radius: var(--radius-md, 8px); background: var(--surface-muted); padding: 12px 14px; display: grid; gap: 6px; }
+/* the panel: quiet (hairline, white), the owl and the name lead */
+.ath { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 12px 14px; display: grid; gap: 6px; }
 .ath p { margin: 0; }
 .ath-h { display: flex; align-items: center; gap: 8px; }
+.ath-h .ath-tag { color: var(--text-muted); font-size: 12px; }
+.ath-h .ath-tag b { color: var(--text); }
 /* the words sweep in after the owl wakes, like being written */
 .ath-say { animation: ath-write .75s .28s cubic-bezier(.3, .7, .2, 1) both; -webkit-mask-image: linear-gradient(90deg, #000 45%, transparent 55%); mask-image: linear-gradient(90deg, #000 45%, transparent 55%);
   -webkit-mask-size: 240% 100%; mask-size: 240% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
@@ -37,61 +39,95 @@
 .ath-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 
 /* on dark surfaces the owl and the edge turn white */
-:is([data-theme="dark"], .on-dark) .ath { border-inline-start-color: #fff; }
+:is([data-theme="dark"], .on-dark) .ath { border-color: rgba(255, 255, 255, .16); }
 
 @media (prefers-reduced-motion: reduce) {
   .owl .owl-eye, .owl .owl-pupil, .owl .owl-brows, .owl.owl-wake .owl-eye, .owl.owl-busy .owl-pupil { animation: none !important; }
   .ath-say { animation: none; -webkit-mask-image: none; mask-image: none; }
 }
 
-/* ---- Athena's chat, docked on the reading end of the page ---- */
-.ath-fab { position: fixed; inset-inline-end: 24px; bottom: 24px; z-index: 60; display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 18px 0 14px;
-  border: 0; border-radius: 26px; background: var(--action, #0B0B0C); color: var(--on-action, #fff); font: 600 14px/20px var(--font-sans); cursor: pointer;
-  box-shadow: 0 6px 24px rgba(11, 11, 12, .22); transition: transform .15s ease, box-shadow .15s ease; }
-.ath-fab:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(11, 11, 12, .28); }
+/* ---- Athena's panel, docked on the reading end of the page (calm: hairlines, white, one accent: the owl) ---- */
+.ath-fab { position: fixed; inset-inline-end: 24px; bottom: 24px; z-index: 60; display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 18px 0 14px;
+  border: 0; border-radius: 24px; background: var(--action, #0B0B0C); color: var(--on-action, #fff); font: 600 14px/20px var(--font-sans); cursor: pointer;
+  box-shadow: 0 4px 18px rgba(11, 11, 12, .18); transition: transform .15s ease, box-shadow .15s ease; }
+.ath-fab:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(11, 11, 12, .24); }
 .ath-fab:focus-visible { outline: 2px solid var(--action, #0B0B0C); outline-offset: 3px; }
-.ath-fab .ath-dot { position: absolute; top: 9px; inset-inline-start: 34px; width: 10px; height: 10px; border-radius: 50%; background: var(--on-action, #fff); box-shadow: 0 0 0 2px var(--action, #0B0B0C);
+.ath-fab .ath-dot { position: absolute; top: 8px; inset-inline-start: 32px; width: 9px; height: 9px; border-radius: 50%; background: var(--on-action, #fff); box-shadow: 0 0 0 2px var(--action, #0B0B0C);
   animation: ath-pulse 2.4s ease-out infinite; }
 @keyframes ath-pulse { 0% { box-shadow: 0 0 0 2px var(--action, #0B0B0C), 0 0 0 2px rgba(255, 255, 255, .6); } 70%, 100% { box-shadow: 0 0 0 2px var(--action, #0B0B0C), 0 0 0 10px rgba(255, 255, 255, 0); } }
 :root[lang="ar"] .ath-fab { font-family: var(--font-arabic); }
 
 .ath-dock { position: fixed; inset-inline-end: 0; top: 56px; bottom: 0; width: min(400px, 100vw); z-index: 70; display: grid; grid-template-rows: auto 1fr auto auto;
-  background: var(--surface); border-inline-start: 1px solid var(--line-strong); box-shadow: -12px 0 40px rgba(11, 11, 12, .10); animation: ath-slide .28s cubic-bezier(.2, .8, .2, 1); }
-:root[dir="rtl"] .ath-dock { box-shadow: 12px 0 40px rgba(11, 11, 12, .10); animation-name: ath-slide-rtl; }
-@keyframes ath-slide { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes ath-slide-rtl { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
-.ath-dock-h { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); }
-.ath-dock-h .ath-tag { font-size: 15px; }
-.ath-tabs { margin-inline-start: auto; }
-.ath-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+  background: var(--surface); border-inline-start: 1px solid var(--line); animation: ath-slide .24s cubic-bezier(.2, .8, .2, 1); }
+@keyframes ath-slide { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+:root[dir="rtl"] .ath-dock { animation-name: ath-slide-rtl; }
+@keyframes ath-slide-rtl { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* wide screens: the page makes room for the panel instead of being covered */
+@media (min-width: 1200px) { body.ath-open .shell-main { margin-inline-end: 400px; } body.ath-open .tabbar { display: none; } }
+@media (max-width: 1199px) { .ath-dock { box-shadow: -12px 0 40px rgba(11, 11, 12, .10); } :root[dir="rtl"] .ath-dock { box-shadow: 12px 0 40px rgba(11, 11, 12, .10); } }
+.ath-dock-h { display: flex; align-items: center; gap: 10px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); }
+.ath-dock-t { display: grid; line-height: 1.2; min-width: 0; }
+.ath-dock-t b { font: 600 15px/20px var(--font-sans); }
+.ath-dock-t span { font-size: 12px; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ath-seg { margin-inline-start: auto; display: flex; background: var(--surface-muted); border-radius: 8px; padding: 3px; }
+.ath-seg button { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; border-radius: 6px; padding: 4px 10px; font: 600 12px/18px var(--font-sans); color: var(--text-muted); cursor: pointer; }
+.ath-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(11, 11, 12, .08); }
+:root[lang="ar"] .ath-seg button { font-family: var(--font-arabic); }
 .ath-count { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--text); color: var(--surface); font: 600 11px/18px var(--font-sans); text-align: center; }
-.ath-x { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
+.ath-count.seen { background: var(--line-strong); color: var(--text); }
+.ath-x { width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
 .ath-x:hover { background: var(--surface-muted); color: var(--text); }
-.ath-log { overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 14px; }
-.ath-msg { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; }
-.ath-msg > .owl { margin-top: 10px; }
-.ath-bubble { background: var(--surface-muted); border: 1px solid var(--line); border-inline-start: 3px solid var(--text); border-radius: 4px 12px 12px 12px; padding: 10px 12px; display: grid; gap: 8px; }
-:root[dir="rtl"] .ath-bubble { border-radius: 12px 4px 12px 12px; }
-.ath-bubble p { margin: 0; line-height: 1.5; }
-.ath-you { justify-self: end; max-width: 85%; margin: 0; padding: 9px 12px; border-radius: 12px 12px 4px 12px; background: var(--action, #0B0B0C); color: var(--on-action, #fff); line-height: 1.45; }
-:root[dir="rtl"] .ath-you { border-radius: 12px 12px 12px 4px; }
-.ath-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ath-chip { border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); border-radius: 16px; padding: 5px 11px; font: 400 13px/18px var(--font-sans); cursor: pointer; text-align: start; }
-.ath-chip:hover { border-color: var(--text); }
-:root[lang="ar"] .ath-chip { font-family: var(--font-arabic); }
-/* thinking: three dots in step with the owl's scanning eyes */
-.ath-typing { display: inline-flex; gap: 5px; align-items: center; width: max-content; padding: 13px 14px; }
-.ath-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: ath-dots 1s ease-in-out infinite; }
+.ath-log { overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 16px; }
+.ath-you { justify-self: end; max-width: 85%; margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--surface-muted); color: var(--text); line-height: 1.45; }
+.ath-ans { display: grid; gap: 10px; }
+.ath-ans > p { margin: 0; line-height: 1.55; }
+.ath-who { display: flex; align-items: center; gap: 6px; font: 600 12px/16px var(--font-sans); color: var(--text-muted); }
+.ath-caret { display: inline-block; width: 2px; height: 14px; margin-inline-start: 2px; background: var(--text); vertical-align: -2px; animation: ath-blink 1s steps(2) infinite; }
+@keyframes ath-blink { 50% { opacity: 0; } }
+.ath-stop { margin-inline-start: 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); padding: 0 6px; font: 600 11px/18px var(--font-sans); color: var(--text-muted); cursor: pointer; }
+.ath-qchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ath-qchip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line-strong); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 13px; line-height: 18px; background: var(--surface); }
+.ath-qchip button { width: 18px; height: 18px; border: 0; border-radius: 50%; background: var(--surface-muted); color: var(--text-muted); font-size: 12px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.ath-qchip button:hover { background: var(--line); color: var(--text); }
+.ath-qchip.add { border-style: dashed; color: var(--text-muted); padding: 3px 10px; cursor: pointer; font: inherit; font-size: 13px; }
+.ath-facts { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.ath-facts > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.ath-facts > div:first-child { border-top: 0; }
+.ath-facts dt { color: var(--text-muted); } .ath-facts dd { margin: 0; font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
+.ath-src { margin: 0; font-size: 12px; color: var(--text-subtle); }
+.ath-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ath-rate { margin-inline-start: auto; display: inline-flex; gap: 4px; }
+.ath-rate button { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 1px 6px; font-size: 13px; cursor: pointer; filter: grayscale(1); opacity: .8; }
+.ath-rate button:hover { filter: none; opacity: 1; border-color: var(--line-strong); }
+.ath-follow { display: flex; flex-wrap: wrap; gap: 6px; }
+.ath-follow button { border: 1px solid var(--line); border-radius: 999px; background: var(--surface-muted); padding: 4px 10px; font: 400 12px/16px var(--font-sans); color: var(--text-muted); cursor: pointer; }
+.ath-follow button:hover { border-color: var(--line-strong); color: var(--text); }
+:root[lang="ar"] :is(.ath-follow button, .ath-qchip, .ath-stop) { font-family: var(--font-arabic); }
+.ath-typing { display: inline-flex; gap: 5px; align-items: center; padding: 4px 0; }
+.ath-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); animation: ath-dots 1s ease-in-out infinite; }
 .ath-typing i:nth-child(2) { animation-delay: .15s; } .ath-typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes ath-dots { 0%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
-.ath-in { display: flex; gap: 8px; padding: 12px 16px 6px; border-top: 1px solid var(--line); }
-.ath-in .search { flex: 1; min-width: 0; }
-:root[dir="rtl"] .ath-in svg { transform: scaleX(-1); }
-.ath-foot { margin: 0; padding: 0 16px 12px; }
-.ath-noticed { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.ath-noticed li { border: 1px solid var(--line); border-inline-start: 3px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; justify-items: start; background: var(--surface); }
-.ath-noticed li.new { border-inline-start-color: var(--text); background: var(--surface-muted); }
-.ath-noticed p { margin: 0; line-height: 1.45; }
+.ath-in { padding: 12px 16px 6px; border-top: 1px solid var(--line); }
+.ath-box { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line-strong); border-radius: 10px; padding: 4px 4px 4px 12px; background: var(--surface); }
+.ath-box:focus-within { border-color: var(--text); }
+html body .ath-box input, html body .ath-box input:focus { border-radius: 0 !important; flex: 1; min-width: 0; border: 0 !important; outline: none !important; box-shadow: none !important; background: transparent !important; padding: 6px 0 !important; font: 400 14px/20px var(--font-sans); }
+.ath-send { width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--action, #0B0B0C); color: var(--on-action, #fff); display: grid; place-items: center; cursor: pointer; }
+.ath-send:disabled { opacity: .35; cursor: default; }
+:root[dir="rtl"] .ath-send svg { transform: scaleX(-1); }
+.ath-foot { margin: 0; padding: 0 16px 12px; font-size: 12px; color: var(--text-subtle); }
+.ath-group h3 { display: flex; justify-content: space-between; margin: 0 0 8px; font: 600 12px/16px var(--font-sans); color: var(--text-muted); }
+:root[lang="ar"] .ath-group h3 { font-family: var(--font-arabic); }
+.ath-group + .ath-group { margin-top: 6px; }
+.ath-noticed { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ath-noticed li { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; background: var(--surface); }
+.ath-noticed li.new { border-color: var(--line-strong); box-shadow: 0 1px 3px rgba(11, 11, 12, .06); }
+.ath-noticed p { margin: 0; line-height: 1.45; font-size: 13px; }
+.ath-ni-h { display: flex; align-items: center; gap: 8px; }
+.ath-pip { width: 8px; height: 8px; border-radius: 50%; }
+.ath-pip.now { background: var(--danger, #B4232C); } .ath-pip.chance { background: var(--success, #12703F); } .ath-pip.know { background: var(--text-subtle); }
+.ath-time { margin-inline-start: auto; font-size: 12px; color: var(--text-subtle); }
+.ath-link { border: 0; background: none; padding: 0 4px; font: 400 12px/18px var(--font-sans); color: var(--text-muted); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.ath-link:hover { color: var(--text); }
 .ath-empty { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 40px 12px; color: var(--text-muted); }
 .ath-empty p { margin: 0; max-width: 30ch; }
 /* the side menu entry */
@@ -106,10 +142,10 @@ html .side-nav .side-ath .ath-count { margin-inline-start: auto; }
   .ath-fab .ath-fab-l { display: none; }
   .ath-fab .ath-dot { inset-inline-start: auto; inset-inline-end: 8px; top: 8px; }
 }
-@media (prefers-reduced-motion: reduce) { .ath-dock, .ath-fab .ath-dot, .ath-typing i { animation: none !important; } .ath-fab { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ath-dock, .ath-fab .ath-dot, .ath-typing i, .ath-caret { animation: none !important; } .ath-fab { transition: none; } }
 
 /* an Athena card elsewhere (the campaign planner): the same black edge */
-.ath-edge { border-inline-start: 3px solid var(--text) !important; }
+.ath-edge { border-color: var(--line-strong) !important; }
 /* while a drawer or sheet is open, the owl button steps aside (the drawer's own buttons sit in that corner) */
 body:has(.drawer[role="dialog"], .mb-sheet, .cv-sheet, .tour-scrim, .tour-card) .ath-fab { display: none; }
 
@@ -127,3 +163,31 @@ body:has(.drawer[role="dialog"], .mb-sheet, .cv-sheet, .tour-scrim, .tour-card) 
 @media (prefers-reduced-motion: reduce) { .pc-range .pc-mark { transition: none; } }
 
 .bid-forecast { display: grid; gap: 6px; justify-items: start; padding-top: 8px; border-top: 1px dashed var(--line-strong); }
+
+/* ⌘K: one box to go anywhere or ask Athena */
+.cmdk-btn { display: inline-flex; align-items: center; gap: 8px; width: min(360px, 34vw); height: 34px; padding: 0 8px 0 10px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--surface-muted); color: var(--text-subtle); font: 400 13px/18px var(--font-sans); cursor: pointer; margin-inline-start: auto; }
+.cmdk-btn:hover { border-color: var(--text-subtle); color: var(--text-muted); }
+.cmdk-btn span { flex: 1; text-align: start; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cmdk-btn kbd { border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); padding: 0 5px; font: 600 11px/16px var(--font-sans); color: var(--text-muted); }
+:root[lang="ar"] .cmdk-btn { font-family: var(--font-arabic); }
+.cmdk-scrim { position: fixed; inset: 0; z-index: 120; background: rgba(11, 11, 12, .32); display: grid; justify-items: center; align-content: start; padding: 12vh 16px 16px; animation: cmdk-in .12s ease-out; }
+@keyframes cmdk-in { from { opacity: 0; } }
+.cmdk { width: min(640px, 100%); max-height: 70vh; display: grid; grid-template-rows: auto 1fr; background: var(--surface); border-radius: 14px; box-shadow: 0 20px 60px rgba(11, 11, 12, .28); overflow: hidden; }
+.cmdk-q { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+html body .cmdk .cmdk-q input, html body .cmdk .cmdk-q input:focus { flex: 1; border-radius: 0 !important; outline: 0 !important; min-width: 0; border: 0 !important; outline: none !important; box-shadow: none !important; background: transparent !important; padding: 4px 0 !important; font: 400 17px/24px var(--font-sans); }
+.cmdk-hint { font-size: 12px; color: var(--text-subtle); white-space: nowrap; }
+.cmdk-list { list-style: none; margin: 0; padding: 6px 0; overflow-y: auto; }
+.cmdk-g { padding: 10px 16px 4px; font: 600 11px/16px var(--font-sans); color: var(--text-subtle); }
+.cmdk-it { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+.cmdk-it.sel { background: var(--surface-muted); }
+.cmdk-ic { width: 24px; height: 24px; flex: none; border-radius: 6px; background: var(--surface-muted); display: grid; place-items: center; font: 600 10px/1 var(--font-sans); color: var(--text-muted); }
+.cmdk-it.sel .cmdk-ic { background: var(--surface); }
+.cmdk-l { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cmdk-m { font-size: 12px; color: var(--text-subtle); white-space: nowrap; }
+.cmdk-empty { margin: 0; padding: 20px 16px; color: var(--text-muted); font-size: 14px; }
+:root[lang="ar"] :is(.cmdk-q input, .cmdk-it, .cmdk-g, .cmdk-empty) { font-family: var(--font-arabic); }
+@media (max-width: 760px) { .cmdk-btn span, .cmdk-btn kbd { display: none; } .cmdk-btn { width: 34px; padding: 0; justify-content: center; } .cmdk-hint { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cmdk-scrim { animation: none; } }
+/* the boxes around Athena's inputs carry the focus ring; the inputs themselves stay bare */
+.ath-dock .ath-box input:not(#_):is(:focus, :focus-visible, :hover), .cmdk .cmdk-q input:not(#_):is(:focus, :focus-visible, :hover) { box-shadow: none !important; outline: 0 !important; border: 0 !important; background: transparent !important; }

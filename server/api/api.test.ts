@@ -1286,6 +1286,23 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect(sky.why.proof).toMatchObject({ n: 5, buyers: 1, rebooked: 1, industry: 'Banking' })
   })
 
+  test('Athena panel endpoints: market summary, product insight, ⌘K find with slips, feedback and unanswered questions for the team', async () => {
+    const px = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+    const sum = (await call(buyerA, 'GET', '/api/athena/summary?channel=radio')).json()
+    expect(sum).toMatchObject({ products: 2, dates: 2, n: 0, low: null })
+    const ins = (await call(buyerA, 'GET', `/api/athena/product/${px}`)).json()
+    expect(ins).toMatchObject({ title: 'Skyline FM · Morning Markets', channel: 'radio', onSale: 1, next: { price: AED(3_500) }, sold: null })
+    const found = (await call(buyerA, 'GET', `/api/athena/find?q=${encodeURIComponent('skylin')}`)).json()
+    expect(found.outlets[0]).toMatchObject({ name: 'Skyline FM', channel: 'radio' })
+    expect(found.companies).toEqual([]) // companies only for Nashr's team
+    expect((await call(admin, 'GET', `/api/athena/find?q=${encodeURIComponent('gulf radi')}`)).json().companies[0]).toMatchObject({ name: 'Gulf Radio' })
+    expect((await call(null, 'GET', '/api/athena/find?q=sky')).statusCode).toBe(401)
+    await call(buyerA, 'POST', '/api/athena/feedback', { question: 'can i pay in instalments', unknown: true })
+    await call(buyerA, 'POST', '/api/athena/feedback', { question: 'how do I pay?', answer: 'Only after…', helpful: false })
+    const q = (await call(admin, 'GET', '/api/athena/noticed')).json().items.find((i: any) => i.kind === 'questions')
+    expect(q.data.n).toBe(2); expect(q.data.samples.sort()).toEqual(['can i pay in instalments', 'how do I pay?'])
+  })
+
   test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
     const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
     expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })

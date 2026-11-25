@@ -5,7 +5,7 @@ import { setting } from '../core/settings.js'
 import { arNorm, slips } from '../shared/spell.js'
 import { audit } from '../core/audit.js'
 import { lastMonth, reportEmail, reportFor } from '../core/report.js'
-import { dubaiDay, seasonsOn, seasonsSoon } from '../shared/seasons.js'
+import { SEASONS, dubaiDay, seasonsOn, seasonsSoon } from '../shared/seasons.js'
 import { MarketError } from '../marketplace/market.js'
 
 /*
@@ -17,6 +17,7 @@ import { MarketError } from '../marketplace/market.js'
  */
 const SOLD = `d.status not in ('declined', 'lapsed', 'cancelled', 'refunded')`
 const DAYS = 90, ENOUGH = 3
+const slugOf = (name: string, id: string) => name.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || id
 
 /** Sorted prices (fils) of auction sales over the last 90 days that match `where`. */
 async function sales(db: pg.PoolClient, where: string, params: unknown[], at: Date) {
@@ -191,6 +192,77 @@ export function athenaRoutes(route: RouteFn) {
     return { report: { month, html, text } }
   })
 
+  // The fact rows under a campaign Athena read: what is on sale in those dates, how auctions of those media types usually end,
+  // and the UAE seasons in the dates.
+  route('GET', '/api/athena/summary', ['buyer', 'admin'], async ({ db, at: now }, req) => {
+    const q = req.query as Record<string, string | undefined>
+    const channels = (q.channel ?? '').split(',').filter(Boolean).slice(0, 9), sectors = (q.sectors ?? '').split(',').filter(Boolean).slice(0, 9)
+    const df = /^\d{4}-\d{2}-\d{2}$/.test(q.df ?? '') ? q.df! : null, dt = /^\d{4}-\d{2}-\d{2}$/.test(q.dt ?? '') ? q.dt! : null
+    const max = Number(q.max) > 0 ? Math.round(Number(q.max) * 100) : null
+    const onSale = (await db.query(`select count(distinct p.id)::int products, count(*)::int dates from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+      where s.status = 'open' and s.closes_at > $1 and not p.archived and (cardinality($2::text[]) = 0 or o.channel = any($2))
+        and (cardinality($3::text[]) = 0 or cardinality(o.sectors) = 0 or o.sectors && $3) and ($4::date is null or s.starts_at >= $4::date::timestamp at time zone 'Asia/Dubai')
+        and ($5::date is null or s.starts_at < ($5::date + 1)::timestamp at time zone 'Asia/Dubai') and ($6::bigint is null or coalesce(s.top_amount, s.starting_price) <= $6)`,
+      [now, channels, sectors, df, dt, max])).rows[0]
+    const xs = channels.length ? await sales(db, 'o.channel = any($2)', [channels], now) : []
+    const seasons = df && dt ? SEASONS.filter(x => x.from <= dt && x.to >= df).map(x => ({ key: x.key, name: x.name, nameAr: x.nameAr })) : []
+    return { products: onSale.products, dates: onSale.dates, n: xs.length, low: xs.length >= ENOUGH ? at(xs, .25) : null, high: xs.length >= ENOUGH ? at(xs, .75) : null,
+      seasons: seasons.filter((x, i, a) => a.findIndex(y => y.key === x.key) === i), days: DAYS }
+  })
+
+  // "Ask Athena about this" on a product: what it sold for, where its next auction usually ends, what is on sale, the season.
+  route('GET', '/api/athena/product/:id', ['buyer', 'admin', 'seller'], async ({ db, at: now }, req) => {
+    const p = (await db.query(`select p.id, p.name, p.kind, p.sale_type, brand_name(o) brand, o.channel, o.id outlet_id, o.name outlet_name from placements p join outlets o on o.id = p.outlet_id
+      where p.id = $1 and not p.archived`, [req.params.id])).rows[0]
+    if (!p) throw new NotFound()
+    const next = (await db.query(`select s.id, s.starts_at, s.closes_at, s.sale_type, s.starting_price, s.top_amount, count(*) over ()::int n from slots s
+      where s.placement_id = $1 and s.status = 'open' and s.closes_at > $2 order by s.starts_at limit 1`, [p.id, now])).rows[0]
+    const xs = await sales(db, 'p.id = $2', [p.id], now), media = xs.length >= ENOUGH ? null : await sales(db, 'o.channel = $2', [p.channel], now)
+    const forecast = next && next.sale_type === 'auction' ? await forecastFor(db, { ...next, channel: p.channel }, now) : null
+    return { title: p.kind === 'main' ? p.brand : `${p.brand} · ${p.name}`, channel: p.channel, saleType: next?.sale_type ?? p.sale_type, slug: slugOf(p.outlet_name, p.outlet_id),
+      onSale: next?.n ?? 0, next: next ? { at: next.starts_at, closes: next.closes_at, price: Number(next.top_amount ?? next.starting_price) } : null,
+      sold: xs.length >= ENOUGH ? { n: xs.length, low: at(xs, .25), high: at(xs, .75), median: at(xs, .5) } : null,
+      media: media && media.length >= ENOUGH ? { n: media.length, low: at(media, .25), high: at(media, .75) } : null,
+      forecast, season: next ? seasonsOn(dubaiDay(next.starts_at))[0] ?? null : null, days: DAYS }
+  })
+
+  // ⌘K: find anything by name, forgiving slips: outlets and products for everyone; the person's own bookings and campaigns;
+  // companies for Nashr's team.
+  route('GET', '/api/athena/find', ['buyer', 'seller', 'admin'], async ({ db, me }, req) => {
+    const raw = String((req.query as any).q ?? '').trim().slice(0, 80), q = arNorm(raw.toLowerCase())
+    if (q.length < 2) return { outlets: [], products: [], bookings: [], campaigns: [], companies: [] }
+    const words = q.split(/\s+/).filter(Boolean)
+    const close = (name: string) => { const n = arNorm(name.toLowerCase()); if (n.includes(q)) return 0
+      const ws = n.split(/[^a-z0-9\u0600-\u06FF]+/).filter(Boolean); let d = 0
+      for (const a of words) { const m = Math.min(...ws.map(w => w.startsWith(a) ? 0 : slips(a, w, 2))); if (m > (a.length >= 7 ? 2 : a.length >= 4 ? 1 : 0)) return 9; d += m }
+      return d + 1 }
+    const pick = <T extends { name: string }>(rows: T[], n: number) => rows.map(r => ({ r, d: close(r.name) })).filter(x => x.d < 9).sort((a, b) => a.d - b.d).slice(0, n).map(x => x.r)
+    const outlets = pick((await db.query(`select o.id, brand_name(o) name, o.name outlet_name, o.name_ar, o.channel, (select count(*)::int from placements p where p.outlet_id = o.id and not p.archived) products
+      from outlets o limit 3000`)).rows.flatMap((r: any) => [r, ...(r.name_ar ? [{ ...r, name: r.name_ar }] : [])]), 4)
+      .map((r: any) => ({ name: r.name, slug: slugOf(r.outlet_name, r.id), channel: r.channel, products: r.products }))
+    const products = pick((await db.query(`select p.id, case when p.kind = 'main' then brand_name(o) else brand_name(o) || ' · ' || p.name end name, o.name outlet_name, o.id outlet_id,
+        (select min(coalesce(s.top_amount, s.starting_price)) from slots s where s.placement_id = p.id and s.status = 'open') price
+      from placements p join outlets o on o.id = p.outlet_id where not p.archived limit 5000`)).rows, 4)
+      .map((r: any) => ({ id: r.id, name: r.name, slug: slugOf(r.outlet_name, r.outlet_id), price: r.price == null ? null : Number(r.price) }))
+    const role = me.actAs.role, company = me.actAs.companyId
+    const deals = role === 'buyer' || role === 'seller' ? (await db.query(`select d.id, d.ref, d.status, brand_name(o) || ' · ' || s.label name from deals d join slots s on s.id = d.slot_id
+        join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where ${role === 'buyer' ? 'd.buyer_id' : 'd.seller_id'} = $1 order by d.created_at desc limit 500`, [company])).rows
+      .map((r: any) => ({ ...r, name: `${r.ref} ${r.name}` })) : []
+    const bookings = pick(deals, 3).map((r: any) => ({ id: r.id, ref: r.ref, name: r.name.slice(r.ref.length + 1), status: r.status, href: role === 'buyer' ? `/bookings/${r.id}` : `/deals/${r.id}` }))
+    const campaigns = role === 'buyer' ? pick((await db.query(`select id, name from campaigns where buyer_id = $1 limit 500`, [company])).rows, 3) : []
+    const companies = role === 'admin' || role === 'founder' ? pick((await db.query(`select id, name, type from companies where type <> 'nashr' limit 3000`)).rows, 3) : []
+    return { outlets, products, bookings, campaigns, companies }
+  })
+
+  // 👍 / 👎 on an answer, and the questions Athena could not answer (logged by the screen), for Nashr's team.
+  route('POST', '/api/athena/feedback', ['buyer', 'seller', 'admin'], async ({ db, at: now, me }, req) => {
+    const b = req.body as { question: string; answer?: string; helpful?: boolean; unknown?: boolean }
+    await db.query(`insert into athena_feedback (company_id, user_id, question, answer, helpful, unknown, created_at) values ($1, $2, $3, $4, $5, $6, $7)`,
+      [me.actAs.companyId, me.userId, b.question.slice(0, 400), b.answer?.slice(0, 1000) ?? null, b.helpful ?? null, !!b.unknown, now])
+    return { ok: true }
+  }, { type: 'object', required: ['question'], additionalProperties: false, properties: { question: { type: 'string', minLength: 1, maxLength: 400 },
+    answer: { type: 'string', maxLength: 2000 }, helpful: { type: 'boolean' }, unknown: { type: 'boolean' } } })
+
   // What Athena noticed for this person, most pressing first. Each item is a kind with its details; the screen words it.
   route('GET', '/api/athena/noticed', ['buyer', 'seller', 'admin'], async ({ db, at: now, me }) => {
     const items: { key: string; kind: string; data: Record<string, unknown>; href: string; at: string | null }[] = []
@@ -303,6 +375,9 @@ export function athenaRoutes(route: RouteFn) {
       ]
       for (const [kind, n, href] of counts) if (n) items.push({ key: `${kind}:${n}`, kind, data: { n }, href, at: null })
       for (const g of await guard(db, now)) items.push(g)
+      const qs = (await db.query(`select question, unknown, helpful from athena_feedback where created_at > $1::timestamptz - interval '7 days' and (unknown or helpful = false)
+        order by created_at desc limit 50`, [now])).rows
+      if (qs.length) items.push({ key: `questions:${qs.length}`, kind: 'questions', data: { n: qs.length, samples: [...new Set(qs.map((q: any) => q.question))].slice(0, 3) }, href: '/admin', at: null })
     }
     return { items }
   })

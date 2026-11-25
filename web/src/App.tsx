@@ -22,6 +22,7 @@ import { resetLive } from './live'
 import './messages/messages.css'
 import { Logo } from './Logo'
 import { AthenaDock, AthenaMenuItem } from './athena/AthenaDock'
+import { Palette, PaletteButton } from './athena/Palette'
 
 
 // Screens behind sign-in load only when opened, so visitors download just the public pages (faster landing page).
@@ -342,6 +343,7 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
       <header className="wtop">
         <Wordmark href={`${home}`} />
         <div className="spacer" />
+        {!me.viewingAs && <PaletteButton />}
         <ThemeToggle />
         <Bell role={me.role} />
         <NameMenu name={me.company.name} sub={`${ROLE[me.role] ?? me.role}`} initials={initials} mini={false} onSignOut={signOut} onTour={tourFor ? replayTour : undefined}
@@ -386,6 +388,7 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p, seller) ? 'active' : ''}
         aria-current={isActive(path, p, seller) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a>)}</nav>}
+      {!me.viewingAs && <Palette role={staff ? 'admin' : me.role as 'buyer' | 'seller'} />}
       {!me.viewingAs && <AthenaDock role={staff ? 'admin' : me.role as 'buyer' | 'seller'} name={(me.signedInAs ? '' : me.name ?? '').split(' ')[0]} companyId={me.company.id ?? me.company.name} />}
     </div>
   )

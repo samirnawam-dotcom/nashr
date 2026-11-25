@@ -1,5 +1,6 @@
 import { GLOSSARY, Tip } from '../onboarding/Onboarding'
 import { AthenaPanel, Owl } from '../athena/Owl'
+import { openAthena } from '../athena/open'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
 import { money, slotWhen } from '../format'
@@ -256,6 +257,7 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
     <div className="pc-price"><span className="small muted">{priceLabel}</span><b className="num">{money(p.price)}</b></div>
     <span className="small muted">{t('{n} on sale', { n: p.onSale })} · {t('next: {when}', { when: next })}</span>
     {p.why && <p className="pc-why small"><Owl size={15} /><span><b>{t('Athena')}:</b> {whyText(p)}</span></p>}
+    {!guest && <button type="button" className="pc-ask" onClick={() => openAthena({ about: { placementId: p.placementId, title: p.title } })}><Owl size={14} />{t('Ask Athena about this')}</button>}
     {actions}
   </article>
 }

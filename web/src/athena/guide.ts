@@ -14,7 +14,10 @@ import { CHANNEL_NAME } from '../media'
  */
 export type Role = 'buyer' | 'seller' | 'admin'
 export type Link = { label: string; href: string }
-export type Reply = { text: string; links?: Link[]; chips?: string[] }
+/** A campaign as Athena understood it: the facts it shows as chips, which the person can remove or add to. */
+export type Query = { text: string; channels: string[]; sectors: string[]; audiences: string[]; dayparts: string[]; dateFrom?: string; dateTo?: string; amount?: number
+  fixes: { from: string; to: string }[] }
+export type Reply = { text: string; links?: Link[]; chips?: string[]; query?: Query; unknown?: boolean }
 
 /** Lower case, Western digits, no accents, one space. */
 export const norm = (s: string) => arNorm(s.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).toLowerCase()).replace(/\s+/g, ' ').trim()
@@ -193,7 +196,7 @@ function span(from: string, to: string) {
 }
 
 /** Athena's answer to one message. */
-export function answer(text: string, role: Role, path: string, rules: Rules | null, today: string): Reply {
+export function answer(text: string, role: Role, path: string, rules: Rules | null, today: string, last?: Query): Reply {
   const n = norm(text), words = tokens(text)
   if (!n) return greet(role, path)
   if (/^(hi|hello|hey|salam|مرحبا|السلام عليكم|اهلا|hala|هلا)\b/.test(n) && words.length <= 3) return greet(role, path)
@@ -202,18 +205,16 @@ export function answer(text: string, role: Role, path: string, rules: Rules | nu
     return { text: t('I know how Nashr works and where everything is. Ask me how to do something, ask me to take you to a page, or describe a campaign in a sentence and I will find the best fits.'), chips: DEFAULT_CHIPS[role]() }
   if (/\b(this page|here|what is this|what can i do here)\b|هذه الصفحة|هنا/.test(n)) return greet(role, path)
 
-  // a campaign in a sentence: search the Directory with what Athena read
+  // a change to the last campaign ("add TV", "make it cheaper", "only morning shows", "without radio", "أضف تلفزيون", "أرخص")
+  if (role === 'buyer' && last) {
+    const changed = follow(text, last, today)
+    if (changed) return queryReply(changed)
+  }
+  // a campaign in a sentence: what Athena read, as facts the person can change before searching
   if (role === 'buyer') {
     const r = readRequest(text, today)
-    if (r.request && r.signals >= 2) {
-      const bits = [r.channels.map(c => t(CHANNEL_NAME[c] ?? c)).join(t(' or ')), r.sectors.map(s => t(s)).join(', '),
-        r.audiences.map(a => t(audienceLabel(a)).toLowerCase()).join(', '), r.dateFrom && r.dateTo ? span(r.dateFrom, r.dateTo) : '',
-        r.amount ? t('up to AED {n}', { n: (r.amount / 100).toLocaleString('en-US') }) : ''].filter(Boolean)
-      const fixed = r.fixes.length ? ' ' + t('(I read {words}.)', { words: r.fixes.slice(0, 4).map(f => t('“{from}” as “{to}”', { from: f.from, to: f.to })).join(', ') }) : ''
-      return { text: t('I read: {what}. I can show the products that fit best, first.', { what: bits.join(' · ') }) + fixed + (r.missing.includes('dates') ? ' ' + t('Tell me the dates too, and I will only show what is on sale then.') : ''),
-        links: [{ label: t('Show the best fits'), href: directoryHref(text, today) },
-          ...(r.amount ? [{ label: t('Plan a campaign with this'), href: `/campaigns?new=1&athena=1&ask=${encodeURIComponent(text)}` }] : [])] }
-    }
+    if (r.request && r.signals >= 2)
+      return queryReply({ text, channels: r.channels, sectors: r.sectors, audiences: r.audiences, dayparts: r.dayparts, dateFrom: r.dateFrom, dateTo: r.dateTo, amount: r.amount, fixes: r.fixes })
   }
 
   // "take me to / where is / open" a place
@@ -230,7 +231,7 @@ export function answer(text: string, role: Role, path: string, rules: Rules | nu
       chips: close.length ? close.map(o => QUESTION[o.x.id]?.() ?? '').filter(Boolean) : best.x.chips?.() }
   }
   if (place && place.s >= 1.6) return { text: t('Here is {page}.', { page: place.p.label() }), links: [{ label: t('Open {page}', { page: place.p.label() }), href: place.p.href }] }
-  return { text: t('I am not sure I understood. Try asking it another way, or ask Nashr\'s team: they answer within one working day.'),
+  return { unknown: true, text: t('I am not sure I understood. Try asking it another way, or ask Nashr\'s team: they answer within one working day.'),
     links: role === 'admin' ? undefined : [{ label: t('Contact Nashr'), href: '/help' }], chips: DEFAULT_CHIPS[role]() }
 }
 
@@ -241,4 +242,67 @@ const QUESTION: Record<string, () => string> = {
   mybids: () => t('Where are my bids?'), bid: () => t('How does bidding work?'), proof: () => t('How do I approve proof?'), brief: () => t('Where do I add the creative?'),
   requests: () => t('How do bookings reach me?'), paid: () => t('When am I paid?'), proofdue: () => t('When is proof due?'), product: () => t('How do I add a product?'),
   price: () => t('How should I price it?'), invoices: () => t('Who issues the tax invoices?'), team: () => t('How do I add a colleague?'), password: () => t('I forgot my password'),
+}
+
+/** The Directory address for a campaign as Athena understood it (filters from the facts, ranking hints from the sentence). */
+export function queryHref(q: Query) {
+  const p = new URLSearchParams({ view: 'products', sort: 'fit', ask: q.text })
+  if (q.channels.length) p.set('channel', q.channels.join(','))
+  if (q.sectors.length) p.set('sectors', q.sectors.join(','))
+  if (q.dayparts.length) p.set('dp', q.dayparts.join(','))
+  if (q.dateFrom) p.set('df', q.dateFrom); if (q.dateTo) p.set('dt', q.dateTo)
+  if (q.amount) p.set('max', String(Math.round(q.amount / 100)))
+  return `/directory?${p}`
+}
+
+/** Athena's answer for a campaign: the facts as chips, what it read differently, and what to do next. */
+export function queryReply(q: Query): Reply {
+  const plan = q.amount && q.dateFrom ? [{ label: t('Plan a campaign with this'), href: `/campaigns?new=1&athena=1&ask=${encodeURIComponent(sentence(q))}` }] : []
+  const nexts = [
+    !q.channels.includes('tv') ? t('Add TV') : '', q.amount ? t('Make it cheaper') : '',
+    q.channels.some(c => c === 'radio' || c === 'tv') && !q.dayparts.length ? t('Only morning shows') : '',
+    !q.dateFrom ? t('In the first two weeks of next month') : '',
+  ].filter(Boolean).slice(0, 3)
+  return { query: q, text: q.dateFrom ? t("Here's what I understood. Change anything, then I'll find the best fits.") : t("Here's what I understood. Tell me the dates too, and I will only show what is on sale then."),
+    links: [{ label: t('Show the best fits'), href: queryHref(q) }, ...plan], chips: nexts }
+}
+
+/** The campaign as a sentence Athena reads back (for the campaign form, after chips were changed). */
+function sentence(q: Query) {
+  const bits = [q.channels.join(' and '), q.sectors.join(' '), q.dayparts.join(' '), q.dateFrom && q.dateTo ? `${Number(q.dateFrom.slice(8))}-${Number(q.dateTo.slice(8))} ${MONTHS_EN[Number(q.dateFrom.slice(5, 7)) - 1]}` : '',
+    q.amount ? `AED ${Math.round(q.amount / 100)}` : ''].filter(Boolean)
+  return bits.length >= 2 ? bits.join(' ') : q.text
+}
+const MONTHS_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+
+/** A follow-up that changes the last campaign, in English or Arabic; null when the message is about something else. */
+export function follow(text: string, last: Query, today: string): Query | null {
+  const n = norm(text), r = readRequest(text, today), q: Query = { ...last, channels: [...last.channels], dayparts: [...last.dayparts], sectors: [...last.sectors] }
+  const add = /^(add|also|plus|and|with|include)\b|^(اضف|أضف|زد|ومع|مع)/.test(n), remove = /^(remove|without|no|drop|not|exclude)\b|\b(without|except)\b|^(بدون|بلا|احذف|ازل|أزل|الغ|ألغ)/.test(n)
+  const cheaper = /\b(cheaper|less|lower|smaller budget|reduce)\b|ارخص|أرخص|اقل|أقل|خفض/.test(n), more = /\b(more budget|bigger|higher budget|increase)\b|زد الميزانيه|اكبر/.test(n)
+  const only = /^(only|just)\b|^فقط|فقط$/.test(n)
+  let changed = false
+  if (r.channels.length && (add || remove || only)) {
+    if (remove) q.channels = q.channels.filter(c => !r.channels.includes(c))
+    else if (only) q.channels = r.channels
+    else q.channels = [...new Set([...q.channels, ...r.channels])]
+    changed = true
+  }
+  if (r.dayparts.length && (only || add || remove || n.split(' ').length <= 4)) { q.dayparts = remove ? q.dayparts.filter(d => !r.dayparts.includes(d)) : r.dayparts; changed = true }
+  if (cheaper && q.amount) { q.amount = r.amount ?? Math.round(q.amount * 0.8 / 100_000) * 100_000; changed = true }
+  else if (more && q.amount) { q.amount = r.amount ?? Math.round(q.amount * 1.25 / 100_000) * 100_000; changed = true }
+  else if (r.amount && n.split(' ').length <= 6) { q.amount = r.amount; changed = true }
+  if (r.dateFrom && r.signals <= 2 && n.split(' ').length <= 8) { q.dateFrom = r.dateFrom; q.dateTo = r.dateTo; changed = true }
+  if (r.sectors.length && (add || only) ) { q.sectors = r.sectors; changed = true }
+  if (r.audiences.length && (add || only || n.split(' ').length <= 4)) { q.audiences = [...new Set([...q.audiences, ...r.audiences])]; changed = true }
+  if (!changed) return null
+  return { ...q, text: `${last.text}; ${text}`.slice(0, 480), fixes: r.fixes }
+}
+
+/** Pages that match what was typed in ⌘K, for this role (forgiving slips, English and Arabic). */
+export function findPlaces(q: string, role: Role): Link[] {
+  const n = norm(q), words = tokens(q)
+  if (!n) return []
+  return PLACES.filter(p => p.roles.includes(role)).map(p => ({ p, s: Math.max(0, ...[...p.words, p.label().toLowerCase()].map(k => hit(words.length ? words : [n], n, k)),
+      norm(p.label()).startsWith(n) ? 2 : 0) })).filter(x => x.s >= 1.6).sort((a, b) => b.s - a.s).slice(0, 3).map(x => ({ label: x.p.label(), href: x.p.href }))
 }
