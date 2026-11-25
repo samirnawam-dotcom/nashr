@@ -178,7 +178,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
 
         {s.saleType === 'auction' ? <section className="form">
           <BidStatus s={s} />
-          {!guest && <BidAdvice slotId={s.id} top={s.topBid ?? null} onUse={v => { setAuto(false); setAmount(v) }} />}
+          {!guest && <BidAdvice slotId={s.id} top={s.topBid ?? null} onUse={v => { setAuto(false); setAmount(v) }} onAuto={v => { setAuto(true); setMax(v) }} />}
           <div className="seg bid-mode" role="radiogroup" aria-label={t('How to bid')}>
             <button type="button" role="radio" aria-checked={!auto} className={!auto ? 'on' : ''} onClick={() => setAuto(false)}>{t('Single bid')}</button>
             <button type="button" role="radio" aria-checked={auto} className={auto ? 'on' : ''} onClick={() => setAuto(true)}>{t('Auto-bid')}</button></div>

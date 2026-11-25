@@ -11,6 +11,7 @@ import { STATUS, type TrackStatus } from '../calendar/Tracker'
 import { DatesPanel } from '../directory/Shop'
 import { ResultsPage } from '../insights/Results'
 import { AthenaPlan } from './AthenaPlan'
+import { readRequest } from '../../../server/shared/athena'
 import '../calendar/tracker.css'
 import '../directory/directory.css'
 import './campaigns.css'
@@ -34,6 +35,15 @@ const BLANK_BRIEF: Form['brief'] = { advertiser: '', industry: '', message: '', 
 const formOf = (c?: Campaign): Form => c ? { name: c.name, clientId: c.clientId ?? '', budget: c.budget ? String(c.budget / 100) : '', startDate: c.startDate ?? '', endDate: c.endDate ?? '',
   objective: c.objective ?? '', brief: { ...BLANK_BRIEF, ...(c.brief ?? {}), fileName: c.brief?.draftFileKey ? t('File on record') : undefined } }
   : { name: '', clientId: '', budget: '', startDate: '', endDate: '', objective: '', brief: BLANK_BRIEF }
+
+/** A new campaign filled in from a sentence Athena read in the chat ("radio for a bank launch 1–14 Dec, AED 50,000"). */
+function fromAsk(ask: string): Form {
+  const r = readRequest(ask, todayInDubai()), f = formOf()
+  const month = r.dateFrom ? new Date(`${r.dateFrom}T12:00:00Z`).toLocaleDateString(isAr ? 'ar-AE' : 'en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''
+  const name = [r.sectors[0] ? t(r.sectors[0]) : '', r.channels.map(c => t(MEDIA_LABEL[c as keyof typeof MEDIA_LABEL] ?? c)).join(' + '), month].filter(Boolean).join(' · ')
+  return { ...f, name: name || t('New campaign'), startDate: r.dateFrom ?? '', endDate: r.dateTo ?? '', budget: r.amount ? String(r.amount / 100) : '', objective: ask.slice(0, 500),
+    brief: { ...f.brief, industry: r.sectors[0] ?? '' } }
+}
 
 /** What is still missing before the campaign can be saved, in the order the form asks. */
 function missing(f: Form): string | null {
@@ -162,6 +172,8 @@ export function CampaignsPage() {
   const [list, setList] = useState<Campaign[] | null>(null), [error, setError] = useState(''), [form, setForm] = useState(() => new URLSearchParams(location.search).get('new') === '1')
   const [clients, setClients] = useState<Client[]>([]), [athena, setAthena] = useState(() => new URLSearchParams(location.search).get('athena') === '1')
   const [tab, setTab] = useState<Phase | 'all'>('active')
+  // from Athena's chat: the sentence it read fills in the new campaign, then Athena plans it once it is saved
+  const ask = new URLSearchParams(location.search).get('ask') ?? ''
   const [layout, setLayout] = useState<'cards' | 'list'>(() => { try { return localStorage.getItem('nashr:cp-view') === 'list' ? 'list' : 'cards' } catch { return 'cards' } })
   useEffect(() => { try { localStorage.setItem('nashr:cp-view', layout) } catch { /* fine */ } }, [layout])
   useEffect(() => { api<Campaign[]>('/campaigns').then(l => { setList(l)
@@ -178,7 +190,7 @@ export function CampaignsPage() {
           <button className="btn" onClick={() => { setAthena(true); setForm(true) }}>{t('Plan your campaign with Athena')}</button></div>}
       </PhotoBand>
       {form && athena && <p className="athena-line">{t('First the campaign: its dates, budget and brief. Then Athena suggests a plan for it.')}</p>}
-      {form && <CampaignForm initial={formOf()} clients={clients} onSaved={id => navigate(`/campaigns/${id}${athena ? '?athena=1' : ''}`)} onCancel={() => setForm(false)} />}
+      {form && <CampaignForm initial={ask ? fromAsk(ask) : formOf()} clients={clients} onSaved={id => navigate(`/campaigns/${id}${athena ? `?athena=1${ask ? `&ask=${encodeURIComponent(ask)}` : ''}` : ''}`)} onCancel={() => setForm(false)} />}
       {error && <p className="error">{error}</p>}
       {list && !list.length && !form && <div className="card cp-empty"><p>{t('No campaigns yet. A campaign keeps one budget and one brief for many bids.')}</p>
         <div className="row-flex"><button className="btn primary" onClick={() => setForm(true)}>{t('New campaign')}</button>
@@ -282,7 +294,7 @@ export function CampaignPage({ id }: { id: string }) {
         <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
 
       {tab === 'plan' && <>
-        <AthenaPlan campaignId={c.id} autoFocus={new URLSearchParams(location.search).get('athena') === '1'}
+        <AthenaPlan campaignId={c.id} autoFocus={new URLSearchParams(location.search).get('athena') === '1'} autoAsk={new URLSearchParams(location.search).get('ask') ?? undefined}
           onAdded={n => { setNote(t('{n} added to the plan. Bid on each one when you are ready.', { n })); setReload(x => x + 1) }} />
         <div className="cp-h"><a className="btn primary" href={add}>+ {t('Add products')}</a><span className="spacer" /><a href={`/calendar?campaign=${c.id}${c.startDate ? `&date=${c.startDate}` : ''}`}>{t('View in Calendar')}</a></div>
         {!items ? <p className="muted">{t('Loading…')}</p> : !items.length ? <div className="card cp-empty"><p>{t('No products yet. Add them from the Directory: they show here with their dates, prices and status.')}</p>

@@ -12,10 +12,10 @@ import { arabicFor } from '../../web/src/server-text.js'
  * alerts and messages follow each person's choices on their account page.
  */
 type Lang = 'en' | 'ar'
-const site = () => (process.env.SITE_URL ?? 'http://localhost:5173').replace(/\/$/, '')
-const tr = (lang: Lang) => (en: string, vars: Record<string, string | number> = {}) =>
+export const site = () => (process.env.SITE_URL ?? 'http://localhost:5173').replace(/\/$/, '')
+export const tr = (lang: Lang) => (en: string, vars: Record<string, string | number> = {}) =>
   (lang === 'ar' ? AR[en] ?? en : en).replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''))
-const money = (lang: Lang) => (fils: number) => {
+export const money = (lang: Lang) => (fils: number) => {
   const n = (fils / 100).toLocaleString('en-US', { maximumFractionDigits: fils % 100 ? 2 : 0, minimumFractionDigits: fils % 100 ? 2 : 0 })
   return lang === 'ar' ? `${n} درهم` : `AED ${n}`
 }
@@ -47,7 +47,8 @@ ${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="displ
   return { html, text }
 }
 
-async function queue(db: Db, m: { to: string; userId?: string | null; companyId?: string | null; kind: string; subject: string; text: string; html: string }, at: Date) {
+/** Queue one email (the outbox sends it, or holds it until SMTP is set up). */
+export async function queue(db: Db, m: { to: string; userId?: string | null; companyId?: string | null; kind: string; subject: string; text: string; html: string }, at: Date) {
   const on = !!smtpConfig()
   await db.query(`insert into outbox (to_email, user_id, company_id, kind, subject, text_body, html_body, status, next_attempt_at, created_at)
     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`, [m.to, m.userId ?? null, m.companyId ?? null, m.kind, m.subject.slice(0, 200), m.text, m.html, on ? 'queued' : 'held', at])

@@ -211,7 +211,8 @@ export function answer(text: string, role: Role, path: string, rules: Rules | nu
         r.amount ? t('up to AED {n}', { n: (r.amount / 100).toLocaleString('en-US') }) : ''].filter(Boolean)
       const fixed = r.fixes.length ? ' ' + t('(I read {words}.)', { words: r.fixes.slice(0, 4).map(f => t('“{from}” as “{to}”', { from: f.from, to: f.to })).join(', ') }) : ''
       return { text: t('I read: {what}. I can show the products that fit best, first.', { what: bits.join(' · ') }) + fixed + (r.missing.includes('dates') ? ' ' + t('Tell me the dates too, and I will only show what is on sale then.') : ''),
-        links: [{ label: t('Show the best fits'), href: directoryHref(text, today) }] }
+        links: [{ label: t('Show the best fits'), href: directoryHref(text, today) },
+          ...(r.amount ? [{ label: t('Plan a campaign with this'), href: `/campaigns?new=1&athena=1&ask=${encodeURIComponent(text)}` }] : [])] }
     }
   }
 

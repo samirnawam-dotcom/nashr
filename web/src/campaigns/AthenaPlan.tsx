@@ -34,12 +34,14 @@ const why = (l: Line) => {
 }
 const key = (l: Line) => `${l.placementId}:${l.slotId}`
 
-export function AthenaPlan({ campaignId, autoFocus, onAdded }: { campaignId: string; autoFocus?: boolean; onAdded: (n: number) => void }) {
+export function AthenaPlan({ campaignId, autoFocus, autoAsk, onAdded }: { campaignId: string; autoFocus?: boolean; autoAsk?: string; onAdded: (n: number) => void }) {
   const [text, setText] = useState(''), [plan, setPlan] = useState<Plan | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [shares, setShares] = useState<Record<string, number> | null>(null), [drop, setDrop] = useState<Set<string>>(new Set())
   const [swapped, setSwapped] = useState<Record<string, Line>>({}), [answer, setAnswer] = useState(''), [adding, setAdding] = useState(false)
   const box = useRef<HTMLInputElement>(null)
   useEffect(() => { if (autoFocus) box.current?.focus() }, [])
+  // from the chat: plan at once with the sentence Athena read (the campaign already has its dates and budget)
+  useEffect(() => { if (autoAsk) { setText(autoAsk); run(autoAsk, null) } }, [])
   async function run(words = text, s = shares) {
     setBusy(true); setError('')
     try { const p = await api<Plan>('/athena/plan', { method: 'POST', body: { campaignId, text: words, ...(s ? { shares: s } : {}) } })

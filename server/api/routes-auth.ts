@@ -86,7 +86,7 @@ export function authRoutes(route: RouteFn) {
   // Your own account: name, password, and which emails you want (essential ones about your bookings and money always go).
   route('GET', '/api/me/account', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me }) => {
     const u = (await db.query(`select name, email, role, email_prefs, totp_enabled from users where id = $1`, [me.userId])).rows[0]
-    return { name: u.name, email: u.email, role: u.role, emails: { bids: true, alerts: true, messages: true, news: false, ...u.email_prefs },
+    return { name: u.name, email: u.email, role: u.role, emails: { bids: true, alerts: true, messages: true, news: false, reports: true, ...u.email_prefs },
       twoStep: { on: u.totp_enabled, staff: ['admin', 'founder'].includes(u.role), requiredForMoney: !!(await setting(db, 'two_step_for_money', new Date())) } }
   })
   route('PUT', '/api/me/account', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req) => {
@@ -98,7 +98,7 @@ export function authRoutes(route: RouteFn) {
     await audit(db, `user:${me.userId}`, 'account.updated', 'user', me.userId, { fields: Object.keys(b) }, at)
     return { ok: true }
   }, { type: 'object', additionalProperties: false, properties: { name: { type: 'string', minLength: 1, maxLength: 120 }, lang: { enum: ['en', 'ar'] },
-    emails: { type: 'object', additionalProperties: false, properties: { bids: { type: 'boolean' }, alerts: { type: 'boolean' }, messages: { type: 'boolean' }, news: { type: 'boolean' } } } } })
+    emails: { type: 'object', additionalProperties: false, properties: { bids: { type: 'boolean' }, alerts: { type: 'boolean' }, messages: { type: 'boolean' }, news: { type: 'boolean' }, reports: { type: 'boolean' } } } } })
   // Updated terms: accepted once per version, by the person themselves (not by Nashr signed in as them)
   route('POST', '/api/me/accept-terms', ['buyer', 'seller', 'admin', 'founder'], async ({ db, at, me }, req) => {
     if (me.viewAs) throw new MarketError('You are viewing another account. Changes are not allowed.')

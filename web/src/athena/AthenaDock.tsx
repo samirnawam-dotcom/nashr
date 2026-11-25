@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { navigate } from '../nav'
 import { money } from '../format'
-import { t } from '../i18n'
+import { isAr, t } from '../i18n'
+import { tm } from '../i18n-server'
 import { todayInDubai } from '../calendar/layout'
 import { toDo } from '../messages/ToDo'
 import { CHANNEL_NAME } from '../media'
@@ -18,7 +19,7 @@ import { AthenaTag, Owl } from './Owl'
  * Anything can open it: window.dispatchEvent(new CustomEvent('athena:open', { detail: { tab, ask } })).
  */
 type Msg = { from: 'you' | 'athena'; text: string; links?: Link[]; chips?: string[] }
-type Noticed = { key: string; text: string; action?: string; href: string; at: string | null }
+type Noticed = { key: string; text: string; action?: string; href: string; at: string | null; post?: { path: string; body: unknown; done: string } }
 type ServerItem = { key: string; kind: string; data: any; href: string; at: string | null }
 
 export const openAthena = (detail: { tab?: 'ask' | 'noticed'; ask?: string } = {}) => window.dispatchEvent(new CustomEvent('athena:open', { detail }))
@@ -36,21 +37,40 @@ function when(iso: string | null) {
   return t('on {date}', { date: new Date(iso).toLocaleDateString(document.documentElement.lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Dubai' }) })
 }
 
+/** "30 Nov – 3 Dec" */
+const range = (a: string, b: string) => { const f = (x: string) => new Date(`${x}T12:00:00Z`).toLocaleDateString(isAr ? 'ar-AE-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }); return `${f(a)} – ${f(b)}` }
+
 /** Athena's words for one thing it noticed. */
 function word(i: ServerItem): Noticed {
   const d = i.data, what = d.placement && d.outlet ? `${d.outlet} · ${d.placement}` : d.outlet ?? ''
   const say: Record<string, () => [string, string?]> = {
     outbid: () => [t('You were outbid on {what} ({label}). Bidding closes {when}.', { what, label: d.label, when: when(d.closes) }), t('Bid again')],
     requests: () => [t(d.n === 1 ? '1 booking request is waiting for your answer.' : '{n} booking requests are waiting for your answer.', { n: d.n }), t('Open Inbox')],
-    unsold: () => [t(d.n === 1 ? '1 date of {what} closes {when} with no bids yet. A lower starting price or a fixed price may help.' : '{n} dates of {what} close from {when} with no bids yet. A lower starting price or a fixed price may help.', { n: d.n, what, when: when(d.closes) }), t('Open Calendar')],
+    unsold: () => [t(d.n === 1 ? '1 date of {what} closes {when} with no bids yet. A lower starting price or a fixed price may help.' : '{n} dates of {what} start closing {when} with no bids yet. A lower starting price or a fixed price may help.', { n: d.n, what, when: when(d.closes) }), t('Open Calendar')],
     price_high: () => [t('{what} asks {price}. Similar {media} products sold for {low}–{high} lately, and it has had no bids for 3 weeks.', { what, price: money(d.price), media: t(CHANNEL_NAME[d.channel] ?? d.channel).toLowerCase(), low: money(d.low), high: money(d.high) }), t('Review the price')],
     access: () => [t(d.n === 1 ? '1 company is waiting for access.' : '{n} companies are waiting for access.', { n: d.n }), t('Open Access')],
     registrations: () => [t(d.n === 1 ? '1 new registration in the last day.' : '{n} new registrations in the last day.', { n: d.n }), t('Open Registrations')],
     disputes: () => [t(d.n === 1 ? '1 dispute is open.' : '{n} disputes are open.', { n: d.n }), t('Open Disputes')],
     emails_failed: () => [t(d.n === 1 ? '1 email failed to send this week.' : '{n} emails failed to send this week.', { n: d.n }), t('Open Emails')],
+    season: () => [d.from <= new Date().toISOString().slice(0, 10) ? t('{season} is on now, until {to}. You have {n} dates on sale in it: check their prices while demand is high.', { n: d.n, season: isAr ? d.season.nameAr : t(d.season.name), to: range(d.to, d.to).split(' – ')[0] })
+      : (d.uplift && d.uplift > 2 ? t('{season} is coming ({dates}). Auctions in it have ended about {pct}% higher than usual. You have {n} dates on sale then: review their prices.', { pct: d.uplift, n: d.n, season: isAr ? d.season.nameAr : t(d.season.name), dates: range(d.from, d.to) })
+      : t('{season} is coming ({dates}). Demand usually rises then. You have {n} dates on sale in it: review their prices.', { n: d.n, season: isAr ? d.season.nameAr : t(d.season.name), dates: range(d.from, d.to) })), t('Open Calendar')],
+    sale_type: () => [d.to === 'fixed' ? t('{what} sold {sold} of {closed} dates by auction, with {bidders} bidders on average. A fixed price may sell more of them.', { what, sold: d.sold, closed: d.closed, bidders: d.bidders })
+      : t('{what} sold {sold} of {closed} dates at a fixed price. Demand is strong: an auction, or a higher price, could earn more.', { what, sold: d.sold, closed: d.closed }), t('Open Products')],
+    at_risk: () => [t('{n} dates of {what} have no bids yet and close {when}. Similar dates that sold had their first bid about {days} days before closing: lower the starting price or switch them to a fixed price.', { n: d.n, what, when: when(d.closes), days: d.days }), t('Open Calendar')],
+    guard_linked: () => [t('Worth a look: {a} and {b} sign in from the same address and both bid on {outlet}.', { a: d.a, b: d.b, outlet: d.outlet }), t('Open the account')],
+    guard_shill: () => [t('Worth a look: {buyer} bids on {seller}, and both sign in from the same address.', { buyer: d.buyer, seller: d.seller }), t('Open the account')],
+    guard_price: () => [t('Worth a look: {what} asks {price}, against a middle sale of {median} for its media type. A typo?', { what, price: money(d.price), median: money(d.median) }), t('Open the account')],
+    guard_proof: () => [t('Worth a look: proof for {ref} was sent before the ad was due to run.', { ref: d.ref }), t('Open the deal')],
+    guard_new: () => [t('Worth a look: {name} joined this week and has bid {amount} ({n} bids in one day at most).', { name: d.name, amount: money(d.total), n: d.perDay }), t('Open the account')],
+    swap: () => [t('In "{campaign}", {what} is no longer available in your dates. Closest replacement: {alt}, {price}, {when}.', { campaign: d.campaign, what,
+      alt: `${d.to.outlet} · ${d.to.placement}`, price: money(d.to.price), when: when(d.to.at) }), t('Swap it in')],
+    lost: () => [t('In "{campaign}", {what} is no longer available in your dates, and nothing similar is on sale in your budget. Look at other dates or media types.', { campaign: d.campaign, what }), t('Open the campaign')],
   }
   const [text, action] = say[i.kind]?.() ?? [i.kind]
-  return { key: i.key, text, action, href: i.href, at: i.at }
+  const post = i.kind === 'swap' ? { path: '/athena/swap', done: t('Swapped. The new date is in your campaign plan.'),
+    body: { campaignId: d.campaignId, fromPlacement: d.from.placementId, fromSlot: d.from.slotId, toPlacement: d.to.placementId, toSlot: d.to.slotId } } : undefined
+  return { key: i.key, text, action, href: i.href, at: i.at, post }
 }
 
 export function AthenaDock({ role, name, companyId }: { role: Role; name: string; companyId: string }) {
@@ -104,6 +124,13 @@ export function AthenaDock({ role, name, companyId }: { role: Role; name: string
     addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [open])
   useEffect(() => { if (open && tab === 'ask') setTimeout(() => input.current?.focus(), 60) }, [open, tab])
 
+  // an action Athena can take for the person, on their tap (a swap): it runs, then the list refreshes
+  const [busyKey, setBusyKey] = useState(''), [done, setDone] = useState<Record<string, string>>({})
+  async function act(n: Noticed) {
+    setBusyKey(n.key)
+    try { await api(n.post!.path, { method: 'POST', body: n.post!.body }); setDone(d => ({ ...d, [n.key]: n.post!.done })); setTimeout(loadNoticed, 1500) }
+    catch (e: any) { setDone(d => ({ ...d, [n.key]: tm(e.message) })) } finally { setBusyKey('') }
+  }
   const go = (href: string) => { navigate(href); if (matchMedia('(max-width: 760px)').matches) setOpen(false) }
   const restart = () => { setMsgs([{ from: 'athena', ...greet(role, location.pathname, name.split(' ')[0]) }]) }
 
@@ -145,7 +172,11 @@ export function AthenaDock({ role, name, companyId }: { role: Role; name: string
           : !noticed.length ? <div className="ath-empty"><Owl size={44} wake /><p>{t('Nothing needs you right now. I will put a dot on my owl when something does.')}</p></div>
           : <ul className="ath-noticed">{noticed.map(n => <li key={n.key} className={fresh.includes(n.key) || !seen.includes(n.key) ? 'new' : ''}>
               <p dir="auto">{n.text}</p>
-              {n.action && <button type="button" className="btn sm" onClick={() => go(n.href)}>{n.action}</button>}</li>)}</ul>}
+              {n.action && <div className="ath-act">
+                {n.post ? <button type="button" className="btn sm primary" disabled={busyKey === n.key} onClick={() => act(n)}>{n.action}</button>
+                  : <button type="button" className="btn sm" onClick={() => go(n.href)}>{n.action}</button>}
+                {n.post && <button type="button" className="btn sm" onClick={() => go(n.href)}>{t('Open the campaign')}</button>}</div>}
+              {done[n.key] && <p className="small ok" role="status">{done[n.key]}</p>}</li>)}</ul>}
       </div>}
     </aside>}
   </>

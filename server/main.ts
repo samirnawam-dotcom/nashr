@@ -1,4 +1,5 @@
 import { buildApp } from './api/app.js'
+import { runMonthlyReports } from './core/report.js'
 import { runOutbox } from './core/mail.js'
 import { recordError, watch } from './core/watch.js'
 import { reconcile } from './payments/payments.js'
@@ -85,7 +86,7 @@ const reconciles = async () => {
   recon = { at: Date.now(), ok, misses: ok ? 0 : recon.misses + 1 }
   return ok || recon.misses < 2
 }
-const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(p, new Date())], ['email', () => runOutbox(new Date())],
+const jobs = [['sweeper', () => sweep(new Date())], ['money', () => runMoneyOps(p, new Date())], ['email', () => runOutbox(new Date())], ['athena-report', () => runMonthlyReports(new Date())],
   ['watch', () => watch({ at: new Date(), reconciles })]] as const
 for (const [name, job] of jobs) run(name, job) // once now, so /api/health is green from the start
 const timers = jobs.map(([name, job]) => setInterval(() => run(name, job), 60_000))

@@ -69,7 +69,7 @@ export function ResetPassword({ token, onDone }: { token: string; onDone: () => 
   </form></AuthShell>
 }
 
-type A = { name: string; email: string; role: string; emails: { bids: boolean; alerts: boolean; messages: boolean; news: boolean }
+type A = { name: string; email: string; role: string; emails: { bids: boolean; alerts: boolean; messages: boolean; news: boolean; reports: boolean }
   twoStep: { on: boolean; staff: boolean; requiredForMoney: boolean } }
 
 /**
@@ -130,6 +130,7 @@ export function MyAccountPage() {
     ['bids', t('Bids and requests'), t('Outbid, auto-bid at its maximum, a request accepted or declined.')],
     ['alerts', t('Saved-search alerts'), t('New slots that match a search you saved.')],
     ['messages', t('Messages'), t('A new message on one of your bookings.')],
+    ['reports', t("Athena's monthly report"), t('On the 1st: your month on Nashr, prices in your market, the seasons ahead and what to do next.')],
     ['news', t('News from Nashr'), t('New features and guides, at most once a month.')],
   ]
   return <main className="narrow column">

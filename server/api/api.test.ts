@@ -1204,6 +1204,88 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect(await dym('qwerty zz')).toBeNull()     // nothing close
   })
 
+  test('Athena watches a campaign: a planned date lost to someone else gets the closest replacement, swapped in one tap', async () => {
+    const campaign = (await pool.query(`insert into campaigns (buyer_id, name, start_date, end_date, launch_date, brief, created_at) values ($1, 'Launch', '2026-11-01', '2026-11-30', '2026-11-01', $2, $3) returning id`,
+      [buyerA.companyId, JSON.stringify({ advertiser: 'Northwind', industry: 'Banking', message: 'Cards', language: 'english' }), now])).rows[0].id
+    const px = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+    const py = (await pool.query(`select placement_id from slots where id = $1`, [slotY])).rows[0].placement_id
+    await pool.query(`insert into campaign_lines (campaign_id, placement_id, added_at, slot_id) values ($1, $2, $3, $4)`, [campaign, px, now, slotX])
+    // nothing to say while the date is still to be had
+    expect((await call(buyerA, 'GET', '/api/athena/noticed')).json().items.some((i: any) => i.kind === 'swap')).toBe(false)
+    // the date closes without them: Athena offers the other radio morning show
+    await pool.query(`update slots set status = 'booked' where id = $1`, [slotX])
+    const swap = (await call(buyerA, 'GET', '/api/athena/noticed')).json().items.find((i: any) => i.kind === 'swap')
+    expect(swap.data).toMatchObject({ campaignId: campaign, outlet: 'Skyline FM', from: { placementId: px, slotId: slotX }, to: { placementId: py, slotId: slotY, outlet: 'Gulf Radio' } })
+    expect((await call(buyerB, 'POST', '/api/athena/swap', { campaignId: campaign, fromPlacement: px, fromSlot: slotX, toPlacement: py, toSlot: slotY })).statusCode).toBe(404)
+    expect((await call(buyerA, 'POST', '/api/athena/swap', { campaignId: campaign, fromPlacement: px, fromSlot: slotX, toPlacement: py, toSlot: slotY })).statusCode).toBe(200)
+    expect((await pool.query(`select placement_id, slot_id from campaign_lines where campaign_id = $1`, [campaign])).rows).toEqual([{ placement_id: py, slot_id: slotY }])
+    expect((await call(buyerA, 'GET', '/api/athena/noticed')).json().items.some((i: any) => i.kind === 'swap' || i.kind === 'lost')).toBe(false)
+  })
+
+  test('Athena monthly report: once per company on the 1st, in each person\'s language, and it can be switched off', async () => {
+    const { runMonthlyReports } = await import('../core/report.js')
+    const bid = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
+    await pool.query(`update deals set status = 'secured' where id = $1`, [bid.id])
+    // not before the 1st, and not before 8am in Dubai
+    expect(await runMonthlyReports(T('2026-11-30T10:00:00Z'))).toBe(0)
+    expect(await runMonthlyReports(T('2026-12-01T02:00:00Z'))).toBe(0)
+    await pool.query(`update users set lang = 'ar' where company_id = $1`, [sellerX.companyId])
+    await pool.query(`update users set email_prefs = '{"reports": false}' where company_id = $1`, [buyerB.companyId])
+    expect(await runMonthlyReports(T('2026-12-01T05:00:00Z'))).toBeGreaterThan(0)
+    const mail = (await pool.query(`select o.subject, o.text_body, u.company_id from outbox o join users u on u.id = o.user_id where o.kind = 'athena.report'`)).rows
+    const forA = mail.find(m => m.company_id === buyerA.companyId), forX = mail.find(m => m.company_id === sellerX.companyId)
+    expect(forA.subject).toBe('Your month on Nashr: November 2026')
+    expect(forA.text_body).toContain('Last month you booked 1 slots on 1 products, for AED 5,500.')
+    expect(forX.text_body).toMatch(/[\u0600-\u06FF]/) // the publisher reads Nashr in Arabic
+    expect(mail.some(m => m.company_id === buyerB.companyId)).toBe(false)
+    // once only
+    expect(await runMonthlyReports(T('2026-12-01T09:00:00Z'))).toBe(0)
+    expect((await call(admin, 'GET', `/api/admin/athena-report/${buyerA.companyId}`)).statusCode).toBe(200)
+  })
+
+  test('Athena guard: linked accounts bidding on the same slot are flagged for Nashr\'s team only', async () => {
+    for (const who of [buyerA, buyerB]) {
+      const u = (await pool.query(`select id, email from users where company_id = $1 limit 1`, [who.companyId])).rows[0]
+      await pool.query(`insert into login_events (at, email, user_id, ip, success) values ($1, $2, $3, '203.0.113.9', true)`, [now, u.email, u.id])
+    }
+    const seq = async () => Number((await pool.query(`select coalesce(max(seq), 0) + 1 n from bids where slot_id = $1`, [slotY])).rows[0].n)
+    for (const [who, amount] of [[buyerA, AED(3_500)], [buyerB, AED(3_700)]] as const)
+      await pool.query(`insert into bids (slot_id, buyer_id, kind, amount, seq, status, created_at) values ($1, $2, 'bid', $3, $4, 'active', $5)`, [slotY, who.companyId, amount, await seq(), now])
+    const items = (await call(admin, 'GET', '/api/athena/noticed')).json().items
+    expect(items.find((i: any) => i.kind === 'guard_linked')).toMatchObject({ data: { outlet: 'Gulf Radio' } })
+    expect((await call(buyerA, 'GET', '/api/athena/noticed')).json().items.some((i: any) => i.kind.startsWith('guard_'))).toBe(false)
+  })
+
+  test('Athena learns from history: auction forecast, sale-type advice for the publisher, and proven outlets ranked first', async () => {
+    const px = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+    const bid = (await call(buyerB, 'POST', `/api/slots/${slotY}/buy-now`, { brief: briefFor(buyerB.companyId) })).json()
+    const anyBid = (await pool.query(`select bid_id from deals where id = $1`, [bid.id])).rows[0].bid_id
+    // nine past auctions of Skyline FM's morning show: five sold at 1.2× the starting price to one bidder each, four unsold
+    for (let i = 0; i < 9; i++) {
+      const day = `2026-10-${String(10 + i).padStart(2, '0')}`
+      const slot = (await pool.query(`insert into slots (placement_id, air_date, kind, label, starts_at, sale_type, starting_price, currency, closes_at, creative_due_at, status)
+        values ($1, $2, 'single', 'Break 2', $3, 'auction', $4, 'AED', $5, $5, $6) returning id`, [px, day, `${day}T03:15:00Z`, AED(3_500), `${day}T00:00:00Z`, i < 5 ? 'booked' : 'unsold'])).rows[0].id
+      if (i < 5) {
+        const b = (await pool.query(`insert into bids (slot_id, buyer_id, kind, amount, seq, status, created_at, brief) values ($1, $2, 'bid', $3, 1, 'selected', $4, $5) returning id`,
+          [slot, buyerA.companyId, AED(4_200), `${day}T00:00:00Z`, JSON.stringify({ industry: 'Banking' })])).rows[0].id
+        await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'auction', 'released', $5, 'AED', $6)`,
+          [slot, b, buyerA.companyId, sellerX.companyId, AED(4_200), now])
+      }
+    }
+    void anyBid
+    // the forecast on Gulf Radio's open auction: radio auctions end near 1.2× their starting price
+    const f = (await call(buyerA, 'GET', `/api/slots/${slotY}/advice`)).json().advice.forecast
+    expect(f).toMatchObject({ n: 5, ratio: 1.2, expected: AED(4_200) })
+    // the publisher: few bidders and most dates unsold, so a fixed price may sell more
+    const sn = (await call(sellerX, 'GET', '/api/athena/noticed')).json()
+    expect(sn.items.find((i: any) => i.kind === 'sale_type')).toMatchObject({ data: { to: 'fixed', sold: 5, closed: 9 } })
+    // a Banking buyer asking Athena: Skyline FM has completed Banking bookings, and one advertiser came back four more times
+    const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 60 * 86_400_000).toISOString()}`
+    const r = (await call(buyerB, 'GET', `/api/directory/products?rank=athena&sectors=Banking&${range}`)).json()
+    const sky = (r.items ?? r).find((x: any) => x.brand === 'Skyline FM')
+    expect(sky.why.proof).toMatchObject({ n: 5, buyers: 1, rebooked: 1, industry: 'Banking' })
+  })
+
   test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
     const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
     expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })

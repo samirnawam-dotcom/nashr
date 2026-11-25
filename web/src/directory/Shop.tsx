@@ -35,7 +35,8 @@ export type ShopSort = 'popular' | 'price_asc' | 'price_desc' | 'closing' | 'new
 export type ProductCard = { placementId: string; title: string; product: string | null; brand: string; brandKey: string; slug: string; logoUrl: string | null
   channel: string; channelOther: string | null; saleType: string; price: number; buyNowPrice: number | null; onSale: number; nextAt: string; nextClosesAt: string
   reach: number | null; reachUnit: string | null; reachMatch: 'in' | 'close' | 'none' | null; saved: boolean
-  why?: { audiences: string[]; sectors: string[]; dayparts: string[]; language: string | null; onSale: number; inDates: boolean } | null }
+  why?: { audiences: string[]; sectors: string[]; dayparts: string[]; language: string | null; onSale: number; inDates: boolean
+    proof?: { n: number; buyers: number; rebooked: number; rating: number | null; industry: string | null } } | null }
 
 /** What Athena sets (and Clear takes back): the sentence and the filters it read from it. */
 export const ATHENA_CLEAR: Partial<ShopFilter> = { ask: '', channel: '', sectors: [], dateFrom: '', dateTo: '', max: '' }
@@ -181,6 +182,11 @@ export function whyText(p: ProductCard) {
   if (w.language) bits.push(t('in {language}', { language: t(w.language.charAt(0).toUpperCase() + w.language.slice(1)) }))
   bits.push(w.inDates ? t('{n} dates on sale in your dates', { n: w.onSale }) : t('{n} on sale', { n: w.onSale }))
   if (p.reach) bits.push(t('reach {n}', { n: p.reach.toLocaleString('en-US') }))
+  // what happened for advertisers like this one
+  const pr = w.proof
+  if (pr && pr.buyers >= 3 && pr.rebooked > 0) bits.push(pr.industry ? t('{r} of {b} {industry} advertisers booked it again', { r: pr.rebooked, b: pr.buyers, industry: t(pr.industry) }) : t('{r} of {b} advertisers booked it again', { r: pr.rebooked, b: pr.buyers }))
+  else if (pr && pr.n >= 3) bits.push(pr.industry ? t('{n} completed {industry} bookings', { n: pr.n, industry: t(pr.industry) }) : t('{n} completed bookings', { n: pr.n }))
+  if (pr?.rating) bits.push(t('rated {x}/5', { x: pr.rating }))
   const line = bits.join(', ')
   return line.charAt(0).toUpperCase() + line.slice(1) + '.'
 }

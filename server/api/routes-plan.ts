@@ -164,6 +164,26 @@ export function planRoutes(route: RouteFn) {
         x.athena = { score: sc.score, why: { audiences: sc.audiences, sectors: ask.sectors.filter(y => !(x.sectors ?? []).length || (x.sectors ?? []).map((z: string) => z.toLowerCase()).includes(y.toLowerCase())),
           dayparts: ask.dayparts.filter(d => c.dayparts!.includes(d)), language: ask.languages.length && x.lang ? x.lang : null, onSale: x.on_sale, inDates: !!dateFrom } }
       }
+      // Learning from results: how each outlet has done for advertisers like this one on Nashr (completed bookings in the
+      // industry asked about, how many came back for more, and their ratings). Proven outlets rank higher and say why.
+      const ids = [...new Set((rows as any[]).map(x => x.outlet_id))], industry = ask.sectors[0] ?? null
+      if (ids.length) {
+        const proof = new Map((await db.query(`select o.id, count(d.id) filter (where d.status in ('released', 'paid_out'))::int n,
+            count(distinct d.buyer_id) filter (where d.status in ('released', 'paid_out'))::int buyers,
+            (select count(*)::int from (select d2.buyer_id from deals d2 join slots s2 on s2.id = d2.slot_id join placements p2 on p2.id = s2.placement_id left join bids b2 on b2.id = d2.bid_id
+               where p2.outlet_id = o.id and d2.status in ('released', 'paid_out') and ($2::text is null or b2.brief->>'industry' = $2) group by d2.buyer_id having count(*) >= 2) x) rebooked,
+            (select round(avg(r.score)::numeric, 1) from ratings r where r.outlet_id = o.id and not r.hidden) rating,
+            (select count(*)::int from ratings r where r.outlet_id = o.id and not r.hidden) ratings
+          from outlets o left join placements p on p.outlet_id = o.id left join slots s on s.placement_id = p.id left join deals d on d.slot_id = s.id
+            left join bids b on b.id = d.bid_id and ($2::text is null or b.brief->>'industry' = $2)
+          where o.id = any($1::uuid[]) and ($2::text is null or b.id is not null or d.id is null) group by o.id`, [ids, industry])).rows.map((r: any) => [r.id, r]))
+        for (const x of rows as any[]) {
+          const pr: any = proof.get(x.outlet_id); if (!pr) continue
+          const rebook = pr.buyers >= 3 ? pr.rebooked / pr.buyers : null, rating = pr.ratings >= 3 ? Number(pr.rating) : null
+          x.athena.score += Math.min(2, Math.log10(1 + pr.n)) + (rebook ?? 0) * 2 + (rating && rating >= 4 ? 1 : 0)
+          x.athena.why.proof = { n: pr.n, buyers: pr.buyers, rebooked: pr.rebooked, rating, industry }
+        }
+      }
       rows.sort((a: any, b: any) => b.athena.score - a.athena.score)
       rows.splice(0, offset); rows.splice(limit)
       // the Get started line "Ask Athena something in the search bar"
