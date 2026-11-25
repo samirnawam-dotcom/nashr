@@ -14,6 +14,7 @@ import { useLive } from '../live'
 import { useCampaigns, useCurrentCampaign } from './CampaignDrawer'
 import { IndustryPick } from '../IndustryPick'
 import { BidAdvice } from '../athena/BidAdvice'
+import { BriefCheck } from '../athena/BriefCheck'
 
 type Detail = Slot & { placementId?: string; yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
@@ -143,6 +144,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             <p className="small">{t('Your campaign brief and creative will be sent to {outlet}.', { outlet: s.brand ?? s.outlet })}</p>
             {campaign.brief ? <p className="bd-brief-p"><b dir="auto">{campaign.brief.advertiser}</b> · {t(campaign.brief.industry)}<br /><span dir="auto">{campaign.brief.message}</span></p>
               : <p className="small warn">{t('This campaign has no brief yet.')}</p>}
+            {campaign.brief && <BriefCheck brief={campaign.brief} channel={s.channel} notAccepted={s.details?.notAccepted} outletLanguage={s.details?.language} />}
             <button type="button" className="linkish small" onClick={editForThisBid}>{t('Edit for this bid')}</button><Tip text={GLOSSARY.editForBid} label={t('Edit for this bid')} /></div>}
         </section>
 
@@ -171,6 +173,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
             <span className="small muted">{t('The publisher must include it and confirm it in their proof.')}</span></div>
           <div className="field"><label htmlFor="notes">{t("Notes for the publisher (optional)")}</label><textarea id="notes" dir="auto" rows={2} value={brief.notes ?? ''} onChange={e => setBrief({ ...brief, notes: e.target.value })} />
             <span className="small muted">{t("Emails and phone numbers are not allowed. Talk to the publisher through Nashr.")}</span></div>
+          <BriefCheck brief={brief} channel={s.channel} notAccepted={s.details?.notAccepted} outletLanguage={s.details?.language} />
         </section>}
 
         {s.saleType === 'auction' ? <section className="form">

@@ -1176,6 +1176,24 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect((await call(sellerX, 'GET', '/api/athena/noticed')).statusCode).toBe(200)
   })
 
+  test('Athena price check: where a publisher\'s price sits among similar sales, and how the product itself is selling', async () => {
+    const placement = (await pool.query(`select placement_id from slots where id = $1`, [slotX])).rows[0].placement_id
+    // too few sales of radio yet
+    expect((await call(sellerX, 'GET', `/api/seller/price-check?channel=radio&price=${AED(5_000)}&placement=${placement}`)).json().check).toMatchObject({ enough: false, own: { sales: 0, bids: 0 } })
+    const bid = (await call(buyerA, 'POST', `/api/slots/${slotY}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
+    const bidId = (await pool.query(`select bid_id from deals where id = $1`, [bid.id])).rows[0].bid_id
+    for (const amount of [AED(3_000), AED(4_000), AED(5_000), AED(6_000), AED(7_000), AED(8_000)])
+      await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'fixed', 'paid_out', $5, 'AED', $6)`,
+        [slotY, bidId, buyerA.companyId, sellerY.companyId, amount, now])
+    // both products air in the morning, so morning radio is compared (7 sales: 6 above plus the buy-now)
+    const c = (await call(sellerX, 'GET', `/api/seller/price-check?channel=radio&price=${AED(9_000)}&placement=${placement}`)).json().check
+    expect(c).toMatchObject({ enough: true, level: 'daypart', daypart: 'morning', n: 7 })
+    expect(c.low).toBeLessThan(c.high); expect(c.below).toBe(7)
+    // only publishers, and only their own product's history
+    expect((await call(buyerA, 'GET', `/api/seller/price-check?channel=radio&price=1`)).statusCode).toBe(403)
+    expect((await call(sellerY, 'GET', `/api/seller/price-check?channel=radio&price=1&placement=${placement}`)).json().check.own).toBeNull()
+  })
+
   test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
     const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
     expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })

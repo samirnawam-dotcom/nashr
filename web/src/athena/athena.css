@@ -112,3 +112,16 @@ html .side-nav .side-ath .ath-count { margin-inline-start: auto; }
 .ath-edge { border-inline-start: 3px solid var(--text) !important; }
 /* while a drawer or sheet is open, the owl button steps aside (the drawer's own buttons sit in that corner) */
 body:has(.drawer[role="dialog"], .mb-sheet, .cv-sheet, .tour-scrim, .tour-card) .ath-fab { display: none; }
+
+/* price check: the middle half of past sales shaded, the price being set marked */
+.pc-range { position: relative; height: 10px; border-radius: 5px; background: var(--line); margin: 6px 4px 2px; }
+.pc-range .pc-band { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: var(--text-subtle); opacity: .55; }
+.pc-range .pc-mark { position: absolute; top: -4px; width: 4px; height: 18px; margin-inline-start: -2px; border-radius: 2px; background: var(--text); transition: inset-inline-start .3s ease; }
+.pc-range .pc-mark.out { box-shadow: 0 0 0 3px var(--surface-muted), 0 0 0 4px var(--text); }
+.pc-ends { display: flex; justify-content: space-between; }
+.price-check, .brief-check { margin-top: 8px; }
+/* brief check: must-fix items first */
+.bc-list { margin: 0; padding-inline-start: 18px; display: grid; gap: 4px; font-size: 13px; line-height: 1.45; }
+.bc-list.must li::marker { content: "✕  "; font-weight: 700; }
+.bc-list li::marker { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .pc-range .pc-mark { transition: none; } }

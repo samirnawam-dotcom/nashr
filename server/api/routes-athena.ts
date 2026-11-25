@@ -38,6 +38,35 @@ export function athenaRoutes(route: RouteFn) {
       suggest, wins: xs.filter(x => x <= suggest).length, nextBid: next, aboveMarket: next > p70 } }
   })
 
+  // Price check for a publisher setting a price: what similar products sold for on Nashr over 90 days (any sale type),
+  // the same media type at the same time of day when there are enough sales, else the same media type; plus how this
+  // product has been selling. Prices are excl. VAT, in fils.
+  route('GET', '/api/seller/price-check', ['seller'], async ({ db, at: now, me }, req) => {
+    const q = req.query as { channel?: string; price?: string; placement?: string; start?: string }
+    const channel = String(q.channel ?? '').slice(0, 40), price = Math.max(0, Math.round(Number(q.price) || 0))
+    if (!channel) return { check: null }
+    const mine = q.placement && /^[0-9a-f-]{36}$/.test(q.placement) ? (await db.query(`select p.id, p.starts_at_local::text start,
+        (select count(*)::int from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and ${SOLD} and d.created_at > $3::timestamptz - interval '${DAYS} days') sales,
+        (select count(*)::int from bids b join slots s on s.id = b.slot_id where s.placement_id = p.id and b.created_at > $3::timestamptz - interval '21 days') bids
+        from placements p join outlets o on o.id = p.outlet_id where p.id = $1 and o.company_id = $2`, [q.placement, me.actAs.companyId, now])).rows[0] ?? null : null
+    const start = (mine?.start ?? q.start ?? '').slice(0, 5), hour = /^\d\d:\d\d/.test(start) ? Number(start.slice(0, 2)) : null
+    const part = hour == null ? null : hour >= 5 && hour < 12 ? 'morning' : hour >= 12 && hour < 17 ? 'afternoon' : 'evening'
+    const all = (where: string, params: unknown[]) => db.query(`select d.amount::bigint a from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
+      where ${SOLD} and d.created_at > $1::timestamptz - interval '${DAYS} days' and ${where} order by d.amount`, [now, ...params]).then(r => r.rows.map(x => Number(x.a)))
+    let level = 'media', xs: number[] = []
+    if (part) {
+      const band = part === 'morning' ? [5, 12] : part === 'afternoon' ? [12, 17] : [17, 29]
+      xs = await all(`o.channel = $2 and p.starts_at_local is not null and (extract(hour from p.starts_at_local) + case when extract(hour from p.starts_at_local) < 5 then 24 else 0 end) >= $3
+        and (extract(hour from p.starts_at_local) + case when extract(hour from p.starts_at_local) < 5 then 24 else 0 end) < $4`, [channel, band[0], band[1]])
+      if (xs.length >= 5) level = 'daypart'
+    }
+    if (level === 'media') xs = await all('o.channel = $2', [channel])
+    const own = mine ? { sales: mine.sales, bids: mine.bids } : null
+    if (xs.length < ENOUGH) return { check: { enough: false, n: xs.length, own } }
+    return { check: { enough: true, level, daypart: level === 'daypart' ? part : null, n: xs.length, days: DAYS, low: at(xs, .25), high: at(xs, .75), median: at(xs, .5),
+      min: xs[0], max: xs[xs.length - 1], below: price ? xs.filter(x => x < price).length : null, own } }
+  })
+
   // What Athena noticed for this person, most pressing first. Each item is a kind with its details; the screen words it.
   route('GET', '/api/athena/noticed', ['buyer', 'seller', 'admin'], async ({ db, at: now, me }) => {
     const items: { key: string; kind: string; data: Record<string, unknown>; href: string; at: string | null }[] = []

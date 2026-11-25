@@ -1,4 +1,5 @@
 import { GLOSSARY, Tip } from '../onboarding/Onboarding'
+import { BriefCheck } from '../athena/BriefCheck'
 import { navigate } from '../nav'
 import { tm } from '../i18n-server'
 import { useEffect, useState } from 'react'
@@ -116,6 +117,7 @@ function CampaignForm({ initial, clients, onSaved, onCancel, id, title }: { init
       <div className="field"><label htmlFor="cp-dis">{t('Required disclaimer or licence number (optional)')}</label><input id="cp-dis" dir="auto" maxLength={500} value={b.disclaimer ?? ''} onChange={e => setB({ disclaimer: e.target.value })} /></div>
       <div className="field"><label htmlFor="cp-url">{t('Landing page link (optional, needed for websites)')}</label><input id="cp-url" dir="ltr" maxLength={500} placeholder="https://" value={b.landingUrl ?? ''} onChange={e => setB({ landingUrl: e.target.value })} /></div>
     </div>
+    <BriefCheck brief={b} />
     {(error || (tried && problem)) && <p className="error" role="alert">{error || problem}</p>}
     <div className="row-flex"><button className="btn primary" disabled={busy || uploading} onClick={save}>{busy ? t('Saving…') : id ? t('Save') : t('Create campaign')}</button>
       <button className="btn" onClick={onCancel}>{t('Cancel')}</button></div>
