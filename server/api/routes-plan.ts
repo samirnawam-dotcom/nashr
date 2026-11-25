@@ -547,7 +547,7 @@ export function planRoutes(route: RouteFn) {
     const from = r.dateFrom ?? c?.start_text, to = r.dateTo ?? c?.end_text, budget = r.amount ?? (c?.budget != null ? Number(c.budget) : undefined)
     const sectors = r.sectors.length ? r.sectors : c?.brief?.industry && c.brief.industry !== 'Other' ? [c.brief.industry] : []
     const languages = r.languages.length ? r.languages : c?.brief?.language && c.brief.language !== 'other' ? [c.brief.language === 'bilingual' ? 'english' : c.brief.language] : []
-    const read = { channels: r.channels, sectors, dateFrom: from ?? null, dateTo: to ?? null, budget: budget ?? null, audiences: about.audiences, languages }
+    const read = { channels: r.channels, sectors, dateFrom: from ?? null, dateTo: to ?? null, budget: budget ?? null, audiences: about.audiences, languages, fixes: r.fixes }
     // one short question when something important is missing
     if (!from || !to) return { read, question: 'dates', parts: [], total: 0 }
     if (!budget) return { read, question: 'amount', parts: [], total: 0 }

@@ -72,3 +72,22 @@ describe('Athena plans a budget', () => {
     expect(estimate({ price: 100_000, saleType: 'auction' })).toBe(110_000)
   })
 })
+
+describe('Athena forgives spelling, in English and Arabic', () => {
+  const T = '2026-11-25'
+  test('English slips are read as the nearest known word, and listed', () => {
+    const r = readRequest('raido in dubia for a bnak lanch in the frist week of decmber, abuot AED 20,000, buisness peopel', T)
+    expect(r).toMatchObject({ channels: ['radio'], sectors: ['Banking'], dateFrom: '2026-12-01', dateTo: '2026-12-07', amount: 2_000_000, audiences: ['executives'] })
+    expect(r.fixes).toEqual(expect.arrayContaining([{ from: 'raido', to: 'radio' }, { from: 'bnak', to: 'bank' }, { from: 'decmber', to: 'december' }]))
+    expect(readRequest('magzine and televison for a resturant in januray', T)).toMatchObject({ channels: expect.arrayContaining(['magazine', 'tv']), sectors: ['Hospitality'], dateFrom: '2027-01-01' })
+  })
+  test('everyday words are never changed, and names still search', () => {
+    expect(readRequest('I need to go back with some money for radio', T).fixes).toEqual([])
+    expect(readRequest('Skyline FM', T).request).toBe(false)
+  })
+  test('Arabic: letter variants, attached prefixes and slips', () => {
+    expect(readRequest('اعلان في الاذاعه لبنك في ديسمبير بميزانيه 20 الف درهم', T)).toMatchObject({ channels: ['radio'], sectors: ['Banking'], dateFrom: '2026-12-01', amount: 2_000_000 })
+    expect(readRequest('راديو لسيارات في الاسبوع الاول من ديسمبر', T)).toMatchObject({ sectors: ['Automotive'], dateFrom: '2026-12-01', dateTo: '2026-12-07' })
+    expect(readRequest('تلفزيون لمطعم الشهر القادم حوالي ٣٠ الف درهم', T)).toMatchObject({ channels: ['tv'], sectors: ['Hospitality'], amount: 3_000_000 })
+  })
+})

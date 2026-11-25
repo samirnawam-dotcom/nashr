@@ -556,4 +556,8 @@ export const AR_BUYER: Record<string, string> = {
   "Must fix": "يجب إصلاحه",
   "Would help": "يُستحسن",
   "Above every one of these sales. Expect fewer buyers at this price.": "أعلى من كل هذه المبيعات. توقّع مشترين أقل بهذا السعر.",
+  "(I read {words}.)": "(قرأت {words}.)",
+  "I read {words}.": "قرأت {words}.",
+  "“{from}” as “{to}”": "«{from}» على أنها «{to}»",
+  "Did you mean": "هل تقصد",
 }

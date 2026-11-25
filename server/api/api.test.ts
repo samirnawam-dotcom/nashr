@@ -1194,6 +1194,16 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect((await call(sellerY, 'GET', `/api/seller/price-check?channel=radio&price=1&placement=${placement}`)).json().check.own).toBeNull()
   })
 
+  test('Athena "did you mean": names typed with a slip, in English and Arabic spelling variants', async () => {
+    await pool.query(`update outlets set name_ar = 'سكاي لاين' where name = 'Skyline FM'`)
+    const dym = async (q: string) => (await call(null, 'GET', `/api/athena/did-you-mean?q=${encodeURIComponent(q)}`)).json().suggest
+    expect(await dym('skylin fm')).toBe('Skyline FM')
+    expect(await dym('gulf raido')).toBe('Gulf Radio')
+    expect(await dym('سكاى لاين')).toBe('سكاي لاين')
+    expect(await dym('Skyline')).toBeNull()      // already matches
+    expect(await dym('qwerty zz')).toBeNull()     // nothing close
+  })
+
   test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
     const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
     expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })

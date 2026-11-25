@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { AthenaPanel } from '../athena/Owl'
 import { PAGES, breadcrumb, siteUrl, useMeta } from '../seo'
 import { useEffect, useRef, useState } from 'react'
 import { api, type Price } from '../api'
@@ -118,7 +119,7 @@ export function DirectoryPage() {
       <div className={`shop ${buying.myBids ? 'with-bids' : ''}`}>
         <div className="shop-main">
           {view === 'outlets' ? <>
-            {list && !shown.length && <div className="empty"><p className="muted">{f.saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t('Nothing matches these filters.')}</p>
+            {list && !shown.length && <div className="empty"><DidYouMean q={f.q} onPick={q => set({ q })} /><p className="muted">{f.saved ? t('No saved outlets match. Tap the star on an outlet to save it.') : t('Nothing matches these filters.')}</p>
               {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}
               <button className="btn" onClick={() => askRef.current?.focus()}>{t('Ask Athena')}</button></div>}
             {layout === 'grid'
@@ -142,7 +143,7 @@ export function DirectoryPage() {
           </> : <>
             {prods.items == null && <p className="muted">{t('Loading…')}</p>}
             {prods.items && <p className="small muted">{t('{n} products', { n: prods.total })}</p>}
-            {prods.items && !prods.items.length && <div className="empty"><p className="muted">{filtered ? t('Nothing matches these filters.') : t('Nothing on sale right now.')}</p>
+            {prods.items && !prods.items.length && <div className="empty"><DidYouMean q={f.q} onPick={q => set({ q })} /><p className="muted">{filtered ? t('Nothing matches these filters.') : t('Nothing on sale right now.')}</p>
               {filtered && <button className="btn" onClick={() => set({ ...EMPTY, market: f.market })}>{t('Clear filters')}</button>}
               <button className="btn" onClick={() => askRef.current?.focus()}>{t('Ask Athena')}</button></div>}
             {prods.items && prods.items.length > 0 && (layout === 'grid'
@@ -317,4 +318,12 @@ export function OutletPage({ id }: { id: string }) {
       <CompareBar />
     </main>
   )
+}
+
+/** Athena's "Did you mean…?" when a name typed with a slip finds nothing. */
+function DidYouMean({ q, onPick }: { q: string; onPick: (q: string) => void }) {
+  const [s, setS] = useState<string | null>(null)
+  useEffect(() => { setS(null); if (q.trim().length >= 3) api<{ suggest: string | null }>(`/athena/did-you-mean?q=${encodeURIComponent(q)}`).then(r => setS(r.suggest), () => {}) }, [q])
+  if (!s) return null
+  return <AthenaPanel say={s} className="did-you-mean"><p>{t('Did you mean')} <button type="button" className="text-link" onClick={() => onPick(s)}><b dir="auto">{s}</b></button>?</p></AthenaPanel>
 }

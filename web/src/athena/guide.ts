@@ -1,6 +1,8 @@
 import { t } from '../i18n'
 import { accountQA, buyerQA, sellerQA, type Rules } from '../Help'
 import { readRequest } from '../../../server/shared/athena'
+import { arNorm, slips } from '../../../server/shared/spell'
+const AR = /[\u0600-\u06FF]/
 import { audienceLabel } from '../../../server/shared/audiences'
 import { CHANNEL_NAME } from '../media'
 
@@ -15,8 +17,7 @@ export type Link = { label: string; href: string }
 export type Reply = { text: string; links?: Link[]; chips?: string[] }
 
 /** Lower case, Western digits, no accents, one space. */
-export const norm = (s: string) => s.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).toLowerCase()
-  .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/[ً-ْ]/g, '').replace(/\s+/g, ' ').trim()
+export const norm = (s: string) => arNorm(s.replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).toLowerCase()).replace(/\s+/g, ' ').trim()
 const STOP = new Set(['the', 'a', 'an', 'to', 'i', 'do', 'how', 'can', 'my', 'is', 'are', 'what', 'where', 'of', 'for', 'in', 'on', 'it', 'me', 'and', 'or', 'with', 'please',
   'you', 'does', 'did', 'will', 'should', 'want', 'need', 'get', 'be', 'this', 'that', 'there', 'when', 'which', 'who', 'why', 'kann', 'كيف', 'ماذا', 'اين', 'هل', 'في', 'من', 'على', 'الى', 'عن', 'ما', 'انا', 'اريد'])
 const tokens = (s: string) => norm(s).split(/[^a-z0-9؀-ۿ]+/).filter(w => w.length > 1 && !STOP.has(w))
@@ -31,12 +32,21 @@ function near(a: string, b: string) {
 }
 /** How well the words match one keyword (a word, a phrase, or Arabic stem). */
 function hit(words: string[], text: string, k: string) {
-  if (k.includes(' ') || /[؀-ۿ]/.test(k)) return text.includes(norm(k)) ? 3 : 0
+  if (k.includes(' ')) return text.includes(norm(k)) ? 3 : 0
+  if (AR.test(k)) {
+    const kk = norm(k); if (text.includes(kk)) return 3
+    // Arabic with a slip: compare each word, with its attached و ب ل ال taken off
+    if (kk.length < 4) return 0
+    return words.some(w => [w, ...['وال', 'بال', 'لل', 'ال', 'و', 'ب', 'ل'].filter(p => w.startsWith(p) && w.length - p.length >= 3).map(p => w.slice(p.length))]
+      .some(f => slips(f, kk, 1) <= 1)) ? 2 : 0
+  }
   let best = 0
   for (const w of words) {
     if (w === k) return 2
     if (k.length >= 4 && w.length >= 4 && (w.startsWith(k) || k.startsWith(w))) best = Math.max(best, 1.6)
-    else if (k.length >= 5 && near(w, k) <= (k.length >= 8 ? 2 : 1)) best = Math.max(best, 1.3)
+    else if (k.length >= 5 && slips(w, k, 2) <= (k.length >= 8 ? 2 : 1)) best = Math.max(best, 1.6)
+    // short words: only two letters swapped ("pya" → pay, "bdi" → bid)
+    else if (k.length >= 3 && w.length === k.length && slips(w, k, 1) === 1 && [...w].sort().join('') === [...k].sort().join('')) best = Math.max(best, 1.6)
   }
   return best
 }
@@ -54,7 +64,7 @@ const TOPICS: Topic[] = [
   { id: 'autobid', roles: ['buyer'], words: ['auto-bid', 'autobid', 'auto bid', 'automatic', 'maximum', 'تلقائي'], answer: qa(buyerQA, 1), chips: () => [t('When do I pay?')] },
   { id: 'mybids', roles: ['buyer'], words: ['my bids', 'bids', 'leading', 'winning', 'won', 'lost', 'مزايداتي'], answer: () => t('Your bids are in the My bids bar on your Calendar: leading, outbid, won and lost. You also get a bell when someone outbids you.'),
     go: () => ({ label: t('Open my Calendar'), href: '/calendar' }) },
-  { id: 'pay', roles: ['buyer'], words: ['pay', 'payment', 'card', 'paying', 'owe', 'دفع', 'الدفع', 'بطاقة'], answer: qa(buyerQA, 2), go: () => ({ label: t('Open my bookings'), href: '/reports' }), chips: () => [t('Where does my money go?')] },
+  { id: 'pay', roles: ['buyer'], words: ['pay', 'payment', 'card', 'paying', 'owe', 'دفع', 'الدفع', 'ادفع', 'بطاقة'], answer: qa(buyerQA, 2), go: () => ({ label: t('Open my bookings'), href: '/reports' }), chips: () => [t('Where does my money go?')] },
   { id: 'escrow', roles: ['buyer'], words: ['money', 'held', 'escrow', 'safe', 'refund', 'اموال', 'استرداد'], answer: qa(buyerQA, 3), chips: () => [t('What if the ad did not run?')] },
   { id: 'issue', roles: ['buyer'], words: ['issue', 'problem', 'did not run', 'didnt run', 'wrong', 'dispute', 'complain', 'مشكلة', 'شكوى', 'نزاع'], answer: qa(buyerQA, 4), go: () => ({ label: t('Open my bookings'), href: '/reports' }) },
   { id: 'cancel', roles: ['buyer'], words: ['cancel', 'cancellation', 'withdraw', 'الغاء', 'إلغاء'], answer: qa(buyerQA, 5) },
@@ -199,7 +209,8 @@ export function answer(text: string, role: Role, path: string, rules: Rules | nu
       const bits = [r.channels.map(c => t(CHANNEL_NAME[c] ?? c)).join(t(' or ')), r.sectors.map(s => t(s)).join(', '),
         r.audiences.map(a => t(audienceLabel(a)).toLowerCase()).join(', '), r.dateFrom && r.dateTo ? span(r.dateFrom, r.dateTo) : '',
         r.amount ? t('up to AED {n}', { n: (r.amount / 100).toLocaleString('en-US') }) : ''].filter(Boolean)
-      return { text: t('I read: {what}. I can show the products that fit best, first.', { what: bits.join(' · ') }) + (r.missing.includes('dates') ? ' ' + t('Tell me the dates too, and I will only show what is on sale then.') : ''),
+      const fixed = r.fixes.length ? ' ' + t('(I read {words}.)', { words: r.fixes.slice(0, 4).map(f => t('“{from}” as “{to}”', { from: f.from, to: f.to })).join(', ') }) : ''
+      return { text: t('I read: {what}. I can show the products that fit best, first.', { what: bits.join(' · ') }) + fixed + (r.missing.includes('dates') ? ' ' + t('Tell me the dates too, and I will only show what is on sale then.') : ''),
         links: [{ label: t('Show the best fits'), href: directoryHref(text, today) }] }
     }
   }

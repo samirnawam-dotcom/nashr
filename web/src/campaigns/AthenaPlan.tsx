@@ -18,7 +18,7 @@ import { AthenaTag } from '../athena/Owl'
 type Line = { placementId: string; slotId: string; title: string; brand: string; channel: string; logoUrl: string | null; saleType: string
   price: number; estimate: number; at: string; onSale: number; why: string[] }
 type Part = { channel: string; share: number; amount: number; count: number; picks: Line[]; spare: Line[] }
-type Plan = { read: { channels: string[]; sectors: string[]; dateFrom: string | null; dateTo: string | null; budget: number | null; audiences: string[]; languages: string[] }
+type Plan = { read: { channels: string[]; sectors: string[]; dateFrom: string | null; dateTo: string | null; budget: number | null; audiences: string[]; languages: string[]; fixes?: { from: string; to: string }[] }
   question: 'dates' | 'amount' | null; parts: Part[]; total: number }
 
 /** One line on why a product fits, from what Athena matched. */
@@ -75,6 +75,7 @@ export function AthenaPlan({ campaignId, autoFocus, onAdded }: { campaignId: str
       <input id="ap-q" className="search" value={answer} onChange={e => setAnswer(e.target.value)} placeholder={plan.question === 'dates' ? t('1–14 Dec') : 'AED 55,000'} />
       <button className="btn sm">{t('OK')}</button></form>}
 
+    {plan && (plan.read.fixes?.length ?? 0) > 0 && <p className="small muted">{t('I read {words}.', { words: plan.read.fixes!.slice(0, 5).map(x => t('“{from}” as “{to}”', { from: x.from, to: x.to })).join(', ') })}</p>}
     {plan && !plan.question && !plan.parts.length && <p className="muted">{t('Nothing on sale in these dates for this industry. Try other dates or another media type.')}</p>}
 
     {plan && plan.parts.length > 0 && <>

@@ -218,6 +218,7 @@ export function AthenaLine({ f, set }: { f: ShopFilter; set: (p: Partial<ShopFil
     r.languages.length ? t('in {language}', { language: r.languages.map(l => t(l.charAt(0).toUpperCase() + l.slice(1))).join(t(' or ')) }) : '',
     ...r.dayparts.map(d => d === 'morning' ? t('morning show') : d === 'evening' ? t('evening show') : t('afternoon show'))].filter(Boolean)
   return <AthenaPanel className="athena-line" say={f.ask}>
+    {r.fixes.length > 0 && <p className="small muted">{t('I read {words}.', { words: r.fixes.slice(0, 5).map(x => t('“{from}” as “{to}”', { from: x.from, to: x.to })).join(', ') })}</p>}
     <p>{t('Best fit first')}{read.length ? `, ${read.join(', ')}` : ''}. <button type="button" className="text-link" onClick={() => set(ATHENA_CLEAR)}>{t('Clear')}</button></p>
     {r.missing.includes('dates') && <form className="row-flex athena-q" onSubmit={e => { e.preventDefault(); if (!answer.trim()) return
         const both = `${f.ask} ${answer}`, rr = readRequest(both, todayInDubai()); set(athenaFilters(rr, both)); setAnswer('') }}>

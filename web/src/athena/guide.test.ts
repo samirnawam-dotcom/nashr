@@ -41,4 +41,10 @@ describe('Athena chat (rules only)', () => {
   test('greets with what the page is for', () => {
     expect(ask('hello', 'buyer', '/directory').text).toMatch(/This is the Directory/)
   })
+  test('chat questions with slips, in English and Arabic', () => {
+    expect(ask('how do i pya').text).toContain('48 hours')
+    expect(ask('wher are my reciepts').links?.[0].href).toBe('/documents')
+    expect(ask('اين فواتيري').links?.[0].href).toBe('/documents')
+    expect(ask('كيف ادقع').text).toContain('48 hours')
+  })
 })

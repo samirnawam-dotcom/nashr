@@ -2,6 +2,7 @@ import type pg from 'pg'
 import { NotFound, type RouteFn } from './app.js'
 import { minNextBid } from '../core/money.js'
 import { setting } from '../core/settings.js'
+import { arNorm, slips } from '../shared/spell.js'
 
 /*
  * Athena's own reads (rules and Nashr's records only, no outside AI):
@@ -65,6 +66,30 @@ export function athenaRoutes(route: RouteFn) {
     if (xs.length < ENOUGH) return { check: { enough: false, n: xs.length, own } }
     return { check: { enough: true, level, daypart: level === 'daypart' ? part : null, n: xs.length, days: DAYS, low: at(xs, .25), high: at(xs, .75), median: at(xs, .5),
       min: xs[0], max: xs[xs.length - 1], below: price ? xs.filter(x => x < price).length : null, own } }
+  })
+
+  // "Did you mean…?" for a name typed with a slip ("skylin fm", "gulf nwes", "سكاي لاين"): the closest outlet or product name on Nashr.
+  route('GET', '/api/athena/did-you-mean', ['buyer', 'seller', 'admin', 'guest'], async ({ db }, req) => {
+    const raw = String((req.query as any).q ?? '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 80), q = arNorm(raw)
+    if (q.length < 3) return { suggest: null }
+    const names = (await db.query(`select distinct name from (select brand_name(o) name from outlets o union select o.name_ar from outlets o where o.name_ar is not null
+      union select pr.name from products pr) n where name is not null limit 3000`)).rows.map(r => String(r.name))
+    const words = (s: string) => arNorm(s.toLowerCase()).split(/[^a-z0-9\u0600-\u06FF]+/).filter(Boolean)
+    const asked = words(q)
+    let best: { name: string; d: number } | null = null
+    for (const name of names) {
+      const ws = words(name)
+      if (name.toLowerCase().includes(raw)) return { suggest: null } // it already matches as typed
+      if (arNorm(name.toLowerCase()).includes(q)) { best = { name, d: 0 }; continue } // same name, other Arabic spelling ("سكاى" for "سكاي")
+      // every word asked is close to a word of the name (or starts it); slips allowed grow with the word
+      let d = 0, ok = true
+      for (const a of asked) {
+        const m = Math.min(...ws.map(w => w.startsWith(a) && a.length >= 3 ? 0 : slips(a, w, 2)))
+        if (m > (a.length >= 7 ? 2 : a.length >= 4 || (a.length === 3 && /[\u0600-\u06FF]/.test(a)) ? 1 : 0)) { ok = false; break } d += m
+      }
+      if (ok && (!best || d < best.d)) best = { name, d }
+    }
+    return { suggest: best?.name ?? null }
   })
 
   // What Athena noticed for this person, most pressing first. Each item is a kind with its details; the screen words it.
