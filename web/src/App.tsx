@@ -21,6 +21,7 @@ import { useUnread } from './messages/unread'
 import { resetLive } from './live'
 import './messages/messages.css'
 import { Logo } from './Logo'
+import { AthenaDock, AthenaMenuItem } from './athena/AthenaDock'
 
 
 // Screens behind sign-in load only when opened, so visitors download just the public pages (faster landing page).
@@ -93,7 +94,7 @@ const AuditPage = L(load_admin_System, 'AuditPage')
 const DirectoryAdminPage = L(load_admin_System, 'DirectoryAdminPage')
 const SettingsPage = L(load_admin_System, 'SettingsPage')
 
-export type Me = { role: string; company: { name: string; type: string }; viewingAs: string | null
+export type Me = { role: string; company: { id?: string; name: string; type: string }; name?: string; viewingAs: string | null
   signedInAs: { user: string; staff: string; until: string; companyId: string } | null; lang?: 'en' | 'ar'; terms?: { version: string; accepted: boolean } }
 
 // One page per path; ids are the last segment.
@@ -351,6 +352,7 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
           {GROUP[staff ? 'admin' : me.role]?.[p] && <span className="side-group">{GROUP[staff ? 'admin' : me.role][p]}</span>}
           <a href={`${p}`} aria-current={isActive(path, p, seller) ? 'page' : undefined} className={isActive(path, p, seller) ? 'active' : ''} title={mini ? l : undefined}>
             <TabIcon path={p} /><span className="side-l">{l}</span>{p === '/athena' && <span className="soon">{t("soon")}</span>}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a></Fragment>)}</nav>
+        <nav className="nav side-nav" aria-label={t('Athena')}><AthenaMenuItem /></nav>
         <div className="side-foot">
           <button type="button" className="side-toggle" onClick={toggleMini} aria-expanded={!mini} aria-label={mini ? t('Expand the menu') : t('Collapse the menu')} title={mini ? t('Expand the menu') : t('Collapse the menu')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={mini ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} /></svg>
@@ -384,6 +386,7 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
       </div>
       {!staff && <nav className="tabbar" aria-label={t("Main")}>{TABS[me.role].map(p => nav.find(([q]) => q === p)!).map(([p, l]) => <a key={p} href={`${p}`} className={isActive(path, p, seller) ? 'active' : ''}
         aria-current={isActive(path, p, seller) ? 'page' : undefined}><TabIcon path={p} />{l}{p === '/messages' && unread > 0 && <Badge n={unread} />}{p === '/inbox' && requests + unread > 0 && <Badge n={requests + unread} />}</a>)}</nav>}
+      {!me.viewingAs && <AthenaDock role={staff ? 'admin' : me.role as 'buyer' | 'seller'} name={(me.signedInAs ? '' : me.name ?? '').split(' ')[0]} companyId={me.company.id ?? me.company.name} />}
     </div>
   )
 }

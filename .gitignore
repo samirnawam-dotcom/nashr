@@ -5,3 +5,4 @@ dist/
 .files/
 backups/
 release/nashr/
+.vitest/

@@ -51,11 +51,11 @@ export function authRoutes(route: RouteFn) {
   })
 
   route('GET', '/api/me', ['buyer', 'seller', 'admin', 'founder'], async ({ db, me, at }) => {
-    const c = (await db.query(`select name, type from companies where id = $1`, [me.actAs.companyId])).rows[0]
+    const c = (await db.query(`select id, name, type from companies where id = $1`, [me.actAs.companyId])).rows[0]
     const as = me.signedInAs && (await db.query(`select u.name, (select name from users where id = $2) staff from users u where u.id = $1`, [me.userId, me.signedInAs.staffId])).rows[0]
-    const terms = (await db.query(`select terms_version, lang from users where id = $1`, [me.userId])).rows[0]
+    const terms = (await db.query(`select terms_version, lang, name from users where id = $1`, [me.userId])).rows[0]
     const current = await termsVersion(db, at)
-    return { role: me.actAs.role, company: c, lang: terms?.lang ?? 'en', viewingAs: me.viewAs ? me.viewAs.companyId : null, terms: { version: current, accepted: terms?.terms_version === current },
+    return { role: me.actAs.role, company: c, name: terms?.name ?? '', lang: terms?.lang ?? 'en', viewingAs: me.viewAs ? me.viewAs.companyId : null, terms: { version: current, accepted: terms?.terms_version === current },
       signedInAs: me.signedInAs ? { user: as.name, staff: as.staff, until: me.signedInAs.until, companyId: me.companyId } : null }
   })
 

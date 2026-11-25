@@ -1147,6 +1147,35 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
     expect(commuters.slots).toBe((await call(null, 'GET', `/api/slots/outlets?${range}&open=1&aud=commuters`)).json().items.reduce((n: number, o: any) => n + o.slots, 0))
   })
 
+  test('Athena: bid advice from past sales of this product, and what it noticed for buyers and Nashr\'s team', async () => {
+    // too few sales: no suggestion, only the next bid
+    expect((await call(buyerA, 'GET', `/api/slots/${slotX}/advice`)).json().advice).toMatchObject({ enough: false, n: 0, nextBid: AED(3_500) })
+    const bid = (await call(buyerA, 'POST', `/api/slots/${slotX}/buy-now`, { brief: briefFor(buyerA.companyId) })).json()
+    const bidId = (await pool.query(`select bid_id from deals where id = $1`, [bid.id])).rows[0].bid_id
+    for (const amount of [AED(4_000), AED(5_000), AED(6_000), AED(7_000)])
+      await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'auction', 'paid_out', $5, 'AED', $6)`,
+        [slotX, bidId, buyerA.companyId, sellerX.companyId, amount, now])
+    // a cancelled sale does not count
+    await pool.query(`insert into deals (slot_id, bid_id, buyer_id, seller_id, kind, status, amount, currency, created_at) values ($1, $2, $3, $4, 'auction', 'cancelled', $5, 'AED', $6)`,
+      [slotX, bidId, buyerA.companyId, sellerX.companyId, AED(90_000), now])
+    const a = (await call(buyerA, 'GET', `/api/slots/${slotY}/advice`)).json().advice
+    expect(a).toMatchObject({ enough: true, level: 'media', n: 4, low: AED(4_000), high: AED(7_000), median: AED(5_000), suggest: AED(6_000), wins: 3 })
+    // guests get nothing
+    expect((await call(null, 'GET', `/api/slots/${slotY}/advice`)).statusCode).toBe(401)
+
+    // outbid on an open slot, with no live bid left there: Athena notices
+    const seq = async () => Number((await pool.query(`select coalesce(max(seq), 0) + 1 n from bids where slot_id = $1`, [slotY])).rows[0].n)
+    await pool.query(`insert into bids (slot_id, buyer_id, kind, amount, seq, status, created_at) values ($1, $2, 'bid', $3, $4, 'outbid', $5)`, [slotY, buyerA.companyId, AED(3_500), await seq(), now])
+    await pool.query(`insert into bids (slot_id, buyer_id, kind, amount, seq, status, created_at) values ($1, $2, 'bid', $3, $4, 'active', $5)`, [slotY, buyerB.companyId, AED(3_700), await seq(), now])
+    const mine = (await call(buyerA, 'GET', '/api/athena/noticed')).json().items
+    expect(mine.find((i: any) => i.kind === 'outbid')).toMatchObject({ href: `/calendar?slot=${slotY}`, data: { outlet: 'Gulf Radio', placement: 'Morning Markets' } })
+    expect((await call(buyerB, 'GET', '/api/athena/noticed')).json().items.some((i: any) => i.kind === 'outbid')).toBe(false)
+    // the team: new registrations in the last day
+    await call(null, 'POST', '/api/registrations', { side: 'buyer', name: 'Lina', company: 'Acme', email: 'lina@example.com', phone: '0501234567' })
+    expect((await call(admin, 'GET', '/api/athena/noticed')).json().items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'registrations', data: { n: 1 }, href: '/registrations' })]))
+    expect((await call(sellerX, 'GET', '/api/athena/noticed')).statusCode).toBe(200)
+  })
+
   test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
     const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
     expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })

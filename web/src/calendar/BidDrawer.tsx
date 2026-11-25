@@ -13,6 +13,7 @@ import { CompanyCard, type CompanyProfile } from '../CompanyCard'
 import { useLive } from '../live'
 import { useCampaigns, useCurrentCampaign } from './CampaignDrawer'
 import { IndustryPick } from '../IndustryPick'
+import { BidAdvice } from '../athena/BidAdvice'
 
 type Detail = Slot & { placementId?: string; yourDeal?: { id: string; status: string; kind: string } | null; minNextBid: number; yourMax: number | null; yourAutoMax: number | null; briefOnFile: boolean; creativeDueAt: string
   details?: { description: string | null; specs: string | null; language: string | null; unit: string | null; notAccepted?: string[] }; publisher?: CompanyProfile | null }
@@ -174,6 +175,7 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
 
         {s.saleType === 'auction' ? <section className="form">
           <BidStatus s={s} />
+          {!guest && <BidAdvice slotId={s.id} top={s.topBid ?? null} onUse={v => { setAuto(false); setAmount(v) }} />}
           <div className="seg bid-mode" role="radiogroup" aria-label={t('How to bid')}>
             <button type="button" role="radio" aria-checked={!auto} className={!auto ? 'on' : ''} onClick={() => setAuto(false)}>{t('Single bid')}</button>
             <button type="button" role="radio" aria-checked={auto} className={auto ? 'on' : ''} onClick={() => setAuto(true)}>{t('Auto-bid')}</button></div>

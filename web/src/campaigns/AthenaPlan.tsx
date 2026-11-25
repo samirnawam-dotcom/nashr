@@ -7,6 +7,7 @@ import { OutletMark } from '../LogoPicker'
 import { CHANNEL_NAME } from '../media'
 import { audienceLabel } from '../../../server/shared/audiences'
 import { saleLabel } from '../calendar/CalendarPage'
+import { AthenaTag } from '../athena/Owl'
 
 /*
  * "Plan your campaign with Athena" (owner's doc), built from rules, no outside AI. Athena reads the campaign's dates, budget,
@@ -57,10 +58,10 @@ export function AthenaPlan({ campaignId, autoFocus, onAdded }: { campaignId: str
   const shareSum = shares ? Object.values(shares).reduce((a, b) => a + b, 0) : 100
   const budget = plan?.read.budget ?? null
 
-  return <section className="card athena-plan" aria-labelledby="ap-h">
+  return <section className="card athena-plan ath-edge" aria-labelledby="ap-h">
     <form className="ap-ask" onSubmit={e => { e.preventDefault(); setShares(null); run(text, null) }}>
       <h3 id="ap-h" className="visually-hidden">{t('Plan your campaign with Athena')}</h3>
-      <span className="pc-why-a">{t('Athena')}</span>
+      <AthenaTag busy={busy} wake />
       <input ref={box} className="search" value={text} onChange={e => setText(e.target.value)} maxLength={500}
         placeholder={t('Plan your campaign with Athena')} aria-label={t('Plan your campaign with Athena')} />
       <button className="btn primary" disabled={busy}>{busy ? t('Planning…') : t('Plan')}</button>

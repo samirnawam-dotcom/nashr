@@ -1,4 +1,5 @@
 import { GLOSSARY, Tip } from '../onboarding/Onboarding'
+import { AthenaPanel, Owl } from '../athena/Owl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api'
 import { money, slotWhen } from '../format'
@@ -201,9 +202,10 @@ export function AskBar({ f, set, onAsk, inputRef }: { f: ShopFilter; set: (p: Pa
     const k = setTimeout(() => set({ q: text, ...(f.ask ? ATHENA_CLEAR : {}) }), 250); return () => clearTimeout(k) }, [text])
   useEffect(() => { if (!f.ask && !f.q) setText('') }, [f.ask, f.q])
   const ask = () => { if (!text.trim()) return; if (read.request) { set(athenaFilters(read, text.trim())); onAsk() } else set({ q: text, ...ATHENA_CLEAR }) }
-  return <form className="ask-bar" role="search" onSubmit={e => { e.preventDefault(); ask() }}>
+  return <form className={`ask-bar ${read.request ? 'is-ask' : ''}`} role="search" onSubmit={e => { e.preventDefault(); ask() }}>
+    <Owl className="ask-owl" size={18} wake={read.request} key={read.request ? 'ask' : 'search'} />
     <input ref={inputRef} className="search" type="search" placeholder={t('Search or ask Athena')} aria-label={t('Search or ask Athena')} value={text} onChange={e => setText(e.target.value)} />
-    {read.request && text !== f.ask && <button type="submit" className="btn sm primary ask-go">{t('Ask Athena')}</button>}
+    {read.request && text !== f.ask && <button type="submit" className="btn sm primary ask-go"><Owl size={14} />{t('Ask Athena')}</button>}
   </form>
 }
 
@@ -215,14 +217,14 @@ export function AthenaLine({ f, set }: { f: ShopFilter; set: (p: Partial<ShopFil
   const read = [r.audiences.length ? t('reaching {who}', { who: r.audiences.map(a => t(audienceLabel(a)).toLowerCase()).join(', ') }) : '',
     r.languages.length ? t('in {language}', { language: r.languages.map(l => t(l.charAt(0).toUpperCase() + l.slice(1))).join(t(' or ')) }) : '',
     ...r.dayparts.map(d => d === 'morning' ? t('morning show') : d === 'evening' ? t('evening show') : t('afternoon show'))].filter(Boolean)
-  return <div className="athena-line" role="status">
-    <p><b>{t('Athena')}</b> · {t('Best fit first')}{read.length ? `, ${read.join(', ')}` : ''}. <button type="button" className="text-link" onClick={() => set(ATHENA_CLEAR)}>{t('Clear')}</button></p>
+  return <AthenaPanel className="athena-line" say={f.ask}>
+    <p>{t('Best fit first')}{read.length ? `, ${read.join(', ')}` : ''}. <button type="button" className="text-link" onClick={() => set(ATHENA_CLEAR)}>{t('Clear')}</button></p>
     {r.missing.includes('dates') && <form className="row-flex athena-q" onSubmit={e => { e.preventDefault(); if (!answer.trim()) return
         const both = `${f.ask} ${answer}`, rr = readRequest(both, todayInDubai()); set(athenaFilters(rr, both)); setAnswer('') }}>
       <label htmlFor="athena-q">{t('Which dates? For example: 1–14 Dec.')}</label>
       <input id="athena-q" className="search" value={answer} onChange={e => setAnswer(e.target.value)} placeholder={t('1–14 Dec')} />
       <button className="btn sm">{t('OK')}</button></form>}
-  </div>
+  </AthenaPanel>
 }
 
 // ---- Products view ----------------------------------------------------------------------------------------------------------
@@ -237,7 +239,7 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
   if (layout === 'list') return <tr>
     <td><span className="row-flex"><OutletMark name={p.brand} url={p.logoUrl} size={28} /><span><b dir="auto">{p.title}</b><span className="small muted d-block">{media}</span></span></span></td>
     <td><span className="tag"><SaleIcon k={p.saleType} />{saleLabel(p.saleType)}</span></td>
-    <td className="r num">{money(p.price)}</td><td className="small">{t('{n} on sale', { n: p.onSale })} · {next}{reachTag && <> {reachTag}</>}{p.why && <div className="pc-why">{whyText(p)}</div>}</td><td>{actions}</td></tr>
+    <td className="r num">{money(p.price)}</td><td className="small">{t('{n} on sale', { n: p.onSale })} · {next}{reachTag && <> {reachTag}</>}{p.why && <div className="pc-why"><Owl size={14} /><span>{whyText(p)}</span></div>}</td><td>{actions}</td></tr>
   return <article className="card prod-card">
     <div className="row-flex pc-head"><OutletMark name={p.brand} url={p.logoUrl} size={40} />
       <div className="pc-name"><a href={`/directory/${p.slug}`}><b dir="auto">{p.title}</b></a><span className="small muted">{media} · <bdi>{p.brand}</bdi></span></div>
@@ -246,7 +248,7 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
       {p.buyNowPrice != null && <span className="tag">{t('Buy now {amount}', { amount: money(p.buyNowPrice) })}<Tip text={GLOSSARY.buyNow} label={t('Buy now')} /></span>}{reachTag}</div>
     <div className="pc-price"><span className="small muted">{priceLabel}</span><b className="num">{money(p.price)}</b></div>
     <span className="small muted">{t('{n} on sale', { n: p.onSale })} · {t('next: {when}', { when: next })}</span>
-    {p.why && <p className="pc-why small"><span className="pc-why-a">{t('Athena')}</span> {whyText(p)}</p>}
+    {p.why && <p className="pc-why small"><Owl size={15} /><span><b>{t('Athena')}:</b> {whyText(p)}</span></p>}
     {actions}
   </article>
 }

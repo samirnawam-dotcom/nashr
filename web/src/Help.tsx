@@ -5,7 +5,7 @@ import { dubai } from './calendar/layout'
 import { PhotoBand } from './PhotoBand'
 import { t } from './i18n'
 
-type Rules = { seller_window_hours: number; payment_window_hours: number; proof_due_working_days: number; review_working_days: number
+export type Rules = { seller_window_hours: number; payment_window_hours: number; proof_due_working_days: number; review_working_days: number
   issue_response_hours: number; free_cancel_hours: number; cancel_fee_bp: number; max_creative_rounds: number }
 type Req = { id: string; topic: string; dealId: string | null; dealRef: string | null; message: string; status: 'open' | 'answered' | 'closed'
   reply: string | null; createdAt: string; answeredAt: string | null }
@@ -15,7 +15,7 @@ export const TOPIC: Record<string, string> = { booking: 'A booking', payment: 'A
 const when = (iso: string) => `${dayLabel(dubai(iso).date, { day: 'numeric', month: 'short' })}, ${time(iso)}`
 
 // Answers built from the live rules, so a changed setting changes the help too.
-const buyerQA = (r: Rules): QA[] => [
+export const buyerQA = (r: Rules): QA[] => [
   [t('How do I book a slot?'), t('Each slot is sold one of three ways. Auction: the highest bid when bidding closes wins. Fixed price: book it now and it comes off sale at once. Quick sale: offer a price and the publisher picks one. In every case the publisher confirms within {h} hours.', { h: r.seller_window_hours })],
   [t('What is auto-bid?'), t('Set the most you will pay. Nashr bids for you, one step above anyone else, up to that maximum. If the publisher has a hidden minimum price and your maximum covers it, your bid rises to that minimum at once. Other buyers never see your maximum.')],
   [t('When do I pay?'), t('Only after the publisher accepts. You then have {h} hours to pay, or until the creative deadline if that comes sooner.', { h: r.payment_window_hours })],
@@ -24,7 +24,7 @@ const buyerQA = (r: Rules): QA[] => [
   [t('Can I cancel?'), t('Free within {h} hours of paying. After that the publisher keeps {pct}% of the price.', { h: r.free_cancel_hours, pct: r.cancel_fee_bp / 100 })],
   [t('Where are my receipts and tax invoices?'), t('Under Bookings, Receipts and invoices: a receipt from Nashr when you pay, then the publisher\'s tax invoice. Add your TRN and registered address under Company so they appear on them.')],
 ]
-const sellerQA = (r: Rules): QA[] => [
+export const sellerQA = (r: Rules): QA[] => [
   [t('How do bookings reach me?'), t('In your Inbox. Accept or decline each one within {h} hours, or switch on auto-accept for a placement.', { h: r.seller_window_hours })],
   [t('When am I paid?'), t('After the buyer approves proof, or {d} working days after you send it if they do not answer. Nashr\'s commission is deducted and the rest goes to your verified bank account.', { d: r.review_working_days })],
   [t('When is proof due?'), t('Within {d} working days after the ad runs. If it is missing, the buyer is refunded.', { d: r.proof_due_working_days })],
@@ -32,7 +32,7 @@ const sellerQA = (r: Rules): QA[] => [
   [t('Who issues the tax invoices?'), t('Nashr issues them in your name and TRN, or you upload your own; choose under Profile. Nashr\'s commission invoice comes to you. All of them are under Earnings, Receipts and invoices.')],
   [t('What if I cannot run a paid booking?'), t('Cancel it from the deal. The buyer is refunded in full, and the card costs come out of your next payout.')],
 ]
-const accountQA = (): QA[] => [
+export const accountQA = (): QA[] => [
   [t('I forgot my password'), t('Use "Forgot your password?" on the sign-in page. Nashr sends you a link that works for 24 hours.')],
   [t('How do I add a colleague?'), t('Ask Nashr below: everyone joins by invitation.')],
 ]

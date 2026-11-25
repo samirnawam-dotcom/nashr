@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Owl } from './athena/Owl'
 import './landing.css'
 import { FAQ, PAGES, faqLd, useMeta } from './seo'
 import { isAr, t } from './i18n'
@@ -178,7 +179,7 @@ export function Landing() {
             <a className="btn signal" href="/request-access">{t("Join the waitlist")}</a>
           </div>
           <div className="chat" aria-label={t("Athena preview")}>
-            <div className="chat-h"><span className="spark" aria-hidden /><b>{t("Athena")}</b><span>{t("Preview")}</span></div>
+            <div className="chat-h"><Owl size={24} className="lp-owl" /><b>{t("Athena")}</b><span>{t("Preview")}</span></div>
             <p className="msg me">{t("How should I spend AED 80,000 on a January launch for young professionals in Dubai?")}</p>
             <p className="msg ai">{t("Weekday drive-time radio and two business newsletters reach them best for that budget. I'd keep a fifth for a podcast read in week two.")}</p>
             <div className="chat-acts" aria-hidden><span>{t("Show me the plan")}</span><span>{t("Compare outlets")}</span></div>

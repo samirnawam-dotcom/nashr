@@ -1,4 +1,5 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
+import { athenaRoutes } from './routes-athena.js'
 import { prelaunch } from './launch.js'
 import type pg from 'pg'
 import { pool, tx } from '../core/db.js'
@@ -186,6 +187,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   sellerRoutes(route)
   adminRoutes(route)
   registrationRoutes(route)
+  athenaRoutes(route)
   planRoutes(route)
   clientRoutes(route)
   sellerDeskRoutes(route, deps)

@@ -469,3 +469,5 @@
 .lp .foot-brand .logo-img-brand { display: block; }
 .lp .hero .btn.signal { background: var(--ink); border-color: var(--ink); color: var(--on-action); }
 .lp .hero .btn.signal:hover { background: var(--action-hover); border-color: #2A2A2E; color: var(--on-action); }
+
+.lp .chat-h .lp-owl { color: #fff; }
