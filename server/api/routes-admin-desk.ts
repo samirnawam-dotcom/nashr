@@ -59,7 +59,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
        (select count(*)::int from users u where u.company_id = c.id) users,
        (select count(*)::int from users u where u.company_id = c.id and u.status = 'suspended') suspended,
        (select coalesce(sum(d.amount), 0)::bigint from deals d where (d.buyer_id = c.id or d.seller_id = c.id) and d.status in ${LIVE}) gmv,
-       (select (value)::int from settings where key = 'commission:' || c.id order by valid_from desc limit 1) commission_bp
+       (select (value #>> '{}')::int from settings where key = 'commission:' || c.id order by valid_from desc limit 1) commission_bp
      from companies c where c.type <> 'nashr' and ($1::text is null or c.type = $1) order by c.name`, [req.query.type ?? null])).rows
     .map(c => ({ id: c.id, name: c.name, type: c.type, trn: c.trn, vatRegistered: c.vat_registered, payoutsEnabled: c.payouts_enabled,
       invoiceMode: c.invoice_mode, createdAt: c.created_at, users: c.users, suspended: c.suspended, gmv: c.gmv, commissionBp: c.commission_bp })))
@@ -133,7 +133,7 @@ export function adminDeskRoutes(route: RouteFn, deps: { provider: PaymentProvide
   // The full file on one deal, for operations and disputes: every event with its actor, the money, the ledger.
   route('GET', '/api/admin/deals/:id', STAFF, async ({ db }, req) => {
     const d = (await db.query(`select d.*, s.label, s.starts_at, s.creative_due_at, brand_name(o) outlet, o.channel, bc.name buyer, sc.name seller, b.brief,
-        coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_preview
+        coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value #>> '{}')::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_preview
         from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
         join companies bc on bc.id = d.buyer_id join companies sc on sc.id = d.seller_id join bids b on b.id = d.bid_id where d.id = $1`, [req.params.id])).rows[0]
     if (!d) throw new NotFound()

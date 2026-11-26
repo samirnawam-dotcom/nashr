@@ -120,9 +120,9 @@ export function userRoutes(route: RouteFn) {
         (select count(*)::int from sessions s join users u on u.id = s.user_id where s.act_as_until > $1) helping_now,
         (select count(*)::int from users where status = 'suspended') suspended,
         (select count(*)::int from users where role in ('buyer', 'seller') and status = 'active' and not totp_enabled) without_two_step`, [at])).rows[0]
-    const locked = (await db.query(`select lower(email) email, count(*)::int failures, max(at) last from login_events where not success and reason in ('password', 'code')
+    const locked = (await db.query(`select lower(email) email, count(*)::int failures, max(at) as last from login_events where not success and reason in ('password', 'code')
         and at > $1::timestamptz - interval '15 minutes' group by lower(email) having count(*) >= 10 order by last desc`, [at])).rows
-    const addresses = (await db.query(`select ip, count(*)::int failures, count(distinct lower(email))::int accounts, max(at) last from login_events
+    const addresses = (await db.query(`select ip, count(*)::int failures, count(distinct lower(email))::int accounts, max(at) as last from login_events
         where not success and reason in ('password', 'code') and at > $1::timestamptz - interval '24 hours' and ip is not null group by ip order by failures desc limit 10`, [at])).rows
     const recent = (await db.query(`select l.at, l.email, l.ip, l.success, l.reason, u.name, u.id user_id from login_events l left join users u on u.id = l.user_id
         order by l.at desc limit 30`)).rows

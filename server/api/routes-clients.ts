@@ -18,7 +18,7 @@ const PAID = `('secured', 'in_review', 'issue_open', 'disputed', 'released', 'pa
  * agency chooses), and its own list of bookings, receipts and a report to send on.
  */
 const TOTALS = `select c.*,
-    coalesce((select sum(d.amount) from deals d where d.client_id = c.id and d.status in ${BOOKED}), 0)::bigint committed,
+    coalesce((select sum(d.amount) from deals d where d.client_id = c.id and d.status in ${BOOKED}), 0)::bigint as committed,
     coalesce((select sum(d.amount) from deals d where d.client_id = c.id and d.status = 'awaiting_seller'), 0)::bigint pending,
     coalesce((select sum(d.amount) from deals d where d.client_id = c.id and d.status in ${PAID}), 0)::bigint paid,
     (select count(*) from deals d where d.client_id = c.id and d.status in ${BOOKED})::int bookings
@@ -91,7 +91,7 @@ export function clientRoutes(route: RouteFn) {
     if (!c) throw new NotFound()
     const rows = (await db.query(
       `select d.ref, d.status, d.amount, d.currency, s.label, s.starts_at, brand_name(o) outlet, o.channel, p.name placement, cmp.name campaign,
-         coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
+         coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value #>> '{}')::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) vat_bp,
          (select string_agg(x.number, ' ' order by x.issued_at) from documents x where x.deal_id = d.id and x.recipient_id = d.buyer_id) docs
        from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
        join companies sc on sc.id = d.seller_id left join campaigns cmp on cmp.id = d.campaign_id

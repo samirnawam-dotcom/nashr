@@ -47,7 +47,7 @@ export function dashboardRoutes(route: RouteFn) {
     const toPay = deals.filter(d => d.status === 'awaiting_payment')
 
     // Live bids: one row per slot this buyer bid on that is still open.
-    const bids = (await db.query(`select s.id slot_id, s.label, s.starts_at, s.closes_at, s.top_amount, s.top_buyer_id = $1 leading, brand_name(o) outlet, o.channel,
+    const bids = (await db.query(`select s.id slot_id, s.label, s.starts_at, s.closes_at, s.top_amount, s.top_buyer_id = $1 as leading, brand_name(o) outlet, o.channel,
         max(b.max_amount) your_max, max(b.amount) your_bid
       from bids b join slots s on s.id = b.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
       where b.buyer_id = $1 and b.status in ('active', 'outbid') and s.status = 'open' and s.closes_at > $2

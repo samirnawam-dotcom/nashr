@@ -176,7 +176,7 @@ export const SERVER_AR: Record<string, string> = {
   "Payouts or refunds that failed and need a person: {}. Check Funds.": "تحويلات أو استردادات فشلت وتحتاج إلى تدخّل يدوي: {1}. راجع الأموال.",
   "Emails that could not be sent in the last day: {}. Check Emails.": "رسائل تعذّر إرسالها خلال اليوم الماضي: {1}. راجع رسائل البريد.",
   "Disputes past their decision date: {}. Check Disputes.": "نزاعات تجاوزت موعد قرارها: {1}. راجع النزاعات.",
-  "Server errors in the last 10 minutes: {}, latest: {}. Check the logs (journalctl -u nashr).": "أخطاء الخادم خلال آخر 10 دقائق: {1}، آخرها: {2}. راجع السجلات (journalctl -u nashr).",
+  "Server errors in the last 10 minutes: {}, latest: {}. Check the server log (journalctl -u nashr, or stderr.log in the app folder on cPanel).": "أخطاء الخادم خلال آخر 10 دقائق: {1}، آخرها: {2}. راجع سجل الخادم (journalctl -u nashr، أو stderr.log في مجلد التطبيق على cPanel).",
   "Upload the creative.": "ارفع المادة الإعلانية.",
   "Upload the creative again: that file was not found.": "ارفع المادة الإعلانية مجددًا: لم يُعثر على ذلك الملف.",
   "The timer job has not run yet.": "لم تعمل مهمة المؤقت بعد.",

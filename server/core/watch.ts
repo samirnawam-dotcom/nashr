@@ -50,7 +50,7 @@ export async function findProblems(db: Db, ctx: Ctx): Promise<Problem[]> {
   }
   if (r.late_disputes > 0) out.push({ key: 'disputes.late', detail: `Disputes past their decision date: ${r.late_disputes}. Check Disputes.` })
   const recent = errors.filter(e => e.at > at.getTime() - 10 * 60_000)
-  if (recent.length >= 5) out.push({ key: 'errors.spike', detail: `Server errors in the last 10 minutes: ${recent.length}, latest: ${recent[recent.length - 1].what}. Check the logs (journalctl -u nashr).` })
+  if (recent.length >= 5) out.push({ key: 'errors.spike', detail: `Server errors in the last 10 minutes: ${recent.length}, latest: ${recent[recent.length - 1].what}. Check the server log (journalctl -u nashr, or stderr.log in the app folder on cPanel).` })
   // Backups are watched where the server makes them (the deploy script sets BACKUP_DIR and installs the nightly timer).
   if (process.env.BACKUP_DIR) {
     if (r.backup_ok === false) out.push({ key: 'backup.failed', detail: 'The last backup failed. Check: journalctl -u nashr-backup.' })

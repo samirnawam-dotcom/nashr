@@ -33,11 +33,11 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
                 join companies b on b.id = d.buyer_id where d.seller_id = $1`
   const cols = `d.id deal_id, d.ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet, b.name buyer, d.amount, coalesce(d.amount < s.reserve_price, false) below_reserve, d.counter_amount`
   const rows = [
-    ...(await q(`select 'decide' type, ${cols}, d.next_deadline_at due, d.kind ${base} and d.status = 'awaiting_seller' and $2::timestamptz is not null`)),
-    ...(await q(`select 'choose' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet, null buyer, s.top_amount amount, false below_reserve, s.choice_deadline_at due, null kind
+    ...(await q(`select 'decide' as type, ${cols}, d.next_deadline_at due, d.kind ${base} and d.status = 'awaiting_seller' and $2::timestamptz is not null`)),
+    ...(await q(`select 'choose' as type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet, null buyer, s.top_amount amount, false below_reserve, s.choice_deadline_at due, null kind
                  from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                  where o.company_id = $1 and s.status = 'awaiting_choice' and s.choice_deadline_at > $2`)),
-    ...(await q(`select 'interest' type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet,
+    ...(await q(`select 'interest' as type, null deal_id, null ref, s.id slot_id, s.label, s.starts_at, o.channel, brand_name(o) outlet,
                  (select case when count(*) = 1 then max(c.name) end from bids b join companies c on c.id = b.buyer_id
                    where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') buyer,
                  (select count(*)::int from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active') interested,
@@ -46,16 +46,16 @@ async function inbox(db: pg.PoolClient, me: string, at: Date) {
                  from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
                  where o.company_id = $1 and s.status = 'open' and s.sale_type = 'quick_sale' and s.closes_at > $2
                  and exists (select 1 from bids b where b.slot_id = s.id and b.kind = 'interest' and b.status = 'active')`)),
-    ...(await q(`select 'creative' type, ${cols}, s.creative_due_at due, null kind ${base} and d.status in ('awaiting_payment', 'secured') and $2::timestamptz is not null
+    ...(await q(`select 'creative' as type, ${cols}, s.creative_due_at due, null kind ${base} and d.status in ('awaiting_payment', 'secured') and $2::timestamptz is not null
                  and (select c.status from creatives c where c.deal_id = d.id order by c.version desc limit 1) = 'pending'`)),
-    ...(await q(`select 'creative_missing' type, ${cols}, s.creative_due_at due, null kind ${base} and d.status = 'secured' and s.creative_due_at <= $2
+    ...(await q(`select 'creative_missing' as type, ${cols}, s.creative_due_at due, null kind ${base} and d.status = 'secured' and s.creative_due_at <= $2
                  and d.placeholder is not true and not exists (select 1 from creatives c where c.deal_id = d.id and c.status = 'approved')`)),
-    ...(await q(`select 'proof' type, ${cols}, d.next_deadline_at due, null kind ${base} and d.status = 'secured' and coalesce(d.make_good_at, s.starts_at) <= $2`)),
-    ...(await q(`select 'issue' type, ${cols}, d.next_deadline_at due, null kind ${base} and d.status = 'issue_open' and $2::timestamptz is not null
+    ...(await q(`select 'proof' as type, ${cols}, d.next_deadline_at due, null kind ${base} and d.status = 'secured' and coalesce(d.make_good_at, s.starts_at) <= $2`)),
+    ...(await q(`select 'issue' as type, ${cols}, d.next_deadline_at due, null kind ${base} and d.status = 'issue_open' and $2::timestamptz is not null
                  and exists (select 1 from issues i where i.deal_id = d.id and i.status = 'open' and i.offer is null)`)),
-    ...(await q(`select 'prerun' type, ${cols}, coalesce(d.make_good_at, s.starts_at) due, null kind ${base} and d.status = 'secured' and $2::timestamptz is not null
+    ...(await q(`select 'prerun' as type, ${cols}, coalesce(d.make_good_at, s.starts_at) due, null kind ${base} and d.status = 'secured' and $2::timestamptz is not null
                  and exists (select 1 from prerun_checks r where r.deal_id = d.id and r.seller_confirmed_at is null)`)),
-    ...(await q(`select 'invoice' type, ${cols}, null::timestamptz due, null kind ${base} and $2::timestamptz is not null
+    ...(await q(`select 'invoice' as type, ${cols}, null::timestamptz due, null kind ${base} and $2::timestamptz is not null
                  and (select invoice_mode from companies where id = $1) = 'upload' and d.status in ('secured', 'in_review', 'released', 'paid_out')
                  and not exists (select 1 from documents x where x.deal_id = d.id and x.type = 'media_invoice')`)),
   ]
@@ -78,9 +78,9 @@ export function sellerDeskRoutes(route: RouteFn, deps: { provider: PaymentProvid
     // Rates are fixed when the publisher accepts; before that, the publisher's current commission and VAT give the expected figures.
     const deals = (await db.query(`select d.*, o.id outlet_id, brand_name(o) outlet, o.channel, p.name placement, s.label, s.starts_at, c.name buyer,
         (select min(e.at) from deal_events e where e.deal_id = d.id and e.event = 'pay') paid_at,
-        coalesce(d.commission_bp, (select (value)::int from settings where key = 'commission:' || d.seller_id order by valid_from desc limit 1),
-          (select (value)::int from settings where key = 'default_commission_bp' order by valid_from desc limit 1)) commission_bp,
-        coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value)::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) media_vat_bp
+        coalesce(d.commission_bp, (select (value #>> '{}')::int from settings where key = 'commission:' || d.seller_id order by valid_from desc limit 1),
+          (select (value #>> '{}')::int from settings where key = 'default_commission_bp' order by valid_from desc limit 1)) commission_bp,
+        coalesce(d.media_vat_bp, case when sc.vat_registered then (select (value #>> '{}')::int from settings where key = 'media_vat_bp' order by valid_from desc limit 1) else 0 end) media_vat_bp
       from deals d join slots s on s.id = d.slot_id join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
       join companies c on c.id = d.buyer_id join companies sc on sc.id = d.seller_id
       where d.seller_id = $1 and ($2::uuid is null or o.id = $2) order by d.created_at desc`, [id, outlet])).rows

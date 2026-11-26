@@ -332,7 +332,7 @@ export function planRoutes(route: RouteFn) {
   // tagged to it, and a plan of products (a product's own unit or a programme), each costed at its default price.
   const LIVE = `('awaiting_seller')`, RAN = `('in_review', 'issue_open', 'disputed', 'released', 'paid_out')`
   const totals = `select c.*, c.start_date::text start_text, c.end_date::text end_text,
-      coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${BOOKED}), 0)::bigint committed,
+      coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${BOOKED}), 0)::bigint as committed,
       coalesce((select sum(d.amount) from deals d where d.campaign_id = c.id and d.status in ${LIVE}), 0)::bigint pending,
       coalesce((select sum(coalesce((select coalesce(s.top_amount, s.starting_price) from slots s where s.id = l.slot_id), p.default_price, o.default_price, p.starting_price))
         from campaign_lines l join placements p on p.id = l.placement_id
@@ -432,7 +432,7 @@ export function planRoutes(route: RouteFn) {
       `select p.id placement_id, p.kind, p.name, o.id outlet_id, o.channel, o.default_price, p.default_price p_default, p.starting_price,
          pr.id brand_id, brand_name(o) brand, coalesce(pr.logo_key, null) brand_logo_key, o.logo_key outlet_logo_key, l.added_at,
          (select count(*)::int from slots s where s.placement_id = p.id and s.status = 'open' and s.closes_at > $2) open_slots,
-         coalesce((select sum(d.amount) from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status in ${BOOKED}), 0)::bigint committed,
+         coalesce((select sum(d.amount) from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status in ${BOOKED}), 0)::bigint as committed,
          case when exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status in ${RAN}) then 'ran'
               when exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status = 'secured') then 'paid'
               when exists (select 1 from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and d.campaign_id = $1 and d.status = 'awaiting_payment') then 'accepted'

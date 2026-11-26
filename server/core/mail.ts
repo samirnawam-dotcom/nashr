@@ -48,8 +48,12 @@ ${e.cta ? `<p style="margin:20px 0 4px"><a href="${esc(e.cta.url)}" style="displ
 }
 
 /** Queue one email (the outbox sends it, or holds it until SMTP is set up). */
+// The demo accounts' made-up addresses (a demo server, NASHR_DEMO=1): their mail would only bounce, so it stays in the outbox for staff to read.
+const DEMO_INBOXES = ['demo@northwind.ae', 'huda@brightagency.ae', 'sales@skyline.ae', 'ops@nashr.ae', 'omar@nashr.ae']
+const demoInbox = (to: string) => process.env.NASHR_DEMO === '1' && DEMO_INBOXES.includes(to.trim().toLowerCase())
+
 export async function queue(db: Db, m: { to: string; userId?: string | null; companyId?: string | null; kind: string; subject: string; text: string; html: string }, at: Date) {
-  const on = !!smtpConfig()
+  const on = !!smtpConfig() && !demoInbox(m.to)
   await db.query(`insert into outbox (to_email, user_id, company_id, kind, subject, text_body, html_body, status, next_attempt_at, created_at)
     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`, [m.to, m.userId ?? null, m.companyId ?? null, m.kind, m.subject.slice(0, 200), m.text, m.html, on ? 'queued' : 'held', at])
   return on

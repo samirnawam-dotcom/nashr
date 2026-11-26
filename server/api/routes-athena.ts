@@ -119,7 +119,7 @@ export function athenaRoutes(route: RouteFn) {
     const q = req.query as { channel?: string; price?: string; placement?: string; start?: string }
     const channel = String(q.channel ?? '').slice(0, 40), price = Math.max(0, Math.round(Number(q.price) || 0))
     if (!channel) return { check: null }
-    const mine = q.placement && /^[0-9a-f-]{36}$/.test(q.placement) ? (await db.query(`select p.id, p.starts_at_local::text start,
+    const mine = q.placement && /^[0-9a-f-]{36}$/.test(q.placement) ? (await db.query(`select p.id, p.starts_at_local::text as start,
         (select count(*)::int from deals d join slots s on s.id = d.slot_id where s.placement_id = p.id and ${SOLD} and d.created_at > $3::timestamptz - interval '${DAYS} days') sales,
         (select count(*)::int from bids b join slots s on s.id = b.slot_id where s.placement_id = p.id and b.created_at > $3::timestamptz - interval '21 days') bids
         from placements p join outlets o on o.id = p.outlet_id where p.id = $1 and o.company_id = $2`, [q.placement, me.actAs.companyId, now])).rows[0] ?? null : null
@@ -145,7 +145,7 @@ export function athenaRoutes(route: RouteFn) {
   route('GET', '/api/athena/did-you-mean', ['buyer', 'seller', 'admin', 'guest'], async ({ db }, req) => {
     const raw = String((req.query as any).q ?? '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 80), q = arNorm(raw)
     if (q.length < 3) return { suggest: null }
-    const names = (await db.query(`select distinct name from (select brand_name(o) name from outlets o union select o.name_ar from outlets o where o.name_ar is not null
+    const names = (await db.query(`select distinct name from (select brand_name(o) as name from outlets o union select o.name_ar from outlets o where o.name_ar is not null
       union select pr.name from products pr) n where name is not null limit 3000`)).rows.map(r => String(r.name))
     const words = (s: string) => arNorm(s.toLowerCase()).split(/[^a-z0-9\u0600-\u06FF]+/).filter(Boolean)
     const asked = words(q)
@@ -237,15 +237,15 @@ export function athenaRoutes(route: RouteFn) {
       for (const a of words) { const m = Math.min(...ws.map(w => w.startsWith(a) ? 0 : slips(a, w, 2))); if (m > (a.length >= 7 ? 2 : a.length >= 4 ? 1 : 0)) return 9; d += m }
       return d + 1 }
     const pick = <T extends { name: string }>(rows: T[], n: number) => rows.map(r => ({ r, d: close(r.name) })).filter(x => x.d < 9).sort((a, b) => a.d - b.d).slice(0, n).map(x => x.r)
-    const outlets = pick((await db.query(`select o.id, brand_name(o) name, o.name outlet_name, o.name_ar, o.channel, (select count(*)::int from placements p where p.outlet_id = o.id and not p.archived) products
+    const outlets = pick((await db.query(`select o.id, brand_name(o) as name, o.name outlet_name, o.name_ar, o.channel, (select count(*)::int from placements p where p.outlet_id = o.id and not p.archived) products
       from outlets o limit 3000`)).rows.flatMap((r: any) => [r, ...(r.name_ar ? [{ ...r, name: r.name_ar }] : [])]), 4)
       .map((r: any) => ({ name: r.name, slug: slugOf(r.outlet_name, r.id), channel: r.channel, products: r.products }))
-    const products = pick((await db.query(`select p.id, case when p.kind = 'main' then brand_name(o) else brand_name(o) || ' · ' || p.name end name, o.name outlet_name, o.id outlet_id,
+    const products = pick((await db.query(`select p.id, case when p.kind = 'main' then brand_name(o) else brand_name(o) || ' · ' || p.name end as name, o.name outlet_name, o.id outlet_id,
         (select min(coalesce(s.top_amount, s.starting_price)) from slots s where s.placement_id = p.id and s.status = 'open') price
       from placements p join outlets o on o.id = p.outlet_id where not p.archived limit 5000`)).rows, 4)
       .map((r: any) => ({ id: r.id, name: r.name, slug: slugOf(r.outlet_name, r.outlet_id), price: r.price == null ? null : Number(r.price) }))
     const role = me.actAs.role, company = me.actAs.companyId
-    const deals = role === 'buyer' || role === 'seller' ? (await db.query(`select d.id, d.ref, d.status, brand_name(o) || ' · ' || s.label name from deals d join slots s on s.id = d.slot_id
+    const deals = role === 'buyer' || role === 'seller' ? (await db.query(`select d.id, d.ref, d.status, brand_name(o) || ' · ' || s.label as name from deals d join slots s on s.id = d.slot_id
         join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id where ${role === 'buyer' ? 'd.buyer_id' : 'd.seller_id'} = $1 order by d.created_at desc limit 500`, [company])).rows
       .map((r: any) => ({ ...r, name: `${r.ref} ${r.name}` })) : []
     const bookings = pick(deals, 3).map((r: any) => ({ id: r.id, ref: r.ref, name: r.name.slice(r.ref.length + 1), status: r.status, href: role === 'buyer' ? `/bookings/${r.id}` : `/deals/${r.id}` }))
@@ -305,7 +305,7 @@ export function athenaRoutes(route: RouteFn) {
     }
     if (me.actAs.role === 'seller') {
       // booking requests waiting for an answer
-      const waiting = (await db.query(`select count(*)::int n, min(d.next_deadline_at) by from deals d where d.seller_id = $1 and d.status = 'awaiting_seller'`, [company])).rows[0]
+      const waiting = (await db.query(`select count(*)::int n, min(d.next_deadline_at) as by from deals d where d.seller_id = $1 and d.status = 'awaiting_seller'`, [company])).rows[0]
       if (waiting.n) items.push({ key: `requests:${waiting.n}`, kind: 'requests', data: { n: waiting.n }, href: '/inbox', at: waiting.by })
       // dates closing within two days with no bids yet
       for (const r of (await db.query(`select p.id, p.name placement, brand_name(o) outlet, count(*)::int n, min(s.closes_at) closes
@@ -343,7 +343,7 @@ export function athenaRoutes(route: RouteFn) {
       // dates likely to go unsold: no bids yet, and fewer days left than similar dates that sold usually took to get their first bid
       const lead = (await db.query(`select percentile_cont(0.5) within group (order by extract(epoch from s.closes_at - fb.first) / 86400) days, min(o.channel) channel
         from slots s join placements p on p.id = s.placement_id join outlets o on o.id = p.outlet_id
-          join lateral (select min(b.created_at) first from bids b where b.slot_id = s.id) fb on fb.first is not null
+          join lateral (select min(b.created_at) as first from bids b where b.slot_id = s.id) fb on fb.first is not null
         where s.status = 'booked' and s.sale_type = 'auction' and s.closes_at > $1::timestamptz - interval '180 days'
           and o.channel in (select o2.channel from outlets o2 where o2.company_id = $2)`, [now, company])).rows[0]
       if (lead?.days != null) {
