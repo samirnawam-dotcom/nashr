@@ -44,3 +44,5 @@ pre.json { background: var(--bg); padding: 10px; border-radius: var(--radius); f
 .sys-alerts.bad h2 { color: var(--red); }
 .sys-alerts ul { margin: 6px 0 8px; padding-inline-start: 18px; }
 .sys-alerts p { margin: 0; }
+/* phones: each label above its value, so long values never push the card off the screen */
+@media (max-width: 600px) { .kv { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } .kv dd { margin-bottom: 10px; overflow-wrap: anywhere; } }

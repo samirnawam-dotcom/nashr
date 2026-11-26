@@ -344,3 +344,19 @@ html body { font-size-adjust: from-font; }
   html .shell .topbar .nav a { padding: 10px 12px; min-height: 0; }
   body:has(.topbar.open) .ath-fab { display: none; }
 }
+
+/* Phones: rows of controls wrap onto the next line instead of running off the screen, and search boxes shrink to fit */
+@media (max-width: 760px) {
+  html main .row-flex { flex-wrap: wrap; }
+  html main :is(.search, input.search, select.search) { min-width: 0; max-width: 100%; }
+}
+@media (max-width: 760px) {
+  html main :is(.toolbar, .admin-filters, .admin-filters .range) { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  html main .admin-filters .range input { flex: 1 1 130px; min-width: 0; }
+}
+/* staff filters: the search text starts after the magnifier; on phones every filter takes the full width, evenly */
+html main .admin-filters > input[type="search"] { padding-inline-start: 36px !important; }
+@media (max-width: 760px) {
+  html main .admin-filters > :is(input[type="search"], select) { flex: 1 1 100%; width: 100%; }
+  html main .admin-filters .range { flex: 1 1 100%; }
+}

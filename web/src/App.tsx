@@ -7,7 +7,7 @@ import { AcceptInvite, RequestAccess } from './Access'
 import { MyAccountPage, ForgotPassword, ResetPassword } from './Account'
 import { Bell } from './Bell'
 import { TrackerPage } from './calendar/Tracker'
-import { Redirect } from './Redirect'
+import { AthenaPage, Redirect } from './Redirect'
 import { replayTour, Tour } from './onboarding/Onboarding'
 import { DirectoryPage, OutletPage } from './directory/Directory'
 import { Landing } from './Landing'
@@ -117,7 +117,7 @@ const BUYER: Routes = [
   [/^\/(bookings|reports)$/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><BookingsPage /></SubTabs>],
   [/^\/documents\/([\w-]+)$/, id => <DocumentPage id={id} />],
   [/^\/documents/, () => <SubTabs tabs={BUYER_REPORT_TABS()}><DocumentsPage /></SubTabs>],
-  [/^\/athena/, () => <Redirect to="/directory" />],
+  [/^\/athena/, () => <AthenaPage home="/directory" />],
   [/^\/help/, () => <HelpPage role="buyer" />],
   // Inbox: what to act on, then the messages
   [/^\/messages\/([\w-]+)$/, id => <MessagesPage open={id} role="buyer" top={<BuyerToDo />} />],
@@ -134,6 +134,7 @@ const INBOX_TABS = (): [string, string][] => [['/inbox', t('Requests')], ['/mess
 const BUYER_REPORT_TABS = (): [string, string][] => [['/reports', t('Bookings')], ['/results', t('Results')], ['/documents', t('Receipts and invoices')]]
 const REPORT_TABS = (): [string, string][] => [['/reports', t('Transactions')], ['/earnings', t('Balances')]]
 const SELLER: Routes = [
+  [/^\/athena/, () => <AthenaPage home="/home" />],
   [/^\/home/, () => <PortalDashboard />],
   [/^\/inbox/, () => <SubTabs tabs={INBOX_TABS()}><RequestsPage /></SubTabs>],
   [/^\/schedule/, () => <SchedulePage />],
@@ -156,6 +157,7 @@ const SELLER: Routes = [
   [/^\/help/, () => <HelpPage role="seller" />],
 ]
 const ADMIN = (founder: boolean): Routes => [
+  [/^\/athena/, () => <AthenaPage home="/admin" />],
   [/^\/admin/, () => <AdminOverview />],
   [/^\/access/, () => <AccessPage />],
   [/^\/registrations/, () => <RegistrationsPage />],

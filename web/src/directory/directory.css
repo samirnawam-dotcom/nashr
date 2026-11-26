@@ -217,3 +217,5 @@ td .pc-why { color: var(--text-muted); margin-top: 2px; }
   padding: 3px 10px; font: 600 12px/18px var(--font-sans); color: var(--text); cursor: pointer; }
 .pc-ask:hover { border-color: var(--text); }
 :root[lang="ar"] .pc-ask { font-family: var(--font-arabic); }
+/* phones: "My bids" sits in the other bottom corner from the Ask Athena button, so they never overlap */
+.mb-fab { inset-inline-end: auto; inset-inline-start: 16px; }
