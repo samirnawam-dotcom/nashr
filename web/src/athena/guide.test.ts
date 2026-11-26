@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { answer, directoryHref, findPlaces } from './guide'
+import { answer, directoryHref, findPlaces, lookup } from './guide'
 
 const rules = { seller_window_hours: 24, payment_window_hours: 48, proof_due_working_days: 2, review_working_days: 3, issue_response_hours: 48, free_cancel_hours: 24, cancel_fee_bp: 2000, max_creative_rounds: 2 }
 const ask = (q: string, role: 'buyer' | 'seller' | 'admin' = 'buyer', path = '/dashboard') => answer(q, role, path, rules, '2026-11-25')
@@ -66,4 +66,50 @@ describe('Athena chat (rules only)', () => {
     expect(ask('اين فواتيري').links?.[0].href).toBe('/documents')
     expect(ask('كيف ادقع').text).toContain('48 hours')
   })
+})
+
+describe('Athena knows the owner\'s glossary', () => {
+  const ask = (q: string, role: 'buyer' | 'seller' | 'admin' = 'buyer') => answer(q, role, '/directory', null, '2026-11-26').text
+  test('what a word means, in the glossary\'s own words, with typos forgiven', () => {
+    expect(ask('what is quick sale?')).toMatch(/^Quick sale: A sale type\. Buyers offer any amount/)
+    expect(ask('what is quik sael')).toMatch(/^Quick sale:/)
+    expect(ask('what does committed mean')).toMatch(/^Committed: In a campaign/)
+    expect(ask('whats a bid drawer')).toMatch(/^Bid drawer:/)
+    expect(ask('outbid')).toMatch(/^Outbid: Status: someone bid higher/)
+    expect(ask('what does not selected mean')).toMatch(/^Not won:/) // the app's word for it
+    expect(ask('what is reach')).toContain('For example: 120,000 listeners') // the owner's example
+  })
+  test('Calendar means something different to buyers and publishers', () => {
+    expect(ask('what is calendar')).toMatch(/buyer's planner and tracker/)
+    expect(ask('what is calendar', 'seller')).toMatch(/puts products on sale/)
+  })
+  test('Arabic questions find the same words', () => {
+    expect(lookup('ما معنى مزاد', 'buyer')?.term.en).toBe('Auction')
+    expect(lookup('ما هو البيع السريع', 'buyer')?.term.en).toBe('Quick sale')
+    expect(lookup('ماذا يعني الحد الأدنى المقبول', 'seller')?.term.en).toBe('Minimum accepted')
+    expect(lookup('ما معنى تطابق قريب', 'buyer')?.term.en).toBe('Close match')
+  })
+  test('what Nashr is, and who sees what, for each side', () => {
+    expect(ask('what is Nashr?')).toMatch(/^Nashr is a media buying marketplace for the UAE/)
+    expect(ask('can the publisher see my budget?')).toMatch(/never see your budget/)
+    expect(ask('who sees my minimum?', 'seller')).toMatch(/never see your minimum accepted/)
+  })
+  test('the other answers still win where they fit better', () => {
+    expect(answer('radio in Dubai for a bank launch in December about AED 20,000', 'buyer', '/directory', null, '2026-11-26').query).toBeTruthy()
+    expect(ask('take me to my campaigns')).toMatch(/Campaigns/)
+  })
+})
+
+test('an explicit "what does it mean" gets the meaning, not the how-to', () => {
+  const ask = (q: string) => answer(q, 'buyer', '/directory', null, '2026-11-26').text
+  expect(ask('ما معنى مزاد')).toMatch(/^Auction:/) // the bidding how-to also knows مزاد; the question asks for the meaning
+  expect(ask('what is an auction')).toMatch(/^Auction:/)
+  expect(ask('what is auto-bid?')).not.toMatch(/^Bid:/) // auto-bid is its own answer, not the word "Bid"
+})
+
+test('Arabic: who sees what, and what Nashr is', () => {
+  const ask = (q: string, r: 'buyer' | 'seller' = 'buyer') => answer(q, r, '/directory', null, '2026-11-26').text
+  expect(ask('هل يرى الناشر ميزانيتي؟')).toMatch(/never see your budget/)
+  expect(ask('من يرى الحد الأدنى؟', 'seller')).toMatch(/never see your minimum accepted/)
+  expect(ask('ما هي نشر؟')).toMatch(/^Nashr is a media buying marketplace/)
 })

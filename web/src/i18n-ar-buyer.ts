@@ -667,4 +667,6 @@ export const AR_BUYER: Record<string, string> = {
   "Test version": "نسخة تجريبية",
   "Payments are simulated: no real money moves. Tell us anything that looks wrong.": "المدفوعات تجريبية: لا تُنقل أي أموال حقيقية. أخبرنا بأي شيء يبدو غير صحيح.",
   "Send feedback": "أرسل ملاحظاتك",
+  "What is {term}?": "ما معنى {term}؟",
+  "For example: {x}": "مثال: {x}",
 }

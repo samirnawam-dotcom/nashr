@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { ABOUT_NASHR, FAMILIES, GLOSSARY, WHO_SEES, pick, type Term } from './glossary'
 import { accountQA, buyerQA, sellerQA, type Rules } from '../Help'
 import { readRequest } from '../../../server/shared/athena'
 import { arNorm, slips } from '../../../server/shared/spell'
@@ -195,6 +196,46 @@ function span(from: string, to: string) {
   return from.slice(0, 7) === to.slice(0, 7) ? `${Number(from.slice(8))}–${f(to, { day: 'numeric', month: 'short' })}` : `${f(from, { day: 'numeric', month: 'short' })} – ${f(to, { day: 'numeric', month: 'short' })}`
 }
 
+/** "What is…", "what does … mean", "ما معنى…": a question about a word (answered from the owner's glossary). */
+const DEFINE = /\b(what is|what's|whats|what are|what does|what do|meaning|mean|means|define|definition|explain)\b|ما هو|ما هي|ماذا يعني|ماذا تعني|ما معنى|معنى|يعني|تعني|اشرح|شو يعني/
+/** How well a glossary word matches: a phrase exactly (longer phrases first), or every word of it with a slip forgiven. */
+function termScore(words: string[], n: string, k: string) {
+  const kk = norm(k), parts = kk.split(' ')
+  if (parts.length > 1) {
+    if (n.includes(kk)) return 3 + parts.length * .1
+    const each = parts.filter(p => p.length > 1 && !STOP.has(p)).map(p => hit(words, n, p))
+    return each.length && each.every(x => x >= 1.6) ? 2.4 + parts.length * .1 : 0
+  }
+  return hit(words, n, kk)
+}
+/** The words of a "what is…" question, without the asking words: what the person wants explained. */
+const ASKING = new Set(['whats', 'mean', 'means', 'meaning', 'define', 'definition', 'explain', 'word', 'term', 'معنى', 'يعني', 'تعني', 'اشرح', 'هو', 'هي', 'ما', 'ماذا', 'شو', 'كلمة'].map(w => norm(w)))
+/** True when the question asks about this whole term and nothing more ("what is auction" yes; "what is auto-bid" is not "Bid"). */
+function covers(text: string, term: Term) {
+  const asked = tokens(text).filter(w => !ASKING.has(w))
+  if (!asked.length) return false
+  const strip = (w: string) => [w, ...['وال', 'بال', 'لل', 'ال', 'و', 'ب', 'ل'].filter(p => AR.test(w) && w.startsWith(p) && w.length - p.length >= 2).map(p => w.slice(p.length))]
+  return [term.en, term.ar, ...(term.also ?? [])].some(k => { const parts = norm(k).split(/[^a-z0-9؀-ۿ]+/).filter(Boolean).flatMap(strip)
+    return asked.every(w => strip(w).some(f => parts.some(p => f === p || (f.length >= 4 && p.length >= 4 && slips(f, p, 1) <= 1)))) })
+}
+/** The glossary entry a message is about, if any (for this role). */
+export function lookup(text: string, role: Role): { term: Term; score: number } | null {
+  const n = norm(text), words = tokens(text)
+  const all = GLOSSARY.filter(g => !g.roles || g.roles.includes(role))
+    .map(term => ({ term, score: Math.max(...[term.en, term.ar, ...(term.also ?? [])].map(k => termScore(words, n, k))) }))
+    .sort((a, b) => b.score - a.score)
+  return all[0] && all[0].score >= 1.6 ? all[0] : null
+}
+/** A glossary answer: the word, what it means, the owner's example, and two related words to ask about next. */
+function defineReply(term: Term, role: Role): Reply {
+  const name = pick([term.en, term.ar]), ex = term.ex ? ` ${t('For example: {x}', { x: pick(term.ex) })}` : ''
+  // the next words in its family, after this one (so Auction suggests Quick sale and Fixed price)
+  const fam = FAMILIES.find(f => f.includes(term.en)) ?? [], at = fam.indexOf(term.en)
+  const near = [...fam.slice(at + 1), ...fam.slice(0, at)].map(w => GLOSSARY.find(g => g.en === w && (!g.roles || g.roles.includes(role)))).filter((g): g is Term => !!g)
+  return { text: `${name}: ${pick(term.def)}${ex}`, links: term.go ? [{ label: pick(term.go.label), href: term.go.href }] : undefined,
+    chips: near.slice(0, 2).map(g => t('What is {term}?', { term: pick([g.en, g.ar]) })) }
+}
+
 /** Athena's answer to one message. */
 export function answer(text: string, role: Role, path: string, rules: Rules | null, today: string, last?: Query): Reply {
   const n = norm(text), words = tokens(text)
@@ -204,6 +245,13 @@ export function answer(text: string, role: Role, path: string, rules: Rules | nu
   if (/\b(what can you do|who are you|help me|what do you do)\b|من انت|ماذا تستطيع/.test(n))
     return { text: t('I know how Nashr works and where everything is. Ask me how to do something, ask me to take you to a page, or describe a campaign in a sentence and I will find the best fits.'), chips: DEFAULT_CHIPS[role]() }
   if (/\b(this page|here|what is this|what can i do here)\b|هذه الصفحة|هنا/.test(n)) return greet(role, path)
+  // what Nashr is, and who sees what (the owner's knowledge base)
+  if (/\b(what is nashr|about nashr|what does nashr do|how does nashr work)\b|ما هي نشر|ما هو نشر|عن نشر|ماذا تفعل نشر|كيف تعمل نشر/.test(`${n} ${text}`)) return { text: pick(ABOUT_NASHR) }
+  if ((role === 'buyer' || role === 'seller') && /\b(who (can )?sees?|can (the )?(seller|publisher|buyer|they|others?) see|visible|private|privacy|see my)\b|من يرى|هل يرى|يرى|يشوف|خصوصية|سري/.test(`${n} ${text}`))
+    return { text: pick(WHO_SEES[role]) }
+  // a question about a word on Nashr ("what is quick sale?", "ما معنى مزاد"): the glossary, before anything else
+  const topicScore = () => Math.max(0, ...TOPICS.filter(x => x.roles.includes(role)).map(x => x.words.reduce((sum, k) => sum + hit(words, n, k), 0)))
+  if (DEFINE.test(n) || DEFINE.test(text)) { const g = lookup(text, role); if (g && (covers(text, g.term) || g.score >= topicScore())) return defineReply(g.term, role) }
 
   // a change to the last campaign ("add TV", "make it cheaper", "only morning shows", "without radio", "أضف تلفزيون", "أرخص")
   if (role === 'buyer' && last) {
@@ -225,12 +273,18 @@ export function answer(text: string, role: Role, path: string, rules: Rules | nu
   const scored = TOPICS.filter(x => x.roles.includes(role)).map(x => ({ x, s: x.words.reduce((sum, k) => sum + hit(words, n, k), 0) })).sort((a, b) => b.s - a.s)
   const best = scored[0]
   if (goWords && place && place.s >= 1.6 && (!best || best.s < place.s + 2.5)) return { text: t('Here is {page}.', { page: place.p.label() }), links: [{ label: t('Open {page}', { page: place.p.label() }), href: place.p.href }] }
+  // a word or two on its own ("committed", "bid drawer"): its meaning, unless a "how do I" answer fits better
+  if (words.length <= 3 && !/\b(how|when|where|why|who|can|could|should|will|would|do|does|did)\b|كيف|متى|اين|أين|وين|لماذا|هل/.test(n)) {
+    const g = lookup(text, role), exact = g && [g.term.en, g.term.ar, ...(g.term.also ?? [])].some(k => norm(k) === n.replace(/[?؟!.]+$/, '').trim())
+    if (g && (g.score > (best?.s ?? 0) || (exact && g.score >= (best?.s ?? 0)))) return defineReply(g.term, role)
+  }
   if (best && best.s >= 1.6) {
     const close = scored.slice(1, 3).filter(o => o.s >= 1.6 && o.s >= best.s * .8)
     return { text: best.x.answer(rules), links: best.x.go ? [best.x.go()] : undefined,
       chips: close.length ? close.map(o => QUESTION[o.x.id]?.() ?? '').filter(Boolean) : best.x.chips?.() }
   }
   if (place && place.s >= 1.6) return { text: t('Here is {page}.', { page: place.p.label() }), links: [{ label: t('Open {page}', { page: place.p.label() }), href: place.p.href }] }
+  { const g = lookup(text, role); if (g) return defineReply(g.term, role) }
   return { unknown: true, text: t('I am not sure I understood. Try asking it another way, or ask Nashr\'s team: they answer within one working day.'),
     links: role === 'admin' ? undefined : [{ label: t('Contact Nashr'), href: '/help' }], chips: DEFAULT_CHIPS[role]() }
 }
