@@ -304,3 +304,14 @@ html .name-pop-lang .theme-choice button { padding: 4px 10px; min-height: 28px; 
 
 /* narrow phones: the top bar holds menu, logo, theme, language and bell; "Your account" is in the menu, so the avatar steps aside */
 @media (max-width: 440px) { .topbar > .avatar { display: none; } }
+
+/* The menu scrolls on its own when it is taller than the window (staff have many items); the collapse button stays at the bottom. */
+html .side { overflow: hidden; }
+html .side > .side-nav { flex: none; }
+html .side > .side-nav:first-of-type { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; margin-inline: -4px; padding-inline: 4px; }
+html .side-nav::-webkit-scrollbar { width: 6px; }
+html .side-nav::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+html .side-foot { flex: none; }
+/* The bell: a square icon button whatever padding a later button rule adds; the icon never shrinks. */
+html .wtop .bell > .btn, html .topbar .bell > .btn { padding: 0; width: 38px; min-width: 38px; justify-content: center; }
+html .bell > .btn svg { flex: none; }

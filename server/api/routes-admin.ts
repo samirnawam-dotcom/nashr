@@ -72,7 +72,7 @@ export function adminRoutes(route: RouteFn) {
           r.commission_bp != null ? r.commission_bp / 100 : '', r.created_at, r.accepted_at]))
     }
     const limit = Math.min(200, Math.max(1, Number(q.limit ?? 50) || 50)), offset = Math.max(0, Number(q.offset ?? 0) || 0)
-    const [{ total, value }] = (await db.query(`select count(*)::int total, coalesce(sum(d.amount), 0)::bigint value ${base}`, params)).rows
+    const [{ total, value }] = (await db.query(`select count(*)::int total, coalesce(sum(d.amount), 0)::bigint as value ${base}`, params)).rows
     const items = (await db.query(`select ${cols} ${base} order by d.created_at desc limit ${limit} offset ${offset}`, params)).rows
     return { total, value: Number(value), items }
   })

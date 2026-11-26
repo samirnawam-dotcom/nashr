@@ -274,6 +274,7 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
   const full = usePath(), hash = full.split('?')[0]
   useEffect(() => setMenu(false), [full]) // a phone menu closes once you go somewhere
   useEffect(() => { scrollTo(0, 0) }, [hash]) // a new page starts at the top
+  useEffect(() => { document.querySelector('.side-nav a.active')?.scrollIntoView({ block: 'nearest' }) }, [full]) // the menu shows where you are, even when it scrolls
   const load = () => api<Me>('/me').then(setMe, () => setMe(null))
   useEffect(() => { if (initialMe === undefined) load() }, [])
   // before release, guests see only the Coming soon page (the server says so; it also refuses them any data)

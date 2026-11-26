@@ -7,7 +7,9 @@ import { pool } from './db.js'
 // (`0 committed`, `'x' type`), and casting jsonb straight to a number (`(value)::int`; use `(value #>> '{}')::int`).
 const files = (dir: string): string[] => readdirSync(dir).flatMap(f => { const p = join(dir, f)
   return statSync(p).isDirectory() ? files(p) : p.endsWith('.ts') && !p.endsWith('.test.ts') ? [p] : [] })
-const SAFE = new Set(['desc', 'asc', 'end', 'from'])
+const SAFE = new Set(['desc', 'asc', 'end', 'from', 'in', 'where', 'offset', 'limit', 'and', 'or', 'is', 'not', 'between', 'like', 'ilike', 'similar', 'then', 'else',
+  'union', 'except', 'intersect', 'order', 'group', 'having', 'window', 'on', 'using', 'returning', 'for', 'into', 'values', 'set', 'when', 'as', 'filter',
+  'over', 'within', 'collate', 'escape', 'isnull', 'notnull', 'overlaps', 'at', 'join', 'left', 'right', 'full', 'inner', 'cross', 'natural', 'lateral', 'fetch'])
 const BEFORE_OK = new Set(['select', 'distinct', 'nulls', 'by', 'and', 'or', 'not', 'is', 'then', 'else', 'when', 'as', 'on', 'in', 'where',
   'returning', 'set', 'order', 'group', 'case', 'into', 'join', 'from', 'with', 'null'])
 
@@ -20,7 +22,7 @@ test('SQL runs on PostgreSQL 10 (cPanel)', async () => {
       const s = m[1]
       if (!/\bselect\b/i.test(s)) continue
       if (/\(value\)::(int|bigint|numeric)/.test(s)) bad.push(`${f}: jsonb cast (value)::number`)
-      for (const a of s.matchAll(/(\S+)\s+([a-z_]+)\b(?=\s*(,|\n|$|from\b|\)))/g)) {
+      for (const a of s.matchAll(/(\S+)\s+([a-z_]+)\b(?=\s*(,|\n|$|from\b|\)|\$\{))/g)) {
         const [, prev, w] = a
         if (!kw.has(w) || SAFE.has(w) || prev.endsWith(',')) continue
         const pw = prev.replace(/.*[\s(,]/, '').toLowerCase()
