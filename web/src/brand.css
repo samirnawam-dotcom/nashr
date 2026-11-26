@@ -336,3 +336,11 @@ html dialog.nd :is(.drawer, .cv-sheet, .mb-sheet, .cmp-modal, .dates-panel, .cmd
 /* While the brand fonts load, the stand-in font is scaled to the same letter height, so text does not jump when they
    arrive (visually-stable-font-fallbacks) */
 html body { font-size-adjust: from-font; }
+
+/* Phone menu: it fits the screen and scrolls on its own (staff have a long list), the page behind stays put, and the
+   Athena button steps aside while it is open */
+@media (max-width: 900px) {
+  html .shell .topbar.open .nav { max-height: calc(100dvh - 56px); overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+  html .shell .topbar .nav a { padding: 10px 12px; min-height: 0; }
+  body:has(.topbar.open) .ath-fab { display: none; }
+}

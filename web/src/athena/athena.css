@@ -188,3 +188,12 @@ html body .cmdk .cmdk-q input, html body .cmdk .cmdk-q input:focus { flex: 1; bo
 @media (prefers-reduced-motion: reduce) { .cmdk-scrim { animation: none; } }
 /* the boxes around Athena's inputs carry the focus ring; the inputs themselves stay bare */
 .ath-dock .ath-box input:not(#_):is(:focus, :focus-visible, :hover), .cmdk .cmdk-q input:not(#_):is(:focus, :focus-visible, :hover) { box-shadow: none !important; outline: 0 !important; border: 0 !important; background: transparent !important; }
+
+/* The Ask Athena button never covers content: every page ends with room for it, so the last row, button or total
+   scrolls clear of it. With no tab bar under it (staff on phones) it sits in the corner. */
+body:has(.ath-fab) .shell-main > main { padding-bottom: 96px; }
+@media (max-width: 760px) {
+  body:has(.ath-fab) .shell-main > main { padding-bottom: 152px; }
+  body:not(:has(.tabbar)) .ath-fab { bottom: 16px; }
+  body:has(.ath-fab):not(:has(.tabbar)) .shell-main > main { padding-bottom: 88px; }
+}
