@@ -117,6 +117,18 @@ export async function queueRegistrationEmails(db: Db, r: { name: string; company
   for (const addr of to) await queue(db, { to: addr, kind: 'registration.new', subject: title, text, html }, at)
 }
 
+/** Each new request to join Nashr, to the same inboxes as registrations (REGISTRATION_EMAILS): approve it under Access. */
+export async function queueAccessRequestEmails(db: Db, r: { name: string; company: string; companyType: string; role: string; email: string; phone: string }, at: Date) {
+  const to = [...new Set((process.env.REGISTRATION_EMAILS ?? '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))]
+  if (!to.length) return
+  const t = tr('en'), title = `New access request: ${r.company}`
+  const { html, text } = renderEmail('en', { title, paragraphs: [
+    `${t('Name')}: ${r.name}`, `${t('Company')}: ${r.company}`, `${t('I am')}: ${r.companyType === 'media_outlet' ? t('Media outlet') : t('Buyer')}`,
+    `${t('Your role')}: ${r.role}`, `${t('Email')}: ${r.email}`, `${t('Phone')}: ${r.phone}`],
+    cta: { label: t('Open Access'), url: site() + '/access' }, footer: 'Approve the request under Access and Nashr emails them an invitation to set their password.' })
+  for (const addr of to) await queue(db, { to: addr, kind: 'access.requested', subject: title, text, html }, at)
+}
+
 /** A password reset link, by email (only when SMTP is set up: otherwise Nashr's team issues it). */
 export async function queueResetEmail(db: Db, a: { userId: string; to: string; name: string; lang: Lang; link: string }, at: Date) {
   const t = tr(a.lang)

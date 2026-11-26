@@ -76,6 +76,7 @@ const StatementPage = L(() => import('./seller/Statement'), 'StatementPage')
 const load_admin_Overview = () => import('./admin/Overview')
 const AccessPage = L(load_admin_Overview, 'AccessPage')
 const JoinPage = L(() => import('./Join'), 'JoinPage')
+const PrelaunchPage = L(() => import('./Prelaunch'), 'PrelaunchPage')
 const RegistrationsPage = L(() => import('./admin/Registrations'), 'RegistrationsPage')
 const AdminOverview = L(load_admin_Overview, 'AdminOverview')
 const load_admin_Accounts = () => import('./admin/Accounts')
@@ -306,7 +307,8 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
     const path = hash || '/'
     if (soon === undefined) return null
     // the team still signs in (and resets a password) at their usual addresses; everything else is the Coming soon page
-    if (soon && path !== '/sign-in' && path !== '/forgot') return <Suspense fallback={null}><JoinPage soon /></Suspense>
+    // before release: the owner's landing page, with a real request for access (signing in opens the whole site)
+    if (soon && path !== '/sign-in' && path !== '/forgot') return <Suspense fallback={null}><PrelaunchPage /></Suspense>
     if (path === '/') return <GuestContext.Provider value={true}><GuestHeader path={path} menu={menu} setMenu={setMenu} /><Landing /><GuestTabs path={path} /></GuestContext.Provider>
     if (path === '/sign-in') return <Login onIn={signedIn} />
     if (path === '/request-access') return <RequestAccess />

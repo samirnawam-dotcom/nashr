@@ -1326,6 +1326,15 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
       const extra = (await pool.query(`select to_email, text_body from outbox where kind = 'registration.new' and to_email like 'owner.%' order by to_email`)).rows
       expect(extra.map(r => r.to_email)).toEqual(['owner.one@example.com', 'owner.two@example.com'])
       expect(extra[0].text_body).toContain('Phone: 0501234567')
+      // a request for access on the landing page reaches the same inboxes, with what is needed to approve it
+      process.env.REGISTRATION_EMAILS = 'owner.one@example.com'
+      expect((await call(null, 'POST', '/api/access-requests', { name: 'Layla', email: 'layla@bigco.ae', phone: '+971 50 111 2222', role: 'Marketing Director', company: 'Big Co', companyType: 'brand' })).statusCode).toBe(200)
+      delete process.env.REGISTRATION_EMAILS
+      const req = (await pool.query(`select subject, text_body from outbox where kind = 'access.requested' and to_email = 'owner.one@example.com'`)).rows
+      expect(req).toHaveLength(1)
+      expect(req[0].subject).toBe('New access request: Big Co')
+      expect(req[0].text_body).toContain('layla@bigco.ae')
+      expect(req[0].text_body).toContain('/access')
     } finally { delete process.env.PRELAUNCH }
     expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)
   })

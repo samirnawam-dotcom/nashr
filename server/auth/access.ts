@@ -1,4 +1,5 @@
 import { type Db, one } from '../core/db.js'
+import { queueAccessRequestEmails } from '../core/mail.js'
 import { audit } from '../core/audit.js'
 import { notify } from '../core/notify.js'
 import { setting } from '../core/settings.js'
@@ -23,6 +24,7 @@ export async function requestAccess(db: Db, r: AccessRequest, at: Date) {
                              values ($1, $2, $3, $4, $5, $6, $7) returning id`, [r.name, r.email.toLowerCase(), r.phone, r.role, r.company, r.companyType, at])
   for (const admin of (await db.query(`select distinct company_id from users where role in ('admin', 'founder')`)).rows)
     await notify(db, admin.company_id, 'access.requested', null, { company: r.company }, at)
+  await queueAccessRequestEmails(db, r, at) // and the owner's inboxes, so a request is seen at once
   return row.id as string
 }
 
