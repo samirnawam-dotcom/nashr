@@ -1,4 +1,5 @@
 import { BriefCard } from './BriefCard'
+import { Modal } from '../Modal'
 import { navigate } from '../nav'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
@@ -170,7 +171,7 @@ export function SchedulePage() {
         <span className="cc-bulk-price"><label htmlFor="bulk-p" className="small">{t('New price (AED)')}</label><input id="bulk-p" className="search" inputMode="decimal" value={bulkPrice} onChange={e => setBulkPrice(e.target.value)} />
           <button type="button" className="btn primary" disabled={busy || !picked.length || !(Number(bulkPrice.replace(/,/g, '')) >= 1)} onClick={() => bulk('price')}>{t('Set price')}</button></span>
         <button type="button" className="btn" onClick={() => setPicking(false)}>{t('Done')}</button></div>}
-      {open && !wide && <div className="scrim" onClick={() => setOpen(null)}><aside className="drawer" role="dialog" aria-label={t("Slot")} onClick={e => e.stopPropagation()}>{panel}</aside></div>}
+      {open && !wide && <Modal onClose={() => setOpen(null)} label={t("Slot")}><aside className="drawer">{panel}</aside></Modal>}
     </main>
   )
 }

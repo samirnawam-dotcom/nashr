@@ -144,7 +144,7 @@ html .side-nav .side-ath .ath-count { margin-inline-start: auto; }
 /* an Athena card elsewhere (the campaign planner): the same black edge */
 .ath-edge { border-color: var(--line-strong) !important; }
 /* while a drawer or sheet is open, the owl button steps aside (the drawer's own buttons sit in that corner) */
-body:has(.drawer[role="dialog"], .mb-sheet, .cv-sheet, .tour-scrim, .tour-card) .ath-fab { display: none; }
+body:has(dialog.nd[open], .tour-card) .ath-fab { display: none; }
 
 /* price check: the middle half of past sales shaded, the price being set marked */
 .pc-range { position: relative; height: 10px; border-radius: 5px; background: var(--line); margin: 6px 4px 2px; }

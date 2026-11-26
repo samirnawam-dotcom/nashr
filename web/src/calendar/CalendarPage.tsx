@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePop } from '../Pop'
+import { Modal } from '../Modal'
 import { api, type Slot } from '../api'
 import { closesIn, dayLabel, hasTime, money, time } from '../format'
 import { OutletMark } from '../LogoPicker'
@@ -103,18 +105,11 @@ const soon = (iso: string) => { const ms = new Date(iso).getTime() - Date.now();
 
 // ---- filters ----------------------------------------------------------------------------------------------------------
 export function Popover({ label, children, on, align, wide }: { label: React.ReactNode; children: React.ReactNode; on?: boolean; align?: 'end'; wide?: boolean }) {
-  const [open, setOpen] = useState(false), box = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const out = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    document.addEventListener('mousedown', out); addEventListener('keydown', esc)
-    return () => { document.removeEventListener('mousedown', out); removeEventListener('keydown', esc) }
-  }, [open])
-  return <div className="pop" ref={box}>
-    <button type="button" className={`chipf ${on ? 'on' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)}>{label}
+  const pop = usePop({ align })
+  return <div className="pop">
+    <button type="button" className={`chipf ${on ? 'on' : ''}`} {...pop.button}>{label}
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden><path d="M6 9l6 6 6-6" /></svg></button>
-    {open && <div className={`pop-panel ${align === 'end' ? 'end' : ''} ${wide ? 'wide' : ''}`} role="dialog">{children}</div>}
+    <div className={`pop-panel pp ${wide ? 'wide' : ''}`} role="dialog" aria-label={typeof label === 'string' ? label : undefined} {...pop.panel}>{pop.open && children}</div>
   </div>
 }
 
@@ -228,12 +223,11 @@ function SlotsPanel({ p, s, onClose, onOpen }: { p: Panel; s: State; onClose: ()
       r => { setSlots(cur => offset ? [...(cur ?? []), ...r.items] : r.items); setTotal(r.total); setBusy(false) }, () => { setSlots([]); setBusy(false) })
   }
   useEffect(() => { setSlots(null); load(0) }, [p, sort])
-  useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [])
   const order = { single: 0, any: 1, package: 2 }
   const shown = !slots ? null : p.list ? slots : [...slots].sort((a, b) => Number(b.available) - Number(a.available) || order[a.kind] - order[b.kind] || a.startsAt.localeCompare(b.startsAt))
   return (
-    <div className="scrim" onClick={onClose}>
-      <aside className="drawer" role="dialog" aria-label={p.title} onClick={e => e.stopPropagation()}>
+    <Modal onClose={onClose} label={p.title}>
+      <aside className="drawer">
         <header className="drawer-h"><div><h2>{p.title}</h2><p className="muted small">{p.sub}</p></div>
           <button className="btn" onClick={onClose} aria-label={t('Close')}>✕</button></header>
         {p.list && <div className="cv-panel-bar"><span className="small muted">{slots ? t('{n} slots', { n: total.toLocaleString('en-US') }) : t('Loading…')}</span><span className="spacer" />
@@ -251,7 +245,7 @@ function SlotsPanel({ p, s, onClose, onOpen }: { p: Panel; s: State; onClose: ()
         {shown && !shown.length && <p className="muted">{t('Nothing here any more.')}</p>}
         {p.list && shown && shown.length < total && <button className="btn" disabled={busy} onClick={() => load(shown.length)}>{busy ? t('Loading…') : t('Show {n} more', { n: Math.min(PAGE, total - shown.length) })}</button>}
       </aside>
-    </div>
+    </Modal>
   )
 }
 

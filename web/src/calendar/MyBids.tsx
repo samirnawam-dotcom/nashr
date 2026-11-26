@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Modal } from '../Modal'
 import { api } from '../api'
 import { dayLabel, money, slotWhen } from '../format'
 import { OutletMark } from '../LogoPicker'
@@ -52,8 +53,8 @@ export function MyBids({ onOpen, reload, narrow, folded }: { onOpen: (slotId: st
   if (narrow && !open) return <button type="button" className={`mb-fab ${outbid ? 'alert' : ''}`} onClick={() => setOpenRaw(true)} aria-haspopup="dialog">
     {t('My bids · {n}', { n })}{outbid > 0 && <span className="mb-alert" aria-label={t('Outbid')}>!</span>}</button>
   if (!open) return <aside className="mybids folded" aria-label={t('My bids')}>{head}</aside>
-  const sheet = (body: React.ReactNode) => narrow ? <div className="scrim mb-scrim" onClick={() => setOpenRaw(false)}>
-    <div className="mybids mb-sheet" role="dialog" aria-label={t('My bids')} onClick={e => e.stopPropagation()}>{body}</div></div> : body
+  const sheet = (body: React.ReactNode) => narrow ? <Modal scrim="scrim mb-scrim" onClose={() => setOpenRaw(false)} label={t('My bids')}>
+    <div className="mybids mb-sheet">{body}</div></Modal> : body
   const close = () => { setOpenRaw(false); if (!narrow && !folded) try { localStorage.setItem(KEY, '0') } catch { /* fine */ } }
   return sheet(
     <aside className={`mybids ${narrow ? 'narrow' : ''}`} aria-label={t('My bids')}>

@@ -308,10 +308,31 @@ html .name-pop-lang .theme-choice button { padding: 4px 10px; min-height: 28px; 
 /* The menu scrolls on its own when it is taller than the window (staff have many items); the collapse button stays at the bottom. */
 html .side { overflow: hidden; }
 html .side > .side-nav { flex: none; }
-html .side > .side-nav:first-of-type { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; margin-inline: -4px; padding-inline: 4px; }
-html .side-nav::-webkit-scrollbar { width: 6px; }
-html .side-nav::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+html .side > .side-nav:first-of-type { flex: 1 1 auto; min-height: 0; align-content: start; justify-content: flex-start; overflow-y: auto; overscroll-behavior: contain; margin-inline: -4px; padding-inline: 4px; }
 html .side-foot { flex: none; }
 /* The bell: a square icon button whatever padding a later button rule adds; the icon never shrinks. */
 html .wtop .bell > .btn, html .topbar .bell > .btn { padding: 0; width: 38px; min-width: 38px; justify-content: center; }
 html .bell > .btn svg { flex: none; }
+
+/* A field that is wrong shows it only once the person has left it (or tried to send the form), never while they type
+   (Modern Web Guidance: validate-input-after-interaction). The browser's own message still says what to fix. */
+html :is(input:not([type=range]), select, textarea):user-invalid { border-color: var(--danger) !important; }
+html :is(input:not([type=range]), select, textarea):user-invalid:focus-visible { box-shadow: 0 0 0 3px var(--danger-soft) !important; }
+
+/* Native modal dialogs (Modal.tsx): the dialog is a clear, full-window frame in the top layer; the overlay inside it
+   draws the dimming exactly as before. Scrolling inside never scrolls the page behind (Modern Web Guidance: dialog). */
+html dialog.nd { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0;
+  background: transparent; color: inherit; overflow: hidden; overscroll-behavior: contain; }
+html dialog.nd::backdrop { background: transparent; overflow: hidden; overscroll-behavior: contain; }
+html dialog.nd > * { z-index: auto; }
+
+/* Menus and panels opened from a button (Pop.tsx): browser popovers placed by script next to their button */
+html [popover].pp { position: fixed; inset: auto; margin: 0; color: var(--text); }
+html [popover].pp:not(:popover-open) { display: none; }
+/* The overlay is placed in the dialog, not the window, so scrolling over it stays in the dialog; the scrolling panels
+   inside stop at their ends instead of scrolling the page (Modern Web Guidance: dialog). */
+html dialog.nd > * { position: absolute !important; inset: 0 !important; }
+html dialog.nd :is(.drawer, .cv-sheet, .mb-sheet, .cmp-modal, .dates-panel, .cmdk, .cmdk-list, .tour-card) { overscroll-behavior: contain; }
+/* While the brand fonts load, the stand-in font is scaled to the same letter height, so text does not jump when they
+   arrive (visually-stable-font-fallbacks) */
+html body { font-size-adjust: from-font; }

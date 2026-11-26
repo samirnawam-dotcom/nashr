@@ -1,4 +1,6 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Modal } from '../Modal'
 import { api } from '../api'
 import { navigate } from '../nav'
 import { t } from '../i18n'
@@ -89,19 +91,19 @@ export function Tour({ role, who }: { role: 'buyer' | 'seller'; who: string }) {
     document.addEventListener('click', onClick, true); return () => document.removeEventListener('click', onClick, true)
   }, [state?.step, state?.sub, state?.paused])
 
-  if (welcome) return <div className="tour-scrim" role="dialog" aria-modal="true" aria-labelledby="tour-w">
+  if (welcome) return <Modal scrim="tour-scrim" labelledBy="tour-w" onClose={() => { setWelcome(false); write(k, 'later') }}>
     <div className="tour-card"><h2 id="tour-w">{t('Welcome to Nashr. Want a 2-minute tour?')}</h2>
       <div className="row-flex"><button className="btn primary" autoFocus onClick={() => { setWelcome(false); start() }}>{t('Start tour')}</button>
-        <button className="btn" onClick={() => { setWelcome(false); write(k, 'later') }}>{t('Not now')}</button></div></div></div>
-  if (done) return <div className="tour-scrim" role="dialog" aria-modal="true" aria-labelledby="tour-d">
+        <button className="btn" onClick={() => { setWelcome(false); write(k, 'later') }}>{t('Not now')}</button></div></div></Modal>
+  if (done) return <Modal scrim="tour-scrim" labelledBy="tour-d" onClose={() => setDone(false)}>
     <div className="tour-card"><h2 id="tour-d">{t("You're set. Your next steps are in the Get started list on your Dashboard.")}</h2>
       <div className="row-flex"><button className="btn primary" autoFocus onClick={() => { setDone(false); navigate(role === 'buyer' ? '/dashboard' : '/home') }}>{t('Go to Dashboard')}</button>
-        <button className="btn" onClick={() => setDone(false)}>{t('Close')}</button></div></div></div>
+        <button className="btn" onClick={() => setDone(false)}>{t('Close')}</button></div></div></Modal>
   if (!state || !part) return null
-  if (state.paused) return <div className="tour-paused" role="status"><span>{t('Tour paused')}</span>
+  if (state.paused) return onTop(<div className="tour-paused" role="status"><span>{t('Tour paused')}</span>
     <button className="text-link" onClick={() => setState({ ...state, paused: false })}>{t('Resume')}</button>
     <button className="text-link muted" onClick={() => setSkip(true)}>{t('Skip tutorial')}</button>
-    {skip && <SkipAsk onYes={() => finish('skipped')} onNo={() => setSkip(false)} />}</div>
+    {skip && <SkipAsk onYes={() => finish('skipped')} onNo={() => setSkip(false)} />}</div>)
 
   if (!box) return null // the popup shows once it has something to point at
   const pad = 6, r = box
@@ -112,7 +114,7 @@ export function Tour({ role, who }: { role: 'buyer' | 'seller'; who: string }) {
     : r.top - H > 0 ? { top: r.top - 12, transform: 'translateY(-100%)', insetInlineStart: clampX(startX) }
     : { top: Math.max(12, Math.min(r.top + 40, innerHeight - H - 12)), left: r.left > innerWidth - r.right ? Math.max(12, r.left - W - 16) : Math.min(innerWidth - W - 12, r.right + 16) }
   const waitsForClick = waits(state)
-  return <>
+  return onTop(<>
     {r && <div className="tour-spot" style={{ top: r.top - pad, left: r.left - pad, width: r.width + pad * 2, height: r.height + pad * 2 }} aria-hidden />}
     <div className="tour-pop" role="dialog" aria-live="polite" aria-label={t('Tour')} style={pos}>
       <p className="small muted">{t('Step {n} of {total}', { n: state.step + 1, total: steps.length })}</p>
@@ -124,7 +126,13 @@ export function Tour({ role, who }: { role: 'buyer' | 'seller'; who: string }) {
         <span className="spacer" /><button className="text-link small" onClick={() => setSkip(true)}>{t('Skip tutorial')}</button></div>
       {skip && <SkipAsk onYes={() => finish('skipped')} onNo={() => setSkip(false)} />}
     </div>
-  </>
+  </>)
+}
+
+// While a pop-up is open, the rest of the page cannot be used (native modal dialog), so the tour draws itself inside it.
+const onTop = (ui: React.ReactNode) => {
+  const open = document.querySelectorAll<HTMLDialogElement>('dialog.nd[open]')
+  return createPortal(ui, open[open.length - 1] ?? document.body)
 }
 
 function SkipAsk({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {

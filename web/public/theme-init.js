@@ -6,4 +6,6 @@
   var root = document.documentElement
   root.setAttribute('data-theme', dark ? 'dark' : 'light')
   root.style.colorScheme = dark ? 'dark' : 'light'
+  // the browser's own bars (phone address bar, installed app title bar) match from the first frame
+  var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', dark ? '#0B0B0C' : '#FFFFFF')
 })()

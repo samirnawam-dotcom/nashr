@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Modal } from '../Modal'
 import { api, type Campaign } from '../api'
 import { money } from '../format'
 import { OutletMark } from '../LogoPicker'
@@ -35,12 +36,11 @@ export function useCampaigns(enabled = true) {
 export function CampaignDrawer({ onClose, onSeeDates }: { onClose: () => void; onSeeDates: (productId: string, title: string) => void }) {
   const [id, setId] = useCurrentCampaign(), { list, loaded } = useCampaigns()
   const [c, setC] = useState<CampaignDetail | null>(null), [error, setError] = useState('')
-  useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [])
   useEffect(() => { setC(null); setError(''); if (id) api<CampaignDetail>(`/campaigns/${id}`).then(setC, e => setError(e.message)) }, [id])
   async function remove(placementId: string) { await api(`/campaigns/${id}/lines/${placementId}`, { method: 'DELETE' }); setC(await api<CampaignDetail>(`/campaigns/${id}`)) }
   const left = c?.remaining
-  return <div className="scrim" onClick={onClose}>
-    <aside className="drawer plan" role="dialog" aria-label={t('Campaign')} onClick={e => e.stopPropagation()}>
+  return <Modal onClose={onClose} label={t('Campaign')}>
+    <aside className="drawer plan">
       <header className="drawer-h"><div><h2>{t('Campaign')}</h2>
         <p className="muted small">{t('What you have added, the estimated total and the budget left. Campaigns are optional: you can always just bid.')}</p></div>
         <button className="btn" onClick={onClose} aria-label={t('Close')}>✕</button></header>
@@ -70,5 +70,5 @@ export function CampaignDrawer({ onClose, onSeeDates }: { onClose: () => void; o
         </>}
       </>}
     </aside>
-  </div>
+  </Modal>
 }

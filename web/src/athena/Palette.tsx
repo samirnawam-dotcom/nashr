@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Modal } from '../Modal'
+import { composing } from '../ime'
 import { api } from '../api'
 import { navigate } from '../nav'
 import { money } from '../format'
@@ -21,14 +23,15 @@ export const openPalette = () => window.dispatchEvent(new Event('athena:palette'
 
 export function Palette({ role }: { role: Role }) {
   const [open, setOpen] = useState(false), [q, setQ] = useState(''), [found, setFound] = useState<Found | null>(null), [sel, setSel] = useState(0)
-  const input = useRef<HTMLInputElement>(null), back = useRef<HTMLElement | null>(null)
+  const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(o => !o) } }
     const ev = () => setOpen(true)
     addEventListener('keydown', key); addEventListener('athena:palette', ev)
     return () => { removeEventListener('keydown', key); removeEventListener('athena:palette', ev) }
   }, [])
-  useEffect(() => { if (open) { back.current = document.activeElement as HTMLElement; setQ(''); setFound(null); setSel(0); setTimeout(() => input.current?.focus(), 10) } else back.current?.focus?.() }, [open])
+  // the dialog returns focus to where it was on close
+  useEffect(() => { if (open) { setQ(''); setFound(null); setSel(0); setTimeout(() => input.current?.focus(), 10) } }, [open])
   useEffect(() => { if (!open || q.trim().length < 2) { setFound(null); return }
     const k = setTimeout(() => api<Found>(`/athena/find?q=${encodeURIComponent(q.trim())}`).then(setFound, () => setFound(null)), 150); return () => clearTimeout(k) }, [q, open])
   const close = () => setOpen(false)
@@ -48,15 +51,14 @@ export function Palette({ role }: { role: Role }) {
   useEffect(() => { setSel(0) }, [rows.length])
   if (!open) return null
   const keys = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { e.preventDefault(); close() }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(rows.length - 1, s + 1)) }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(rows.length - 1, s + 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSel(s => Math.max(0, s - 1)) }
-    else if (e.key === 'Enter') { e.preventDefault(); rows[sel]?.go() }
+    else if (e.key === 'Enter') { e.preventDefault(); if (!composing(e)) rows[sel]?.go() }
     else if (e.key === 'Tab' && q.trim()) { e.preventDefault(); ask() }
   }
   let lastGroup = ''
-  return <div className="cmdk-scrim" onMouseDown={close}>
-    <div className="cmdk" role="dialog" aria-modal="true" aria-label={t('Search Nashr or ask Athena')} onMouseDown={e => e.stopPropagation()}>
+  return <Modal scrim="cmdk-scrim" onClose={close} label={t('Search Nashr or ask Athena')}>
+    <div className="cmdk">
       <div className="cmdk-q"><Owl size={20} />
         <input ref={input} value={q} onChange={e => setQ(e.target.value)} onKeyDown={keys} placeholder={t('Search Nashr or ask Athena')} dir="auto"
           role="combobox" aria-expanded={rows.length > 0} aria-controls="cmdk-list" aria-activedescendant={rows[sel] ? `cmdk-${sel}` : undefined} />
@@ -68,7 +70,7 @@ export function Palette({ role }: { role: Role }) {
             <span className="cmdk-ic">{r.mark === 'owl' ? <Owl size={14} /> : r.mark}</span><span className="cmdk-l" dir="auto">{r.label}</span>{r.meta && <span className="cmdk-m">{r.meta}</span>}</div></li>
       })}</ul> : <p className="cmdk-empty">{t('Type an outlet, a product, a booking reference or a page. Or ask Athena anything.')}</p>}
     </div>
-  </div>
+  </Modal>
 }
 
 /** The search box at the top of every page: opens ⌘K. */

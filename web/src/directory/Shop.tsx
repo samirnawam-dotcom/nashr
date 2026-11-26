@@ -1,4 +1,5 @@
 import { GLOSSARY, Tip } from '../onboarding/Onboarding'
+import { Modal } from '../Modal'
 import { AthenaPanel, Owl } from '../athena/Owl'
 import { openAthena } from '../athena/open'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -278,9 +279,8 @@ type DateLine = { id: string; label: string | null; kind: string; saleType: stri
 export function DatesPanel({ placementId, title, onPick, onClose }: { placementId: string; title: string; onPick: (slotId: string) => void; onClose: () => void }) {
   const [lines, setLines] = useState<DateLine[] | null>(null), [error, setError] = useState('')
   useEffect(() => { api<DateLine[]>(`/directory/products/${placementId}/dates`).then(setLines, e => setError(e.message)) }, [placementId])
-  useEffect(() => { const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }; addEventListener('keydown', esc); return () => removeEventListener('keydown', esc) }, [])
   const closes = (iso: string) => { const h = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 3_600_000)); return h < 48 ? t('Closes in {h}h', { h }) : null }
-  return <div className="scrim" onClick={onClose}><section className="card dates-panel" role="dialog" aria-label={t('Dates on sale')} onClick={e => e.stopPropagation()}>
+  return <Modal onClose={onClose} label={t('Dates on sale')}><section className="card dates-panel">
     <header className="drawer-h"><div><h2>{t('Pick a date')}</h2><p className="small muted" dir="auto">{title}</p></div><button className="btn" onClick={onClose} aria-label={t('Close')}>✕</button></header>
     {error && <p className="error">{error}</p>}
     {!lines && !error && <p className="muted">{t('Loading…')}</p>}
@@ -289,7 +289,7 @@ export function DatesPanel({ placementId, title, onPick, onClose }: { placementI
       <b>{slotWhen(l.startsAt, l.timed ? 'radio' : 'digital')}</b>{l.label && <span className="small muted">{l.label}</span>}
       <span className="num">{money(l.price)}</span><span className="tag"><SaleIcon k={l.saleType} />{saleLabel(l.saleType)}</span>
       {closes(l.closesAt) && <span className="badge warn">{closes(l.closesAt)}</span>}</button></li>)}</ul>}
-  </section></div>
+  </section></Modal>
 }
 
 // ---- the page ---------------------------------------------------------------------------------------------------------------

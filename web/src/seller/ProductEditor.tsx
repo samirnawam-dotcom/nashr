@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { composing } from '../ime'
 import { PriceCheck } from '../athena/PriceCheck'
 import { api } from '../api'
 import { navigate } from '../nav'
@@ -52,7 +53,7 @@ function Multi({ idp, value, options, onChange, label }: { idp: string; value: s
     {extra.map(v => <span key={v} className="aud-chip on">{v}<button type="button" className="ed-x" aria-label={t('Remove {name}', { name: v })} onClick={() => onChange(value.filter(x => x !== v))}>×</button></span>)}
     {!open ? <button type="button" className="aud-chip" onClick={() => setOpen(true)}>+ {t('Other')}</button>
       : <span className="ed-own"><input autoFocus dir="auto" maxLength={60} placeholder={t('Say what it is')} value={own} onChange={e => setOwn(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }} aria-label={t('Other: say what it is')} /><button type="button" className="btn" onClick={add}>{t('Add')}</button></span>}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (!composing(e)) add() } }} aria-label={t('Other: say what it is')} /><button type="button" className="btn" onClick={add}>{t('Add')}</button></span>}
   </div>
 }
 function Days({ idp, value, onChange }: { idp: string; value: number[]; onChange: (v: number[]) => void }) {

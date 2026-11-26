@@ -1,4 +1,5 @@
 import { GLOSSARY, Tip } from '../onboarding/Onboarding'
+import { Modal } from '../Modal'
 import { useEffect, useState } from 'react'
 import { tm, tmTitle } from '../i18n-server'
 import { api, upload, type CampaignBrief, type Client, type Slot } from '../api'
@@ -245,15 +246,14 @@ export function BidDrawer({ slotId, onClose, onDone }: { slotId: string; onClose
 }
 
 function Shell({ title, sub, mark, onClose, children }: { title?: string; sub?: string; mark?: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => { const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); addEventListener('keydown', k); return () => removeEventListener('keydown', k) }, [])
   return (
-    <div className="scrim" onClick={onClose}>
-      <aside className="drawer" role="dialog" aria-label={title} onClick={e => e.stopPropagation()}>
+    <Modal onClose={onClose} label={title}>
+      <aside className="drawer">
         <header className="drawer-h">{mark}<div className="drawer-t">{title && <h2>{title}</h2>}{sub && <p className="muted small">{sub}</p>}</div>
           <button className="btn" onClick={onClose} aria-label={t("Close")}>✕</button></header>
         {children}
       </aside>
-    </div>
+    </Modal>
   )
 }
 

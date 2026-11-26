@@ -1,4 +1,5 @@
 import { navigate } from '../nav'
+import { Modal } from '../Modal'
 import { AthenaPanel } from '../athena/Owl'
 import { PAGES, breadcrumb, siteUrl, useMeta } from '../seo'
 import { useEffect, useRef, useState } from 'react'
@@ -109,11 +110,11 @@ export function DirectoryPage() {
         : <ShopFilters f={f} set={set} guest={guest} view={view} />}
       <AthenaLine f={f} set={set} />
       {/* phones: the filters open full screen from a Filters button (owner's "Buying moves to the Directory") */}
-      {narrow && sheet && <div className="scrim" onClick={() => setSheet(false)}><div className="cv-sheet dir-sheet" role="dialog" aria-label={t('Filters')} onClick={e => e.stopPropagation()}>
+      {narrow && sheet && <Modal onClose={() => setSheet(false)} label={t('Filters')}><div className="cv-sheet dir-sheet">
         <header className="drawer-h"><h2>{t('Filters')}</h2><button className="btn" onClick={() => setSheet(false)} aria-label={t('Close')}>✕</button></header>
         <ShopFilters f={f} set={set} guest={guest} view={view} />
         <footer className="drawer-f"><button className="btn primary" onClick={() => setSheet(false)}>{t('Show results')}</button></footer>
-      </div></div>}
+      </div></Modal>}
       {f.market === 'SA' && <p className="warn row-flex">{t('Saudi Arabia opens soon. You can add Saudi outlets to a campaign plan now; booking opens with the market.')} <Waitlist topic="KSA" label={t("Tell me when KSA opens")} /></p>}
       {error && <p className="error">{error}</p>}
       <div className={`shop ${buying.myBids ? 'with-bids' : ''}`}>
@@ -189,7 +190,7 @@ function CompareBar() {
       <span className="small">{list.map(x => x.product).join(' · ')}</span><span className="spacer" />
       <button className="btn" onClick={() => setCompared([])}>{t('Clear')}</button>
       <button className="btn primary" disabled={list.length < 2} onClick={() => setOpen(true)}>{t('Compare ({n})', { n: list.length })}</button></div>
-    {open && <div className="scrim" onClick={() => setOpen(false)}><section className="cmp-modal card" role="dialog" aria-label={t('Compare')} onClick={e => e.stopPropagation()}>
+    {open && <Modal onClose={() => setOpen(false)} label={t('Compare')}><section className="cmp-modal card">
       <header className="drawer-h"><h2>{t('Compare')}</h2><button className="btn" onClick={() => setOpen(false)} aria-label={t('Close')}>✕</button></header>
       <div className="table-wrap"><table className="table cmp-table"><tbody>
         <tr><th scope="row">{t('Outlet')}</th>{list.map(x => <td key={x.placementId}><span className="row-flex"><OutletMark name={x.outlet} url={x.logoUrl} size={30} /><b>{x.outlet}</b></span></td>)}</tr>
@@ -203,7 +204,7 @@ function CompareBar() {
         <tr><th scope="row">{t('Reach')}</th>{list.map(x => <td key={x.placementId} className="num">{x.reach ? x.reach.toLocaleString('en-US') + (x.reachUnit ? ` ${t(x.reachUnit)}` : '') : '—'}</td>)}</tr>
         {!guest && <tr><th scope="row"><span className="sr-only">{t('Add to campaign')}</span></th>{list.map(x => <td key={x.placementId}><AddToCampaign placementId={x.placementId} small /></td>)}</tr>}
       </tbody></table></div>
-    </section></div>}
+    </section></Modal>}
   </>
 }
 
@@ -250,7 +251,7 @@ export function OutletPage({ id }: { id: string }) {
   return (
     <main className="narrow wide">
       <p className="small"><a href="/directory">{t("Directory")}</a> {isAr ? '‹' : '›'} {o.name}</p>
-      <div className="profile-cover" aria-hidden><img src={o.coverUrl ?? art(o.channels[0])} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-wide.jpg` }} width={1600} height={500} alt="" decoding="async" /></div>
+      <div className="profile-cover" aria-hidden><img fetchPriority="high" src={o.coverUrl ?? art(o.channels[0])} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-wide.jpg` }} width={1600} height={500} alt="" decoding="async" /></div>
       <div className="profile-h">
         <Logo o={o} size={64} />
         <div><h1>{o.name}</h1>{o.nameAr && <p className="profile-ar" lang="ar" dir="rtl">{o.nameAr}</p>}

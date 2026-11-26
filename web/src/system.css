@@ -207,7 +207,8 @@ a.btn { color: var(--ink); } a.btn.primary { color: #fff; }
 
 /* Quiet scrollbars on fine pointers */
 @media (pointer: fine) {
-  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 22%, transparent) transparent; }
+  /* normal width (a thin handle is too small for some people to grab), and a handle that stands out clearly (3:1) from the page */
+  * { scrollbar-color: color-mix(in srgb, var(--text) 55%, transparent) transparent; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 /* the sidebar reuses .nav (tests and older styles look for it): undo the top-bar link styles there */

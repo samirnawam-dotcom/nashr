@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { composing } from '../ime'
 import { api } from '../api'
 import { dayLabel, time } from '../format'
 import { dubai, todayInDubai } from '../calendar/layout'
@@ -79,7 +80,7 @@ export function Thread({ dealId, other, compact, side }: { dealId: string; other
         <label className="visually-hidden" htmlFor={`m-${dealId}`}>{t('Your message')}</label>
         <textarea id={`m-${dealId}`} ref={box} rows={1} dir="auto" maxLength={MAX} value={text} placeholder={t('Write a message…')} disabled={busy}
           onChange={e => { setText(e.target.value); if (error) setError('') }}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !touch()) { e.preventDefault(); send() } }} />
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !composing(e) && !touch()) { e.preventDefault(); send() } }} />
         <button className="btn primary composer-send" disabled={busy || !text.trim()} aria-label={t('Send')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="flip-rtl"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           <span>{t('Send')}</span></button>

@@ -1,5 +1,6 @@
 import { navigate, usePath } from './nav'
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { usePop } from './Pop'
 import { api } from './api'
 import { Login } from './Login'
 import { AcceptInvite, RequestAccess } from './Access'
@@ -246,26 +247,20 @@ export const Wordmark = ({ href, tone = 'auto', height = 24 }: { href?: string; 
 
 /** The menu under the account's name (owner's rules): its settings, help, the language and signing out, out of the main list. */
 function NameMenu({ name, sub, initials, links, mini, onSignOut, onTour }: { name: string; sub: string; initials: string; links: [string, string][]; mini: boolean; onSignOut: () => void; onTour?: () => void }) {
-  const [open, setOpen] = useState(false), ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent | KeyboardEvent) => { if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', close); document.addEventListener('keydown', close)
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close) }
-  }, [open])
-  return <div className="name-menu" ref={ref}>
-    <button type="button" className="name-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} title={mini ? name : undefined}>
+  const pop = usePop({ align: 'end' }), close = pop.hide
+  return <div className="name-menu">
+    <button type="button" className="name-btn" aria-haspopup="menu" {...pop.button} title={mini ? name : undefined}>
       <span className="avatar" aria-hidden>{initials}</span>
       <span className="who"><b>{name}</b><span>{sub}</span></span>
       <svg className="name-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M6 15l6-6 6 6" /></svg></button>
-    {open && <div className="name-pop" role="menu">
+    <div className="name-pop pp" role="menu" {...pop.panel}>
       <div className="name-pop-h"><b>{name}</b><span className="small muted">{sub}</span></div>
-      {links.map(([href, l]) => <a key={href} role="menuitem" href={href} onClick={() => setOpen(false)}>{l}</a>)}
-      {onTour && <button type="button" role="menuitem" className="name-out" onClick={() => { setOpen(false); onTour() }}>{t('Take the tutorial again')}</button>}
+      {links.map(([href, l]) => <a key={href} role="menuitem" href={href} onClick={close}>{l}</a>)}
+      {onTour && <button type="button" role="menuitem" className="name-out" onClick={() => { close(); onTour() }}>{t('Take the tutorial again')}</button>}
       <div className="name-pop-lang"><span className="small muted">{t('Language')}</span><LangSwitch /></div>
       <div className="name-pop-lang"><span className="small muted">{t('Theme')}</span><ThemeChoice /></div>
       <button type="button" role="menuitem" className="name-out" onClick={onSignOut}>{t('Sign out')}</button>
-    </div>}
+    </div>
   </div>
 }
 
