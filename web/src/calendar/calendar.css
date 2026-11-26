@@ -886,3 +886,7 @@ label.side-h { display: block; }
   .mybids.narrow .mb-head { min-height: 0; }
 }
 .cv-list-bar .spacer { flex: 1; }
+/* each price box says how it is sold: the Sale type filter's icon and its name (auction, quick sale, fixed price) */
+.cv-cell .cv-sales { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 8px; }
+.cv-cell .cv-sale { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; line-height: 16px; color: var(--text-muted); white-space: nowrap; }
+.cv-cell .cv-sale svg { width: 12px; height: 12px; flex: none; }

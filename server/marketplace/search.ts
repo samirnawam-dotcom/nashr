@@ -253,7 +253,7 @@ export async function rows(db: Db, q: Query, grain: RowGrain, sort: OutletSort, 
       if (c.price != null) pr.fromPrice = pr.fromPrice == null ? Number(c.price) : Math.min(pr.fromPrice, Number(c.price))
       for (const x of c.sale_types ?? []) pr.saleTypes.add(x)
       pr.cells.push({ col: c.col, slots: c.slots, onSale: c.on_sale, price: c.price == null ? null : Number(c.price), bids: c.bids, closesAt: c.closes_at,
-        youLead: c.leads, outbid: c.outbid, ...(grain === 'day' ? { items: (c.items ?? []).map((i: any) => ({ ...i, price: Number(i.price) })) } : {}) })
+        saleTypes: ((c.sale_types ?? []) as string[]).sort(), youLead: c.leads, outbid: c.outbid, ...(grain === 'day' ? { items: (c.items ?? []).map((i: any) => ({ ...i, price: Number(i.price) })) } : {}) })
       products.set(c.placement_id, pr)
     }
     const first = mine[0]

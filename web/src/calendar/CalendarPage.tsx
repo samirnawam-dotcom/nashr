@@ -117,7 +117,7 @@ export function Popover({ label, children, on, align, wide }: { label: React.Rea
 type Panel = { title: string; sub: string; query?: Record<string, string>; list?: Record<string, string>; from?: string; days?: number }
 
 // ---- the rows: outlets with their products under them (owner's buyer-side fixes, round 2) ------------------------------
-type Cell = { col: string; slots: number; onSale: number; price: number | null; bids: number; closesAt: string | null; youLead: boolean; outbid: boolean
+type Cell = { col: string; slots: number; onSale: number; price: number | null; bids: number; closesAt: string | null; youLead: boolean; outbid: boolean; saleTypes?: string[]
   items?: { id: string; startsAt: string; endsAt: string | null; price: number; saleType: Slot['saleType']; label: string; kind: string }[] }
 type ProductRow = { placementId: string; placement: string; channel: string; onSale: number; fromPrice: number | null; saleTypes: string[]; cells: Cell[] }
 type OutletRows = { key: string; outlet: string; channels: string[]; logoUrl: string | null; onSale: number; fromPrice: number | null; products: ProductRow[] }
@@ -195,7 +195,9 @@ function RowsView({ s, view, from, to, reload, live, onOpen, onPick, single }: {
                     {i.kind !== 'single' && <span>{tm(i.label)} · </span>}<b className="num">{money(i.price)}</b> · {saleLabel(i.saleType)}</button></li>)}
                     <li className="cv-istat">{cellStatus(x)}</li></ul>
                   : <button type="button" className={`cv-cell ${x.onSale ? '' : 'closed'} ${x.outbid ? 'outbid' : x.youLead ? 'lead' : ''}`} disabled={!x.onSale} onClick={() => pick(o, p, x)}>
-                    {x.price != null ? <b className="num" title={money(x.price)}>{cellPrice(x.price)}</b> : <b className="muted">—</b>}{cellStatus(x)}</button>}</td> })}
+                    {x.price != null ? <b className="num" title={money(x.price)}>{cellPrice(x.price)}</b> : <b className="muted">—</b>}
+                    {x.price != null && (x.saleTypes ?? []).length > 0 && <span className="cv-sales">{(x.saleTypes ?? []).map(k => <span key={k} className="cv-sale"><SaleIcon k={k} />{saleLabel(k)}</span>)}</span>}
+                    {cellStatus(x)}</button>}</td> })}
               {total && <td className="r num small cv-tot">{p.onSale ? <><b>{t('{n} on sale', { n: p.onSale })}</b>{p.fromPrice != null && <div className="muted">{t('from {price}', { price: money(p.fromPrice) })}</div>}</>
                 : <span className="muted">{t('Closed')}</span>}</td>}
             </tr>)}
