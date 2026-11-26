@@ -664,4 +664,7 @@ export const AR_BUYER: Record<string, string> = {
   "Enter to open · Tab to ask Athena": "Enter للفتح · Tab لسؤال أثينا",
   "Type an outlet, a product, a booking reference or a page. Or ask Athena anything.": "اكتب اسم منصة أو منتج أو رقم حجز أو صفحة. أو اسأل أثينا أي شيء.",
   "Ask Athena about this": "اسأل أثينا عن هذا",
+  "Test version": "نسخة تجريبية",
+  "Payments are simulated: no real money moves. Tell us anything that looks wrong.": "المدفوعات تجريبية: لا تُنقل أي أموال حقيقية. أخبرنا بأي شيء يبدو غير صحيح.",
+  "Send feedback": "أرسل ملاحظاتك",
 }

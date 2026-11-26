@@ -219,3 +219,7 @@ td .pc-why { color: var(--text-muted); margin-top: 2px; }
 :root[lang="ar"] .pc-ask { font-family: var(--font-arabic); }
 /* phones: "My bids" sits in the other bottom corner from the Ask Athena button, so they never overlap */
 .mb-fab { inset-inline-end: auto; inset-inline-start: 16px; }
+/* the sectors an outlet serves, under its product's name */
+.pc-sectors { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--text-muted); }
+.pc-sectors svg { flex: none; opacity: .8; }
+.pc-sectors span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

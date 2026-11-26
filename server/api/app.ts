@@ -1,6 +1,6 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
 import { athenaRoutes } from './routes-athena.js'
-import { prelaunch } from './launch.js'
+import { prelaunch, testing } from './launch.js'
 import type pg from 'pg'
 import { pool, tx } from '../core/db.js'
 import { audit } from '../core/audit.js'
@@ -208,7 +208,7 @@ export function buildApp(deps: { provider: PaymentProvider; clock?: () => Date; 
   stripeWebhook(app, { provider: deps.provider, stripe: deps.stripe, clock })
   // What the browser needs to show the card form: Stripe's publishable key (public by design), or null for the test cards.
   // Whether the site is still behind the Coming soon page (the web app asks before showing anything to a guest).
-  route('GET', '/api/launch', 'public', async () => ({ prelaunch: prelaunch() }))
+  route('GET', '/api/launch', 'public', async () => ({ prelaunch: prelaunch(), testing: testing() }))
   route('GET', '/api/config', 'public', async () => ({ stripePublishableKey: deps.stripe?.publishableKey ?? null }))
   const storage = deps.storage ?? new DiskStorage()
   sharedRoutes(route, storage)

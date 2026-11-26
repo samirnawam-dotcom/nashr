@@ -1,5 +1,5 @@
 import { AUDIENCE_KEYS } from '../shared/audiences.js'
-import { prelaunch } from './launch.js'
+import { hidden } from './launch.js'
 import type { RouteFn } from './app.js'
 import { NotFound } from './app.js'
 import { MarketError, ownFile } from '../marketplace/market.js'
@@ -195,7 +195,7 @@ export function planRoutes(route: RouteFn) {
     return { total: rows[0]?.total ?? 0, brands, items: rows.map((x: any) => ({
       placementId: x.placement_id, title: x.title, product: x.kind === 'main' ? null : x.placement, brand: x.brand, brandKey: x.brand_key, slug: slug(x.brand, x.brand_key),
       logoUrl: brandLogoUrl(x.product_id, x.brand_logo_key) ?? logoUrl({ id: x.outlet_id, logo_key: x.logo_key }) ?? x.logo_url ?? null,
-      channel: x.channel, channelOther: x.channel_other,
+      channel: x.channel, channelOther: x.channel_other, sectors: x.sectors ?? [],
       // the sale type of what is on sale (a programme sells one way; if its listings differ, the placement's own)
       saleType: x.sale_types === 1 ? x.one_sale_type : x.sale_type, price: x.from_price, buyNowPrice: x.buy_now,
       onSale: x.on_sale, nextAt: x.next_at, nextClosesAt: x.next_closes, reach: x.reach, reachUnit: x.reach_unit,
@@ -292,7 +292,7 @@ export function planRoutes(route: RouteFn) {
 
   // For search engines: every public page and every outlet, at the site's own address.
   route('GET', '/api/sitemap.xml', 'public', async ({ db }, req, reply) => {
-    if (prelaunch()) return reply.code(404).send({ error: 'Not found.' }) // nothing to index before release
+    if (hidden()) return reply.code(404).send({ error: 'Not found.' }) // nothing to index before release or while testing
     const origin = (process.env.SITE_URL ?? `${req.protocol}://${req.headers.host}`).replace(/\/$/, '')
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
     const outlets = (await db.query(`select o.id, o.name from outlets o order by o.name`)).rows

@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { FastifyInstance } from 'fastify'
-import { PRELAUNCH_ROBOTS, prelaunch } from './launch.js'
+import { PRELAUNCH_ROBOTS, hidden, prelaunch } from './launch.js'
 
 /*
  * The built web app (dist/web), served by the API itself where no nginx sits in front (cPanel shared hosting: Passenger hands
@@ -43,6 +43,9 @@ export function serveWeb(app: FastifyInstance, root: string) {
     return file(clean) ?? file(`${clean}.html`) ?? file(`${clean}/index.html`) ?? (extname(clean) ? null : file('/app.html'))
   }
 
+  // before release and while testing, no page is indexed (even one a search engine found by a link)
+  app.addHook('onSend', async (_req, reply, payload) => { if (hidden()) reply.header('x-robots-tag', 'noindex, nofollow'); return payload })
+
   // the live sitemap (every outlet) comes from the API, as nginx did
   app.get('/sitemap.xml', async (_req, reply) => {
     const r = await app.inject({ method: 'GET', url: '/api/sitemap.xml' })
@@ -50,7 +53,7 @@ export function serveWeb(app: FastifyInstance, root: string) {
   })
 
   app.setNotFoundHandler(async (req, reply) => {
-    if (prelaunch() && req.url.split('?')[0] === '/robots.txt')
+    if (hidden() && req.url.split('?')[0] === '/robots.txt')
       return reply.type('text/plain; charset=utf-8').header('cache-control', 'no-cache').send(PRELAUNCH_ROBOTS)
     // before release a pre-rendered page asked for by name (/terms.html) gets the app shell too
     const url = prelaunch() && /\.html$/.test(req.url.split('?')[0]) ? '/' : req.url

@@ -7,7 +7,7 @@ import { api } from '../api'
 import { money, slotWhen } from '../format'
 import { navigate } from '../nav'
 import { useGuest } from '../guest'
-import { t } from '../i18n'
+import { sep, t } from '../i18n'
 import { CHANNEL_NAME, CHANNELS } from '../media'
 import { INDUSTRIES } from '../industries'
 import { DAYPARTS, type Daypart, type SlotFilter } from '../../../server/shared/slot-filter'
@@ -35,7 +35,7 @@ export type ShopFilter = { q: string; channel: string; sale: string[]; min: stri
   ask: string /* the sentence Athena read; its filters are set in the fields above, its ranking hints come from reading it again */ }
 export type ShopSort = 'popular' | 'price_asc' | 'price_desc' | 'closing' | 'newest' | 'fit'
 export type ProductCard = { placementId: string; title: string; product: string | null; brand: string; brandKey: string; slug: string; logoUrl: string | null
-  channel: string; channelOther: string | null; saleType: string; price: number; buyNowPrice: number | null; onSale: number; nextAt: string; nextClosesAt: string
+  channel: string; channelOther: string | null; sectors?: string[]; saleType: string; price: number; buyNowPrice: number | null; onSale: number; nextAt: string; nextClosesAt: string
   reach: number | null; reachUnit: string | null; reachMatch: 'in' | 'close' | 'none' | null; saved: boolean
   why?: { audiences: string[]; sectors: string[]; dayparts: string[]; language: string | null; onSale: number; inDates: boolean
     proof?: { n: number; buyers: number; rebooked: number; rating: number | null; industry: string | null } } | null }
@@ -242,16 +242,19 @@ export function ProductCardView({ p, onBuy, guest, onSaved, layout }: { p: Produ
   const next = slotWhen(p.nextAt, p.channel)
   const reachTag = p.reachMatch === 'close' ? <span className="badge">{t('Close match')}<Tip text={GLOSSARY.closeMatch} label={t('Close match')} /></span> : p.reachMatch === 'none' ? <span className="badge muted">{t('Reach not given')}</span> : null
   const media = p.channel === 'other' && p.channelOther ? p.channelOther : CHANNEL_NAME[p.channel] ?? p.channel
+  // the sectors the outlet serves (its buyers' industries): the first three, then how many more
+  const sec = p.sectors ?? [], sectors = sec.length ? sec.slice(0, 3).map(x => t(x)).join(sep) + (sec.length > 3 ? ` ${t('+{n} more', { n: sec.length - 3 })}` : '') : ''
   const actions = <span className="prod-acts">
     <button type="button" className="btn sm primary" onClick={() => onBuy(p)}>{verb(p.saleType)}</button>
     {!guest && <AddToCampaign placementId={p.placementId} small />}</span>
   if (layout === 'list') return <tr>
-    <td><span className="row-flex"><OutletMark name={p.brand} url={p.logoUrl} size={28} /><span><b dir="auto">{p.title}</b><span className="small muted d-block">{media}</span></span></span></td>
+    <td><span className="row-flex"><OutletMark name={p.brand} url={p.logoUrl} size={28} /><span><b dir="auto">{p.title}</b><span className="small muted d-block">{media}{sectors && ` · ${sectors}`}</span></span></span></td>
     <td><span className="tag"><SaleIcon k={p.saleType} />{saleLabel(p.saleType)}</span></td>
     <td className="r num">{money(p.price)}</td><td className="small">{t('{n} on sale', { n: p.onSale })} · {next}{reachTag && <> {reachTag}</>}{p.why && <div className="pc-why"><Owl size={14} /><span>{whyText(p)}</span></div>}</td><td>{actions}</td></tr>
   return <article className="card prod-card">
     <div className="row-flex pc-head"><OutletMark name={p.brand} url={p.logoUrl} size={40} />
-      <div className="pc-name"><a href={`/directory/${p.slug}`}><b dir="auto">{p.title}</b></a><span className="small muted">{media} · <bdi>{p.brand}</bdi></span></div>
+      <div className="pc-name"><a href={`/directory/${p.slug}`}><b dir="auto">{p.title}</b></a><span className="small muted">{media} · <bdi>{p.brand}</bdi></span>
+        {sectors && <span className="pc-sectors small" title={sec.map(x => t(x)).join(sep)}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6" /></svg><span>{sectors}</span></span>}</div>
       {!guest && onSaved && <ShopStar brandKey={p.brandKey} name={p.brand} saved={p.saved} onChange={v => onSaved(p.brandKey, v)} />}</div>
     <div className="row-flex pc-tags"><span className="tag"><SaleIcon k={p.saleType} />{saleLabel(p.saleType)}<Tip text={GLOSSARY[p.saleType as 'auction' | 'fixed' | 'quick_sale'] ?? GLOSSARY.quick_sale} label={saleLabel(p.saleType)} /></span>
       {p.buyNowPrice != null && <span className="tag">{t('Buy now {amount}', { amount: money(p.buyNowPrice) })}<Tip text={GLOSSARY.buyNow} label={t('Buy now')} /></span>}{reachTag}</div>

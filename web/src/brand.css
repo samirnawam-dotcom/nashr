@@ -360,3 +360,10 @@ html main .admin-filters > input[type="search"] { padding-inline-start: 36px !im
   html main .admin-filters > :is(input[type="search"], select) { flex: 1 1 100%; width: 100%; }
   html main .admin-filters .range { flex: 1 1 100%; }
 }
+
+/* Test mode: one quiet line at the very top of every page (scrolls away with the page) */
+html .test-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; padding: 7px 16px;
+  background: var(--warning-soft); color: var(--text); border-bottom: 1px solid var(--line); font: 400 13px/18px var(--font-sans); text-align: center; }
+html .test-bar b { font-weight: 600; }
+html .test-bar a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+:root[lang="ar"] .test-bar { font-family: var(--font-arabic); }

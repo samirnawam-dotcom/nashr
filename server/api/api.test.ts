@@ -1305,10 +1305,10 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
 
   test('before release (PRELAUNCH=1) guests get only the Coming soon page: no data, no sitemap; signed-in people see everything', async () => {
     const range = `from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 30 * 86_400_000).toISOString()}`
-    expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false })
+    expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: false, testing: false })
     process.env.PRELAUNCH = '1'
     try {
-      expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: true })
+      expect((await call(null, 'GET', '/api/launch')).json()).toEqual({ prelaunch: true, testing: false })
       expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(401)
       expect((await call(null, 'GET', '/api/sitemap.xml')).statusCode).toBe(404)
       expect((await call(buyerA, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)

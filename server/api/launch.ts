@@ -5,4 +5,12 @@
  */
 export const prelaunch = () => /^(1|true|yes|on)$/i.test((process.env.PRELAUNCH ?? '').trim())
 
+/**
+ * Test mode (TESTING=1, or a file named TESTING beside app.js): the whole site is open so invited testers can use it end to
+ * end, every page says it is a test version, payments stay simulated (a demo server), and search engines stay away.
+ */
+export const testing = () => /^(1|true|yes|on)$/i.test((process.env.TESTING ?? '').trim())
+/** Search engines kept out: before release and while testing. */
+export const hidden = () => prelaunch() || testing()
+
 export const PRELAUNCH_ROBOTS = 'User-agent: *\nDisallow: /\n'

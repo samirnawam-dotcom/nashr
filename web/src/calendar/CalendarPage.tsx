@@ -157,7 +157,7 @@ function RowsView({ s, view, from, to, reload, live, onOpen, onPick, single }: {
   const isNow = (c: string) => view === 'month' ? today >= c && today < addDays(c, 7) : c === today
   const fold = (k: string) => setFolded(f => { const n = new Set(f); n.has(k) ? n.delete(k) : n.add(k); return n })
   const pages = data ? Math.ceil(data.total / ROW_PAGE) : 0, pageNo = Math.floor(offset / ROW_PAGE) + 1
-  const total = view !== 'day' // the right-hand column: per product, what is on sale in the whole range
+  const total = false as boolean // the right-hand "N on sale · from AED" column: removed at the owner's request (each day cell already shows it)
   const pick = (o: OutletRows, p: ProductRow, c: Cell) => {
     if (!c.onSale) return
     if (c.items?.length === 1) return onOpen(c.items[0].id)

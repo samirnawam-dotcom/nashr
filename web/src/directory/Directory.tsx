@@ -128,7 +128,7 @@ export function DirectoryPage() {
                   <img className="outlet-cover" src={o.coverUrl ?? art(o.channels[0], 'card')} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = `/brand/${o.channels[0]}-card.jpg` }} width={800} height={250} alt="" loading="lazy" decoding="async" />
                   <div className="row-flex oc-head"><Logo o={o} /><div className="oc-name"><a href={`/directory/${o.slug}`} onClick={e => e.stopPropagation()}><b>{o.name}</b></a>{o.nameAr && <div className="small muted" lang="ar" dir="rtl">{o.nameAr}</div>}</div>
                     <SaveStar b={o} onChange={v => setOne(o.id, v)} /></div>
-                  <div className="small muted">{channelsText(o.channels)}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).map(x => t(x)).join(', ')}` : ''}</div>
+                  <div className="small muted">{channelsText(o.channels)}{o.sectors.length ? ` · ${o.sectors.slice(0, 3).map(x => t(x)).join(sep)}` : ''}</div>
                   {o.comingSoon ? <span className="badge">{t("Coming soon")}</span>
                     : o.fromPrice != null && o.onNashr ? <span className="oc-price"><span className="small muted">{t('From')}</span> <b className="num">{money(o.fromPrice, o.currency)}</b></span>
                     : null}
@@ -139,7 +139,7 @@ export function DirectoryPage() {
               : shown.length > 0 && <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Outlet")}</th><th>{t("Media type")}</th><th>{t("Sectors")}</th><th className="r">{t("Starting price")}</th><th /></tr></thead>
                   <tbody>{shown.map(o => <tr key={o.id} onClick={() => navigate(`/directory/${o.slug}`)}>
                     <td><div className="row-flex"><Logo o={o} size={28} /><b>{o.name}</b><SaveStar b={o} onChange={v => setOne(o.id, v)} /></div></td><td className="small">{channelsText(o.channels)}</td>
-                    <td className="small">{o.sectors.map(x => t(x)).join(', ')}</td><td className="r num">{o.fromPrice != null && o.onNashr ? t('From {amount}', { amount: money(o.fromPrice, o.currency) }) : '—'}</td>
+                    <td className="small">{o.sectors.map(x => t(x)).join(sep)}</td><td className="r num">{o.fromPrice != null && o.onNashr ? t('From {amount}', { amount: money(o.fromPrice, o.currency) }) : '—'}</td>
                     <td className="small">{o.comingSoon ? t("Coming soon") : o.onNashr ? <a href={availability(o)} onClick={e => { e.stopPropagation(); e.preventDefault(); navigate(availability(o)) }}>{t('Check availability')}</a> : t("Request a quote")}</td></tr>)}</tbody></table></div>}
           </> : <>
             {prods.items == null && <p className="muted">{t('Loading…')}</p>}
