@@ -9,18 +9,18 @@ import './athena.css'
  * something new to say, its words sweeping in after it. Everything stands still for people who ask for reduced motion.
  */
 export function Owl({ size = 18, busy = false, wake = false, className = '' }: { size?: number; busy?: boolean; wake?: boolean; className?: string }) {
-  // each owl blinks on its own beat, so a page of owls never blinks in step (set after mount: pre-rendered pages stay identical)
+  // Athena's mark, "The Spark": the Nashr smile with its red dot turned into a spark that sends out the launch pulse.
+  // Each spark twinkles on its own beat, so a page of them never moves in step (set after mount: pre-rendered pages stay identical).
   const ref = useRef<SVGSVGElement>(null)
   useEffect(() => { ref.current?.style.setProperty('--owl-delay', `${(Math.random() * 6).toFixed(2)}s`) }, [])
-  return <svg ref={ref} className={`owl ${busy ? 'owl-busy' : ''} ${wake ? 'owl-wake' : ''} ${className}`} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <g className="owl-brows"><path d="M3.6 6.4 7 5.6M20.4 6.4 17 5.6" /></g>
-    <g className="owl-eye"><circle className="owl-ring" cx="7.5" cy="11" r="4.6" /><circle className="owl-pupil" cx="7.5" cy="11" r="1.7" /></g>
-    <g className="owl-eye"><circle className="owl-ring" cx="16.5" cy="11" r="4.6" /><circle className="owl-pupil" cx="16.5" cy="11" r="1.7" /></g>
-    <path className="owl-beak" d="M10.6 17.4 12 19.6l1.4-2.2" />
+  return <svg ref={ref} className={`owl spark ${busy ? 'owl-busy' : ''} ${wake ? 'owl-wake' : ''} ${className}`} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle className="spark-pulse" cx="12" cy="6.2" r="4.6" /><circle className="spark-pulse spark-pulse2" cx="12" cy="6.2" r="4.6" />
+    <path className="spark-star" d="M12 1 13.45 4.75 17.2 6.2 13.45 7.65 12 11.4 10.55 7.65 6.8 6.2 10.55 4.75Z" />
+    <path className="spark-smile" d="M4.6 13.4a7.4 7.4 0 0 0 14.8 0" />
   </svg>
 }
 
-/** "Athena" with its owl: the name tag used in headers, chips and the side menu. */
+/** "Athena" with its spark: the name tag used in headers, chips and the side menu. */
 export function AthenaTag({ label, busy, wake, size = 16 }: { label?: string; busy?: boolean; wake?: boolean; size?: number }) {
   return <span className="ath-tag"><Owl size={size} busy={busy} wake={wake} /><b>{t('Athena')}</b>{label && <span className="ath-label">· {label}</span>}</span>
 }

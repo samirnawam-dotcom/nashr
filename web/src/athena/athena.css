@@ -1,28 +1,25 @@
-/* ---- Athena: the owl and the one panel it speaks in (brand: black and white only; Athena adds no colour) ---- */
+/* ---- Athena: the spark and the one panel it speaks in (brand: black and white only; Athena adds no colour) ---- */
 .owl { flex: none; overflow: visible; color: currentColor; vertical-align: -3px; }
-.owl :is(.owl-brows path, .owl-ring, .owl-beak) { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.owl .owl-pupil { fill: currentColor; }
-.owl .owl-eye, .owl .owl-pupil, .owl .owl-brows { transform-box: fill-box; transform-origin: center; }
-/* now and then, a blink */
-.owl .owl-eye { animation: owl-blink 7s var(--owl-delay, 0s) infinite; }
-@keyframes owl-blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
-/* working: the eyes scan, the brows lift */
-.owl.owl-busy .owl-pupil { animation: owl-scan .9s ease-in-out infinite alternate; }
-.owl.owl-busy .owl-brows { animation: owl-brow .9s ease-in-out infinite alternate; }
-@keyframes owl-scan { from { transform: translateX(-1.6px); } to { transform: translateX(1.6px); } }
-@keyframes owl-brow { from { transform: translateY(0); } to { transform: translateY(-.8px); } }
-/* something new to say: the owl wakes (eyes open), glances at it, and settles */
-.owl.owl-wake .owl-eye { animation: owl-open .38s cubic-bezier(.2, .8, .2, 1) both, owl-blink 7s calc(2s + var(--owl-delay, 0s)) infinite; }
-.owl.owl-wake:not(.owl-busy) .owl-pupil { animation: owl-glance 1.1s .35s ease-in-out both; }
-@keyframes owl-open { from { transform: scaleY(.1); } to { transform: scaleY(1); } }
-@keyframes owl-glance { 0% { transform: translate(0, 0); } 35% { transform: translate(1.5px, .6px); } 70% { transform: translate(-.6px, 0); } 100% { transform: translate(0, 0); } }
-:root[dir="rtl"] .owl.owl-wake:not(.owl-busy) .owl-pupil { animation-name: owl-glance-rtl; }
-@keyframes owl-glance-rtl { 0% { transform: translate(0, 0); } 35% { transform: translate(-1.5px, .6px); } 70% { transform: translate(.6px, 0); } 100% { transform: translate(0, 0); } }
-
-.ath-tag { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/18px var(--font-sans); color: var(--text); }
-.ath-tag .ath-label { font-weight: 600; color: var(--text); }
-:root[lang="ar"] .ath-tag { font-family: var(--font-arabic); }
-
+/* Athena's mark, "The Spark" (owner's choice): the Nashr smile in the text colour, the dot turned into a red spark that
+   keeps sending out the launch pulse rings. Always alive: rings go out every few seconds and the spark breathes. */
+.spark .spark-smile { fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: butt; }
+.spark .spark-star { fill: var(--brand-red, #C8102E); transform-box: fill-box; transform-origin: center; animation: spark-breathe 3.6s var(--owl-delay, 0s) ease-in-out infinite; }
+.spark .spark-pulse { fill: none; stroke: var(--brand-red, #C8102E); stroke-width: 1.1; opacity: 0; transform-box: fill-box; transform-origin: center;
+  animation: spark-pulse 3.6s var(--owl-delay, 0s) ease-out infinite; }
+.spark .spark-pulse2 { animation-delay: calc(var(--owl-delay, 0s) + .5s); }
+@keyframes spark-breathe { 0%, 100% { transform: scale(1) rotate(0); } 12% { transform: scale(1.2) rotate(45deg); } 24% { transform: scale(1) rotate(90deg); } }
+@keyframes spark-pulse { 0% { opacity: .8; transform: scale(.35); } 45%, 100% { opacity: 0; transform: scale(1.7); } }
+/* thinking: the spark turns quickly and the rings come faster */
+.spark.owl-busy .spark-star { animation: spark-spin 1.2s cubic-bezier(.5, 0, .5, 1) infinite; }
+.spark.owl-busy .spark-pulse { animation: spark-pulse 1.2s ease-out infinite; }
+.spark.owl-busy .spark-pulse2 { animation-delay: .4s; }
+@keyframes spark-spin { from { transform: rotate(0) scale(1); } 50% { transform: rotate(45deg) scale(1.15); } to { transform: rotate(90deg) scale(1); } }
+/* something new to say: the spark pops in and a pulse goes out at once */
+.spark.owl-wake:not(.owl-busy) .spark-star { animation: spark-pop .5s cubic-bezier(.2, .8, .2, 1) both, spark-breathe 3.6s 1s ease-in-out infinite; }
+.spark.owl-wake:not(.owl-busy) .spark-pulse { animation: spark-pulse 3.6s .1s ease-out infinite; }
+.spark.owl-wake:not(.owl-busy) .spark-pulse2 { animation-delay: .6s; }
+@keyframes spark-pop { from { transform: scale(.3) rotate(-45deg); } to { transform: scale(1) rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .spark .spark-star, .spark .spark-pulse { animation: none !important; } }
 /* the panel: quiet (hairline, white), the owl and the name lead */
 .ath { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 12px 14px; display: grid; gap: 6px; }
 .ath p { margin: 0; }
