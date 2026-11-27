@@ -44,8 +44,6 @@ export function PrelaunchPage() {
         <p className="pl-h1-ar" lang="ar" dir="rtl" aria-hidden={!isAr || undefined}>الإعلام يتحرّك بشكلٍ مختلف هنا</p>
       </section>
 
-      <p className="pl-intro">{t('Radio, outdoor, print, publishers and the room, bought direct from the people who make them.')}</p>
-
       <section className="pl-buy" aria-labelledby="pl-buy-h">
         <h2 id="pl-buy-h" className="pl-label-h">{t('Reach programmatic can’t buy')}</h2>
         <div className="pl-buy-grid">{REACH.map(([n, k, d]) => <div key={n}><span className="pl-kicker">{n}</span><b className="pl-reach">{t(k)}</b><p>{t(d)}</p></div>)}</div>
