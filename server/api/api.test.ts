@@ -1335,6 +1335,8 @@ describe('the calendar at scale: filters, pages and summaries in SQL', () => {
       expect(req[0].subject).toBe('New access request: Big Co')
       expect(req[0].text_body).toContain('layla@bigco.ae')
       expect(req[0].text_body).toContain('/access')
+      // the landing page's form ("Let's talk") asks no role
+      expect((await call(null, 'POST', '/api/access-requests', { name: 'Sami', email: 'sami@bigco.ae', phone: '+971 50 111 3333', company: 'Big Co', companyType: 'media_outlet' })).statusCode).toBe(200)
     } finally { delete process.env.PRELAUNCH }
     expect((await call(null, 'GET', `/api/slots/list?${range}&open=1&limit=3`)).statusCode).toBe(200)
   })

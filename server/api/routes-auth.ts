@@ -15,9 +15,9 @@ export function authRoutes(route: RouteFn) {
   route('POST', '/api/access-requests', 'public', async ({ db, at }, req, reply) => {
     if (!(await rateLimit(`access:${req.ip}`, 5, at.getTime()))) return reply.code(429).send({ error: 'Too many requests. Try again in a minute.' })
     const b = req.body
-    return { id: await requestAccess(db, { name: b.name, email: b.email, phone: b.phone, role: b.role, company: b.company, companyType: b.companyType }, at) }
-  }, { type: 'object', required: ['name', 'email', 'phone', 'role', 'company', 'companyType'], additionalProperties: false,
-       properties: { name: str, email: str, phone: str, role: str, company: str, companyType: { enum: ['brand', 'agency', 'media_outlet'] } } })
+    return { id: await requestAccess(db, { name: b.name, email: b.email, phone: b.phone, role: b.role ?? '', company: b.company, companyType: b.companyType }, at) }
+  }, { type: 'object', required: ['name', 'email', 'phone', 'company', 'companyType'], additionalProperties: false,
+       properties: { name: str, email: str, phone: str, role: { type: 'string', maxLength: 200 }, company: str, companyType: { enum: ['brand', 'agency', 'media_outlet'] } } })
 
   route('POST', '/api/auth/invite', 'public', async ({ db, at }, req) => acceptInvite(db, req.body, at),
     { type: 'object', required: ['token', 'password'], properties: { token: str, password: { type: 'string', maxLength: 200 }, totpCode: str, acceptTerms: { type: 'boolean' } } })

@@ -124,7 +124,7 @@ export async function queueAccessRequestEmails(db: Db, r: { name: string; compan
   const t = tr('en'), title = `New access request: ${r.company}`
   const { html, text } = renderEmail('en', { title, paragraphs: [
     `${t('Name')}: ${r.name}`, `${t('Company')}: ${r.company}`, `${t('I am')}: ${r.companyType === 'media_outlet' ? t('Media outlet') : t('Buyer')}`,
-    `${t('Your role')}: ${r.role}`, `${t('Email')}: ${r.email}`, `${t('Phone')}: ${r.phone}`],
+    ...(r.role ? [`${t('Your role')}: ${r.role}`] : []), `${t('Email')}: ${r.email}`, `${t('Phone')}: ${r.phone}`],
     cta: { label: t('Open Access'), url: site() + '/access' }, footer: 'Approve the request under Access and Nashr emails them an invitation to set their password.' })
   for (const addr of to) await queue(db, { to: addr, kind: 'access.requested', subject: title, text, html }, at)
 }

@@ -94,3 +94,24 @@ html .pl .pl-hero h1 { max-width: 8.4em; }
 /* phones: the three header links stay on one line each */
 .pl-nav a, .pl-lang { white-space: nowrap; }
 @media (max-width: 420px) { .pl-top .pl-nav { gap: 12px; } .pl-top .pl-cta { letter-spacing: .06em; } .pl-top > a:first-child svg, .pl-top > a:first-child img { height: 19px; width: auto; } .pl-top { gap: 12px; } }
+/* Home3 wording: one line per change, audiences in the grid, two-by-two form, footer links */
+.pl .pl-rule { margin-bottom: 8px; }
+.pl .pl-step { grid-template-columns: 60px 1.2fr 1.6fr; align-items: baseline; }
+.pl .pl-step-d { margin: 0; font-size: 15px; color: var(--pl-muted); }
+.pl-reach { display: block; margin-top: 6px; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.pl-buy-grid p { color: var(--pl-muted); }
+.pl-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 24px; }
+.pl .pl-foot { flex-wrap: wrap; gap: 14px 32px; align-items: baseline; }
+.pl-foot-links { display: flex; gap: 22px; }
+.pl-foot-links a { color: var(--pl-ink); text-decoration: none; }
+.pl-foot-links a:hover { text-decoration: underline; }
+.pl-foot-end { display: flex; gap: 22px; }
+@media (max-width: 860px) {
+  .pl .pl-step { grid-template-columns: 28px 1fr; }
+  .pl .pl-step-d { grid-column: 2; }
+  .pl-pair { grid-template-columns: 1fr; }
+}
+.pl .pl-intro { margin: 0 0 32px; }
+.pl .pl-buy { padding-top: 64px; }
+.pl .pl-changes { padding-top: 120px; }
+@media (max-width: 860px) { .pl .pl-buy { padding-top: 40px; } .pl .pl-changes { padding-top: 72px; } }

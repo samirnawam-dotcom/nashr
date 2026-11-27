@@ -308,7 +308,7 @@ export function App({ initialMe, initialSoon }: { initialMe?: Me | null; initial
     if (soon === undefined) return null
     // the team still signs in (and resets a password) at their usual addresses; everything else is the Coming soon page
     // before release: the owner's landing page, with a real request for access (signing in opens the whole site)
-    if (soon && path !== '/sign-in' && path !== '/forgot') return <Suspense fallback={null}><PrelaunchPage /></Suspense>
+    if (soon && path !== '/sign-in' && path !== '/forgot' && !LEGAL.some(([re]) => re.test(path))) return <Suspense fallback={null}><PrelaunchPage /></Suspense>
     if (path === '/') return <GuestContext.Provider value={true}><GuestHeader path={path} menu={menu} setMenu={setMenu} /><Landing /><GuestTabs path={path} /></GuestContext.Provider>
     if (path === '/sign-in') return <Login onIn={signedIn} />
     if (path === '/request-access') return <RequestAccess />

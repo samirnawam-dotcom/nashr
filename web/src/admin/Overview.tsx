@@ -134,7 +134,7 @@ export function AccessPage() {
       {msg}
       {!data.length ? <p className="muted empty">{t("No requests.")}</p> : <div className="table-wrap card"><table className="table"><thead><tr><th>{t("Person")}</th><th>{t("Company")}</th><th>{t("Received")}</th><th>{t("Status")}</th><th style={{ width: 360 }} /></tr></thead>
         <tbody>{data.map((r, k) => <tr key={r.id}>
-          <td><b>{r.name}</b><div className="small muted">{r.role} · <bdi>{r.email}</bdi> · <bdi>{r.phone}</bdi></div></td>
+          <td><b>{r.name}</b><div className="small muted">{r.role && <>{r.role} · </>}<bdi>{r.email}</bdi> · <bdi>{r.phone}</bdi></div></td>
           <td>{r.company}<div className="small muted">{t(TYPE[r.company_type] ?? r.company_type)}</div></td><td className="small num">{date(r.created_at)}</td>
           <td className="small">{t(ACCESS_STATUS[r.status] ?? r.status)}{r.reason && <div className="muted">{r.reason}</div>}</td>
           <td>{links[r.id] ? <div className="small">{t('Invite link (send it to {email}):', { email: r.email })}<input className="search mono" style={{ width: '100%' }} readOnly value={location.origin + links[r.id]} onFocus={e => e.target.select()} /></div>
